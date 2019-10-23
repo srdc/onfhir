@@ -66,7 +66,7 @@
         <specs2.version>4.3.1</specs2.version>
         <hapi.version>3.8.0</hapi.version>
         <hapi.dstu2-version>2.2</hapi.dstu2-version>
-        <nimbus-jose.version>4.34</nimbus-jose.version>
+        <nimbus-jose.version>7.9</nimbus-jose.version>
         <nimbus-oidc.version>5.22</nimbus-oidc.version>
     </properties>
 
