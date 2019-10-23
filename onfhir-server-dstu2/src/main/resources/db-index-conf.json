@@ -1,0 +1,10 @@
+{
+  "createIndexForCompartments": true,
+  "resources": [
+    {
+      "resource": "Patient",
+      "shardKey": ["_id"],
+      "indexes": []
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "client_id": "5be49090-b73d-4b46-a42f-87c56d546c04",
+  "client_secret": "SlthYcMdE1X9MChTAgrkX7YSmaYiFfF7zI4GKha_fAR5bVtPg5w4u7yhy9EVG5TNuYBvKQocakFnvqD1VIS48A",
+  "client_name": "onFHIR.io FHIR Repository",
+  "client_uri": "http://onfhir.io",
+  "jwks_uri": "./pds.jwks",
+  "logo_uri": "http://onfhir.io/logo",
+  "contacts": [
+    "admin@onfhir.io"
+  ],
+  "tos_uri": "http://onfhir.io/tos",
+  "token_endpoint_auth_method": "client_secret_basic",
+  "token_endpoint_auth_signing_alg": null,
+  "policy_uri": "http://onfhir.io/policystmt",
+  "application_type": "WEB",
+  "client_secret_expires_at": 0
+}

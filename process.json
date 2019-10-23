@@ -1,0 +1,19 @@
+{
+	"comment": "This is a PM2 process file to define and configure how your application will be launched. To run your applications execute the following: pm2 start process.json",
+	
+    "apps": [{
+            "name": "fhir-repository",
+            "cwd": ".",
+            "args": [
+                "-jar",
+                "target/fhir-repository-standalone.jar"
+            ],
+            "env": {
+
+            },
+            "script": "java",
+            "log_date_format": "YYYY-MM-DD HH:mm Z",
+            "exec_interpreter": "none",
+            "exec_mode": "fork"
+    }]
+}

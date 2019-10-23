@@ -1,0 +1,135 @@
+{
+  "createIndexForCompartments": true,
+  "resources": [
+    {
+      "resource": "Patient",
+      "shardKey": ["_id"],
+      "indexes": [
+      ]
+    },
+    {
+      "resource": "Practitioner",
+      "indexes": [
+      ]
+    },
+    {
+      "resource": "Device",
+      "indexes": [
+      ]
+    },
+    {
+      "resource": "Organization",
+      "indexes": [
+      ]
+    },
+    {
+      "resource": "Composition",
+      "shardKey": ["subject"],
+      "indexes": [
+        "type",
+        "class"
+      ]
+    },
+    {
+      "resource": "Observation",
+      "shardKey": ["subject"],
+      "indexes": [
+         "code",
+         "date"
+      ]
+    },
+    {
+      "resource": "Condition",
+      "shardKey": ["patient"],
+      "indexes": [
+        "clinicalstatus",
+        "code"
+      ]
+    },
+    {
+      "resource": "Goal",
+      "shardKey": ["subject"],
+      "indexes": [
+        "status",
+        "targetMeasure"
+      ]
+    },
+    {
+      "resource": "ProcedureRequest",
+      "shardKey": ["subject"],
+      "indexes": [
+        "status"
+      ]
+    },
+    {
+      "resource": "MedicationOrder",
+      "shardKey": ["patient"],
+      "indexes": [
+        "status",
+        "code"
+      ]
+    },
+    {
+      "resource": "Appointment",
+      "shardKey": ["patient"],
+      "indexes": [
+        "date",
+        "practitioner"
+      ]
+    },
+    {
+      "resource": "Encounter",
+      "shardKey": ["patient"],
+      "indexes": [
+        "date",
+        "practitioner"
+      ]
+    },
+    {
+      "resource": "Procedure",
+      "shardKey": ["subject"],
+      "indexes": [
+        "date",
+        "code"
+      ]
+    },
+    {
+      "resource": "RiskAssessment",
+      "shardKey": ["subject"],
+      "indexes": [
+        "method"
+      ]
+    },
+    {
+      "resource": "QuestionnaireResponse",
+      "shardKey": ["subject"],
+      "indexes": [
+        "questionnaire"
+      ]
+    },
+    {
+      "resource": "MedicationAdministration",
+      "shardKey": ["patient"],
+      "indexes": [
+        "effectivetime",
+        "code",
+        "prescription"
+      ]
+    },
+    {
+      "resource": "Order",
+      "shardKey": ["subject"],
+      "indexes": [
+        "date"
+      ]
+    },
+    {
+      "resource": "OrderResponse",
+      "shardKey": ["subject"],
+      "indexes": [
+        "date",
+        "request"
+      ]
+    }
+  ]
+}
