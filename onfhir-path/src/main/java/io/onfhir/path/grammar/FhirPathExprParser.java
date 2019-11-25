@@ -1,5 +1,5 @@
-package io.onfhir.path.grammar;
 // Generated from FhirPathExpr.g4 by ANTLR 4.7
+package io.onfhir.path.grammar;
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;
 import org.antlr.v4.runtime.*;
@@ -24,8 +24,8 @@ public class FhirPathExprParser extends Parser {
 		T__31=32, T__32=33, T__33=34, T__34=35, T__35=36, T__36=37, T__37=38, 
 		T__38=39, T__39=40, T__40=41, T__41=42, T__42=43, T__43=44, T__44=45, 
 		T__45=46, T__46=47, T__47=48, T__48=49, T__49=50, T__50=51, T__51=52, 
-		DATETIME=53, TIME=54, IDENTIFIER=55, QUOTEDIDENTIFIER=56, STRING=57, NUMBER=58, 
-		WS=59, COMMENT=60, LINE_COMMENT=61;
+		T__52=53, T__53=54, DATETIME=55, TIME=56, IDENTIFIER=57, QUOTEDIDENTIFIER=58, 
+		STRING=59, NUMBER=60, WS=61, COMMENT=62, LINE_COMMENT=63;
 	public static final int
 		RULE_expression = 0, RULE_term = 1, RULE_literal = 2, RULE_externalConstant = 3, 
 		RULE_invocation = 4, RULE_function = 5, RULE_paramList = 6, RULE_quantity = 7, 
@@ -41,18 +41,18 @@ public class FhirPathExprParser extends Parser {
 		null, "'.'", "'['", "']'", "'+'", "'-'", "'*'", "'/'", "'div'", "'mod'", 
 		"'&'", "'|'", "'<='", "'<'", "'>'", "'>='", "'is'", "'as'", "'='", "'~'", 
 		"'!='", "'!~'", "'in'", "'contains'", "'and'", "'or'", "'xor'", "'implies'", 
-		"'('", "')'", "'{'", "'}'", "'true'", "'false'", "'%'", "'$this'", "','", 
-		"'year'", "'month'", "'week'", "'day'", "'hour'", "'minute'", "'second'", 
-		"'millisecond'", "'years'", "'months'", "'weeks'", "'days'", "'hours'", 
-		"'minutes'", "'seconds'", "'milliseconds'"
+		"'('", "')'", "'{'", "'}'", "'true'", "'false'", "'%'", "'$this'", "'$index'", 
+		"'$total'", "','", "'year'", "'month'", "'week'", "'day'", "'hour'", "'minute'", 
+		"'second'", "'millisecond'", "'years'", "'months'", "'weeks'", "'days'", 
+		"'hours'", "'minutes'", "'seconds'", "'milliseconds'"
 	};
 	private static final String[] _SYMBOLIC_NAMES = {
 		null, null, null, null, null, null, null, null, null, null, null, null, 
 		null, null, null, null, null, null, null, null, null, null, null, null, 
 		null, null, null, null, null, null, null, null, null, null, null, null, 
 		null, null, null, null, null, null, null, null, null, null, null, null, 
-		null, null, null, null, null, "DATETIME", "TIME", "IDENTIFIER", "QUOTEDIDENTIFIER", 
-		"STRING", "NUMBER", "WS", "COMMENT", "LINE_COMMENT"
+		null, null, null, null, null, null, null, "DATETIME", "TIME", "IDENTIFIER", 
+		"QUOTEDIDENTIFIER", "STRING", "NUMBER", "WS", "COMMENT", "LINE_COMMENT"
 	};
 	public static final Vocabulary VOCABULARY = new VocabularyImpl(_LITERAL_NAMES, _SYMBOLIC_NAMES);
 
@@ -444,6 +444,8 @@ public class FhirPathExprParser extends Parser {
 			case T__32:
 			case T__33:
 			case T__34:
+			case T__35:
+			case T__36:
 			case DATETIME:
 			case TIME:
 			case IDENTIFIER:
@@ -814,6 +816,8 @@ public class FhirPathExprParser extends Parser {
 			case T__15:
 			case T__16:
 			case T__34:
+			case T__35:
+			case T__36:
 			case IDENTIFIER:
 			case QUOTEDIDENTIFIER:
 				_localctx = new InvocationTermContext(_localctx);
@@ -1147,6 +1151,22 @@ public class FhirPathExprParser extends Parser {
 			super.copyFrom(ctx);
 		}
 	}
+	public static class TotalInvocationContext extends InvocationContext {
+		public TotalInvocationContext(InvocationContext ctx) { copyFrom(ctx); }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof FhirPathExprListener ) ((FhirPathExprListener)listener).enterTotalInvocation(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof FhirPathExprListener ) ((FhirPathExprListener)listener).exitTotalInvocation(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof FhirPathExprVisitor ) return ((FhirPathExprVisitor<? extends T>)visitor).visitTotalInvocation(this);
+			else return visitor.visitChildren(this);
+		}
+	}
 	public static class ThisInvocationContext extends InvocationContext {
 		public ThisInvocationContext(InvocationContext ctx) { copyFrom(ctx); }
 		@Override
@@ -1160,6 +1180,22 @@ public class FhirPathExprParser extends Parser {
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
 			if ( visitor instanceof FhirPathExprVisitor ) return ((FhirPathExprVisitor<? extends T>)visitor).visitThisInvocation(this);
+			else return visitor.visitChildren(this);
+		}
+	}
+	public static class IndexInvocationContext extends InvocationContext {
+		public IndexInvocationContext(InvocationContext ctx) { copyFrom(ctx); }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof FhirPathExprListener ) ((FhirPathExprListener)listener).enterIndexInvocation(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof FhirPathExprListener ) ((FhirPathExprListener)listener).exitIndexInvocation(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof FhirPathExprVisitor ) return ((FhirPathExprVisitor<? extends T>)visitor).visitIndexInvocation(this);
 			else return visitor.visitChildren(this);
 		}
 	}
@@ -1206,7 +1242,7 @@ public class FhirPathExprParser extends Parser {
 		InvocationContext _localctx = new InvocationContext(_ctx, getState());
 		enterRule(_localctx, 8, RULE_invocation);
 		try {
-			setState(102);
+			setState(104);
 			_errHandler.sync(this);
 			switch ( getInterpreter().adaptivePredict(_input,5,_ctx) ) {
 			case 1:
@@ -1231,6 +1267,22 @@ public class FhirPathExprParser extends Parser {
 				{
 				setState(101);
 				match(T__34);
+				}
+				break;
+			case 4:
+				_localctx = new IndexInvocationContext(_localctx);
+				enterOuterAlt(_localctx, 4);
+				{
+				setState(102);
+				match(T__35);
+				}
+				break;
+			case 5:
+				_localctx = new TotalInvocationContext(_localctx);
+				enterOuterAlt(_localctx, 5);
+				{
+				setState(103);
+				match(T__36);
 				}
 				break;
 			}
@@ -1279,21 +1331,21 @@ public class FhirPathExprParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(104);
+			setState(106);
 			identifier();
-			setState(105);
-			match(T__27);
 			setState(107);
+			match(T__27);
+			setState(109);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
-			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__3) | (1L << T__4) | (1L << T__15) | (1L << T__16) | (1L << T__27) | (1L << T__29) | (1L << T__31) | (1L << T__32) | (1L << T__33) | (1L << T__34) | (1L << DATETIME) | (1L << TIME) | (1L << IDENTIFIER) | (1L << QUOTEDIDENTIFIER) | (1L << STRING) | (1L << NUMBER))) != 0)) {
+			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__3) | (1L << T__4) | (1L << T__15) | (1L << T__16) | (1L << T__27) | (1L << T__29) | (1L << T__31) | (1L << T__32) | (1L << T__33) | (1L << T__34) | (1L << T__35) | (1L << T__36) | (1L << DATETIME) | (1L << TIME) | (1L << IDENTIFIER) | (1L << QUOTEDIDENTIFIER) | (1L << STRING) | (1L << NUMBER))) != 0)) {
 				{
-				setState(106);
+				setState(108);
 				paramList();
 				}
 			}
 
-			setState(109);
+			setState(111);
 			match(T__28);
 			}
 		}
@@ -1341,21 +1393,21 @@ public class FhirPathExprParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(111);
+			setState(113);
 			expression(0);
-			setState(116);
+			setState(118);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
-			while (_la==T__35) {
+			while (_la==T__37) {
 				{
 				{
-				setState(112);
-				match(T__35);
-				setState(113);
+				setState(114);
+				match(T__37);
+				setState(115);
 				expression(0);
 				}
 				}
-				setState(118);
+				setState(120);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
 			}
@@ -1402,14 +1454,14 @@ public class FhirPathExprParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(119);
-			match(NUMBER);
 			setState(121);
+			match(NUMBER);
+			setState(123);
 			_errHandler.sync(this);
 			switch ( getInterpreter().adaptivePredict(_input,8,_ctx) ) {
 			case 1:
 				{
-				setState(120);
+				setState(122);
 				unit();
 				}
 				break;
@@ -1458,41 +1510,41 @@ public class FhirPathExprParser extends Parser {
 		UnitContext _localctx = new UnitContext(_ctx, getState());
 		enterRule(_localctx, 16, RULE_unit);
 		try {
-			setState(126);
+			setState(128);
 			_errHandler.sync(this);
 			switch (_input.LA(1)) {
-			case T__36:
-			case T__37:
 			case T__38:
 			case T__39:
 			case T__40:
 			case T__41:
 			case T__42:
 			case T__43:
+			case T__44:
+			case T__45:
 				enterOuterAlt(_localctx, 1);
 				{
-				setState(123);
+				setState(125);
 				dateTimePrecision();
 				}
 				break;
-			case T__44:
-			case T__45:
 			case T__46:
 			case T__47:
 			case T__48:
 			case T__49:
 			case T__50:
 			case T__51:
+			case T__52:
+			case T__53:
 				enterOuterAlt(_localctx, 2);
 				{
-				setState(124);
+				setState(126);
 				pluralDateTimePrecision();
 				}
 				break;
 			case STRING:
 				enterOuterAlt(_localctx, 3);
 				{
-				setState(125);
+				setState(127);
 				match(STRING);
 				}
 				break;
@@ -1538,9 +1590,9 @@ public class FhirPathExprParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(128);
+			setState(130);
 			_la = _input.LA(1);
-			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__36) | (1L << T__37) | (1L << T__38) | (1L << T__39) | (1L << T__40) | (1L << T__41) | (1L << T__42) | (1L << T__43))) != 0)) ) {
+			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__38) | (1L << T__39) | (1L << T__40) | (1L << T__41) | (1L << T__42) | (1L << T__43) | (1L << T__44) | (1L << T__45))) != 0)) ) {
 			_errHandler.recoverInline(this);
 			}
 			else {
@@ -1588,9 +1640,9 @@ public class FhirPathExprParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(130);
+			setState(132);
 			_la = _input.LA(1);
-			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__44) | (1L << T__45) | (1L << T__46) | (1L << T__47) | (1L << T__48) | (1L << T__49) | (1L << T__50) | (1L << T__51))) != 0)) ) {
+			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__46) | (1L << T__47) | (1L << T__48) | (1L << T__49) | (1L << T__50) | (1L << T__51) | (1L << T__52) | (1L << T__53))) != 0)) ) {
 			_errHandler.recoverInline(this);
 			}
 			else {
@@ -1640,7 +1692,7 @@ public class FhirPathExprParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(132);
+			setState(134);
 			qualifiedIdentifier();
 			}
 		}
@@ -1688,23 +1740,23 @@ public class FhirPathExprParser extends Parser {
 			int _alt;
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(134);
+			setState(136);
 			identifier();
-			setState(139);
+			setState(141);
 			_errHandler.sync(this);
 			_alt = getInterpreter().adaptivePredict(_input,10,_ctx);
 			while ( _alt!=2 && _alt!=org.antlr.v4.runtime.atn.ATN.INVALID_ALT_NUMBER ) {
 				if ( _alt==1 ) {
 					{
 					{
-					setState(135);
+					setState(137);
 					match(T__0);
-					setState(136);
+					setState(138);
 					identifier();
 					}
 					} 
 				}
-				setState(141);
+				setState(143);
 				_errHandler.sync(this);
 				_alt = getInterpreter().adaptivePredict(_input,10,_ctx);
 			}
@@ -1750,7 +1802,7 @@ public class FhirPathExprParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(142);
+			setState(144);
 			_la = _input.LA(1);
 			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__15) | (1L << T__16) | (1L << IDENTIFIER) | (1L << QUOTEDIDENTIFIER))) != 0)) ) {
 			_errHandler.recoverInline(this);
@@ -1811,47 +1863,48 @@ public class FhirPathExprParser extends Parser {
 	}
 
 	public static final String _serializedATN =
-		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3?\u0093\4\2\t\2\4"+
+		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3A\u0095\4\2\t\2\4"+
 		"\3\t\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7\4\b\t\b\4\t\t\t\4\n\t\n\4\13\t"+
 		"\13\4\f\t\f\4\r\t\r\4\16\t\16\4\17\t\17\3\2\3\2\3\2\3\2\5\2#\n\2\3\2\3"+
 		"\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2"+
 		"\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3"+
 		"\2\3\2\7\2K\n\2\f\2\16\2N\13\2\3\3\3\3\3\3\3\3\3\3\3\3\3\3\5\3W\n\3\3"+
-		"\4\3\4\3\4\3\4\3\4\3\4\3\4\3\4\5\4a\n\4\3\5\3\5\3\5\3\6\3\6\3\6\5\6i\n"+
-		"\6\3\7\3\7\3\7\5\7n\n\7\3\7\3\7\3\b\3\b\3\b\7\bu\n\b\f\b\16\bx\13\b\3"+
-		"\t\3\t\5\t|\n\t\3\n\3\n\3\n\5\n\u0081\n\n\3\13\3\13\3\f\3\f\3\r\3\r\3"+
-		"\16\3\16\3\16\7\16\u008c\n\16\f\16\16\16\u008f\13\16\3\17\3\17\3\17\2"+
-		"\3\2\20\2\4\6\b\n\f\16\20\22\24\26\30\32\34\2\16\3\2\6\7\3\2\b\13\4\2"+
-		"\6\7\f\f\3\2\16\21\3\2\24\27\3\2\30\31\3\2\33\34\3\2\22\23\3\2\"#\3\2"+
-		"\'.\3\2/\66\4\2\22\239:\2\u00a2\2\"\3\2\2\2\4V\3\2\2\2\6`\3\2\2\2\bb\3"+
-		"\2\2\2\nh\3\2\2\2\fj\3\2\2\2\16q\3\2\2\2\20y\3\2\2\2\22\u0080\3\2\2\2"+
-		"\24\u0082\3\2\2\2\26\u0084\3\2\2\2\30\u0086\3\2\2\2\32\u0088\3\2\2\2\34"+
-		"\u0090\3\2\2\2\36\37\b\2\1\2\37#\5\4\3\2 !\t\2\2\2!#\5\2\2\r\"\36\3\2"+
-		"\2\2\" \3\2\2\2#L\3\2\2\2$%\f\f\2\2%&\t\3\2\2&K\5\2\2\r\'(\f\13\2\2()"+
-		"\t\4\2\2)K\5\2\2\f*+\f\n\2\2+,\7\r\2\2,K\5\2\2\13-.\f\t\2\2./\t\5\2\2"+
-		"/K\5\2\2\n\60\61\f\7\2\2\61\62\t\6\2\2\62K\5\2\2\b\63\64\f\6\2\2\64\65"+
-		"\t\7\2\2\65K\5\2\2\7\66\67\f\5\2\2\678\7\32\2\28K\5\2\2\69:\f\4\2\2:;"+
-		"\t\b\2\2;K\5\2\2\5<=\f\3\2\2=>\7\35\2\2>K\5\2\2\4?@\f\17\2\2@A\7\3\2\2"+
-		"AK\5\n\6\2BC\f\16\2\2CD\7\4\2\2DE\5\2\2\2EF\7\5\2\2FK\3\2\2\2GH\f\b\2"+
-		"\2HI\t\t\2\2IK\5\30\r\2J$\3\2\2\2J\'\3\2\2\2J*\3\2\2\2J-\3\2\2\2J\60\3"+
-		"\2\2\2J\63\3\2\2\2J\66\3\2\2\2J9\3\2\2\2J<\3\2\2\2J?\3\2\2\2JB\3\2\2\2"+
-		"JG\3\2\2\2KN\3\2\2\2LJ\3\2\2\2LM\3\2\2\2M\3\3\2\2\2NL\3\2\2\2OW\5\n\6"+
-		"\2PW\5\6\4\2QW\5\b\5\2RS\7\36\2\2ST\5\2\2\2TU\7\37\2\2UW\3\2\2\2VO\3\2"+
-		"\2\2VP\3\2\2\2VQ\3\2\2\2VR\3\2\2\2W\5\3\2\2\2XY\7 \2\2Ya\7!\2\2Za\t\n"+
-		"\2\2[a\7;\2\2\\a\7<\2\2]a\7\67\2\2^a\78\2\2_a\5\20\t\2`X\3\2\2\2`Z\3\2"+
-		"\2\2`[\3\2\2\2`\\\3\2\2\2`]\3\2\2\2`^\3\2\2\2`_\3\2\2\2a\7\3\2\2\2bc\7"+
-		"$\2\2cd\5\34\17\2d\t\3\2\2\2ei\5\34\17\2fi\5\f\7\2gi\7%\2\2he\3\2\2\2"+
-		"hf\3\2\2\2hg\3\2\2\2i\13\3\2\2\2jk\5\34\17\2km\7\36\2\2ln\5\16\b\2ml\3"+
-		"\2\2\2mn\3\2\2\2no\3\2\2\2op\7\37\2\2p\r\3\2\2\2qv\5\2\2\2rs\7&\2\2su"+
-		"\5\2\2\2tr\3\2\2\2ux\3\2\2\2vt\3\2\2\2vw\3\2\2\2w\17\3\2\2\2xv\3\2\2\2"+
-		"y{\7<\2\2z|\5\22\n\2{z\3\2\2\2{|\3\2\2\2|\21\3\2\2\2}\u0081\5\24\13\2"+
-		"~\u0081\5\26\f\2\177\u0081\7;\2\2\u0080}\3\2\2\2\u0080~\3\2\2\2\u0080"+
-		"\177\3\2\2\2\u0081\23\3\2\2\2\u0082\u0083\t\13\2\2\u0083\25\3\2\2\2\u0084"+
-		"\u0085\t\f\2\2\u0085\27\3\2\2\2\u0086\u0087\5\32\16\2\u0087\31\3\2\2\2"+
-		"\u0088\u008d\5\34\17\2\u0089\u008a\7\3\2\2\u008a\u008c\5\34\17\2\u008b"+
-		"\u0089\3\2\2\2\u008c\u008f\3\2\2\2\u008d\u008b\3\2\2\2\u008d\u008e\3\2"+
-		"\2\2\u008e\33\3\2\2\2\u008f\u008d\3\2\2\2\u0090\u0091\t\r\2\2\u0091\35"+
-		"\3\2\2\2\r\"JLV`hmv{\u0080\u008d";
+		"\4\3\4\3\4\3\4\3\4\3\4\3\4\3\4\5\4a\n\4\3\5\3\5\3\5\3\6\3\6\3\6\3\6\3"+
+		"\6\5\6k\n\6\3\7\3\7\3\7\5\7p\n\7\3\7\3\7\3\b\3\b\3\b\7\bw\n\b\f\b\16\b"+
+		"z\13\b\3\t\3\t\5\t~\n\t\3\n\3\n\3\n\5\n\u0083\n\n\3\13\3\13\3\f\3\f\3"+
+		"\r\3\r\3\16\3\16\3\16\7\16\u008e\n\16\f\16\16\16\u0091\13\16\3\17\3\17"+
+		"\3\17\2\3\2\20\2\4\6\b\n\f\16\20\22\24\26\30\32\34\2\16\3\2\6\7\3\2\b"+
+		"\13\4\2\6\7\f\f\3\2\16\21\3\2\24\27\3\2\30\31\3\2\33\34\3\2\22\23\3\2"+
+		"\"#\3\2)\60\3\2\618\4\2\22\23;<\2\u00a6\2\"\3\2\2\2\4V\3\2\2\2\6`\3\2"+
+		"\2\2\bb\3\2\2\2\nj\3\2\2\2\fl\3\2\2\2\16s\3\2\2\2\20{\3\2\2\2\22\u0082"+
+		"\3\2\2\2\24\u0084\3\2\2\2\26\u0086\3\2\2\2\30\u0088\3\2\2\2\32\u008a\3"+
+		"\2\2\2\34\u0092\3\2\2\2\36\37\b\2\1\2\37#\5\4\3\2 !\t\2\2\2!#\5\2\2\r"+
+		"\"\36\3\2\2\2\" \3\2\2\2#L\3\2\2\2$%\f\f\2\2%&\t\3\2\2&K\5\2\2\r\'(\f"+
+		"\13\2\2()\t\4\2\2)K\5\2\2\f*+\f\n\2\2+,\7\r\2\2,K\5\2\2\13-.\f\t\2\2."+
+		"/\t\5\2\2/K\5\2\2\n\60\61\f\7\2\2\61\62\t\6\2\2\62K\5\2\2\b\63\64\f\6"+
+		"\2\2\64\65\t\7\2\2\65K\5\2\2\7\66\67\f\5\2\2\678\7\32\2\28K\5\2\2\69:"+
+		"\f\4\2\2:;\t\b\2\2;K\5\2\2\5<=\f\3\2\2=>\7\35\2\2>K\5\2\2\4?@\f\17\2\2"+
+		"@A\7\3\2\2AK\5\n\6\2BC\f\16\2\2CD\7\4\2\2DE\5\2\2\2EF\7\5\2\2FK\3\2\2"+
+		"\2GH\f\b\2\2HI\t\t\2\2IK\5\30\r\2J$\3\2\2\2J\'\3\2\2\2J*\3\2\2\2J-\3\2"+
+		"\2\2J\60\3\2\2\2J\63\3\2\2\2J\66\3\2\2\2J9\3\2\2\2J<\3\2\2\2J?\3\2\2\2"+
+		"JB\3\2\2\2JG\3\2\2\2KN\3\2\2\2LJ\3\2\2\2LM\3\2\2\2M\3\3\2\2\2NL\3\2\2"+
+		"\2OW\5\n\6\2PW\5\6\4\2QW\5\b\5\2RS\7\36\2\2ST\5\2\2\2TU\7\37\2\2UW\3\2"+
+		"\2\2VO\3\2\2\2VP\3\2\2\2VQ\3\2\2\2VR\3\2\2\2W\5\3\2\2\2XY\7 \2\2Ya\7!"+
+		"\2\2Za\t\n\2\2[a\7=\2\2\\a\7>\2\2]a\79\2\2^a\7:\2\2_a\5\20\t\2`X\3\2\2"+
+		"\2`Z\3\2\2\2`[\3\2\2\2`\\\3\2\2\2`]\3\2\2\2`^\3\2\2\2`_\3\2\2\2a\7\3\2"+
+		"\2\2bc\7$\2\2cd\5\34\17\2d\t\3\2\2\2ek\5\34\17\2fk\5\f\7\2gk\7%\2\2hk"+
+		"\7&\2\2ik\7\'\2\2je\3\2\2\2jf\3\2\2\2jg\3\2\2\2jh\3\2\2\2ji\3\2\2\2k\13"+
+		"\3\2\2\2lm\5\34\17\2mo\7\36\2\2np\5\16\b\2on\3\2\2\2op\3\2\2\2pq\3\2\2"+
+		"\2qr\7\37\2\2r\r\3\2\2\2sx\5\2\2\2tu\7(\2\2uw\5\2\2\2vt\3\2\2\2wz\3\2"+
+		"\2\2xv\3\2\2\2xy\3\2\2\2y\17\3\2\2\2zx\3\2\2\2{}\7>\2\2|~\5\22\n\2}|\3"+
+		"\2\2\2}~\3\2\2\2~\21\3\2\2\2\177\u0083\5\24\13\2\u0080\u0083\5\26\f\2"+
+		"\u0081\u0083\7=\2\2\u0082\177\3\2\2\2\u0082\u0080\3\2\2\2\u0082\u0081"+
+		"\3\2\2\2\u0083\23\3\2\2\2\u0084\u0085\t\13\2\2\u0085\25\3\2\2\2\u0086"+
+		"\u0087\t\f\2\2\u0087\27\3\2\2\2\u0088\u0089\5\32\16\2\u0089\31\3\2\2\2"+
+		"\u008a\u008f\5\34\17\2\u008b\u008c\7\3\2\2\u008c\u008e\5\34\17\2\u008d"+
+		"\u008b\3\2\2\2\u008e\u0091\3\2\2\2\u008f\u008d\3\2\2\2\u008f\u0090\3\2"+
+		"\2\2\u0090\33\3\2\2\2\u0091\u008f\3\2\2\2\u0092\u0093\t\r\2\2\u0093\35"+
+		"\3\2\2\2\r\"JLV`jox}\u0082\u008f";
 	public static final ATN _ATN =
 		new ATNDeserializer().deserialize(_serializedATN.toCharArray());
 	static {

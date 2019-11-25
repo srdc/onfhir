@@ -8,7 +8,7 @@ import org.json4s._
 
 import collection.JavaConverters._
 import scala.language.implicitConversions
-
+import io.onfhir.config.FhirConfigurationManager.fhirConfig
 
 /**
   * FHIR Path expression evaluator
@@ -35,7 +35,7 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
   override def visitInvocationTerm(ctx: FhirPathExprParser.InvocationTermContext):  Seq[FhirPathResult] = {
     ctx.invocation() match {
       case mi:MemberInvocationContext =>
-        val pathOrResourceType = mi.identifier().getText
+        val pathOrResourceType = FhirPathLiteralEvaluator.parseIdentifier(mi.identifier().getText)
         //If it is a resource type
         if(pathOrResourceType.head.isUpper){
           current
@@ -91,14 +91,23 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
     *     */
   override def visitMemberInvocation(ctx: FhirPathExprParser.MemberInvocationContext):Seq[FhirPathResult] = {
     //Element path
-    val pathName = ctx.identifier().getText + targetType.getOrElse("") //if there is target type add it e.g. Observation.value as Quantity --> search for valueQuantity
+    val pathName = FhirPathLiteralEvaluator.parseIdentifier(ctx.identifier().getText) + targetType.getOrElse("") //if there is target type add it e.g. Observation.value as Quantity --> search for valueQuantity
 
     //Execute the path and return
     current
       .filter(_.isInstanceOf[FhirPathComplex]) //Only get the complex objects
       .flatMap(r =>
         FhirPathValueTransformer
-          .transform(r.asInstanceOf[FhirPathComplex].json \ pathName  ) //Execute JSON path for each element
+          .transform(r.asInstanceOf[FhirPathComplex].json \ pathName  ) match { //Execute JSON path for each element
+          //The field can be a multi valued so we should check if there is a field starting with the path
+          case Nil if targetType.isEmpty =>
+            r.asInstanceOf[FhirPathComplex].json.obj
+              .find(f => f._1.startsWith(pathName) && f._1.drop(pathName.length).head.isUpper)
+              .map(f => FhirPathValueTransformer.transform(f._2))
+              .getOrElse(Nil) //If not found still return nil
+          //Oth
+          case oth => oth
+        }
       )
   }
 

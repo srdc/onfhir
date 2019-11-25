@@ -136,4 +136,11 @@ object FhirPathLiteralEvaluator extends FhirPathExprBaseVisitor[Seq[FhirPathResu
       case zdt:ZonedDateTime => zdt.toLocalTime -> Some(zdt.getOffset)
     }
   }
+
+  def parseIdentifier(identifier:String):String = {
+    if(identifier.head == '`')
+      identifier.drop(1).dropRight(1)
+    else
+      identifier
+  }
 }

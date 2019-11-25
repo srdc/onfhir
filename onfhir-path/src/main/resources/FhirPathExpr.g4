@@ -50,6 +50,8 @@ invocation                          // Terms that can be used after the function
         : identifier                                            #memberInvocation
         | function                                              #functionInvocation
         | '$this'                                               #thisInvocation
+        | '$index'                                              #indexInvocation
+        | '$total'                                              #totalInvocation
         ;
 
 function
@@ -139,11 +141,11 @@ IDENTIFIER
         ;
 
 QUOTEDIDENTIFIER
-        : '"' (ESC | ~[\\"])+ '"'
+        : '`' (ESC | .)*? '`'
         ;
 
 STRING
-        : '\'' (ESC | ~[\\'])* '\''
+        : '\'' (ESC | .)*? '\''
         ;
 
 // Also allows leading zeroes now (just like CQL and XSD)

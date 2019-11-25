@@ -278,6 +278,7 @@ package object api {
     val MARKDOWN = "markdown"
     val UNSIGNEDINT = "unsignedInt"
     val POSITIVEINT = "positiveInt"
+    val XHTML = "xhtml"
     //Complex types
     //Special purpose Types
     val RESOURCE = "Resource"
@@ -346,7 +347,8 @@ package object api {
       FHIR_DATA_TYPES.ID,
       FHIR_DATA_TYPES.MARKDOWN,
       FHIR_DATA_TYPES.UNSIGNEDINT,
-      FHIR_DATA_TYPES.POSITIVEINT
+      FHIR_DATA_TYPES.POSITIVEINT,
+      FHIR_DATA_TYPES.XHTML
       )
 
   /**

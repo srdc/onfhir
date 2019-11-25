@@ -15,10 +15,12 @@ class FhirPathEvaluatorTest extends Specification {
   val observation = Source.fromInputStream(getClass.getResourceAsStream("/observation.json")).mkString.parseJson
   val observation2 = Source.fromInputStream(getClass.getResourceAsStream("/observation2.json")).mkString.parseJson
   val questionnaire = Source.fromInputStream(getClass.getResourceAsStream("/questionnaire.json")).mkString.parseJson
+  val bundle = Source.fromInputStream(getClass.getResourceAsStream("/bundle.json")).mkString.parseJson
 
   sequential
 
   "FHIR Path Evaluator" should {
+
     "evaluate simple path expression not starting with resource type" in {
       var result = FhirPathEvaluator.evaluate("subject", observation)
       result.length mustEqual 1
@@ -435,6 +437,10 @@ class FhirPathEvaluatorTest extends Specification {
       FhirPathEvaluator.evaluateString("Observation.component.take(2).last().code.coding.first().code", observation2).head mustEqual "32412-9"
       FhirPathEvaluator.evaluateString("Observation.component.take(6).last().code.coding.first().code", observation2).head mustEqual "32415-2"
       FhirPathEvaluator.evaluate("Observation.method.take(3)", observation2) must empty //if empty return empty
+      //intersect
+      FhirPathEvaluator.evaluateString("Observation.component.take(3).code.coding.code.intersect(%resource.component.skip(2).code.coding.code)", observation2) mustEqual Seq("32414-5", "249226008")
+      //exclude
+      FhirPathEvaluator.evaluateString("Observation.component.take(3).code.coding.code.exclude(%resource.component.take(2).code.coding.code)", observation2) mustEqual Seq("32414-5", "249226008")
     }
     "evaluate paths with conversion functions" in {
       //iif
@@ -503,6 +509,10 @@ class FhirPathEvaluatorTest extends Specification {
       FhirPathEvaluator.satisfies("today() = @"+LocalDate.now().toString, questionnaire) mustEqual true
       FhirPathEvaluator.satisfies("today() = @"+LocalDate.now().plusDays(2).toString, questionnaire) mustEqual false
       FhirPathEvaluator.satisfies("now() > @2019-09-09T09:59:00+03:00", questionnaire) mustEqual true
+    }
+
+    "evaluate paths with backticks" in {
+      FhirPathEvaluator.satisfies("text.`div`.exists()", observation)
     }
   }
 

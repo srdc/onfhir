@@ -1,5 +1,5 @@
-package io.onfhir.path.grammar;
 // Generated from FhirPathExpr.g4 by ANTLR 4.7
+package io.onfhir.path.grammar;
 
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ErrorNode;
@@ -359,6 +359,30 @@ public class FhirPathExprBaseListener implements FhirPathExprListener {
 	 * <p>The default implementation does nothing.</p>
 	 */
 	@Override public void exitThisInvocation(FhirPathExprParser.ThisInvocationContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterIndexInvocation(FhirPathExprParser.IndexInvocationContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitIndexInvocation(FhirPathExprParser.IndexInvocationContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void enterTotalInvocation(FhirPathExprParser.TotalInvocationContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitTotalInvocation(FhirPathExprParser.TotalInvocationContext ctx) { }
 	/**
 	 * {@inheritDoc}
 	 *

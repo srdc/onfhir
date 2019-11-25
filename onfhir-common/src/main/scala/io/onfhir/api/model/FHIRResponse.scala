@@ -45,6 +45,13 @@ object FHIRResponse {
   final val DIAGNOSTICS = "diagnostics"
   final val LOCATION = "location"
 
+  object SEVERITY_CODES {
+    val WARNING = "warning"
+    val ERROR = "error"
+    val FATAL = "fatal"
+    val INFORMATION  = "information"
+  }
+
   object OUTCOME_CODES {
     val INVALID = "invalid"
     val NOT_SUPPORTED = "not-supported"

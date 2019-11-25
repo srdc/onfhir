@@ -17,6 +17,7 @@
         <module>onfhir-server-stu3</module>
         <module>onfhir-server-dstu2</module>
         <module>onfhir-path</module>
+        <module>onfhir-validation</module>
     </modules>
     <name>Onfhir Secure FHIR Repository</name>
 
@@ -207,7 +208,16 @@
                 <artifactId>onfhir-server-dstu2</artifactId>
                 <version>3.0-SNAPSHOT</version>
             </dependency>
-
+            <dependency>
+                <groupId>onfhir</groupId>
+                <artifactId>onfhir-path</artifactId>
+                <version>3.0-SNAPSHOT</version>
+            </dependency>
+            <dependency>
+                <groupId>onfhir</groupId>
+                <artifactId>onfhir-validation</artifactId>
+                <version>3.0-SNAPSHOT</version>
+            </dependency>
             <!-- Akka HTTP Suite -->
             <dependency>
                 <groupId>com.typesafe.akka</groupId>

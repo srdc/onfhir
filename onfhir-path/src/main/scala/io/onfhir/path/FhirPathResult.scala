@@ -3,7 +3,8 @@ package io.onfhir.path
 import java.time.{Duration, LocalDate, LocalDateTime, LocalTime, Period, Year, YearMonth, ZoneId, ZonedDateTime}
 import java.time.temporal.{ChronoField, ChronoUnit, Temporal, TemporalAmount}
 
-import org.json4s.JsonAST.JObject
+import io.onfhir.path.FhirPathValueTransformer.transform
+import org.json4s.JsonAST.{JBool, JDecimal, JLong, JObject, JString, JValue}
 
 import scala.math.BigDecimal.RoundingMode
 import scala.math.BigDecimal.RoundingMode.RoundingMode
@@ -30,6 +31,12 @@ sealed trait FhirPathResult {
     * @return
     */
   def isEquivalent(that:FhirPathResult):Boolean = isEqual(that).getOrElse(false)
+
+  /**
+   * Convert the result to json4s.model
+   * @return
+   */
+  def toJson:JValue
 }
 
 /**
@@ -51,6 +58,8 @@ case class FhirPathString(s:String) extends FhirPathResult with Ordered[FhirPath
     case FhirPathString(s2) => s.trim().replaceAll(" +", " ").equalsIgnoreCase(s2.trim().replaceAll(" +", " "))
     case _ => false
   }
+
+  def toJson:JValue = JString(s)
 }
 
 /**
@@ -82,6 +91,8 @@ case class FhirPathNumber(v:BigDecimal) extends FhirPathResult with Ordered[Fhir
     }
 
   def isInteger():Boolean = v - v.toInt == 0
+
+  def toJson:JValue = if(isInteger()) JLong(v.toLong) else JDecimal(v)
 }
 
 /**
@@ -207,6 +218,14 @@ case class FhirPathDateTime(dt:Temporal) extends FhirPathResult with Ordered[Fhi
       case e:Exception => throw new Exception(s"Invalid datetime arithmetic on $dt for quantity $amountToAdd and unit $unit !")
     }
   }
+
+  def toJson:JValue = dt match {
+    case y:Year => JString(y.toString)
+    case ym:YearMonth => JString(ym.toString)
+    case ld:LocalDate => JString(ld.toString)
+    case ldt:LocalDateTime => JString(ldt.toString)
+    case zdt:ZonedDateTime => JString(zdt.toString)
+  }
 }
 
 /**
@@ -257,6 +276,7 @@ case class FhirPathTime(lt:LocalTime, zone:Option[ZoneId] = None) extends FhirPa
     }
   }
 
+  def toJson:JValue = JString(lt.toString + zone.map(z=> z.toString).getOrElse(""))
 }
 
 /**
@@ -273,6 +293,8 @@ case class FhirPathBoolean(b:Boolean) extends FhirPathResult {
       case FhirPathBoolean(b2) => Some(b == b2)
       case _ => Some(false)
     }
+
+  def toJson:JValue = JBool(b)
 }
 
 /**
@@ -287,6 +309,8 @@ case class FhirPathQuantity(q:FhirPathNumber, unit:String) extends FhirPathResul
       case _ => Some(false)
     }
   }
+
+  def toJson:JValue = JObject("value" -> q.toJson ,  "system" -> JString("http://unitsofmeasure.org"), "code"-> JString(unit),"unit" -> JString(unit))
 }
 
 /**
@@ -301,4 +325,6 @@ case class FhirPathComplex(json:JObject) extends FhirPathResult {
       case _ => Some(false)
     }
   }
+
+  def toJson:JValue = json
 }

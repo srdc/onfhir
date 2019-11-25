@@ -2,9 +2,11 @@ package io.onfhir.config
 
 import ca.uhn.fhir.context.{FhirContext, FhirVersionEnum}
 import ca.uhn.fhir.parser.IParser
+
 import scala.collection.immutable.{HashMap, List}
 import akka.http.scaladsl.model._
 import io.onfhir.api._
+import io.onfhir.api.validation.ProfileRestrictions
 
 /**
   * Central OnFhir configuration defining FHIR server capabilities
@@ -46,7 +48,8 @@ class FhirConfig(val fhirContext:FhirContext) {
   var supportedCodeSystems:Set[String] = _
   /** Shard Keys for FHIR resource types; resourceType -> Seq[fhir-search-parameter-name-indicating-the-shard-key] */
   var shardKeys:Map[String, Set[String]] = Map.empty[String, Set[String]]
-
+  /** FHIR Profile definitions including the base profiles**/
+  var profileRestrictions: Map[String, ProfileRestrictions] = _
   /***
     * Configurations specific to FHIR version
     */

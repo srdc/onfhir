@@ -1,5 +1,5 @@
-package io.onfhir.path.grammar;
 // Generated from FhirPathExpr.g4 by ANTLR 4.7
+package io.onfhir.path.grammar;
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
 /**
@@ -353,6 +353,30 @@ public interface FhirPathExprListener extends ParseTreeListener {
 	 * @param ctx the parse tree
 	 */
 	void exitThisInvocation(FhirPathExprParser.ThisInvocationContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code indexInvocation}
+	 * labeled alternative in {@link FhirPathExprParser#invocation}.
+	 * @param ctx the parse tree
+	 */
+	void enterIndexInvocation(FhirPathExprParser.IndexInvocationContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code indexInvocation}
+	 * labeled alternative in {@link FhirPathExprParser#invocation}.
+	 * @param ctx the parse tree
+	 */
+	void exitIndexInvocation(FhirPathExprParser.IndexInvocationContext ctx);
+	/**
+	 * Enter a parse tree produced by the {@code totalInvocation}
+	 * labeled alternative in {@link FhirPathExprParser#invocation}.
+	 * @param ctx the parse tree
+	 */
+	void enterTotalInvocation(FhirPathExprParser.TotalInvocationContext ctx);
+	/**
+	 * Exit a parse tree produced by the {@code totalInvocation}
+	 * labeled alternative in {@link FhirPathExprParser#invocation}.
+	 * @param ctx the parse tree
+	 */
+	void exitTotalInvocation(FhirPathExprParser.TotalInvocationContext ctx);
 	/**
 	 * Enter a parse tree produced by {@link FhirPathExprParser#function}.
 	 * @param ctx the parse tree

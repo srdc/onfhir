@@ -906,4 +906,33 @@ object FHIRUtil {
   def mergeElementPath(mainPath:Option[String], subPath:String):String = mainPath.map(_ + ".").getOrElse("") + subPath
   def mergeElementPath(mainPath:String, subPath:String):String = if(mainPath == "") subPath else if(subPath == "") mainPath else mainPath + "."+ subPath
 
+  /**
+   * In FHIR, some elements may have multiple types in which case the data type is appended to element name for JSON serialization to indicate the data type
+   * This method is to find such an element, and its data type
+   * @param field     Field name e.g. Observation.value[x] --> value
+   * @param content   JSON content to search the field
+   * @return  Actual field name, data type and the JSON content of the found field e.g. valueQuantity, Quantity, ...
+   */
+  def findElementWithMultipleFhirTypes(field:String, content:JObject):Option[(String, String, JValue)] = {
+    content.obj
+      .find(f => f._1.startsWith(field)) //Find the field starts with the given field name
+      .map(f => (f._1, f._1.replace(field, ""), f._2))  //Extract the data type field
+      .flatMap(f =>
+        if (FHIR_COMPLEX_TYPES.contains(f._2))
+          Some(f)
+        else if (FHIR_PRIMITIVE_TYPES.contains(decapitilize(f._2)))
+          Some(f._1, decapitilize(f._2), f._3) //if it is a primitive, decapitilize it
+        else
+          None
+      )
+  }
+
+  /**
+   * Decapitilize a string
+   * @param s
+   * @return
+   */
+  def decapitilize(s: String): String = {
+    s.charAt(0).toLower + s.substring(1)
+  }
 }

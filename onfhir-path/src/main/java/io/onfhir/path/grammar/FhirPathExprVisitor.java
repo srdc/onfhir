@@ -1,5 +1,5 @@
-package io.onfhir.path.grammar;
 // Generated from FhirPathExpr.g4 by ANTLR 4.7
+package io.onfhir.path.grammar;
 import org.antlr.v4.runtime.tree.ParseTreeVisitor;
 
 /**
@@ -212,6 +212,20 @@ public interface FhirPathExprVisitor<T> extends ParseTreeVisitor<T> {
 	 * @return the visitor result
 	 */
 	T visitThisInvocation(FhirPathExprParser.ThisInvocationContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code indexInvocation}
+	 * labeled alternative in {@link FhirPathExprParser#invocation}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitIndexInvocation(FhirPathExprParser.IndexInvocationContext ctx);
+	/**
+	 * Visit a parse tree produced by the {@code totalInvocation}
+	 * labeled alternative in {@link FhirPathExprParser#invocation}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitTotalInvocation(FhirPathExprParser.TotalInvocationContext ctx);
 	/**
 	 * Visit a parse tree produced by {@link FhirPathExprParser#function}.
 	 * @param ctx the parse tree

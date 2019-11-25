@@ -17,10 +17,11 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     */
   def callFunction(fname:String, params:Seq[ExpressionContext]):Seq[FhirPathResult] = {
     try {
-      val functionName = if(fname == "toString") "ourToString" else fname
+      val functionName = if(fname == "toString") "_toString" else fname
 
       val method = classOf[FhirPathFunctionEvaluator].getMethod(functionName, params.map(_ => classOf[ExpressionContext]): _*)
-      method.invoke(this, params:_*).asInstanceOf[Seq[FhirPathResult]]
+      val result = method.invoke(this, params:_*)
+      result.asInstanceOf[Seq[FhirPathResult]]
     } catch {
       case n:NoSuchMethodException =>
         throw new Exception(s"Invalid function call, function $fname does not exist or take ${params.length} arguments !!!")
@@ -197,6 +198,16 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
       current.take(i)
   }
 
+  def intersect(otherCollExpr:ExpressionContext):Seq[FhirPathResult] = {
+    val otherSet = new FhirPathExpressionEvaluator(context, current).visit(otherCollExpr)
+    current.filter(c => otherSet.exists(o => c.isEqual(o).getOrElse(false))).distinct
+  }
+
+  def exclude(otherCollExpr:ExpressionContext):Seq[FhirPathResult] = {
+    val otherSet = new FhirPathExpressionEvaluator(context, current).visit(otherCollExpr)
+    current.filterNot(c => otherSet.exists(o => c.isEqual(o).getOrElse(false))).distinct
+  }
+
   /**
     * Combining http://hl7.org/fhirpath/#combining
     * @param other
@@ -252,7 +263,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     }
   }
 
-  def ourToString():Seq[FhirPathResult] = {
+  def _toString():Seq[FhirPathResult] = {
     current match {
       case Seq(FhirPathNumber(n))  => Seq(FhirPathString(n.toString))
       case Seq(s:FhirPathString) => Seq(s)
@@ -316,8 +327,10 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     checkSingleString()
     current.headOption.map(c => {
       new FhirPathExpressionEvaluator(context, current).visit(prefixExpr) match {
-        case Seq(FhirPathString(ss)) => Seq(FhirPathBoolean( ss == "" || c.asInstanceOf[FhirPathString].s.startsWith(ss) ))
-        case _ => throw new Exception(s"Invalid function call 'startsWith', the prefixExpr expression ${prefixExpr.getText} does not return string!")
+        case Seq(FhirPathString(ss)) =>
+          Seq(FhirPathBoolean( ss == "" || c.asInstanceOf[FhirPathString].s.startsWith(ss) ))
+        case _ =>
+          throw new Exception(s"Invalid function call 'startsWith', the prefixExpr expression ${prefixExpr.getText} does not return string!")
       }
     }).getOrElse(Nil)
   }
@@ -332,7 +345,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     }).getOrElse(Nil)
   }
 
-  def contains(substringExpr : ExpressionContext):Seq[FhirPathResult] = {
+  def _contains(substringExpr : ExpressionContext):Seq[FhirPathResult] = {
     checkSingleString()
     current.headOption.map(c => {
       new FhirPathExpressionEvaluator(context, current).visit(substringExpr) match {
@@ -409,10 +422,22 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
       results
   }
 
+  def hasValue():Seq[FhirPathResult] = {
+    Seq(FhirPathBoolean(current.nonEmpty))
+  }
+
   /**
     * Utility functions http://hl7.org/fhirpath/#utility-functions
     */
   def today():Seq[FhirPathResult] = Seq(FhirPathDateTime(LocalDate.now()))
   def now():Seq[FhirPathResult] = Seq(FhirPathDateTime(ZonedDateTime.now()))
 
+  def trace(nameExpr : ExpressionContext):Seq[FhirPathResult] = {
+    //TODO log the current value with the given name
+    current
+  }
+
+  def trace(nameExpr : ExpressionContext, othExpr:ExpressionContext):Seq[FhirPathResult] = {
+    current
+  }
 }

@@ -5,13 +5,13 @@ import io.onfhir.api.Resource
 
 import scala.util.matching.Regex
 
-class FhirPathEnvironment(resource:Resource) {
+class FhirPathEnvironment(_this:FhirPathResult) {
   val vsPattern:Regex = "'vs-[A-Za-z0-9\\-]+'".r
   val extPattern:Regex = "'ext-[A-Za-z0-9\\-]+'".r
 
   def getEnvironmentContext(ename:String):Seq[FhirPathResult] = {
     ename match {
-      case "%context" => Seq(FhirPathComplex(resource))
+      case "%context" | "%resource" => Seq(_this)
       //Fixed codes
       case "%ucum" => Seq(FhirPathString("http://unitsofmeasure.org"))
       case "%sct" => Seq(FhirPathString("http://snomed.info/sct"))
