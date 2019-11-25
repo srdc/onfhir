@@ -42,9 +42,9 @@ if [ ! -z "$LOGBACK_CONF_FILE" ]; then
 fi
 
 # Configure MongoDB Host name
-if [ ! -z "$DB_HOST" ]; then
-    JAVA_CMD+="-Dmongodb.host=[$DB_HOST] "
-fi
+#if [ ! -z "$DB_HOST" ]; then
+#    JAVA_CMD+="-Dmongodb.host=['$DB_HOST'] "
+#fi
 
 # Configure Auditing
 if [ ! -z "$AUDIT_SERVER_ROOT_URL" ]; then

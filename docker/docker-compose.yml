@@ -1,22 +1,22 @@
 version: '3'
 volumes:
-  fhirdata:
+  onfhirdata:
     driver: local
 services:
   mongo:
     image: library/mongo:4.2
     volumes:
-      - fhirdata:/data/db
+      - onfhirdata:/data/db
     restart: always
-  fhir_repo:
+  onfhir:
     build: .
     environment:
       - APP_CONF_FILE=/fhir/conf/application-docker.conf
       - LOGBACK_CONF_FILE=/fhir/conf/logback.xml
-      - FHIR_ROOT_URL=http://fhir.srdc.com.tr
+      - FHIR_ROOT_URL=http://127.0.0.1:8080/fhir
+      - DB_HOST=mongo:27017
       - LOG_LEVEL=INFO
     ports:
       - "8080:8080"
     volumes:
-      - ./fhir:${path-to-fhir-configuration-directory}
-    restart: always
+      - ./sample-setup:/fhir

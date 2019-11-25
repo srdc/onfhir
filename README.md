@@ -96,34 +96,19 @@ object Boot extends App {
 ```
       
 ### Docker
-
-fhir-repository project also utilizes Spotify's maven plugin to build Docker images from the source code.
-By executing the following command, you can create a Docker image with the name "srdc/fhir". One thing
-to notice here is that, by default, the plugin will try to connect to docker machine on localhost:2375.
-Set the **DOCKER_HOST** environment variable to connect elsewhere.
+We also provide a simple docker setup for onFhir.io under 'docker' folder. It provides a docker-compose file with 
+two containers; one for MongoDB database and one for onFhir.io application. You can run it with our sample onFhir setup given with 'sample-setup' directory.
+You can copy the 'onfhir-standalone.jar' file to this sample-setup directory and run the sample setup as it is with the following command;  
 
 ```
-$ mvn clean package docker:build
+$ cd docker
+$ cp ../onfhir-server-r4/target/onfhir-standalone.jar ./sample-setup/.
+$ docker-compose -f docker-compose.yml -p onfhir up -d
 ```
 
-After building the image you can execute the following command to run fhir-repository which is bound to
-`fhir` host (which is an alias for the local ip of your instance in the docker network). By using APP_CONF_FILE 
-environment variable you can provide the path for your configuration file (application.conf described in configuration 
-file). Of course, you need to mount a volume to enable docker container (<host-path-to-conf> is mounted to /fhir/conf 
-which is given as root path for application.conf and other configuration directories) to access this configuration file.
-Please be careful, when setting the paths in application.conf. You can overide some configurations by setting the 
-FHIR_HOST, USE_SSL, KAFKA_HOST and KAFKA_PORT environment variables if you like.Note that these properties are all 
-optional and if not set, the configurations in the application.conf will 
-be applied.
-
+Then you will be able to send requests to this running instance over your docker machine. The following will return the CapabilityStatement
 ```
-$ docker run -d --name fhir -h fhir -p 8080:8080 -e FHIR_HOST=fhir -e APP_CONF_FILE=/fhir/conf/application.conf -v <host-path-to-conf>:/fhir/conf -v <host-path-for-db-files>:/data/db  srdc/fhir
-```
-
-Then you will be able to send requests to this running instance over your docker machine
-
-```
-$ curl http://<DOCKER_HOST_IP>:8080/fhir/Patient/some-id
+$ curl http://127.0.0.1:8080/fhir/metadata
 ```
 
 ## Tests 
