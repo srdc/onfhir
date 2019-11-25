@@ -4,13 +4,13 @@ import akka.http.scaladsl.marshalling.{Marshaller, ToResponseMarshaller}
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{ETag, EntityTag, Location, `Last-Modified`}
 import akka.http.scaladsl.unmarshalling.Unmarshaller
-
 import io.onfhir.api.Resource
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
 import io.onfhir.util.JsonFormatter._
-
 import org.apache.commons.lang3.StringEscapeUtils
 import org.json4s.JsonAST.JObject
+
+import scala.collection.immutable.StringOps
 
 /**
   * FHIR Marshallers for FHIR Resources and FHIR response messages
@@ -129,7 +129,7 @@ object FHIRMarshallers {
     */
   private def prepareHtml(resource: Resource): String ={
     val prettyJson = resource.toPrettyJson
-    val prettyHtmlJson = prettyJson.lines.map(l => {
+    val prettyHtmlJson = new StringOps(prettyJson).lines.map(l => {
 
       val prefixSpace = " " * l.indexOf(l.trim())
       val trimmed = l.trim()
