@@ -152,6 +152,7 @@ package object api {
     val MONGO_ID = "_id"
     val ID = "id"
     val VERSION_ID = "versionId"
+    val VERSION = "version"
     val LANGUAGE= "language"
 
     // Inner Search Fields

@@ -823,7 +823,7 @@ object FHIRUtil {
     */
   def parseCanonicalValue(canonical:String):(String, Option[String]) = {
     val canonicalParts = canonical.split('|')
-    canonicalParts.head -> canonicalParts.lastOption
+    canonicalParts.head -> canonicalParts.drop(1).lastOption
   }
 
   /**
@@ -935,4 +935,5 @@ object FHIRUtil {
   def decapitilize(s: String): String = {
     s.charAt(0).toLower + s.substring(1)
   }
+
 }

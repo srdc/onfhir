@@ -13,12 +13,62 @@ import org.json4s.jackson.JsonMethods
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
+import scala.io.Source
 
 /**
  * Utility functions to read FHIR resources (in JSON format) from file system
  */
 object IOUtil {
   protected val logger:Logger = LoggerFactory.getLogger(this.getClass)
+
+  def readResource(filePath:String):Resource = {
+    JsonMethods.parse( new InputStreamReader(new BOMInputStream(new FileInputStream(new File(filePath))))).asInstanceOf[JObject]
+  }
+
+  def readInnerResource(resourcePath:String):Resource = {
+    JsonMethods.parse(new InputStreamReader(new BOMInputStream(getClass.getResourceAsStream(resourcePath)))).asInstanceOf[JObject]
+  }
+
+  /**
+   * Read all JSON resources in a folder or zip and parse them
+   * @param folderPath          Path to the zip file or folder if given
+   * @param defaultFolderPath   Default folder path within project resources
+   * @return
+   */
+  def readResourcesInFolderOrZip(folderPath:Option[String], defaultFolderPath:String):Seq[Resource] = {
+    folderPath match {
+      case Some(path) =>
+        logger.info(s"Reading resources from folder or zip file '$path'")
+        val givenFile = new File(path)
+        if (!givenFile.exists())
+          throw new InitializationException(s"Folder or zip file not found in $path ...")
+
+        if (path.endsWith(".zip")) {
+          //Given as zip file
+          val zipInputStream = new OnFhirZipInputStream(new FileInputStream(givenFile))
+          val results = readAllResourcesInZip(zipInputStream)
+          zipInputStream.forceClose()
+          results
+        } else {
+          if (!givenFile.isDirectory)
+            throw new InitializationException(s"Given path '$path' is not a folder or zip file ...")
+          //Given as folder
+          givenFile.listFiles().toSeq.map(file => {
+            JsonMethods.parse(new InputStreamReader(new BOMInputStream(new FileInputStream(file)))).asInstanceOf[JObject]
+          })
+        }
+      case None =>
+        logger.info(s"Reading resources from default folder '$defaultFolderPath'")
+        val insp = getClass.getClassLoader.getResourceAsStream(defaultFolderPath)
+        if (insp != null) {
+          //Read the default files packaged as zip
+          val zipInputStream = new OnFhirZipInputStream(insp)
+          val results = readAllResourcesInZip(zipInputStream)
+          zipInputStream.forceClose()
+          results
+        } else Nil
+    }
+  }
 
   /**
    * Read and parse FHIR Bundle file
@@ -81,56 +131,22 @@ object IOUtil {
     None
   }
 
-  private def readFhirResourcesInFolderOrZip(folderPath:Option[String], defaultFolderPath:String, rtype:String):Seq[Resource] = {
-    folderPath match {
-      case Some(path) =>
-        logger.info(s"Reading  $rtype definitions from folder '$path'")
-        val givenFile = new File(path)
-        if(!givenFile.exists())
-          throw new InitializationException(s"Folder not found in $path ...")
+  /**
+   * Read all JSONs in a zip file
+   * @param zipStream
+   * @return
+   */
+    private def readAllResourcesInZip(zipStream:ZipInputStream):Seq[Resource] = {
+      val resources:mutable.ListBuffer[Resource] = new mutable.ListBuffer[Resource]
+      var zipEntry : ZipEntry = zipStream.getNextEntry
 
-        if(path.endsWith(".zip")) {
-          //Given as zip file
-          val zipInputStream = new OnFhirZipInputStream(new FileInputStream(givenFile))
-          val results = readInfrastructureResourcesInZip(rtype, zipInputStream)
-          zipInputStream.forceClose()
-          results
-        } else {
-          if(!givenFile.isDirectory)
-            throw new InitializationException(s"Given path '$path' is not a folder or zip file ...")
-          //Given as folder
-          givenFile.listFiles().toSeq.map(file => {
-            JsonMethods.parse(new InputStreamReader(new BOMInputStream(new FileInputStream(file)), "UTF-8")).asInstanceOf[JObject]
-          })
-        }
-      case None =>
-        logger.info(s"Reading $rtype definitions from default folder '$defaultFolderPath'")
-        val insp = getClass.getResourceAsStream(defaultFolderPath)
-        if(insp!=null) {
-          //Read the default files packaged as zip
-          val zipInputStream = new OnFhirZipInputStream(insp)
-          val results = readInfrastructureResourcesInZip(rtype, zipInputStream)
-          zipInputStream.forceClose()
-          results
-        }else Nil
-    }
-  }
-
-  private def readInfrastructureResourcesInZip(rtype:String, zipStream:ZipInputStream):Seq[Resource] = {
-    //val zipStream = new ZipInputStream(getClass.getResourceAsStream(zipPath))
-    val resources:mutable.ListBuffer[Resource] = new mutable.ListBuffer[Resource]
-    var zipEntry : ZipEntry = zipStream.getNextEntry
-
-    while(zipEntry != null){
-      val reader = new InputStreamReader(new BOMInputStream(zipStream), "UTF-8")
-      resources.append(JsonMethods.parse(reader).asInstanceOf[JObject])
-      zipStream.closeEntry()
-      zipEntry = zipStream.getNextEntry
-    }
-    resources
-  }
-
-
-
+      while(zipEntry != null){
+        val reader = new InputStreamReader(new BOMInputStream(zipStream), "UTF-8")
+        resources.append(JsonMethods.parse(reader).asInstanceOf[JObject])
+        zipStream.closeEntry()
+        zipEntry = zipStream.getNextEntry
+      }
+      resources
+   }
 
 }

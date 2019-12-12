@@ -1,13 +1,13 @@
 package io.onfhir.validation
 
-import io.onfhir.api.validation.{ConstraintFailure, FhirRestriction}
+import io.onfhir.api.validation.{ConstraintFailure, FhirRestriction, AbstractFhirContentValidator}
 import org.json4s.JsonAST.{JArray, JNothing, JNull, JValue}
 
 /**
  * Indicate that element should be array or not
  */
 case class ArrayRestriction(isArray:Boolean = true) extends  FhirRestriction {
-  override def evaluate(value:JValue):Seq[ConstraintFailure] = {
+  override def evaluate(value:JValue, fhirContentValidator: AbstractFhirContentValidator):Seq[ConstraintFailure] = {
     val isOk =
       value match {
         case JArray(_) | JNull | JNothing  => isArray //If array it should have less or equal elements

@@ -1,6 +1,6 @@
 package io.onfhir.validation
 
-import io.onfhir.api.validation.{ConstraintFailure, FhirRestriction}
+import io.onfhir.api.validation.{ConstraintFailure, FhirRestriction, AbstractFhirContentValidator}
 import org.json4s.JsonAST.{JArray, JNothing, JObject, JValue}
 import org.json4s.jackson.JsonMethods.{compact, render}
 
@@ -10,7 +10,7 @@ import org.json4s.jackson.JsonMethods.{compact, render}
  * @param fixedValue
  */
 case class FixedOrPatternRestriction(fixedValue:JValue, isFixed:Boolean) extends  FhirRestriction {
-  override def evaluate(value:JValue):Seq[ConstraintFailure] = {
+  override def evaluate(value:JValue, fhirContentValidator: AbstractFhirContentValidator):Seq[ConstraintFailure] = {
     if(isFixed) {
       //Take the difference
       val diff = value.diff(fixedValue)

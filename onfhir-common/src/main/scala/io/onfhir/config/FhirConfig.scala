@@ -6,7 +6,7 @@ import ca.uhn.fhir.parser.IParser
 import scala.collection.immutable.{HashMap, List}
 import akka.http.scaladsl.model._
 import io.onfhir.api._
-import io.onfhir.api.validation.ProfileRestrictions
+import io.onfhir.api.validation.{ProfileRestrictions, ValueSetRestrictions}
 
 /**
   * Central OnFhir configuration defining FHIR server capabilities
@@ -48,8 +48,10 @@ class FhirConfig(val fhirContext:FhirContext) {
   var supportedCodeSystems:Set[String] = _
   /** Shard Keys for FHIR resource types; resourceType -> Seq[fhir-search-parameter-name-indicating-the-shard-key] */
   var shardKeys:Map[String, Set[String]] = Map.empty[String, Set[String]]
-  /** FHIR Profile definitions including the base profiles**/
+  /** FHIR Profile definitions including the base profiles (For validation) Profile Url -> Definitions **/
   var profileRestrictions: Map[String, ProfileRestrictions] = _
+  /** Supported FHIR value set urls with this server (For validation) ValueSet Url -> Map(Version ->Definitions) */
+  var valueSetRestrictions:Map[String, Map[String, ValueSetRestrictions]] = _
   /***
     * Configurations specific to FHIR version
     */
@@ -240,7 +242,8 @@ case class ResourceConf(resource:String,
                         conditionalUpdate:Boolean,
                         conditionalDelete:String,
                         searchInclude:Option[List[String]],
-                        searchRevInclude:Option[List[String]]
+                        searchRevInclude:Option[List[String]],
+                        referencePolicies:Set[String] = Set.empty[String]
                        )
 
 /**

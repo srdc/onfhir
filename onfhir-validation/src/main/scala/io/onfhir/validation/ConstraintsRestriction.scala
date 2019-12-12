@@ -1,6 +1,6 @@
 package io.onfhir.validation
 
-import io.onfhir.api.validation.{ConstraintFailure, FhirRestriction}
+import io.onfhir.api.validation.{ConstraintFailure, FhirRestriction, AbstractFhirContentValidator}
 import io.onfhir.path.FhirPathEvaluator
 import io.onfhir.path.grammar.FhirPathExprParser
 import org.json4s.JsonAST.JValue
@@ -12,7 +12,7 @@ import org.json4s.JsonAST.JValue
  * @param fhirConstraints
  */
 case class ConstraintsRestriction(fhirConstraints: Seq[FhirConstraint]) extends FhirRestriction {
-  override def evaluate(value: JValue): Seq[ConstraintFailure] = {
+  override def evaluate(value: JValue, fhirContentValidator: AbstractFhirContentValidator): Seq[ConstraintFailure] = {
     fhirConstraints.flatMap(_.evaluate(value))
   }
 }

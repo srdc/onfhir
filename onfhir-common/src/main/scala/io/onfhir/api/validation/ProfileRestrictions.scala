@@ -4,16 +4,17 @@ import org.json4s.JsonAST.JValue
 
 //Type of FHIR constraints
 object ConstraintKeys {
-  val MIN = "min"
-  val MAX = "max"
-  val MINVALUE = "minValue"
-  val MAXVALUE = "maxValue"
-  val ARRAY = "array"
-  val BINDING = "binding"
-  val CONSTRAINT = "constraint"
-  val MAXLENGTH = "maxLength"
-  val PATTERN = "pattern"
-  val REFERENCE_TARGET = "target"
+  val MIN = 0
+  val MAX = 1
+  val ARRAY = 2
+  val DATATYPE= 3
+  val MINVALUE = 4
+  val MAXVALUE = 5
+  val BINDING = 6
+  val CONSTRAINT = 7
+  val MAXLENGTH = 8
+  val PATTERN = 9
+  val REFERENCE_TARGET = 10
 }
 
 /**
@@ -41,15 +42,12 @@ case class ProfileRestrictions(
 /**
   * Restrictions defined on a element
   * @param path                     Path for the element e.g. Observation.component[x] --> component[x], Observation.status --> status
-  * @param dataTypes                Defined data types and profiles for this field
   * @param restrictions             FHIR Restrictions for different categories
   * @param slicing                  FHIR slicing if defined
   * @param sliceName                Name of the slice if this is the element restriction for a slice e.g. Observation.component:m1 -> m1
   * @param profileDefinedIn         Profile url that this element restriction is defined (used for validation result building)
   */
-case class ElementRestrictions(path:String, dataTypes: Seq[(String, Seq[String])], restrictions:Map[String, FhirRestriction], slicing:Option[FhirSlicing] = None, sliceName:Option[String], profileDefinedIn:Option[String] = None) {
-
-}
+case class ElementRestrictions(path:String, restrictions:Map[Int, FhirRestriction], slicing:Option[FhirSlicing] = None, sliceName:Option[String], contentReference:Option[String],profileDefinedIn:Option[String] = None)
 
 /**
   * Fhir Slicing definition
@@ -69,7 +67,17 @@ trait FhirRestriction {
    * @param value Json value
    * @return
    */
-  def evaluate(value:JValue):Seq[ConstraintFailure]
+  def evaluate(value:JValue, fhirContentValidator: AbstractFhirContentValidator):Seq[ConstraintFailure]
+
+  /**
+   * Check if a element is matching with the restriction (used for slice matching)
+   * @param value
+   * @param fhirContentValidator
+   * @return
+   */
+  def matches(value:JValue, fhirContentValidator: AbstractFhirContentValidator):Boolean = {
+    evaluate(value, fhirContentValidator).forall(_.isWarning)
+  }
 }
 
 /**

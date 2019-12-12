@@ -1,10 +1,9 @@
 package io.onfhir.validation
 
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.api.validation.{ConstraintFailure, FhirRestriction}
+import io.onfhir.api.validation.{ConstraintFailure, FhirRestriction, AbstractFhirContentValidator}
 import io.onfhir.path.FhirPathEvaluator
 import org.json4s.JsonAST.{JObject, JValue}
-
 import io.onfhir.util.JsonFormatter.formats
 import org.json4s.JsonAST._
 import org.json4s.jackson.JsonMethods._
@@ -31,7 +30,7 @@ case class MinMaxValueRestriction(comparedValue:JValue, isMin:Boolean) extends  
     literal.trim()
   }
 
-  override def evaluate(value:JValue):Seq[ConstraintFailure] = {
+  override def evaluate(value:JValue, fhirContentValidator: AbstractFhirContentValidator):Seq[ConstraintFailure] = {
     val comparator = if(isMin) "<=" else ">="
 
     val (compared, actual) = value match {

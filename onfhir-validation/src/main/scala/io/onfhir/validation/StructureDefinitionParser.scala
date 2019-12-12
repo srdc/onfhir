@@ -94,14 +94,15 @@ object StructureDefinitionParser {
             FHIRUtil.extractValue[Seq[String]](typeDef, "aggregation")
           )
         )
-    validation.ElementRestrictions(
-      path = FHIRUtil.extractValueOption[String](elemDef, "path").get.dropWhile( _ != '.').drop(1),
-      dataTypes = dataTypeAndProfile.map(dt => dt._1 -> dt._2),
+
+    ElementRestrictions(
+      path = FHIRUtil.extractValueOption[String](elemDef, "id").get.dropWhile( _ != '.').drop(1),
       restrictions =
         Seq(
+          ConstraintKeys.DATATYPE -> (if(dataTypeAndProfile.isEmpty) None else Some(TypeRestriction(dataTypeAndProfile.map(dt => dt._1 -> dt._2)))),
           ConstraintKeys.MIN -> FHIRUtil.extractValueOption[Int](elemDef, "min").flatMap(createMinRestriction),
           ConstraintKeys.MAX -> FHIRUtil.extractValueOption[String](elemDef, "max").flatMap(createMaxRestriction),
-          ConstraintKeys.ARRAY -> createArrayRestriction(profileUrl.isEmpty,  FHIRUtil.extractValueOption[String](elemDef, "max").get),
+          ConstraintKeys.ARRAY -> createArrayRestriction(profileUrl.isEmpty,  FHIRUtil.extractValueOption[String](elemDef, "max")),
           ConstraintKeys.BINDING -> FHIRUtil.extractValueOption[JObject](elemDef, "binding").flatMap(createBindingRestriction),
           ConstraintKeys.MINVALUE ->
             FHIRUtil.findElementWithMultipleFhirTypes("minValue", elemDef)
@@ -129,8 +130,7 @@ object StructureDefinitionParser {
             }),
           ConstraintKeys.REFERENCE_TARGET ->
             dataTypeAndProfile
-              .headOption
-              .filter(_._1 == FHIR_DATA_TYPES.REFERENCE)
+              .find(_._1 == FHIR_DATA_TYPES.REFERENCE)
               .map(dt => (dt._3, dt._4, dt._5))
               .map {
                 case (targetProfiles, versioning, aggregation) =>
@@ -148,6 +148,9 @@ object StructureDefinitionParser {
       slicing = FHIRUtil.extractValueOption[JObject](elemDef, "slicing")
                   .flatMap(s => parseSlicing(s)),
       sliceName = FHIRUtil.extractValueOption[String](elemDef, "sliceName"),
+      contentReference =
+        FHIRUtil.extractValueOption[String](elemDef, "contentReference")
+          .map(cr => cr.dropWhile( _ != '.').drop(1)),
       profileDefinedIn = profileUrl
     )
   }
@@ -182,8 +185,8 @@ object StructureDefinitionParser {
     * @param n
     * @return
     */
-  private def createArrayRestriction(isBase:Boolean, n:String):Option[FhirRestriction] = {
-    if(isBase && (n == "*" || n.toInt > 1)) Some(ArrayRestriction()) else None
+  private def createArrayRestriction(isBase:Boolean, n:Option[String]):Option[FhirRestriction] = {
+    if(isBase && (n.get == "*" || n.get.toInt > 1)) Some(ArrayRestriction()) else None
   }
 
   /**
@@ -192,8 +195,11 @@ object StructureDefinitionParser {
    * @return
    */
   private def createBindingRestriction(bindingDef:JObject):Option[FhirRestriction] = {
-    if(FHIRUtil.extractValueOption[String](bindingDef, "strength").get == "required"){
-      FHIRUtil.extractValueOption[String](bindingDef, "valueSet").map(v => CodeBindingRestriction(v))
+    val bindingStrength = FHIRUtil.extractValueOption[String](bindingDef, "strength").get
+    if(bindingStrength == "required" || bindingStrength == "extensible" || bindingStrength == "preferred"){
+      FHIRUtil.extractValueOption[String](bindingDef, "valueSet")
+        .map(v => FHIRUtil.parseCanonicalValue(v))
+        .map { case (vsUrl, version) => CodeBindingRestriction(vsUrl, version, bindingStrength == "required")}
     } else None
   }
 
