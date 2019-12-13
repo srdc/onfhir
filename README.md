@@ -1,12 +1,12 @@
-# Onfhir FHIR Repository
-[OnFhir.io](http://onfhir.io) is a FHIR compliant secure health data repository that you can use as a central data service for your FHIR compliant healthcare applications. 
+# onFhir FHIR Repository
+[onFhir.io](http://onfhir.io) is a FHIR compliant secure health data repository that you can use as a central data service for your FHIR compliant healthcare applications. 
 You can use it as a standalone server, or you can extend it with your further custom FHIR Operations to build your own application layer in addition to having standart FHIR repository capabilities. 
-Onfhir.io is using FHIR Infrastructure Resource definitions (CapabilityStatement, StructureDefinition, SearchParameter, etc) to tailor 
+onFhir.io is using FHIR Infrastructure Resource definitions (CapabilityStatement, StructureDefinition, SearchParameter, etc) to tailor 
 the FHIR server to your specific FHIR capabilities you required; resource profiles, search parameters, FHIR interactions you wanted to support.     
 It is implemented with Scala, based on Akka and MongoDB. 
 
 ## Basic Configuration
-You can copy and update **onfhir-core/src/main/resources/application.conf** file, which is the entrypoint configuration to configure onFHIR repository based on your needs.
+You can copy and update **onfhir-core/src/main/resources/application.conf** file, which is the entrypoint configuration to configure onFhir repository based on your needs.
 
 For logger configurations, check **onfhir-core/src/main/resources/logback.xml**
 
@@ -24,6 +24,10 @@ Currently all versions are supported and we created a module for each version th
 * STU3  >> onfhir-server-stu3
 * R4    >> onfhir-server-r4
 
+## Prerequisites
+onFhir requires a MongoDB database up and running. If you do not use the given docker containers, the MongoDB configuration parameters (host, port, dbname etc.)
+should be passed to onFhir through either application.conf file or as runtime parameters. The parameter names can be seen in the provided application.conf file.
+
 ## Build & Run
 
 You need to run the below command to build fhir-repository. This will compile 
@@ -39,7 +43,7 @@ $ mvn package -DskipTests=true
 ```
 
 Executable standalone jars **target/fhir-repository-standalone.jar**  will be created under each onfhir-server for 
-different FHIR version. Executing the following command will run the onfhir server for that version with nearly whole FHIR 
+different FHIR version. Executing the following command will run the onFhir server for that version with nearly whole FHIR 
 capabilities.
 ```
 $ java -jar target/fhir-repository-standalone.jar
