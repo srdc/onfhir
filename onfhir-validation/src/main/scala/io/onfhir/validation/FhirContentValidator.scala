@@ -188,7 +188,7 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
       }
 
     //Group values into slices in (slice definition order)
-    val slicesValuesMatchings: Seq[(Option[(String, Int, Map[String, Seq[FhirRestriction]], ElementRestrictions, Seq[Seq[(String, ElementRestrictions)]])], Seq[(JValue, Int)])] =
+    var slicesValuesMatchings: Seq[(Option[(String, Int, Map[String, Seq[FhirRestriction]], ElementRestrictions, Seq[Seq[(String, ElementRestrictions)]])], Seq[(JValue, Int)])] =
       valueSliceMatching
         .groupBy(g => g._2.map(_._1)).toSeq
         .sortWith((g1, g2) =>
@@ -198,6 +198,12 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
         )
         .map(g => g._2.head._2 -> g._2.map(_._1).sortWith((i1, i2) => i1._2 < i2._2))
 
+    //Find out all slices that has some corresponding matching values
+    val slicesCovered = slicesValuesMatchings.map(_._1).filter(_.isDefined).map(_.get._2).toSet
+    //Find those slices that has not a corresponding matching value
+    var uncoveredSlices = slices.filter(s => !slicesCovered.contains(s._2))
+    //Merge the uncovered slices
+    slicesValuesMatchings = slicesValuesMatchings ++ uncoveredSlices.map(us => Some(us) -> Nil)
 
     //Normalize paths for sub elements
     val normalDefinitions = normalizePathsForSubElements(fieldName, elementRestrictions)
@@ -424,15 +430,22 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
       val discriminatorRestrictions: Seq[Seq[(String, FhirRestriction)]] =
         disc._1 match {
           case "value" | "pattern" =>
-            findSubElementRestrictions(matcherPathPrefix, sliceSubElements)
-              .map(
-                _.map(er => er._1 ->
-                  er._2.restrictions
-                    .filterKeys(k => k == ConstraintKeys.PATTERN || k == ConstraintKeys.BINDING || k == ConstraintKeys.MAX).values.headOption //These restrictions can be related with value or pattern
+            //handle extensions
+            if(disc._2 == "url" && sliceRestriction.path.contains("extension")) {
+              val typeRestriction = sliceRestriction.restrictions.find(_._2.isInstanceOf[TypeRestriction]).map(_._2.asInstanceOf[TypeRestriction]).head
+              val extensionUrl = typeRestriction.dataTypesAndProfiles.head._2.head
+              Seq(Seq(disc._2 -> FixedOrPatternRestriction(JString(extensionUrl), isFixed = true)))
+            } else {
+              findSubElementRestrictions(matcherPathPrefix, sliceSubElements)
+                .map(
+                  _.map(er => er._1 ->
+                    er._2.restrictions
+                      .filterKeys(k => k == ConstraintKeys.PATTERN || k == ConstraintKeys.BINDING || k == ConstraintKeys.MAX).values.headOption //These restrictions can be related with value or pattern
+                  )
+                    .filter(_._2.isDefined)
+                    .map(er => er._1 -> er._2.get)
                 )
-                  .filter(_._2.isDefined)
-                  .map(er => er._1 -> er._2.get)
-              )
+            }
           case "exists" =>
             findSubElementRestrictions(matcherPathPrefix, sliceSubElements, includeSubsAndSlices = false)
               .map(

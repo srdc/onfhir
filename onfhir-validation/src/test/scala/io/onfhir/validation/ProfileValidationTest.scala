@@ -16,6 +16,9 @@ class ProfileValidationTest extends Specification {
   //Initialize the environment
   val resourceProfiles = IOUtil.readStandardBundleFile("profiles-resources.json", Set("StructureDefinition")).flatMap(StructureDefinitionParser.parseProfile)
   val dataTypeProfiles = IOUtil.readStandardBundleFile("profiles-types.json", Set("StructureDefinition")).flatMap(StructureDefinitionParser.parseProfile)
+  val otherProfiles = IOUtil.readStandardBundleFile("profiles-others.json", Set("StructureDefinition")).flatMap(StructureDefinitionParser.parseProfile)
+  val extensions = IOUtil.readStandardBundleFile("extension-definitions.json", Set("StructureDefinition")).flatMap(StructureDefinitionParser.parseProfile)
+
   val valueSetsOrCodeSystems =
     IOUtil.readStandardBundleFile("valuesets.json", Set("ValueSet", "CodeSystem")) ++
       IOUtil.readStandardBundleFile("v3-codesystems.json", Set("ValueSet", "CodeSystem"))
@@ -23,12 +26,13 @@ class ProfileValidationTest extends Specification {
   val extraProfiles = Seq(
     IOUtil.readInnerResource("/fhir/r4/profiles/MyObservation.StructureDefinition.json"),
     IOUtil.readInnerResource("/fhir/r4/profiles/MySampledData.StructureDefinition.json"),
+    IOUtil.readInnerResource("/fhir/r4/profiles/MyMyObservation.StructureDefinition.json")
   ).flatMap(StructureDefinitionParser.parseProfile)
 
 
 
   FhirConfigurationManager.initialize(new R4Configurator)
-  FhirConfigurationManager.fhirConfig.profileRestrictions = (dataTypeProfiles ++ resourceProfiles ++ extraProfiles).map(p => p.url -> p).toMap
+  FhirConfigurationManager.fhirConfig.profileRestrictions = (dataTypeProfiles ++ resourceProfiles ++ otherProfiles ++ extensions  ++ extraProfiles).map(p => p.url -> p).toMap
   FhirConfigurationManager.fhirConfig.valueSetRestrictions = TerminologyParser.parseValueSetBundle(valueSetsOrCodeSystems)
 
 
@@ -89,9 +93,28 @@ class ProfileValidationTest extends Specification {
 
     "validate a valid FHIR resource against profile" in {
       var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/valid/observation-my.json")).mkString).asInstanceOf[JObject]
-      val fhirContentValidator = FhirContentValidator(FhirConfigurationManager.fhirConfig, "http://example.org/fhir/StructureDefinition/MyObservation")
+      var fhirContentValidator = FhirContentValidator(FhirConfigurationManager.fhirConfig, "http://example.org/fhir/StructureDefinition/MyObservation")
       var issues = fhirContentValidator.validateComplexContent(observation)
       issues.isEmpty mustEqual(true)
+
+      //Genetics example for fhir-observation-genetics profiles
+      fhirContentValidator = FhirContentValidator(FhirConfigurationManager.fhirConfig, "http://hl7.org/fhir/StructureDefinition/observation-genetics")
+
+      observation = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/genetics/observation-example-diplotype1.json")).mkString).asInstanceOf[JObject]
+      issues = fhirContentValidator.validateComplexContent(observation)
+      issues.exists(_.severity == "error") mustEqual(false)
+
+      observation = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/genetics/observation-example-haplotype1.json")).mkString).asInstanceOf[JObject]
+      issues = fhirContentValidator.validateComplexContent(observation)
+      issues.exists(_.severity == "error") mustEqual(false)
+
+      observation = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/genetics/observation-example-TPMT-haplotype-one.json")).mkString).asInstanceOf[JObject]
+      issues = fhirContentValidator.validateComplexContent(observation)
+      issues.exists(_.severity == "error") mustEqual(false)
+
+      observation = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/genetics/observation-example-genetics-brcapat.json")).mkString).asInstanceOf[JObject]
+      issues = fhirContentValidator.validateComplexContent(observation)
+      issues.exists(_.severity == "error") mustEqual(false)
     }
 
     "not validate an invalid FHIR resource against profile" in {
@@ -118,6 +141,26 @@ class ProfileValidationTest extends Specification {
       issues.exists(i => i.location.head == "component[1].interpretation" && i.severity == "error") mustEqual true //Slicing match, required field is missing
       issues.exists(i => i.location.head == "component[1].referenceRange" && i.severity == "error") mustEqual true //Slicing match, required field is missing
       issues.exists(i => i.location.head == "basedOn" && i.severity == "error") mustEqual true//Missing element
+    }
+
+    "validate a valid FHIR resource against derived profile" in {
+      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/valid/observation-mymy.json")).mkString).asInstanceOf[JObject]
+      var fhirContentValidator = FhirContentValidator(FhirConfigurationManager.fhirConfig, "http://example.org/fhir/StructureDefinition/MyMyObservation")
+      var issues = fhirContentValidator.validateComplexContent(observation)
+      issues.isEmpty mustEqual(true)
+    }
+
+
+    "not validate an invalid FHIR resource against derived profile" in {
+      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/invalid/observation-mymy-invalid.json")).mkString).asInstanceOf[JObject]
+      var fhirContentValidator = FhirContentValidator(FhirConfigurationManager.fhirConfig, "http://example.org/fhir/StructureDefinition/MyMyObservation")
+      var issues = fhirContentValidator.validateComplexContent(observation)
+      issues.isEmpty mustEqual(false)
+
+      issues.exists(i => i.location.head == "method" && i.severity == "error") mustEqual true //method should not be used
+      issues.exists(i => i.location.head == "component[4].valueInteger" && i.severity == "error") mustEqual true //Error according to the base profile
+      issues.exists(i => i.location.head == "interpretation" && i.severity == "error") mustEqual true //required element according to this new derived profile
+      issues.exists(i => i.location.head == "component" && i.severity == "error") mustEqual true
     }
 
   }

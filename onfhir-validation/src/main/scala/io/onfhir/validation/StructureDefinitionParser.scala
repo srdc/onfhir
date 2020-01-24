@@ -186,7 +186,7 @@ object StructureDefinitionParser {
     * @return
     */
   private def createArrayRestriction(isBase:Boolean, n:Option[String]):Option[FhirRestriction] = {
-    if(isBase && (n.get == "*" || n.get.toInt > 1)) Some(ArrayRestriction()) else None
+    if(isBase && n.exists(m=> m  == "*" || m.toInt > 1)) Some(ArrayRestriction()) else None
   }
 
   /**
