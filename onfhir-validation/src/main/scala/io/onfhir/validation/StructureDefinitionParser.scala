@@ -230,7 +230,7 @@ object StructureDefinitionParser {
               Some(FhirConstraint(
                 key = ckey,
                 desc = FHIRUtil.extractValue[String](constraintDef, "human"),
-                expr = FhirPathEvaluator.parse(expression),
+                expr = FhirPathEvaluator().parse(expression),
                 isWarning = FHIRUtil.extractValueOption[String](constraintDef, "severity").get == "warning"
               ))
           }

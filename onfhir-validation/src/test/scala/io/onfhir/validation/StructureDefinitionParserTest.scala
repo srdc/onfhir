@@ -1,6 +1,6 @@
 package io.onfhir.validation
 
-import io.onfhir.api.util.IOUtil
+import io.onfhir.api.util.{FHIRUtil, IOUtil}
 import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
@@ -10,6 +10,7 @@ class StructureDefinitionParserTest extends Specification {
 
   val resourceProfiles = IOUtil.readStandardBundleFile("profiles-resources.json", Set("StructureDefinition"))
   val dataTypeProfiles = IOUtil.readStandardBundleFile("profiles-types.json", Set("StructureDefinition"))
+  val otherProfiles = IOUtil.readStandardBundleFile("profiles-others.json", Set("StructureDefinition"))
   val furtherProfiles =
     Seq(
       IOUtil.readInnerResource("/fhir/r4/profiles/MyObservation.StructureDefinition.json"),
@@ -27,10 +28,18 @@ class StructureDefinitionParserTest extends Specification {
       profiles.length < dataTypeProfiles.length
     }*/
 
-    "parse the defined profiles" in {
+    "parse the other profiles" in {
+      var lipidProfileSd = otherProfiles.find(r => FHIRUtil.extractValue[String](r, "url") == "http://hl7.org/fhir/StructureDefinition/lipidprofile").get
+      val lipidProfile = StructureDefinitionParser.parseProfile(lipidProfileSd)
+      lipidProfile mustNotEqual(null)
+      //val profiles = otherProfiles.flatMap(StructureDefinitionParser.parseProfile)
+      //profiles.length mustEqual furtherProfiles.length
+    }
+
+    /*"parse the defined profiles" in {
       val profiles = furtherProfiles.flatMap(StructureDefinitionParser.parseProfile)
       profiles.length mustEqual furtherProfiles.length
-    }
+    }*/
 
   }
 }

@@ -1,6 +1,9 @@
 package io.onfhir.validation
 
+import io.onfhir.api.Resource
+import io.onfhir.api.model.{FhirLiteralReference, FhirReference}
 import io.onfhir.api.util.IOUtil
+import io.onfhir.api.validation.IReferenceResolver
 import io.onfhir.config.FhirConfigurationManager
 import io.onfhir.r4.config.R4Configurator
 import org.json4s.JsonAST.JObject
@@ -38,7 +41,7 @@ class ProfileValidationTest extends Specification {
 
   sequential
   "ProfileValidation" should {
-   "validate a valid FHIR resource against base definitions" in {
+  /* "validate a valid FHIR resource against base definitions" in {
       val fhirContentValidator = FhirContentValidator(FhirConfigurationManager.fhirConfig, "http://hl7.org/fhir/StructureDefinition/Observation")
       var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/valid/observation-glucose.json")).mkString).asInstanceOf[JObject]
       var issues = fhirContentValidator.validateComplexContent(observation)
@@ -161,6 +164,58 @@ class ProfileValidationTest extends Specification {
       issues.exists(i => i.location.head == "component[4].valueInteger" && i.severity == "error") mustEqual true //Error according to the base profile
       issues.exists(i => i.location.head == "interpretation" && i.severity == "error") mustEqual true //required element according to this new derived profile
       issues.exists(i => i.location.head == "component" && i.severity == "error") mustEqual true
+    }*/
+
+    "handle resolve in discriminator" in {
+      var referenceResolver = new IReferenceResolver {
+
+        override def resolveReference(reference: FhirReference, currentResource: Resource): Option[Resource] = {
+          reference match {
+            case FhirLiteralReference(_, "Observation", rid, _) =>
+              rid match {
+                case "cholesterol" =>
+                  Some(IOUtil.readInnerResource("/fhir/r4/dreport/cholesterol.json"))
+                case "triglyceride" =>
+                  Some(IOUtil.readInnerResource("/fhir/r4/dreport/tryglyceride.json"))
+                case "hdlcholesterol" =>
+                  Some(IOUtil.readInnerResource("/fhir/r4/dreport/hdlcholesterol.json"))
+                case "ldlcholesterol" =>
+                  Some(IOUtil.readInnerResource("/fhir/r4/dreport/ldlcholesterol.json"))
+                case _ => None
+              }
+            case _ => None
+          }
+        }
+
+        /**
+         * Check if a referenced resource exist
+         *
+         * @param reference FHIR  reference
+         * @param profiles  Profiles that resource is expected to conform
+         */
+        override def isReferencedResourceExist(reference: FhirReference, profiles: Set[String]): Boolean = {
+          reference match {
+            case FhirLiteralReference(_, "Observation", rid, _) =>
+              rid match {
+                case "cholesterol" => profiles.isEmpty || profiles.contains("http://hl7.org/fhir/StructureDefinition/cholesterol")
+                case "triglyceride" => profiles.isEmpty || profiles.contains("http://hl7.org/fhir/StructureDefinition/triglyceride")
+                case "hdlcholesterol" => profiles.isEmpty || profiles.contains("http://hl7.org/fhir/StructureDefinition/hdlcholesterol")
+
+                case "ldlcholesterol" => profiles.isEmpty || profiles.contains("http://hl7.org/fhir/StructureDefinition/ldlcholesterol")
+
+                case _ => false
+              }
+            case _ => false
+          }
+        }
+      }
+
+
+      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/dreport/diagnosticreport-example-lipids.json")).mkString).asInstanceOf[JObject]
+      var fhirContentValidator = FhirContentValidator(FhirConfigurationManager.fhirConfig, "http://hl7.org/fhir/StructureDefinition/lipidprofile", referenceResolver)
+      var issues = fhirContentValidator.validateComplexContent(observation)
+      issues.isEmpty mustEqual(true)
+
     }
 
   }

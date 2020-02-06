@@ -1,8 +1,10 @@
 package io.onfhir.path
 
+import java.lang.reflect.InvocationTargetException
 import java.time.{LocalDate, ZonedDateTime}
 
 import io.onfhir.api.Resource
+import io.onfhir.api.util.FHIRUtil
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
 
 import scala.util.Try
@@ -19,14 +21,53 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     try {
       val functionName = if(fname == "toString") "_toString" else fname
 
+      if(functionName == "resolve")
+        ""
+
       val method = classOf[FhirPathFunctionEvaluator].getMethod(functionName, params.map(_ => classOf[ExpressionContext]): _*)
       val result = method.invoke(this, params:_*)
-      result.asInstanceOf[Seq[FhirPathResult]]
+      val fhirPathResult = result.asInstanceOf[Seq[FhirPathResult]]
+      fhirPathResult
     } catch {
       case n:NoSuchMethodException =>
         throw new Exception(s"Invalid function call, function $fname does not exist or take ${params.length} arguments !!!")
+      case ite:InvocationTargetException =>
+        throw new Exception(s"Invalid function call, function $fname does not exist or take ${params.length} arguments !!!")
     }
   }
+
+  /**
+   * Resolve a reference
+   * @return
+   */
+  def resolve():Seq[FhirPathResult] = {
+    var fhirReferences = current.map {
+      case FhirPathString(uri) => FHIRUtil.parseCanonicalReference(uri)
+      case FhirPathComplex(o) => FHIRUtil.parseReference(o)
+      case _ => throw new Exception("Invalid function call 'resolve', it should be called on a canonical value or FHIR reference!")
+    }
+
+    fhirReferences
+      .flatMap(fr => context.referenceResolver.flatMap(rr => rr.resolveReference(fr, context._this.asInstanceOf[FhirPathComplex].json)))
+      .map(FhirPathComplex)
+  }
+
+  /**
+   * Getting a specific extension
+   * @param urlExp
+   * @return
+   */
+  def extension(urlExp:ExpressionContext):Seq[FhirPathResult] = {
+    val url = new FhirPathExpressionEvaluator(context, current).visit(urlExp)
+    if(url.length != 1 || !url.head.isInstanceOf[FhirPathString])
+      throw new Exception(s"Invalid function call 'extension', expression ${urlExp.getText} does not return a url!")
+
+    val expr = FhirPathEvaluator().parse(s"extension.where(url = '${url.head.asInstanceOf[FhirPathString].s}')")
+
+    var result = new FhirPathExpressionEvaluator(context, current).visit(expr)
+    result
+  }
+
 
   /**
     * Type functions, for these basic casting or type checking are done before calling the function on the left expression

@@ -11,7 +11,7 @@ trait IReferenceResolver {
    * @param reference    FHIR  reference
    * @return
    */
-  def resolveReference(reference: FhirReference):Option[Resource]
+  def resolveReference(reference: FhirReference, currentResource:Resource):Option[Resource]
 
   /**
    * Check if a referenced resource exist

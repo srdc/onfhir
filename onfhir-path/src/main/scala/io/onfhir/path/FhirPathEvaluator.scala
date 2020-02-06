@@ -5,12 +5,13 @@ import java.nio.charset.{Charset, StandardCharsets}
 import java.time.{LocalTime, ZoneId}
 import java.time.temporal.Temporal
 
+import io.onfhir.api.validation.IReferenceResolver
 import io.onfhir.path.grammar.{FhirPathExprLexer, FhirPathExprParser}
 import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
 import org.json4s.JsonAST.JValue
 import org.slf4j.{Logger, LoggerFactory}
 
-object FhirPathEvaluator {
+class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None) {
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   private def normalizeInput(input:String):String = {
@@ -40,7 +41,7 @@ object FhirPathEvaluator {
   private def evaluate(expr:FhirPathExprParser.ExpressionContext, on:JValue):Seq[FhirPathResult] = {
     logger.debug(s"Evaluating FHIR path expression '${expr.getText}' ...")
     val resource = FhirPathValueTransformer.transform(on)
-    val environment = new FhirPathEnvironment(resource.head)
+    val environment = new FhirPathEnvironment(resource.head, referenceResolver)
     val evaluator = new FhirPathExpressionEvaluator(environment, resource)
     evaluator.visit(expr)
   }
@@ -114,5 +115,13 @@ object FhirPathEvaluator {
       throw new Exception(s"Expression $expr does not evaluate to a string for the given resource!")
     result.map(_.asInstanceOf[FhirPathString].s)
   }
+}
 
+object FhirPathEvaluator {
+
+  def apply(referenceResolver: IReferenceResolver): FhirPathEvaluator = new FhirPathEvaluator(Some(referenceResolver))
+
+  def apply(): FhirPathEvaluator = new FhirPathEvaluator(None)
+
+  def apply(referenceResolver: Option[IReferenceResolver]): FhirPathEvaluator = new FhirPathEvaluator(referenceResolver)
 }

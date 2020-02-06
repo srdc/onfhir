@@ -1,0 +1,43 @@
+{
+  "resourceType": "Observation",
+  "id": "cholesterol",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p><b>Generated Narrative with Details</b></p><p><b>id</b>: cholesterol</p><p><b>status</b>: final</p><p><b>code</b>: Cholesterol <span>(Details : {LOINC code '35200-5' = 'Cholesterol [Mass or Moles/volume] in Serum or Plasma', given as 'Cholesterol [Moles/​volume] in Serum or Plasma'})</span></p><p><b>subject</b>: <a>Patient/pat2</a></p><p><b>performer</b>: <a>Acme Laboratory, Inc</a></p><p><b>value</b>: 6.3 mmol/L<span> (Details: UCUM code mmol/L = 'mmol/L')</span></p><h3>ReferenceRanges</h3><table><tr><td>-</td><td><b>High</b></td></tr><tr><td>*</td><td>4.5 mmol/L<span> (Details: UCUM code mmol/L = 'mmol/L')</span></td></tr></table></div>"
+  },
+  "status": "final",
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "35200-5",
+        "display": "Cholesterol [Moles/​volume] in Serum or Plasma"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/pat2"
+  },
+  "performer": [
+    {
+      "reference": "Organization/1832473e-2fe0-452d-abe9-3cdb9879522f",
+      "display": "Acme Laboratory, Inc"
+    }
+  ],
+  "valueQuantity": {
+    "value": 6.3,
+    "unit": "mmol/L",
+    "system": "http://unitsofmeasure.org",
+    "code": "mmol/L"
+  },
+  "referenceRange": [
+    {
+      "high": {
+        "value": 4.5,
+        "unit": "mmol/L",
+        "system": "http://unitsofmeasure.org",
+        "code": "mmol/L"
+      }
+    }
+  ]
+}

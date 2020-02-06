@@ -1,11 +1,11 @@
 package io.onfhir.path
 
 import io.onfhir.api.Resource
-
+import io.onfhir.api.validation.IReferenceResolver
 
 import scala.util.matching.Regex
 
-class FhirPathEnvironment(_this:FhirPathResult) {
+class FhirPathEnvironment(val _this:FhirPathResult, val referenceResolver: Option[IReferenceResolver]) {
   val vsPattern:Regex = "'vs-[A-Za-z0-9\\-]+'".r
   val extPattern:Regex = "'ext-[A-Za-z0-9\\-]+'".r
 

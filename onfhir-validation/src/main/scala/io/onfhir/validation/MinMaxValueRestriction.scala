@@ -40,7 +40,7 @@ case class MinMaxValueRestriction(comparedValue:JValue, isMin:Boolean) extends  
     }
     val fhirExpression = compared + " " + comparator + " " + actual
 
-    val isOk = FhirPathEvaluator.satisfies(fhirExpression, JObject())
+    val isOk = FhirPathEvaluator().satisfies(fhirExpression, JObject())
     if(!isOk)
       Seq(ConstraintFailure(s"Given value ($actual) fails for '${if(isMin) "minValue" else "maxValue"}=$compared' restriction!"))
     else

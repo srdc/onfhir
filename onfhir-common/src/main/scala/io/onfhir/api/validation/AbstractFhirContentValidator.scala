@@ -38,13 +38,21 @@ abstract class AbstractFhirContentValidator(val fhirConfig:FhirConfig, profileUr
   def validateComplexContentAgainstProfile(profileChain: Seq[ProfileRestrictions], value: JObject, parentPath: Option[String], resourceElementRestrictions: Seq[Seq[(String, ElementRestrictions)]] = Nil): Seq[OutcomeIssue]
 
   /**
+   * Find profile with the given URL
+   * @param profileUrl
+   * @return
+   */
+  def findProfile(profileUrl: String):Option[ProfileRestrictions] = {
+    fhirConfig.profileRestrictions.get(profileUrl)
+  }
+  /**
    * Find a chain of parent profiles until the base FHIR spec given the profile
    *
    * @param profileUrl Profile definition
    * @return Profiles in order of evaluation (inner profile - base profile)
    */
   def findProfileChain(profileUrl: String): Seq[ProfileRestrictions] = {
-    fhirConfig.profileRestrictions.get(profileUrl) match {
+    findProfile(profileUrl) match {
       case None => Nil
       case Some(profile) => findChain(fhirConfig.profileRestrictions)(profile)
     }

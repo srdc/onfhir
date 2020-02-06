@@ -6,7 +6,7 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.`Content-Type`
 import io.onfhir.config.OnfhirConfig
 import io.onfhir.api._
-import io.onfhir.api.model.{FHIRResponse, Parameter}
+import io.onfhir.api.model.{FHIRResponse, FhirCanonicalReference, FhirInternalReference, FhirLiteralReference, FhirLogicalReference, FhirReference, Parameter}
 import io.onfhir.api.parsers.FHIRResultParameterResolver
 import io.onfhir.util.JsonFormatter.formats
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
@@ -736,6 +736,47 @@ object FHIRUtil {
   def extractReferences(refPath:String, resource: Resource):Seq[String] = {
       applySearchParameterPath(refPath, resource)
         .flatMap(refObj => (refObj \ FHIR_COMMON_FIELDS.REFERENCE).extractOpt[String])
+  }
+
+  /**
+   * Parse a canononical reference value
+   * @param c
+   * @return
+   */
+  def parseCanonicalReference(c:String):FhirCanonicalReference = {
+    val urlAndFragment = c.split('#')
+    val urlAndVersion = urlAndFragment.head.split('|')
+    val urlFragments = urlAndVersion.head.split('/')
+
+    FhirCanonicalReference(
+      urlFragments.dropRight(2).mkString("/"),
+      urlFragments.dropRight(1).last,
+      urlFragments.last,
+      urlAndVersion.drop(1).headOption,
+      urlAndFragment.drop(1).headOption
+    )
+  }
+  /**
+   * Parse a FHIR Reference or Canonical element
+   * @param value
+   * @return
+   */
+  def parseReference(value:JValue):FhirReference = {
+    value match {
+      case obj:JObject =>
+        FHIRUtil.extractValueOption[String](obj, FHIR_COMMON_FIELDS.REFERENCE) match {
+          case Some(fhirReferenceUrl) if fhirReferenceUrl.startsWith("#") => FhirInternalReference(fhirReferenceUrl.drop(1))
+          case Some(fhirReferenceUrl) if !fhirReferenceUrl.startsWith("#") =>
+            var r = parseReferenceValue(fhirReferenceUrl)
+            FhirLiteralReference(r._1, r._2, r._3, r._4)
+          case None =>
+            val referencedResourceType = FHIRUtil.extractValueOption[String](obj, FHIR_COMMON_FIELDS.TYPE)
+            val refIdentifier = FHIRUtil.extractValueOption[JObject](obj, FHIR_COMMON_FIELDS.IDENTIFIER).get
+            FhirLogicalReference(referencedResourceType, FHIRUtil.extractValueOption[String](refIdentifier, FHIR_COMMON_FIELDS.SYSTEM), FHIRUtil.extractValue[String](refIdentifier, FHIR_COMMON_FIELDS.VALUE))
+        }
+      case _ =>
+        throw new Exception("Invalid FHIR reference")
+    }
   }
 
   /**
