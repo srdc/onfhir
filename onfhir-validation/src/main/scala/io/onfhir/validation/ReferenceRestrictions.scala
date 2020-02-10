@@ -17,13 +17,6 @@ import scala.util.Try
  */
 case class ReferenceRestrictions(targetProfiles:Seq[String], versioning:Option[Boolean], aggregationMode:Seq[String]) extends  FhirRestriction {
 
-  private def isBase(profileUrl:String):Boolean =
-    profileUrl.startsWith(FHIR_ROOT_URL_FOR_DEFINITIONS + "/StructureDefinition/")
-
-  private def getDataType(profileUrl:String):String = {
-    profileUrl.replace(FHIR_ROOT_URL_FOR_DEFINITIONS + "/StructureDefinition/", "")
-  }
-
   /**
    *
    * @param value Json value
@@ -49,24 +42,26 @@ case class ReferenceRestrictions(targetProfiles:Seq[String], versioning:Option[B
         val expectedDataTypeAndProfiles =
           targetProfiles
             .map(tp => {
-              val dt =
-                if (isBase(tp))
-                  getDataType(tp)
-                else
-                  fhirContentValidator.findProfileChain(tp).reverse.find(!_.isAbstract)
-                    .map(pc => getDataType(pc.url)).get
-              dt -> tp
-            }).groupBy(_._1).map(g => g._1 -> g._2.map(_._2))
+              if(tp == "http://hl7.org/fhir/StructureDefinition/Resource")
+                "Resource" -> tp
+              else {
+                val dt = fhirContentValidator.findResourceType(fhirContentValidator.findProfileChain(tp)).get
+                dt -> tp
+              }
+            })
+            .groupBy(_._1)
+            .map(g => g._1 -> g._2.map(_._2))
 
         val targetProfileIssue =
-          if (fhirReferenceUrl
-            .flatMap(ref =>
-              parsedFhirReference.map(_._2) match { //Try to get the target type from the reference element e.g. Patient/65161565 -> Patient
-                case None => referencedResourceType //If not exist, try to get it from the 'type' element
-                case oth => oth
-              }
-            ) //Extract data type from the reference
-            .forall(dt => expectedDataTypeAndProfiles.contains(dt))) //target type is an expected FHIR Resource
+          if (expectedDataTypeAndProfiles.isEmpty ||
+            fhirReferenceUrl
+              .flatMap(ref =>
+                parsedFhirReference.map(_._2) match { //Try to get the target type from the reference element e.g. Patient/65161565 -> Patient
+                  case None => referencedResourceType //If not exist, try to get it from the 'type' element
+                  case oth => oth
+                }
+              ) //Extract data type from the reference
+              .forall(dt => expectedDataTypeAndProfiles.contains("Resource") || expectedDataTypeAndProfiles.contains(dt))) //target type is an expected FHIR Resource
             Nil
           else
             Seq(ConstraintFailure(s"Referenced type does not match one of the expected target types ${expectedDataTypeAndProfiles.keys.mkString(", ")}!"))
@@ -74,7 +69,7 @@ case class ReferenceRestrictions(targetProfiles:Seq[String], versioning:Option[B
 
         val referenceFormatIssue =
           if (!versioning.forall(v => parsedFhirReference.forall(fref => fref._4.isDefined == v)))
-            Seq(ConstraintFailure(s"Reference should be ${if (versioning.get) "version specific" else "non-version specific"}!"))
+            Seq(ConstraintFailure(s"Reference should be ${if (versioning.get) "version specific" else "version independent"}!"))
           else Nil
 
         var allIssues = invalidReferenceIssues ++ targetProfileIssue ++ referenceFormatIssue

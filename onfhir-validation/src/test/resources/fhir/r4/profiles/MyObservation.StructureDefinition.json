@@ -3,7 +3,6 @@
   "url": "http://example.org/fhir/StructureDefinition/MyObservation",
   "name": "MyObservation",
   "status": "draft",
-  "description": "",
   "fhirVersion": "4.0.0",
   "mapping": [
     {
@@ -129,7 +128,18 @@
             "targetProfile": [
               "http://hl7.org/fhir/StructureDefinition/Patient",
               "http://hl7.org/fhir/StructureDefinition/Group"
-            ]
+            ],
+            "versioning": "independent"
+          }
+        ]
+      },
+      {
+        "id": "Observation.encounter",
+        "path": "Observation.encounter",
+        "type": [
+          {
+            "code": "Reference",
+            "versioning": "specific"
           }
         ]
       },

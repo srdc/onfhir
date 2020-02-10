@@ -10,7 +10,7 @@ import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation._
 import io.onfhir.config.FhirConfig
 import io.onfhir.exception.InitializationException
-import io.onfhir.path.FhirPathEvaluator
+import io.onfhir.path.{FhirPathComplex, FhirPathEvaluator}
 import org.json4s.JInt
 import org.json4s.JsonAST.{JArray, JBool, JDecimal, JDouble, JLong, JObject, JString, JValue}
 import io.onfhir.util.JsonFormatter.formats
@@ -56,9 +56,7 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
     }).getOrElse(Nil)
   }
 
-  private def findResourceType(profileChain:Seq[ProfileRestrictions]):Option[String] = {
-    profileChain.reverse.find(!_.isAbstract).map(_.url.split('/').last)
-  }
+
 
   /**
    * Validate a FHIR complex content
@@ -370,15 +368,46 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
     matchers.forall {
       //If a slicing over the type of current element, just check if type is correct
       case ("$this", Seq(TypeRestriction(dataTypes))) => dataTypes.map(_._1).contains(dataType)
+      //A referenced Resource type restriction e.g. item.resolve() with Patient type
+      case (p, Seq(TypeRestriction(dataTypes))) if (p.endsWith("resolve()") && dataTypes.flatMap(_._2).isEmpty) =>
+        //Get the path to the Reference element
+        var refPath = p.replace("resolve()", "")
+        if(refPath.endsWith("."))
+          refPath = refPath.dropRight(1)
+
+        if(!value.isInstanceOf[JObject])
+          false
+        else
+          refPath match {
+            case "" =>
+              Try(FHIRUtil.parseReference(value)).toOption match {
+                case Some(FhirLiteralReference(_ ,rtype, _, _)) =>
+                  dataTypes.map(_._1).contains(rtype)
+                case _ =>
+                  false
+              }
+            case p => FhirPathEvaluator().evaluate(p, value).exists {
+              case FhirPathComplex(ref) => Try(FHIRUtil.parseReference(ref)).toOption match {
+                case Some(FhirLiteralReference(_ ,rtype, _, _)) =>
+                  dataTypes.map(_._1).contains(rtype)
+                case _ =>
+                  false
+              }
+            }
+          }
       //Otherwise
       case m =>
-        val result = FhirPathEvaluator(referenceResolver).evaluate(m._1, value) //Evaluate the Discriminator path
+        val matcherPath = m._1.replaceAll("\\[x\\]", "") //remove
+
+        val result = FhirPathEvaluator(referenceResolver).evaluate(matcherPath, value) //Evaluate the Discriminator path
         result.exists(cv => //A result should exist, which match the the given restriction
             m._2
               .forall(
                 _.matches(cv.toJson, this) //Evaluate the restriction
                )
-          )
+          ) ||
+          //Non existance restriction for the element
+          (result.isEmpty && m._2.length == 1 && m._2.head.isInstanceOf[CardinalityMaxRestriction] && m._2.head.asInstanceOf[CardinalityMaxRestriction].n == 0)
     }
   }
 
@@ -433,49 +462,7 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
    */
   private def findRelatedMatchers(discriminators: Set[(String, String)], sliceRestriction: ElementRestrictions, sliceSubElements: Seq[Seq[(String, ElementRestrictions)]]): Map[String, Seq[FhirRestriction]] = {
     val allRestrictions = discriminators.toSeq.flatMap(disc => {
-      // Find matchers path prefix
-      // e.g. item.resolve().name -> (item, name),
-      // e.g. resolve().code -> ("",code)
-      // e.g. item.extension('http://acme.org/extensions/test').value -> (item.extension:Test.value, "")
-      // e.g. $this -> ($this, "")
-      // e.g. code.coding.code -> (code.coding.code, "")
-      val discriminatorPrefixes = findPrefixOfDiscriminatorPath(disc._2, sliceSubElements)
-
-      //Find possible element restrictions (or profile itself for 'type' and 'profile' type discriminator) that contains the matchers for slice
-      val possibleElementRestrictionsForMatchers:Either[Seq[Seq[(String, ElementRestrictions)]], Seq[ProfileRestrictions]] =
-        //A path with resolve()
-        if(discriminatorPrefixes.isLeft){
-          //Find matching prefix in
-          val (mp, ap) = discriminatorPrefixes.left.get
-          //Find the profile that this reference refer to
-          val referenceRestriction:ReferenceRestrictions =
-            mp match {
-              case "" =>
-                sliceRestriction.restrictions.find(_._2.isInstanceOf[ReferenceRestrictions]).map(_._2.asInstanceOf[ReferenceRestrictions]).head
-              case _ =>
-                findSubElementRestrictions(mp, sliceSubElements, false)
-                  .flatten.flatMap(_._2.restrictions)
-                  .find(_._2.isInstanceOf[ReferenceRestrictions])
-                  .map(_.asInstanceOf[ReferenceRestrictions]).head
-            }
-          val referencedProfile = referenceRestriction.targetProfiles.head
-          ap match {
-            case "" => Right(findProfileChain(referencedProfile))
-            case _ =>
-              //Load the profile chain, and find the
-              Left(findSubElementRestrictions(ap,  findProfileChain(referencedProfile).map(_.elementRestrictions), disc._1 == "value" || disc._1 == "pattern"))
-          }
-        }
-        //Normal path
-        else {
-          val discPath = discriminatorPrefixes.right.get
-          discPath match {
-            case "$this" => Left(Nil)
-            case "url" if sliceRestriction.path.contains("extension") =>  Left(Nil)
-            case _ => Left(findSubElementRestrictions(discPath, sliceSubElements, disc._1 == "value" || disc._1 == "pattern"))
-          }
-        }
-
+     val possibleElementRestrictionsForMatchers = findPossibleElementsForMatchers(disc._1, disc._2, sliceRestriction, sliceSubElements)
 
       val discriminatorRestrictions: Seq[Seq[(String, FhirRestriction)]] =
         disc._1 match {
@@ -494,7 +481,7 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
                         .filterKeys(k => k == ConstraintKeys.PATTERN || k == ConstraintKeys.BINDING || k == ConstraintKeys.MAX).values //These restrictions can be related with value or pattern
                       )
                       .filter(_._2.nonEmpty)
-                      .flatMap(er => er._2.toSeq.map(r => disc._2 -> r))))
+                      .flatMap(er => er._2.toSeq.map(r => er._1 -> r))))
                 .getOrElse(Nil)
             }
           case "exists" =>
@@ -505,7 +492,7 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
                     .filterKeys(k => k == ConstraintKeys.MIN || k == ConstraintKeys.MAX).values
                 ) //
                   .filter(_._2.nonEmpty)
-                  .flatMap(x => x._2.toSeq.map(r => disc._2 -> r))
+                  .flatMap(x => x._2.toSeq.map(r => x._1 -> r))
               )
             ).getOrElse(Nil)
           case "type" =>
@@ -534,10 +521,12 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
               }
 
           case "profile" =>
-            possibleElementRestrictionsForMatchers.right.toOption
+            //Currently we are not supporting profile discriminators as it degrades performance
+            Nil
+            /*possibleElementRestrictionsForMatchers.right.toOption
               .map(profileChain =>
                   Seq(profileChain.headOption.map(_.url).map(url => disc._2 -> TypeRestriction(Seq(url -> Nil))).toSeq)
-              ).getOrElse(Nil)
+              ).getOrElse(Nil)*/
           case _ => Nil
         }
 
@@ -548,48 +537,155 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
   }
 
   /**
-   * Find element path prefix that will include restrictions related with discriminator path
-   *
+   * Find possible elements that contain the matchers or profile chain itself
+   * @param discriminatorType
    * @param discriminatorPath
+   * @param sliceRestriction
    * @param sliceSubElements
    * @return
    */
-  private def findPrefixOfDiscriminatorPath(discriminatorPath: String, sliceSubElements: Seq[Seq[(String, ElementRestrictions)]]): Either[(String, String), String] = {
-    //If there is some resolve() on the path, just get the prefix of it e.g. item.resolve(), item.resolve().name --> item
-    if (discriminatorPath.contains("resolve()")) {
-      val rindex = discriminatorPath.indexOf("resolve()")
-      val referenceElementPath = discriminatorPath.substring(0, rindex)
-      var afterResolvingPath = discriminatorPath.substring(rindex+9, discriminatorPath.length)
-      if(afterResolvingPath.length > 0) afterResolvingPath = afterResolvingPath.drop(1) //drop the point in the path e.g. item.resolve().name	 --> name
-      Left(referenceElementPath -> afterResolvingPath)
-    } else if (discriminatorPath.contains("extension(") || discriminatorPath.contains("ofType(")) {
-      var prefix: Option[String] = None
-      discriminatorPath.split('.')
-        .foreach(pitem =>
-          if (pitem.startsWith("extension(")) {
-            //Find extension url
-            val url = pitem.replace("extension(", "").dropRight(1)
-            //There should be definition of extension within the element definitions
-            val extensionPrefix = FHIRUtil.mergeElementPath(prefix, "extension") + ":"
-            val extensionName = sliceSubElements
-              .flatMap(elementRestrictions =>
-                elementRestrictions
-                  .find(er =>
-                    er._1.startsWith(extensionPrefix) &&
-                      getFhirDataTypes(er._2).exists(_.dataTypesAndProfiles.exists(_._1 == url))
-                  )
-                  .map(_._2.sliceName)
-              ).head
-            prefix = Some(FHIRUtil.mergeElementPath(prefix, "extension:" + extensionName))
-          } else if (pitem.startsWith("ofType(")) {
-            //Just skip ofType
-          } else {
-            prefix = Some(FHIRUtil.mergeElementPath(prefix, pitem))
-          }
-        )
-      Right(prefix.get)
-    } else
-      Right(discriminatorPath)
+  private def findPossibleElementsForMatchers(discriminatorType:String, discriminatorPath:String, sliceRestriction: ElementRestrictions, sliceSubElements: Seq[Seq[(String, ElementRestrictions)]]): Either[Seq[Seq[(String, ElementRestrictions)]], Seq[ProfileRestrictions]]  = {
+    //Parse the path and divide it to path items e.g. item.resolve().value --> Seq(item, resolve(), value)
+    val discPathItems = parseDiscriminatorPath(discriminatorPath)
+    //If there is a resolve, we should first find the path to the reference element and path to be run on referenced path
+    if(discPathItems.contains("resolve()")){
+      //e.g. item.resolve().value --> (item, value)
+      val resIndex = discPathItems.indexOf("resolve()")
+      val referenceElementPathItems = discPathItems.slice(0, resIndex)
+      val afterResolvingPathItems = if(resIndex + 1 == discPathItems.length) Nil else discPathItems.slice(resIndex+1, discPathItems.length)
+
+      //Find the RerefenceRestriction which has the target profile for the reference
+      val referenceRestriction:ReferenceRestrictions = referenceElementPathItems match {
+        //If there is no referenceElemPath, it means this element is the reference element, so find a ReferenceRestrictions in slice element
+        case Nil =>
+          sliceRestriction.restrictions
+            .find(_._2.isInstanceOf[ReferenceRestrictions]).map(_._2.asInstanceOf[ReferenceRestrictions]).head
+        case _ =>
+          //Otherwise, find definition path for the given actual path
+          val (referenceElementDefPath, referenceElementActualPath) = findDefinitionAndActualPath(referenceElementPathItems, sliceSubElements)
+          //Then find the ReferenceRestriction at that definition path
+          findSubElementRestrictions(referenceElementDefPath, sliceSubElements)
+            .flatten.flatMap(_._2.restrictions)
+            .find(_._2.isInstanceOf[ReferenceRestrictions])
+            .map(_._2.asInstanceOf[ReferenceRestrictions]).head
+      }
+      //Find the referenced profile
+      val referencedProfile = referenceRestriction.targetProfiles.head
+      //Check the path after resolve()
+      afterResolvingPathItems match {
+        //If there is no path, then just return the targeted profile chain
+        case Nil =>
+          Right(findProfileChain(referencedProfile))
+        case _ =>
+          //Otherwise Load the profile chain, and find the definition path for it
+          val subElementsOfReferenced = findProfileChain(referencedProfile).map(_.elementRestrictions)
+          val (suffixElementDefPath, suffixElementActualPath) = findDefinitionAndActualPath(afterResolvingPathItems, subElementsOfReferenced)
+
+          Left(
+            findSubElementRestrictions(suffixElementDefPath, subElementsOfReferenced , discriminatorType == "value" || discriminatorType == "pattern")
+              .map(ers => ers.map(er =>  {
+                //if the target element has the restriction, then the path is discriminator path itself
+                if(er._1 == suffixElementDefPath)
+                  discriminatorPath -> er._2
+                //If the children of the target element has the restrictions, then merge the after paths with discriminator path
+                else
+                  discriminatorPath + "." + er._1.replace(suffixElementDefPath +".", "") -> er._2
+              }))
+          )
+      }
+    }
+    //If the path does not have any resolve()
+    else {
+      val (defPath,actualPath) = findDefinitionAndActualPath(discPathItems, sliceSubElements)
+      defPath match {
+        case "$this" => Left(Nil)
+        case "url" if sliceRestriction.path.contains("extension") =>  Left(Nil)
+        case _ =>
+          Left(
+            findSubElementRestrictions(defPath, sliceSubElements, discriminatorType== "value" || discriminatorType == "pattern")
+              .map(ers => ers
+                .map(er =>  {
+                //if the target element has the restriction, then the path is discriminator path itself
+                if(er._1 == defPath)
+                  actualPath -> er._2
+                //If the children of the target element has the restrictions, then merge the after paths with discriminator path
+                else
+                  actualPath + "." + er._1.replace(defPath +".", "") -> er._2
+              }))
+          )
+      }
+    }
+  }
+
+  /**
+   * Find definition path of an element for the given actual discriminator path (also normalize and return actual path for ofType)
+   * @param discriminatorPathItems  Parsed discriminator path items
+   * @param sliceSubElements        Sub elements under the slice
+   * @return
+   */
+  private def findDefinitionAndActualPath(discriminatorPathItems:Seq[String], sliceSubElements: Seq[Seq[(String, ElementRestrictions)]] ): (String, String) = {
+    var finalDefinitionPath:Option[String] = None
+    var finalActualPath:Option[String] = None
+
+    discriminatorPathItems.zipWithIndex.foreach(pathAndIndex => pathAndIndex._1 match {
+      case ext if ext.startsWith("extension(") =>
+        //Parse extension url
+        val extUrl = ext.drop(11).dropRight(2) //Drop paranthesis and ' ' around url
+        //Extension path prefix
+        val extensionPathPrefix = FHIRUtil.mergeElementPath(finalDefinitionPath, "extension:")
+        //Find the name of extension for the given url
+        val extensionName =
+          sliceSubElements
+            .flatMap(elementRestrictions =>
+              elementRestrictions
+                .find(er =>
+                  er._1.startsWith(extensionPathPrefix) &&
+                    getFhirDataTypes(er._2).exists(_.dataTypesAndProfiles.exists(_._2.contains(extUrl)))
+                )
+                .flatMap(_._2.sliceName)
+            ).head
+      //Construct final path
+      finalDefinitionPath = Some(extensionPathPrefix+extensionName)
+      finalActualPath = Some(FHIRUtil.mergeElementPath(finalActualPath, ext))
+
+      case ot if ot.startsWith("ofType(") =>
+        //just skip ofType for definition path
+        val typ = ot.drop(7).dropRight(1)
+        finalActualPath = Some(finalActualPath + typ.capitalize) //e.g. value.ofType(Quantity) --> valueQuantity
+      case valueAfterExt if valueAfterExt.startsWith("value") && discriminatorPathItems.apply(pathAndIndex._2 - 1).startsWith("extension(") =>
+        finalDefinitionPath = Some(FHIRUtil.mergeElementPath(finalDefinitionPath, "value[x]"))
+        finalActualPath = Some(FHIRUtil.mergeElementPath(finalActualPath, valueAfterExt))
+      case normal =>
+        finalDefinitionPath = Some(FHIRUtil.mergeElementPath(finalDefinitionPath, normal))
+        finalActualPath = Some(FHIRUtil.mergeElementPath(finalActualPath, normal))
+    })
+    finalDefinitionPath.get -> finalActualPath.get
+  }
+
+
+  /**
+   * Parse the discriminator path into path items
+   * @param discriminatorPath Discriminator path
+   *                          e.g. item.resolve().value -> Seq(item, resolve(),value)
+   * @return
+   */
+  private def parseDiscriminatorPath(discriminatorPath: String):Seq[String] = {
+    if(discriminatorPath.isEmpty)
+      Nil
+    else {
+      //Find index of next cut
+      val i = discriminatorPath match {
+        case ext if ext.startsWith("extension(") || ext.startsWith("ofType(") =>
+          discriminatorPath.indexOf(')') + 1
+        case _ =>
+          discriminatorPath.indexOf('.')
+      }
+
+      if(i == -1)
+        Seq(discriminatorPath)
+      else
+        discriminatorPath.substring(0, i) +: parseDiscriminatorPath(discriminatorPath.substring(i+1))
+    }
   }
 
   /**
@@ -782,11 +878,29 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
       Nil
   }
 
+  /**
+   * Evaluate reference related constraints
+   * @param dataType
+   * @param value
+   * @param elementRestrictions
+   * @return
+   */
   private def evaluateReferenceConstraint(dataType: String, value: JValue, elementRestrictions: Seq[ElementRestrictions]): Seq[ConstraintFailure] = {
     if (dataType == FHIR_DATA_TYPES.REFERENCE) {
-      findFirstFhirRestriction(ConstraintKeys.REFERENCE_TARGET, elementRestrictions)
-        .map(_.evaluate(value, this))
-        .getOrElse(Nil)
+      getAllRestrictions(ConstraintKeys.REFERENCE_TARGET, elementRestrictions) match {
+        case Nil => Nil
+        case Seq(r) => r.evaluate(value, this)
+        case oth =>
+          oth
+            .map(_.asInstanceOf[ReferenceRestrictions])
+            .reduceRight[ReferenceRestrictions]((r1,r2) =>
+              ReferenceRestrictions(
+                if(r1.targetProfiles.nonEmpty) r1.targetProfiles else r2.targetProfiles,
+                if(r1.versioning.isDefined) r1.versioning else r2.versioning,
+                if(r1.aggregationMode.nonEmpty) r1.aggregationMode else r2.aggregationMode
+              )
+            ).evaluate(value, this)
+      }
     } else Nil
   }
 
@@ -824,7 +938,7 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
   private def findRequiredElements(allElementRestrictions: Seq[Seq[(String, ElementRestrictions)]]): Map[String, Seq[String]] = {
     val requiredElementPaths: Set[String] =
       allElementRestrictions
-        .map(er => er.filter(!_._1.contains('.'))) //Only get the children not descendants
+        .map(er => er.filter(e => !e._1.contains('.') && !e._1.contains(':'))) //Only get the children not descendants and slicing elements
         .map(er => er.filter(_._2.restrictions.isDefinedAt(ConstraintKeys.MIN))) // Get the ones that has minimum cardinality restriction (which is created if it exists and more than 0)
         .flatMap(er => er.map(_._1)).toSet
 

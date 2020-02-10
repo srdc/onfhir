@@ -1,0 +1,186 @@
+{
+  "resourceType": "StructureDefinition",
+  "url": "http://example.org/fhir/StructureDefinition/MyList2",
+  "name": "MyList2",
+  "status": "draft",
+  "fhirVersion": "4.0.0",
+  "mapping": [
+    {
+      "identity": "rim",
+      "uri": "http://hl7.org/v3",
+      "name": "RIM Mapping"
+    },
+    {
+      "identity": "w5",
+      "uri": "http://hl7.org/fhir/fivews",
+      "name": "FiveWs Pattern Mapping"
+    }
+  ],
+  "kind": "resource",
+  "abstract": false,
+  "type": "List",
+  "baseDefinition": "http://hl7.org/fhir/StructureDefinition/List",
+  "derivation": "constraint",
+  "differential": {
+    "element": [
+      {
+        "id": "List.entry",
+        "path": "List.entry",
+        "slicing": {
+          "discriminator": [
+            {
+              "type": "value",
+              "path": "item.extension('http://example.org/fhir/StructureDefinition/MyExtension').value"
+            }
+          ],
+          "rules": "openAtEnd"
+        }
+      },
+      {
+        "id": "List.entry:e1",
+        "path": "List.entry",
+        "sliceName": "e1"
+      },
+      {
+        "id": "List.entry:e1.item",
+        "path": "List.entry.item",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "http://hl7.org/fhir/StructureDefinition/Patient"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "List.entry:e1.item.extension",
+        "path": "List.entry.item.extension",
+        "slicing": {
+          "discriminator": [
+            {
+              "type": "value",
+              "path": "url"
+            }
+          ],
+          "rules": "open"
+        }
+      },
+      {
+        "id": "List.entry:e1.item.extension:myExtension",
+        "path": "List.entry.item.extension",
+        "sliceName": "myExtension",
+        "min": 1,
+        "max": "1",
+        "type": [
+          {
+            "code": "Extension",
+            "profile": [
+              "http://example.org/fhir/StructureDefinition/MyExtension"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "List.entry:e1.item.extension:myExtension.value[x]",
+        "path": "List.entry.item.extension.value[x]",
+        "fixedCoding": {
+          "system": "http://loinc.org",
+          "code": "L1"
+        }
+      },
+      {
+        "id": "List.entry:e1.item.extension:myExtension2",
+        "path": "List.entry.item.extension",
+        "sliceName": "myExtension2",
+        "type": [
+          {
+            "code": "Extension",
+            "profile": [
+              "http://example.org/fhir/StructureDefinition/MyExtension2"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "List.entry:e1.item.extension:myExtension2.value[x]",
+        "path": "List.entry.item.extension.value[x]",
+        "maxLength": 5
+      },
+      {
+        "id": "List.entry:e2",
+        "path": "List.entry",
+        "sliceName": "e2",
+        "min": 1
+      },
+      {
+        "id": "List.entry:e2.item",
+        "path": "List.entry.item",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "http://hl7.org/fhir/StructureDefinition/Group"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "List.entry:e2.item.extension",
+        "path": "List.entry.item.extension",
+        "slicing": {
+          "discriminator": [
+            {
+              "type": "value",
+              "path": "url"
+            }
+          ],
+          "rules": "open"
+        }
+      },
+      {
+        "id": "List.entry:e2.item.extension:myExtension",
+        "path": "List.entry.item.extension",
+        "sliceName": "myExtension",
+        "min": 1,
+        "max": "1",
+        "type": [
+          {
+            "code": "Extension",
+            "profile": [
+              "http://example.org/fhir/StructureDefinition/MyExtension"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "List.entry:e2.item.extension:myExtension.value[x]",
+        "path": "List.entry.item.extension.value[x]",
+        "fixedCoding": {
+          "system": "http://loinc.org",
+          "code": "L2"
+        }
+      },
+      {
+        "id": "List.entry:e2.item.extension:myExtension2",
+        "path": "List.entry.item.extension",
+        "sliceName": "myExtension2",
+        "min": 1,
+        "max": "*",
+        "type": [
+          {
+            "code": "Extension",
+            "profile": [
+              "http://example.org/fhir/StructureDefinition/MyExtension2"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "List.entry:e2.item.extension:myExtension2.value[x]",
+        "path": "List.entry.item.extension.value[x]",
+        "maxLength": 10
+      }
+    ]
+  }
+}

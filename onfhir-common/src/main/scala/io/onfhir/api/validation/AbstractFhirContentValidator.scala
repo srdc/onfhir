@@ -14,6 +14,16 @@ abstract class AbstractFhirContentValidator(val fhirConfig:FhirConfig, profileUr
   //FHIR reference and expected target profiles to check for existence
   val referencesToCheck = new mutable.ListBuffer[(FhirReference, Set[String])]()
 
+
+  /**
+   * Find resource type for a profile chain
+   * @param profileChain
+   * @return
+   */
+  def findResourceType(profileChain:Seq[ProfileRestrictions]):Option[String] = {
+    profileChain.reverse.find(!_.isAbstract).map(_.url.split('/').last)
+  }
+
   /**
    * Get Resource type of the profile
    * @return

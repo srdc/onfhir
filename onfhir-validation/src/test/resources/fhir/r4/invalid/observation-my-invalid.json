@@ -47,7 +47,10 @@
     "text": "Blood pressure systolic & diastolic"
   }],
   "subject": {
-    "reference": "Device/546546544"
+    "reference": "Device/546546544/_history/2"
+  },
+  "encounter": {
+    "reference": "Observation/35324"
   },
   "effectiveDateTime": "17-09-2017",
   "issued": "2012-09-17",
