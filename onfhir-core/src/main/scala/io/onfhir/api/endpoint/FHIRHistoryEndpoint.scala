@@ -5,7 +5,7 @@ import akka.http.scaladsl.server.Route
 import io.onfhir.api.{FHIR_HTTP_OPTIONS, FHIR_INTERACTIONS}
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
-import io.onfhir.api.parsers.FHIRSearchParameterParser
+import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.service.FHIRHistoryService
 import io.onfhir.authz.{AuthContext, AuthzContext, AuthzManager}
 import io.onfhir.config.OnfhirConfig
@@ -29,7 +29,7 @@ trait FHIRHistoryEndpoint {
             //Create the FHIR request object
             fhirRequest.initializeHistoryRequest(FHIR_INTERACTIONS.HISTORY_INSTANCE, Some(_type), Some(_id))
             //Parse search paremeters
-            FHIRSearchParameterParser.parseSearchParametersFromUri(_type, prefer) { searchParameters =>
+            FHIRSearchParameterValueParser.parseSearchParametersFromUri(_type, prefer) { searchParameters =>
               //Put the parameters into the FHIR Request
               fhirRequest.queryParams = searchParameters
               //Enforce authorization, add the authorization filter params to search params
@@ -47,7 +47,7 @@ trait FHIRHistoryEndpoint {
               //Create the FHIR request object
               fhirRequest.initializeHistoryRequest(FHIR_INTERACTIONS.HISTORY_TYPE, Some(_type), None)
               //Parse search paremeters
-              FHIRSearchParameterParser.parseSearchParametersFromUri(_type, prefer) { searchParameters =>
+              FHIRSearchParameterValueParser.parseSearchParametersFromUri(_type, prefer) { searchParameters =>
                 //Put the parameters into the FHIR Request
                 fhirRequest.queryParams = searchParameters
                 //Enforce authorization
@@ -66,7 +66,7 @@ trait FHIRHistoryEndpoint {
               //Create the FHIR request object
               fhirRequest.initializeHistoryRequest(FHIR_INTERACTIONS.HISTORY_SYSTEM, None, None)
               //Parse search paremeters
-              FHIRSearchParameterParser.parseSearchParametersFromUri("", prefer) { searchParameters =>
+              FHIRSearchParameterValueParser.parseSearchParametersFromUri("", prefer) { searchParameters =>
                 fhirRequest.queryParams = searchParameters
                 //Enforce authorization, add the authorization filter params to search params
                 AuthzManager.authorize(authContext._2, fhirRequest) {

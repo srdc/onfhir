@@ -57,6 +57,9 @@ object OnfhirConfig {
   /** Default value for [CapabilityStatement|Conformance].rest.resource.conditionalCreate when not present */
   lazy val fhirDefaultConditionalCreate:Boolean = Try(config.getBoolean("fhir.default.conditional-create")).getOrElse(false)
 
+  /** Default value for [CapabilityStatement|Conformance].rest.resource.conditionalRead when not present */
+  lazy val fhirDefaultConditionalRead:String = Try(config.getString("fhir.default.conditional-read")).getOrElse("full-support")
+
   /** Default value for [CapabilityStatement|Conformance].rest.resource.conditionalUpdate when not present */
   lazy val fhirDefaultConditionalUpdate:Boolean = Try(config.getBoolean("fhir.default.conditional-update")).getOrElse(false)
 

@@ -10,7 +10,7 @@ object TerminologyParser{
   /**
    * Parse a FHIR value set into a compact form for validation
    * @param valueSetOrCodeSystems FHIR ValueSet or CodeSystem (with an element valueSet inside) resources that may be linked to each other
-   * @return URL of ValueSet, Version of ValueSet, Map(URL of CodeSystem -> Set of codes)
+   * @return Map(URL of ValueSet -> Map(URL of CodeSystem -> Set of codes))
    */
   def parseValueSetBundle(valueSetOrCodeSystems:Seq[Resource]):Map[String, Map[String, ValueSetRestrictions]] = {
     val withResourceType =

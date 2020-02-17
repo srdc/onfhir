@@ -3,7 +3,7 @@ package io.onfhir.db
 import ca.uhn.fhir.validation.ResultSeverityEnum
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRResponse, OutcomeIssue, Parameter}
-import io.onfhir.api.parsers.FHIRSearchParameterParser
+import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
 import io.onfhir.config.{OnfhirConfig, SearchParameterConf}
@@ -154,7 +154,7 @@ object ResourceQueryBuilder {
             //Get the definition of combined search parameter
             val compParamConf = validQueryParameters(compParamName)
             //Parse value again as it may indicate a prefix (we don't parse prefixes in Composite at the beginning)
-            val (queryPartPrefix, queryPartValue) = FHIRSearchParameterParser.parseSimpleValue(value.apply(i), compParamConf.ptype).head
+            val (queryPartPrefix, queryPartValue) = FHIRSearchParameterValueParser.parseSimpleValue(value.apply(i), compParamConf.ptype).head
 
             //Find out the subpaths of this param after the common path
             val subpathsAfterCommonPathAndTargetTypes = commonPath match {

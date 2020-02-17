@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.{DateTime, StatusCodes, Uri}
 import ca.uhn.fhir.validation.ResultSeverityEnum
 import io.onfhir.api.Resource
 import io.onfhir.api.model._
-import io.onfhir.api.parsers.FHIRSearchParameterParser
+import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.service.FHIROperationHandlerService
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.db.ResourceManager
@@ -71,7 +71,7 @@ class ExpandOperationHandler extends FHIROperationHandlerService {
 
   def handleExpand(queryParams: Map[String, List[String]], operationRequest: FHIROperationRequest): Future[FHIROperationResponse] = {
 
-    val searchParams:List[Parameter] = FHIRSearchParameterParser.parseSearchParameters(RESOURCE_VALUESET, queryParams)
+    val searchParams:List[Parameter] = FHIRSearchParameterValueParser.parseSearchParameters(RESOURCE_VALUESET, queryParams)
 
     ResourceManager
       .queryResources(RESOURCE_VALUESET, searchParams, count = 1, excludeExtraFields = true).map {

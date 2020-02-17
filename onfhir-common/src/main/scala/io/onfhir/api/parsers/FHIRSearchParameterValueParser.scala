@@ -11,7 +11,10 @@ import io.onfhir.api.model.Parameter
 import scala.util.Try
 import scala.util.parsing.combinator.RegexParsers
 
-object FHIRSearchParameterParser {
+/**
+ * Parsers for parsing search parameter values given in queries
+ */
+object FHIRSearchParameterValueParser {
   private val logger: Logger = LoggerFactory.getLogger("FHIRSearchParameterParser")
 
   /* Core Parser Definitions */
@@ -329,11 +332,11 @@ object FHIRSearchParameterParser {
             //Inclusion of all
             case (FHIR_SEARCH_RESULT_PARAMETERS.INCLUDE, "*") =>
               fhirConfig.profileConfigurations(rtype)
-                .searchInclude.getOrElse(Seq.empty) //Get all supported includes
+                .searchInclude.toSeq //Get all supported includes
                 .map(p => joinedResourceType -> p)
             case (FHIR_SEARCH_RESULT_PARAMETERS.REVINCLUDE, "*") =>
               fhirConfig.profileConfigurations(rtype)
-                .searchRevInclude.getOrElse(List.empty) //Get all supported reverse includes
+                .searchRevInclude.toSeq //Get all supported reverse includes
                 .map(_.split(":")) //Parse them e.g. AllergyIntolerance:patient
                 .map(s => s.head -> s.last)
             case _ =>
@@ -505,7 +508,7 @@ object FHIRSearchParameterParser {
     */
   def parseSearchParameters(_type: String, parameters: Map[String, List[String]], preferHeader:Option[String] = None): List[Parameter] = {
     // Parse parameters
-    FHIRSearchParameterParser
+    FHIRSearchParameterValueParser
       .parseParameters(parameters - FHIR_HTTP_OPTIONS.FORMAT, _type, preferHeader)
   }
 
@@ -516,7 +519,7 @@ object FHIRSearchParameterParser {
     * @return
     */
   def parseSearchParametersFromUri(_type: String, preferHeader:Option[String]):Directive1[List[Parameter]] =
-    Directives.parameterMultiMap.map(FHIRSearchParameterParser.parseSearchParameters(_type, _, preferHeader))
+    Directives.parameterMultiMap.map(FHIRSearchParameterValueParser.parseSearchParameters(_type, _, preferHeader))
 
   /**
     * Directive to parse search parameters from-url-encoded entity
@@ -525,7 +528,7 @@ object FHIRSearchParameterParser {
     * @return
     */
   def parseSearchParametersFromEntity(_type: String, preferHeader:Option[String]):Directive1[List[Parameter]] =
-    Directives.formFieldMultiMap.map(FHIRSearchParameterParser.parseSearchParameters(_type, _, preferHeader))
+    Directives.formFieldMultiMap.map(FHIRSearchParameterValueParser.parseSearchParameters(_type, _, preferHeader))
 
 
   /**

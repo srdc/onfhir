@@ -98,7 +98,7 @@ object BundleRequestParser {
           case Seq(rtype, rid) =>
             FHIRRequest(interaction = FHIR_INTERACTIONS.DELETE, requestUri = requestUrl, resourceType = Some(rtype), resourceId = Some(rid))
           case Seq(rtype) =>
-            val queryParams = FHIRSearchParameterParser.parseSearchParameters(rtype, sprayUrl.query().toMultiMap)
+            val queryParams = FHIRSearchParameterValueParser.parseSearchParameters(rtype, sprayUrl.query().toMultiMap)
             FHIRRequest(interaction = FHIR_INTERACTIONS.DELETE, requestUri = requestUrl, resourceType = Some(rtype), queryParams = queryParams)
           case _ => throw new NotFoundException(invalidOperation(FHIR_INTERACTIONS.DELETE, requestUrl))
         }
@@ -110,7 +110,7 @@ object BundleRequestParser {
             FHIRRequest(interaction = FHIR_INTERACTIONS.UPDATE, requestUri = requestUrl, resourceType = Some(rtype), resourceId = Some(rid), ifMatch = ifMatch, resource = Some(resource))
               .setId(fullUrl)
           case Seq(rtype) =>
-            val queryParams = FHIRSearchParameterParser.parseSearchParameters(rtype, sprayUrl.query().toMultiMap)
+            val queryParams = FHIRSearchParameterValueParser.parseSearchParameters(rtype, sprayUrl.query().toMultiMap)
             FHIRRequest(interaction = FHIR_INTERACTIONS.DELETE, requestUri = requestUrl, resourceType = Some(rtype), queryParams = queryParams, resource = Some(resource))
               .setId(fullUrl)
           case _ => throw new NotFoundException(invalidOperation(FHIR_INTERACTIONS.UPDATE, requestUrl))
@@ -120,11 +120,11 @@ object BundleRequestParser {
         parseUrl(sprayUrl) match {
           //Search with post
           case Seq(rtype, FHIR_HTTP_OPTIONS.SEARCH) =>
-            val queryParams = FHIRSearchParameterParser.parseSearchParameters(rtype, sprayUrl.query().toMultiMap)
+            val queryParams = FHIRSearchParameterValueParser.parseSearchParameters(rtype, sprayUrl.query().toMultiMap)
             FHIRRequest(interaction = FHIR_INTERACTIONS.SEARCH, requestUri = requestUrl, resourceType = Some(rtype), queryParams = queryParams)
           //Compartment search with post
           case Seq(ctype, cid, rtype, FHIR_HTTP_OPTIONS.SEARCH) =>
-            val queryParams = FHIRSearchParameterParser.parseSearchParameters(rtype, sprayUrl.query().toMultiMap)
+            val queryParams = FHIRSearchParameterValueParser.parseSearchParameters(rtype, sprayUrl.query().toMultiMap)
             FHIRRequest(interaction = FHIR_INTERACTIONS.SEARCH, requestUri = requestUrl, compartmentType = Some(ctype), compartmentId = Some(cid), resourceType = Some(rtype), queryParams = queryParams)
           //Create interaction
           case Seq(rtype) =>
@@ -146,21 +146,21 @@ object BundleRequestParser {
             FHIRRequest(interaction = FHIR_INTERACTIONS.CAPABILITIES, requestUri = requestUrl)
           //Search with Get
           case Seq(rtype)=>
-            val queryParams = FHIRSearchParameterParser.parseSearchParameters(rtype, sprayUrl.query().toMultiMap)
+            val queryParams = FHIRSearchParameterValueParser.parseSearchParameters(rtype, sprayUrl.query().toMultiMap)
             FHIRRequest(interaction = FHIR_INTERACTIONS.SEARCH, requestUri = requestUrl, resourceType = Some(rtype), queryParams = queryParams)
           //History interaction
           case Seq(rtype, FHIR_HTTP_OPTIONS.HISTORY) =>
-            val queryParams = FHIRSearchParameterParser.parseSearchParameters(rtype, sprayUrl.query().toMultiMap)
+            val queryParams = FHIRSearchParameterValueParser.parseSearchParameters(rtype, sprayUrl.query().toMultiMap)
             FHIRRequest(interaction = FHIR_INTERACTIONS.HISTORY_TYPE, requestUri = requestUrl, resourceType = Some(rtype), queryParams = queryParams)
           //Read interaction
           case Seq(rtype, rid) =>
             FHIRRequest(interaction = FHIR_INTERACTIONS.READ, requestUri = requestUrl, resourceType = Some(rtype), resourceId = Some(rid), ifModifiedSince = ifModifiedSince, ifNoneMatch = ifNoneMatch)
           case Seq(rtype, rid, FHIR_HTTP_OPTIONS.HISTORY) =>
-            val queryParams = FHIRSearchParameterParser.parseSearchParameters(rtype, sprayUrl.query().toMultiMap)
+            val queryParams = FHIRSearchParameterValueParser.parseSearchParameters(rtype, sprayUrl.query().toMultiMap)
             FHIRRequest(interaction = FHIR_INTERACTIONS.HISTORY_INSTANCE, requestUri = requestUrl, resourceType = Some(rtype), resourceId = Some(rid),queryParams = queryParams)
           //Compartment search with get
           case Seq(ctype, cid, rtype) =>
-            val queryParams = FHIRSearchParameterParser.parseSearchParameters(rtype, sprayUrl.query().toMultiMap)
+            val queryParams = FHIRSearchParameterValueParser.parseSearchParameters(rtype, sprayUrl.query().toMultiMap)
             FHIRRequest(interaction = FHIR_INTERACTIONS.SEARCH, requestUri = requestUrl, compartmentType = Some(ctype), compartmentId = Some(cid), resourceType = Some(rtype), queryParams = queryParams)
           //VRead interaction
           case Seq(rtype, rid, FHIR_HTTP_OPTIONS.HISTORY, vid) =>

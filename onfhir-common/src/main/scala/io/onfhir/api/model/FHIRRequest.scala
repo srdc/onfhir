@@ -5,7 +5,7 @@ import java.time.Instant
 import akka.http.scaladsl.model.headers.{`If-Modified-Since`, `If-None-Match`}
 import io.onfhir.api.Resource
 import io.onfhir.api._
-import io.onfhir.api.parsers.{BundleRequestParser, FHIRSearchParameterParser}
+import io.onfhir.api.parsers.{BundleRequestParser, FHIRSearchParameterValueParser}
 import io.onfhir.util.JsonFormatter.formats
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
 
@@ -109,7 +109,7 @@ case class FHIRRequest(
     this.resourceType = Some(resourceType)
     this.prefer = prefer
     //Set the compartment search parameter
-    queryParams = List(FHIRSearchParameterParser.constructCompartmentSearchParameter(compartmentType, compartmentId, resourceType))
+    queryParams = List(FHIRSearchParameterValueParser.constructCompartmentSearchParameter(compartmentType, compartmentId, resourceType))
   }
 
   /**

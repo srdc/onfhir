@@ -4,7 +4,7 @@ import ca.uhn.fhir.validation.ResultSeverityEnum
 
 import io.onfhir.api.FHIR_HTTP_OPTIONS
 import io.onfhir.api.model.{FHIRResponse, OutcomeIssue, Parameter}
-import io.onfhir.api.parsers.FHIRSearchParameterParser
+import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 
 /**
   * Created by tuncay on 3/3/2017.
@@ -77,9 +77,9 @@ object AuthzResult{
       FILTERING,
       //Parse the compartment search
       comparmentFilters
-        .map(cf => FHIRSearchParameterParser.constructCompartmentSearchParameter(cf._1, cf._2, rtype)) ++
+        .map(cf => FHIRSearchParameterValueParser.constructCompartmentSearchParameter(cf._1, cf._2, rtype)) ++
         //Parse the other search parameters strictly
-        FHIRSearchParameterParser
+        FHIRSearchParameterValueParser
           .parseSearchParameters(
             rtype,
             authorizationFilterParams.groupBy(_._1).map(g => g._1 -> g._2.map(_._2)),

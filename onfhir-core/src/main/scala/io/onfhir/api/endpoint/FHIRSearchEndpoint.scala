@@ -5,7 +5,7 @@ import akka.http.scaladsl.server.Route
 import io.onfhir.api.FHIR_HTTP_OPTIONS
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
-import io.onfhir.api.parsers.FHIRSearchParameterParser
+import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.service.FHIRSearchService
 import io.onfhir.authz.{AuthContext, AuthzContext, AuthzManager}
 import io.onfhir.config.OnfhirConfig
@@ -31,7 +31,7 @@ trait FHIRSearchEndpoint {
               //Initialize the FHIR request object
               fhirRequest.initializeSearchRequest(_type, preferHeader)
               //Parse search paremeters
-              FHIRSearchParameterParser.parseSearchParametersFromUri(_type, preferHeader) { searchParameters =>
+              FHIRSearchParameterValueParser.parseSearchParametersFromUri(_type, preferHeader) { searchParameters =>
                 //Put the parameters and content into the FHIR Request
                 fhirRequest.queryParams = searchParameters
                 //Enforce authorization, add the authorization filter params to search params
@@ -51,9 +51,9 @@ trait FHIRSearchEndpoint {
             optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { preferHeader =>
               //Create the FHIR request object
               fhirRequest.initializeSearchRequest(_type, preferHeader)
-              FHIRSearchParameterParser.parseSearchParametersFromUri(_type, preferHeader) { urlParameters =>
+              FHIRSearchParameterValueParser.parseSearchParametersFromUri(_type, preferHeader) { urlParameters =>
                 //Parse search paremeters
-                FHIRSearchParameterParser.parseSearchParametersFromEntity(_type, preferHeader) { entityParameters =>
+                FHIRSearchParameterValueParser.parseSearchParametersFromEntity(_type, preferHeader) { entityParameters =>
                   // Add both parameters
                   val searchParameters = urlParameters ++ entityParameters
                   //Put the parameters and content into the FHIR Request

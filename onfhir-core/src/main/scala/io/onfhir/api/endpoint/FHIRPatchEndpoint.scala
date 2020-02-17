@@ -5,7 +5,7 @@ import akka.http.scaladsl.server.Route
 import io.onfhir.api.{FHIR_HTTP_OPTIONS, Resource}
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
-import io.onfhir.api.parsers.FHIRSearchParameterParser
+import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.service.FHIRPatchService
 import io.onfhir.authz.{AuthContext, AuthzContext, AuthzManager}
 import io.onfhir.config.OnfhirConfig
@@ -45,7 +45,7 @@ trait FHIRPatchEndpoint {
               pathEndOrSingleSlash {
                 //Create the FHIR request object
                 fhirRequest.initializePatchRequest(_type, None, ifMatch, prefer)
-                FHIRSearchParameterParser.parseSearchParametersFromUri(_type, prefer) { searchParameters =>
+                FHIRSearchParameterValueParser.parseSearchParametersFromUri(_type, prefer) { searchParameters =>
                   entity(as[Resource]) { resource =>
                     //Put the parameters and content into the FHIR Request
                     fhirRequest.queryParams = searchParameters

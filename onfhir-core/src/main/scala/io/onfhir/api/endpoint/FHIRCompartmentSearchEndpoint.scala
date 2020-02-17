@@ -4,7 +4,7 @@ import akka.http.scaladsl.server.Directives._
 import io.onfhir.api.FHIR_HTTP_OPTIONS
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
-import io.onfhir.api.parsers.FHIRSearchParameterParser
+import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.service.FHIRSearchService
 import io.onfhir.authz.{AuthContext, AuthzContext, AuthzManager}
 import io.onfhir.config.OnfhirConfig
@@ -33,7 +33,7 @@ trait FHIRCompartmentSearchEndpoint {
             //Create the FHIR request object
             fhirRequest.initializeCompartmentSearchRequest(compartmentName, compartmentId, _type, prefer)
             //Parse search paremeters
-            FHIRSearchParameterParser.parseSearchParametersFromUri(_type, prefer) { searchParameters =>
+            FHIRSearchParameterValueParser.parseSearchParametersFromUri(_type, prefer) { searchParameters =>
               //Set the Query params
               fhirRequest.queryParams = fhirRequest.queryParams ++ searchParameters
               //Check authorization
@@ -54,7 +54,7 @@ trait FHIRCompartmentSearchEndpoint {
             //Create the FHIR request object
             fhirRequest.initializeCompartmentSearchRequest(compartmentName, compartmentId, _type, prefer)
             //Parse search paremeters
-            FHIRSearchParameterParser.parseSearchParametersFromEntity(_type, prefer) { searchParameters =>
+            FHIRSearchParameterValueParser.parseSearchParametersFromEntity(_type, prefer) { searchParameters =>
               //Set the Query params
               fhirRequest.queryParams = fhirRequest.queryParams ++ searchParameters
               //Check authorization

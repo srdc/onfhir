@@ -3,7 +3,7 @@ package io.onfhir.operation
 import akka.http.scaladsl.model.{DateTime, StatusCodes}
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIROperationRequest, FHIROperationResponse}
-import io.onfhir.api.parsers.FHIRSearchParameterParser
+import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.service.{FHIRCreateService, FHIROperationHandlerService, FHIRSearchService}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.db.ResourceManager
@@ -36,7 +36,7 @@ class DocumentOperationHandler extends FHIROperationHandlerService {
     if(resourceId.isEmpty)
       throw new InternalServerException(s"Operation $operationName without [id] is not supported yet")
 
-    val searchParams = FHIRSearchParameterParser.parseSearchParameters(RESOURCE_COMPOSITION, Map(
+    val searchParams = FHIRSearchParameterValueParser.parseSearchParameters(RESOURCE_COMPOSITION, Map(
       SEARCHPARAM_ID -> List(resourceId.get),
       SEARCHPARAM_INCLUDE -> List("*")
     ))

@@ -7,7 +7,7 @@ import io.onfhir.{OnfhirSetup, OnfhirTest}
 import io.onfhir.api._
 import io.onfhir.api.endpoint.FHIREndpoint
 import io.onfhir.api.model.FHIRRequest
-import io.onfhir.api.parsers.FHIRSearchParameterParser
+import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.service.{FHIRBatchTransactionService, FHIRCreateService, FHIRDeleteService, FHIRSearchService, FHIRUpdateService}
 import io.onfhir.config.OnfhirConfig
 import io.onfhir.util.JsonFormatter._
@@ -187,7 +187,7 @@ class AuthzManagerTest extends OnfhirTest {
       //Conditional delete on Observations that is performed by Practitioner f006 (observation2, and observation3)
       var request = FHIRRequest(interaction = FHIR_INTERACTIONS.DELETE, requestUri = "/Observation")
       request.initializeDeleteRequest("Observation", None, None)
-      request.queryParams = FHIRSearchParameterParser.parseSearchParameters("Observation", Map("performer" -> List("Practitioner/f006")))
+      request.queryParams = FHIRSearchParameterValueParser.parseSearchParameters("Observation", Map("performer" -> List("Practitioner/f006")))
 
       var authzResult = Await.result(AuthzManager.forceAuthorization(authzContextWriteForPatient3, request), FiniteDuration.apply(30, TimeUnit.SECONDS))
       authzResult.isAuthorized mustEqual true
@@ -205,7 +205,7 @@ class AuthzManagerTest extends OnfhirTest {
       //But not delete other ones
       request = FHIRRequest(interaction = FHIR_INTERACTIONS.SEARCH, requestUri = "/Observation")
       request.initializeSearchRequest("Observation", None)
-      request.queryParams = FHIRSearchParameterParser.parseSearchParameters("Observation", Map("performer" -> List("Practitioner/f006")))
+      request.queryParams = FHIRSearchParameterValueParser.parseSearchParameters("Observation", Map("performer" -> List("Practitioner/f006")))
       response = Await.result(new FHIRSearchService().executeInteraction(request), FiniteDuration.apply(30, TimeUnit.SECONDS))
       (response.responseBody.get \ "total").extract[Int] > 0 mustEqual true
 
@@ -215,7 +215,7 @@ class AuthzManagerTest extends OnfhirTest {
       request = FHIRRequest(interaction = FHIR_INTERACTIONS.UPDATE, requestUri = "/Observation")
       request.initializeUpdateRequest("Observation", None, None, None)
       request.resource = Some(observation2)
-      request.queryParams = FHIRSearchParameterParser.parseSearchParameters("Observation", Map("performer" -> List("Practitioner/f006")))
+      request.queryParams = FHIRSearchParameterValueParser.parseSearchParameters("Observation", Map("performer" -> List("Practitioner/f006")))
       //First try with wrong content
       authzResult = Await.result(AuthzManager.forceAuthorization(authzContextWriteForPatient3, request), FiniteDuration.apply(30, TimeUnit.SECONDS))
       authzResult.isAuthorized mustEqual false
