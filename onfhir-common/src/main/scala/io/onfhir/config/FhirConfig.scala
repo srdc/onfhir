@@ -18,6 +18,8 @@ class FhirConfig(val fhirContext:FhirContext) {
   var supportedResources:Set[String] = _
   /** List of supported profiles for each resource; resource-type -> Set(profile-url) */
   var supportedProfiles:Map[String, Set[String]] = HashMap()
+  /** Data type profiles supported*/
+  var dataTypeProfiles:Set[String] = _
   /** Rest configuration for each (Resource, Profile) pair (if profile is null)*/
   var profileConfigurations:Map[String, ResourceConf] = HashMap()
   /** Supported Query Parameters for each resource-profile pair ; resource-type -> Map(parameter-name -> parameter-configuration)

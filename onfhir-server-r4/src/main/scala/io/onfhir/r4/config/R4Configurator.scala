@@ -98,6 +98,8 @@ class R4Configurator extends AbstractFhirConfigurator[CapabilityStatement, Struc
     //Extract supported profiles
     fhirConfig.supportedProfiles = extractSupportedProfiles(conformance, restDef, profiles)
     logger.info(s"${fhirConfig.supportedProfiles.size} profiles found ...")
+    //Extract data type profiles
+    fhirConfig.dataTypeProfiles = extractDataTypeProfiles(fhirConfig.supportedProfiles.values.flatten.toSet, profiles)
 
     logger.info("Configuring FHIR API support for each supported FHIR Resource  ...")
     //Extract configurations for each profile
@@ -281,6 +283,14 @@ class R4Configurator extends AbstractFhirConfigurator[CapabilityStatement, Struc
     }
 
     allProfiles
+  }
+
+  private def extractDataTypeProfiles(resourceProfiles:Set[String], allProfiles: Seq[StructureDefinition]):Set[String] = {
+    allProfiles
+      .filter(p => !resourceProfiles.contains(p.getUrl))
+      .filter(p => FHIR_ALL_DATA_TYPES.contains(p.getType))
+      .map(_.getUrl)
+      .toSet
   }
 
   /**

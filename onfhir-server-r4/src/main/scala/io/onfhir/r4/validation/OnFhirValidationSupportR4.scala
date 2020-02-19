@@ -47,7 +47,10 @@ class OnFhirValidationSupportR4 extends DefaultProfileValidationSupport {
     *
     */
   private def loadAllStructureDefinitions(): Unit ={
-    val profileUrls = fhirConfig.supportedProfiles.values.flatten.toSet
+    val profileUrls =
+      fhirConfig.supportedProfiles.values.flatten.toSet ++
+      fhirConfig.dataTypeProfiles
+
     val (_, sdefinitions) =
       Await.result(
         ResourceManager.queryResourcesDirectly("StructureDefinition", Some(constructUrlQuery(profileUrls)), profileUrls.size, excludeExtraFields = true),
