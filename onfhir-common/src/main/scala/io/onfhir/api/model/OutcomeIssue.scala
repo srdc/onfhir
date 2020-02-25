@@ -8,4 +8,6 @@ package io.onfhir.api.model
   * @param diagnostics  Diagnostics
   * @param location     Location of the issue
   */
-case class OutcomeIssue(severity:String, code:String, details:Option[String], diagnostics:Option[String], location:Seq[String])
+case class OutcomeIssue(severity:String, code:String, details:Option[String], diagnostics:Option[String], location:Seq[String]) {
+  def isError:Boolean = severity == FHIRResponse.SEVERITY_CODES.ERROR ||  severity == FHIRResponse.SEVERITY_CODES.FATAL
+}

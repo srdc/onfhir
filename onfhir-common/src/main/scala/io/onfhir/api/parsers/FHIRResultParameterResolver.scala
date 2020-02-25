@@ -100,7 +100,7 @@ object FHIRResultParameterResolver {
     */
   def resolveSummary(rtype:String, summary:String):Option[(Boolean, Set[String])] = {
     //Summary fields for resource type
-    val summaryFields = fhirConfig.summaryParameters.getOrElse(rtype, Set.empty[String])
+    val summaryFields = fhirConfig.getSummaryElements(rtype)
 
     summary match {
       case "false" =>

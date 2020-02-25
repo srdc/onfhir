@@ -45,7 +45,7 @@ case class ReferenceRestrictions(targetProfiles:Seq[String], versioning:Option[B
               if(tp == "http://hl7.org/fhir/StructureDefinition/Resource")
                 "Resource" -> tp
               else {
-                val dt = fhirContentValidator.findResourceType(fhirContentValidator.findProfileChain(tp)).get
+                val dt = fhirContentValidator.findResourceType(fhirContentValidator.fhirConfig.findProfileChain(tp)).get
                 dt -> tp
               }
             })
@@ -79,7 +79,7 @@ case class ReferenceRestrictions(targetProfiles:Seq[String], versioning:Option[B
         else {
             //Find the Resource Type that we are working on
             val resourceType = fhirContentValidator.getResourceOrDataType()
-            fhirContentValidator.fhirConfig.profileConfigurations.get(resourceType) match {
+            fhirContentValidator.fhirConfig.resourceConfigurations.get(resourceType) match {
               //If we can't access profile configuration, skip other validations
               case None =>
                 Nil

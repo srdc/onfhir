@@ -16,7 +16,7 @@ trait IFhirAuditCreator {
     * Create base AuditEvent resource
     * @return
     */
-  protected def createBaseAuditEventRecord():JObject = "resourceType" -> FhirConfigurationManager.fhirConfig.FHIR_AUDIT_EVENT
+  protected def createBaseAuditEventRecord():JObject = "resourceType" -> "AuditEvent"
   /**
     * Create FHIR Coding element
     * @param system Code system

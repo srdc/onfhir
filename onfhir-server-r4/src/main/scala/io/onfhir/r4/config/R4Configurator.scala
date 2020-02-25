@@ -101,7 +101,7 @@ class R4Configurator extends AbstractFhirConfigurator[CapabilityStatement, Struc
 
     logger.info("Configuring FHIR API support for each supported FHIR Resource  ...")
     //Extract configurations for each profile
-    fhirConfig.profileConfigurations = extractProfileConfigurations(restDef)
+    fhirConfig.resourceConfigurations = extractProfileConfigurations(restDef)
 
     //TODO Check if CompartmentDefinitions are provided for all supported compartments
     //Read and parse the base search parameter definitions in STU3
@@ -114,7 +114,7 @@ class R4Configurator extends AbstractFhirConfigurator[CapabilityStatement, Struc
     fhirConfig.compartmentRelations = extractCompartmentRelations(restDef, compartmentDefinitions)
     logger.info(s"${fhirConfig.compartmentRelations.size} compartments found ...")
 
-    val supportedBaseProfiles = fhirConfig.profileConfigurations.values.flatMap(_.profile).toSet
+    val supportedBaseProfiles = fhirConfig.resourceConfigurations.values.flatMap(_.profile).toSet
     val profilesAndDataTypes = profiles.filter(p => p.getKind.toCode != "resource" ||supportedBaseProfiles.contains(p.getUrl()))
     logger.info("Configuring FHIR API search parameters for each supported FHIR Resource ...")
     //Extract the resource query parameters supported

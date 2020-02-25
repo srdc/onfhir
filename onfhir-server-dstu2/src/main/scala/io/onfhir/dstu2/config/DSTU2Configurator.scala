@@ -111,7 +111,7 @@ class DSTU2Configurator extends AbstractFhirConfigurator[Conformance, StructureD
 
     logger.info("Configuring FHIR API support for each supported FHIR Resource  ...")
     //Extract configurations for each profile
-    fhirConfig.profileConfigurations = extractProfileConfigurations(restDef)
+    fhirConfig.resourceConfigurations = extractProfileConfigurations(restDef)
 
     //TODO Check if CompartmentDefinitions are provided for all supported compartments
     //Read and parse the base search parameter definitions in DSTU2

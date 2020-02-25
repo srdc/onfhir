@@ -146,7 +146,7 @@ case class FHIRRequest(
   def initializeCapabilitiesRequest():Unit = {
     this.interaction = FHIR_INTERACTIONS.CAPABILITIES
     this.resourceId = Some(SERVER_CONFORMANCE_STATEMENT_ID)
-    this.resourceType = Some(fhirConfig.FHIR_CONFORMANCE)
+    this.resourceType = Some("CapabilityStatement")
   }
 
   /**

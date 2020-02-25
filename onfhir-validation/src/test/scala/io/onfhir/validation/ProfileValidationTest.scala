@@ -6,6 +6,7 @@ import io.onfhir.api.util.IOUtil
 import io.onfhir.api.validation.IReferenceResolver
 import io.onfhir.config.FhirConfigurationManager
 import io.onfhir.r4.config.R4Configurator
+import io.onfhir.r4.parsers.StructureDefinitionParser
 import org.json4s.JsonAST.JObject
 import org.json4s.jackson.JsonMethods
 import org.junit.runner.RunWith
@@ -222,8 +223,8 @@ class ProfileValidationTest extends Specification {
 
     "validate a valid resource with slicing that has resolve() expression in discriminator" in {
       //Make reference validation policy as enforced for DiagnosticReport
-      val obsConf = FhirConfigurationManager.fhirConfig.profileConfigurations("DiagnosticReport")
-      FhirConfigurationManager.fhirConfig.profileConfigurations = FhirConfigurationManager.fhirConfig.profileConfigurations ++ Map("DiagnosticReport" -> obsConf.copy(referencePolicies = Set("enforced")))
+      val obsConf = FhirConfigurationManager.fhirConfig.resourceConfigurations("DiagnosticReport")
+      FhirConfigurationManager.fhirConfig.resourceConfigurations = FhirConfigurationManager.fhirConfig.resourceConfigurations ++ Map("DiagnosticReport" -> obsConf.copy(referencePolicies = Set("enforced")))
 
       var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/dreport/diagnosticreport-example-lipids.json")).mkString).asInstanceOf[JObject]
       val fhirContentValidator = FhirContentValidator(FhirConfigurationManager.fhirConfig, "http://hl7.org/fhir/StructureDefinition/lipidprofile", referenceResolverForLipidProfileSample)
@@ -237,8 +238,8 @@ class ProfileValidationTest extends Specification {
 
     "not validate an invalid FHIR resource with slicing that has resolve() expression in discriminator" in {
       //Make reference validation policy as enforced for DiagnosticReport
-      val obsConf = FhirConfigurationManager.fhirConfig.profileConfigurations("DiagnosticReport")
-      FhirConfigurationManager.fhirConfig.profileConfigurations = FhirConfigurationManager.fhirConfig.profileConfigurations ++ Map("DiagnosticReport" -> obsConf.copy(referencePolicies = Set("enforced")))
+      val obsConf = FhirConfigurationManager.fhirConfig.resourceConfigurations("DiagnosticReport")
+      FhirConfigurationManager.fhirConfig.resourceConfigurations = FhirConfigurationManager.fhirConfig.resourceConfigurations ++ Map("DiagnosticReport" -> obsConf.copy(referencePolicies = Set("enforced")))
 
       val fhirContentValidator = FhirContentValidator(FhirConfigurationManager.fhirConfig, "http://hl7.org/fhir/StructureDefinition/lipidprofile", referenceResolverForLipidProfileSample)
 

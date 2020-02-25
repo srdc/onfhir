@@ -124,67 +124,7 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
         case Some(FHIR_DATA_TYPES.PARAMETERS) =>
           //Retrieve the parameter values
           val paramValue: Seq[JValue] = FHIRUtil.getParameterValue(requestBody.get, paramDef.name, paramDef.pType)
-
-          if (paramValue.isEmpty) //If parameter is missing
-            if (paramDef.min > 0) //If parameter is required return the issue
-              Future.apply(Right(Seq(OutcomeIssue(
-                ResultSeverityEnum.ERROR.getCode, //fatal
-                FHIRResponse.OUTCOME_CODES.INVALID,
-                None,
-                Some(s"Parameter ${paramDef.name} not found in request body (Parameters), although it is required for the operation ${operationConf.name}!"),
-                Nil))))
-            else Future.apply(Right(Nil))
-          else {
-            //Check if max cardinality matches
-            if (paramDef.max != "*" && paramValue.size > paramDef.max.toInt)
-              Future.apply(Right(Seq(OutcomeIssue(
-                ResultSeverityEnum.ERROR.getCode, //fatal
-                FHIRResponse.OUTCOME_CODES.INVALID,
-                None,
-                Some(s"Cardinality of Parameter ${paramDef.name} (${paramValue.size}) does not match with the required cardinality (${paramDef.max}) for the operation ${operationConf.name}!"),
-                Nil))))
-            else {
-              val fissues: Future[Seq[OutcomeIssue]] =
-                paramDef.pType match {
-                  //Paremeter is primitive FHIR type e.g. string, int, etc
-                  case primitive if FHIR_PRIMITIVE_TYPES.contains(primitive) =>
-                    Future.apply(paramValue.flatMap(validatePrimitiveForOperations(paramDef.name, _, paramDef.pType)))
-                  //Paremeter is complex FHIR type e.g. CodeableConcept
-                  case complex if FHIR_COMPLEX_TYPES.contains(complex) =>
-                    Future.apply(paramValue.flatMap(validateComplexForOperations(paramDef.name, _, paramDef.pType)))
-                  //Parameter is Resource type
-                  case _ =>
-                    //Check if it is a JObject (json resource)
-                    if(!paramValue.forall(_.isInstanceOf[JObject]))
-                      Future.apply(Seq(OutcomeIssue(
-                        ResultSeverityEnum.ERROR.getCode, //fatal
-                        FHIRResponse.OUTCOME_CODES.INVALID,
-                        None,
-                        Some(s"Parameter '${paramDef.name}' is not a valid FHIR Resource!"),
-                        Nil)))
-                    else  {
-                      var resources = paramValue.map(_.asInstanceOf[Resource])
-                      if (paramDef.pProfile.nonEmpty)
-                        resources = resources.map(r => paramDef.pProfile.foldLeft(r)((r, p) => FHIRUtil.setProfile(r, p)))
-                      //Validate the resources given in the parameter and return all issues
-                      Future
-                        .sequence(resources.map(resource => fhirValidator.validateResource(resource, silent = true))) // By setting silent, this does not throw exception but return issues
-                        .map(_.flatten) //Flatten the sequence of OutcomeIssues
-                    }
-                }
-
-              fissues map (issues => {
-                if (!issues.exists(i => i.severity == "error" || i.severity == "fatal"))
-                  //If parameter is single
-                  if(paramDef.max == "1")
-                    Left(paramValue.head)
-                  else
-                    Left(JArray(paramValue.toList)) //Or conver to JArray
-                else
-                  Right(issues) //Return the issues if there is an error or fatal or the parameter value
-              })
-            }
-          }
+          validateOperationParameter(operationConf.name, paramValue, paramDef)
         //If body is the whole resource and it matches the expected Resource Type, or expected type is a resource
         case Some(resourceType) if paramDef.pType == resourceType || paramDef.pType == FHIR_DATA_TYPES.RESOURCE =>
             var resource = requestBody.get
@@ -211,6 +151,95 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
           )
           Future.apply(Right(Nil)) //No such case
       }
+  }
+
+  /**
+   * Validate if a Operation parameter value conforms to the definition given in OperationDefinition for the param
+   * @param opName
+   * @param paramValue
+   * @param paramDef
+   * @return
+   */
+  private def validateOperationParameter(opName:String, paramValue:Seq[JValue], paramDef:OperationParamDef):Future[Either[JValue, Seq[OutcomeIssue]]] = {
+    if (paramValue.isEmpty) //If parameter is missing
+      if (paramDef.min > 0) //If parameter is required return the issue
+        Future.apply(Right(Seq(OutcomeIssue(
+          ResultSeverityEnum.ERROR.getCode, //fatal
+          FHIRResponse.OUTCOME_CODES.INVALID,
+          None,
+          Some(s"Parameter ${paramDef.name} not found in request body (Parameters), although it is required for the operation ${opName}!"),
+          Nil))))
+      else Future.apply(Right(Nil))
+    else {
+      //Check if max cardinality matches
+      if (paramDef.max != "*" && paramValue.size > paramDef.max.toInt)
+        Future.apply(Right(Seq(OutcomeIssue(
+          ResultSeverityEnum.ERROR.getCode, //fatal
+          FHIRResponse.OUTCOME_CODES.INVALID,
+          None,
+          Some(s"Cardinality of Parameter ${paramDef.name} (${paramValue.size}) does not match with the required cardinality (${paramDef.max}) for the operation ${opName}!"),
+          Nil))))
+      else {
+        val fissues: Future[Seq[OutcomeIssue]] =
+          paramDef.pType match {
+            //Paremeter is primitive FHIR type e.g. string, int, etc
+            case Some(primitive) if FHIR_PRIMITIVE_TYPES.contains(primitive) =>
+              Future.apply(paramValue.flatMap(validatePrimitiveForOperations(paramDef.name, _, primitive)))
+            //Paremeter is complex FHIR type e.g. CodeableConcept
+            case Some(complex) if FHIR_COMPLEX_TYPES.contains(complex) =>
+              Future.apply(paramValue.flatMap(validateComplexForOperations(paramDef.name, _, complex)))
+
+            //Parameter is multi parameter
+            case None =>
+              val childIssuesFuture =
+                Future.sequence(
+                  paramValue.map(pv => {
+                    Future.sequence(paramDef.parts.map(childParamDef =>
+                      validateOperationParameter(
+                        opName,
+                        FHIRUtil.getParameterValue(pv.asInstanceOf[JObject], childParamDef.name, childParamDef.pType),
+                        childParamDef
+                      )
+                    ))
+                  }))
+
+              childIssuesFuture.map(childIssues => {
+               childIssues.flatten.filter(_.isRight).flatMap(_.right.get)
+              })
+
+            //Parameter is Resource type
+            case _ =>
+              //Check if it is a JObject (json resource)
+              if(!paramValue.forall(_.isInstanceOf[JObject]))
+                Future.apply(Seq(OutcomeIssue(
+                  ResultSeverityEnum.ERROR.getCode, //fatal
+                  FHIRResponse.OUTCOME_CODES.INVALID,
+                  None,
+                  Some(s"Parameter '${paramDef.name}' is not a valid FHIR Resource!"),
+                  Nil)))
+              else  {
+                var resources = paramValue.map(_.asInstanceOf[Resource])
+                if (paramDef.pProfile.nonEmpty)
+                  resources = resources.map(r => paramDef.pProfile.foldLeft(r)((r, p) => FHIRUtil.setProfile(r, p)))
+                //Validate the resources given in the parameter and return all issues
+                Future
+                  .sequence(resources.map(resource => fhirValidator.validateResource(resource, silent = true))) // By setting silent, this does not throw exception but return issues
+                  .map(_.flatten) //Flatten the sequence of OutcomeIssues
+              }
+          }
+
+        fissues map (issues => {
+          if (!issues.exists(i => i.severity == "error" || i.severity == "fatal"))
+          //If parameter is single
+            if(paramDef.max == "1")
+              Left(paramValue.head)
+            else
+              Left(JArray(paramValue.toList)) //Or conver to JArray
+          else
+            Right(issues) //Return the issues if there is an error or fatal or the parameter value
+        })
+      }
+    }
   }
 
   /**

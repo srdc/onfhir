@@ -4,7 +4,7 @@ import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.{ValueSetDef, ValueSetRestrictions}
 import org.json4s.JsonAST.{JBool, JField, JObject, JString, JValue}
 
-object TerminologyParser{
+class TerminologyParser {
 
 
   /**
@@ -35,7 +35,7 @@ object TerminologyParser{
    * @param codeSystem FHIR CodeSystem resource
    * @return
    */
-  private def parseCodeSystemAsValueSet(codeSystem:Resource, filters:Seq[(String, String, String)]):Option[Set[String]] = {
+  protected def parseCodeSystemAsValueSet(codeSystem:Resource, filters:Seq[(String, String, String)]):Option[Set[String]] = {
     //Extract defined properties
     val definedProperties = extractDefinedProperties(codeSystem)
     //Find out if there is a hierarchy filter
@@ -61,7 +61,7 @@ object TerminologyParser{
    * @param definedProperties   Defined properties for the CodeSystem concepts
    * @return
    */
-  private def filterConceptsAndRelated(hiearchicalFilter:Option[(String, String)], parent:JObject, definedProperties:Map[String, String]):Option[Seq[(String, Map[String, JValue])]] = {
+  protected def filterConceptsAndRelated(hiearchicalFilter:Option[(String, String)], parent:JObject, definedProperties:Map[String, String]):Option[Seq[(String, Map[String, JValue])]] = {
     val childConcepts:Seq[JObject] = FHIRUtil.extractValue[Seq[JObject]](parent, "concept")
     //If there is no child concept return empty
     if(childConcepts.isEmpty)
@@ -137,7 +137,7 @@ object TerminologyParser{
    * @param concept
    * @param otherFilters
    */
-  def isConceptActiveAndConformToFilters(concept:(String, Map[String, JValue]), otherFilters:Seq[(String, String, String)]):Boolean = {
+  protected def isConceptActiveAndConformToFilters(concept:(String, Map[String, JValue]), otherFilters:Seq[(String, String, String)]):Boolean = {
     !concept._2.get("status").exists(_ != JString("active")) && //status should not be retired/deprecated
       !concept._2.get("notSelectable").contains(JBool(true)) &&  //concept should not be notSelectable
         otherFilters.forall {
@@ -181,7 +181,7 @@ object TerminologyParser{
    * @param definedProperties   All defined properties for CodeSystem
    * @return
    */
-  private def getAndParseConcept(concept:JObject, definedProperties:Map[String, String], isOnlyChildren:Option[Boolean] = None):Seq[(String, Map[String, JValue])] = {
+  protected def getAndParseConcept(concept:JObject, definedProperties:Map[String, String], isOnlyChildren:Option[Boolean] = None):Seq[(String, Map[String, JValue])] = {
     //Get the properties of the concept
     val properties =
       FHIRUtil
@@ -211,7 +211,7 @@ object TerminologyParser{
    * @param codeSystem FHIR CodeSystem resource
    * @return
    */
-  private def extractDefinedProperties(codeSystem:Resource):Map[String, String] = {
+  protected def extractDefinedProperties(codeSystem:Resource):Map[String, String] = {
     val definedProperties =
       for {
         JObject(child) <- codeSystem
@@ -227,7 +227,7 @@ object TerminologyParser{
    * @param definedProperties
    * @return
    */
-  private def extractPropertyCodeAndValue(property:JObject, definedProperties:Map[String, String]):(String, JValue) = {
+  protected def extractPropertyCodeAndValue(property:JObject, definedProperties:Map[String, String]):(String, JValue) = {
     val code = FHIRUtil.extractValue[String](property, "code")
     val dtype = definedProperties(code)
     code -> property.obj.find(_._1 == "value" + dtype.capitalize).get._2
@@ -238,7 +238,7 @@ object TerminologyParser{
    * @param valueSet
    * @return
    */
-  private def parseValueSet(valueSet:Resource, codeSystems:Map[String, Map[String, Resource]]):Option[ValueSetRestrictions] ={
+  protected def parseValueSet(valueSet:Resource, codeSystems:Map[String, Map[String, Resource]]):Option[ValueSetRestrictions] ={
     val included = getValueSetDef(valueSet, codeSystems, isIncluded = true)
     val excluded = getValueSetDef(valueSet, codeSystems, isIncluded = false)
     //If there is no direct code, do not put it (TODO handle filters; intensionally defined value sets)
@@ -254,7 +254,7 @@ object TerminologyParser{
    * @param infResource
    * @return
    */
-  private def getUrlAndVersionForInfrastructureResource(infResource:Resource):Option[(String, String, Resource)] = {
+  protected def getUrlAndVersionForInfrastructureResource(infResource:Resource):Option[(String, String, Resource)] = {
     FHIRUtil.extractValueOption[String](infResource, FHIR_COMMON_FIELDS.URL)
       .map(url =>
         (url,
@@ -267,7 +267,7 @@ object TerminologyParser{
    * @param infResources
    * @return
    */
-  private def prepareMapForInfrastructureResources(infResources:Seq[Resource]):Map[String, Map[String, Resource]] = {
+  protected def prepareMapForInfrastructureResources(infResources:Seq[Resource]):Map[String, Map[String, Resource]] = {
     infResources
       .flatMap(getUrlAndVersionForInfrastructureResource)
       .groupBy(_._1)
@@ -280,7 +280,7 @@ object TerminologyParser{
    * @param isIncluded if true 'include' part, else 'exclude' part
    * @return
    */
-  private def getValueSetDef(valueSet:Resource, codeSystemMap:Map[String, Map[String, Resource]], isIncluded:Boolean):Option[ValueSetDef] = {
+  protected def getValueSetDef(valueSet:Resource, codeSystemMap:Map[String, Map[String, Resource]], isIncluded:Boolean):Option[ValueSetDef] = {
     val results =
       FHIRUtil
         .extractValueOptionByPath[Seq[JObject]](valueSet, s"compose.${if(isIncluded) "include" else "exclude"}") //Get the compose component
@@ -327,7 +327,7 @@ object TerminologyParser{
    * @param parent
    * @return
    */
-  private def getFilters(parent:JObject):Seq[(String, String, String)] = {
+  protected def getFilters(parent:JObject):Seq[(String, String, String)] = {
     FHIRUtil.extractValue[Seq[JObject]](parent, "filter")
       .map(filter =>
         (
@@ -345,7 +345,7 @@ object TerminologyParser{
    * @param version
    * @return
    */
-  private def getReferedCodeSystem(codeSystemMap:Map[String, Map[String, Resource]], csUrl:String, version:Option[String]):Option[Resource] = {
+  protected def getReferedCodeSystem(codeSystemMap:Map[String, Map[String, Resource]], csUrl:String, version:Option[String]):Option[Resource] = {
     val referedCodeSystemVersions = codeSystemMap.get(csUrl)
     version match {
       case None | Some("*") => referedCodeSystemVersions.map(_.head._2)

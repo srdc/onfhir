@@ -86,7 +86,7 @@ class FHIRDeleteService(transactionSession: Option[TransactionSession] = None) e
 
       //1.c. If more than one match
       case (_, foundResources) =>
-        fhirConfig.profileConfigurations.apply(_type).conditionalDelete match {
+        fhirConfig.resourceConfigurations.apply(_type).conditionalDelete match {
           case "single" =>
             logger.debug("Multiple matches exist and multiple conditional delete is not supported, returning 412 Precondition failed...")
             throw new PreconditionFailedException(Seq(

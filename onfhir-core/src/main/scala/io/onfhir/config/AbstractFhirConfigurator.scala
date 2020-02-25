@@ -125,7 +125,7 @@ abstract class AbstractFhirConfigurator[CONF <: IBaseResource,
         .supportedResources
         .map(rtype =>
           rtype ->
-            fhirConfig.profileConfigurations.get(rtype).map(_.versioning).getOrElse(OnfhirConfig.fhirDefaultVersioning)
+            fhirConfig.resourceConfigurations.get(rtype).map(_.versioning).getOrElse(OnfhirConfig.fhirDefaultVersioning)
         ).toMap
     //Create collections in database for each supported resource
     DBInitializer.createCollections(supportedResourcesAndVersions)

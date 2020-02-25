@@ -52,7 +52,7 @@ package object api {
     * Default paths for the infrastructure resources to configure the platform
     */
   object DEFAULT_RESOURCE_PATHS {
-    def BASE_DEFINITONS:String = DEFAULT_ROOT_FOLDER + "/definitions.xml.zip"
+    def BASE_DEFINITONS:String = DEFAULT_ROOT_FOLDER + "/definitions.json.zip"
     def PROFILES_FOLDER:String = DEFAULT_ROOT_FOLDER + "/profiles.zip"
     def CONFORMANCE_PATH:String = DEFAULT_ROOT_FOLDER + "/conformance-statement"+CONFORMANCE_FILE_SUFFIX
     def SEARCH_PARAMETER:String = DEFAULT_ROOT_FOLDER + "/search-parameters.zip"

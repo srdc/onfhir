@@ -72,6 +72,10 @@
         </dependency>
         <dependency>
             <groupId>onfhir</groupId>
+            <artifactId>onfhir-validation</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>onfhir</groupId>
             <artifactId>onfhir-operations</artifactId>
         </dependency>
         <!--HAPI FHIR dependencies for configuration and validation-->

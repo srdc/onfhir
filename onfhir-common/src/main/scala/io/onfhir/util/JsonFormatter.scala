@@ -1,14 +1,23 @@
 package io.onfhir.util
 
 import io.onfhir.api.Resource
+import java.io
+
 import org.json4s._
 import org.json4s.jackson.JsonMethods._
 import org.json4s.jackson.Serialization
+
 
 import scala.language.implicitConversions
 
 object JsonFormatter{
   implicit lazy val formats: Formats = Serialization.formats(NoTypeHints)
+
+  class JsonParsable2(reader:io.Reader){
+    def parseJson: Resource = {
+      parse(reader).asInstanceOf[JObject]
+    }
+  }
 
   /**
     * Scala class that adds "parseJson" method to Strings
@@ -41,4 +50,11 @@ object JsonFormatter{
     * Implicit conversion that ties the new JsonConvertable class to Scala LinkedHashMaps
     */
   implicit def convertToJson(resource:Resource):JsonConvertable = new JsonConvertable(resource)
+
+  /**
+   * Implicit conversion that ties the new JsonParsable class to the java readers
+   * @param reader
+   * @return
+   */
+  implicit def parseFromReader(reader:io.Reader):JsonParsable2 = new JsonParsable2(reader)
 }

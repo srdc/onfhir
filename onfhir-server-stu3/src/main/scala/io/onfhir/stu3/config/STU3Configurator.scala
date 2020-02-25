@@ -94,7 +94,7 @@ class STU3Configurator extends AbstractFhirConfigurator[CapabilityStatement, Str
 
     logger.info("Configuring FHIR API support for each supported FHIR Resource  ...")
     //Extract configurations for each profile
-    fhirConfig.profileConfigurations = extractProfileConfigurations(restDef)
+    fhirConfig.resourceConfigurations = extractProfileConfigurations(restDef)
 
     //TODO Check if CompartmentDefinitions are provided for all supported compartments
     //Read and parse the base search parameter definitions in STU3

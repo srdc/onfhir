@@ -29,6 +29,7 @@ case class ConstraintFailure(errorOrWarningMessage:String, isWarning:Boolean = f
   * @param url                  URL of the profile
   * @param baseUrl              Base profile that this extends if exist
   * @param elementRestrictions  Defined restrictions on elements with path as key e.g. component.value[x] -> ...
+  * @param summaryElements      Paths of the elements that are defined as summary element
   * @param constraints          Root constraints defined for the content
   * @param isAbstract           If this is a abstract definition
   */
@@ -36,6 +37,7 @@ case class ProfileRestrictions(
                                 url:String,
                                 baseUrl:Option[String],
                                 elementRestrictions:Seq[(String, ElementRestrictions)],
+                                summaryElements:Set[String],
                                 constraints:Option[FhirRestriction] = None,
                                 isAbstract:Boolean = false)
 

@@ -51,7 +51,7 @@ trait FHIROperationEndpoint {
               }
             } else {
               //Otherwise construct for only those Resources
-              val typeRoutes: Seq[Route] = operationConf.resources.map(rs => {
+              val typeRoutes: Seq[Route] = operationConf.resources.toSeq.map(rs => {
                 operationMethod {
                   pathPrefix(OnfhirConfig.baseUri / rs / ("$" + operationConf.name)) {
                     finalizingRoute(fhirRequest, authContext, operationConf, Some(rs))
@@ -74,7 +74,7 @@ trait FHIROperationEndpoint {
               }
             } else {
               //Otherwise construct for only those Resources
-              val instanceRoutes: Seq[Route] = operationConf.resources.map(rs => {
+              val instanceRoutes: Seq[Route] = operationConf.resources.toSeq.map(rs => {
                 operationMethod {
                   pathPrefix(OnfhirConfig.baseUri / rs / Segment / ("$" + operationConf.name)) { resourceId =>
                     finalizingRoute(fhirRequest, authContext, operationConf, Some(rs), Some(resourceId))

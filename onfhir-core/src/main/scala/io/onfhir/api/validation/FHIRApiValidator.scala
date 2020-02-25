@@ -165,7 +165,7 @@ object FHIRApiValidator {
     validateResourceTypeMatching(resource, _rtype)
 
     //Base profile for resource
-    val profile = fhirConfig.profileConfigurations.get(_rtype).flatMap(_.profile)
+    val profile = fhirConfig.resourceConfigurations.get(_rtype).flatMap(_.profile)
     //All supported profiles for resource
     val supportedProfiles = fhirConfig.supportedProfiles.getOrElse(_rtype, Set.empty)
     //If a base profile is defined for resource, then we expect resource contains some profile in meta (base profile or sub profiles)
@@ -196,7 +196,7 @@ object FHIRApiValidator {
     */
   def validateVersionedUpdate(rtype:String, ifmatch:Option[String]):Unit = {
     //If versioned update is forced and ifMatch header is empty
-    if(fhirConfig.profileConfigurations.apply(rtype).versioning == FHIR_VERSIONING_OPTIONS.VERSIONED_UPDATE && ifmatch.isEmpty)
+    if(fhirConfig.resourceConfigurations.apply(rtype).versioning == FHIR_VERSIONING_OPTIONS.VERSIONED_UPDATE && ifmatch.isEmpty)
       throw new NotFoundException(Seq(
         OutcomeIssue(
           ResultSeverityEnum.ERROR.getCode, //fatal
@@ -234,7 +234,7 @@ object FHIRApiValidator {
     * @param conditional If this interaction is conditional request (conditional create, update or delete)
     */
   def validateInteractionOnResourceType(operation:String,  rtype:String, conditional:Boolean = false):Seq[OutcomeIssue]  = {
-    val profileConfiguration = fhirConfig.profileConfigurations.get(rtype)
+    val profileConfiguration = fhirConfig.resourceConfigurations.get(rtype)
     if(profileConfiguration.isEmpty){
       throw new NotFoundException(Seq(
         OutcomeIssue(
@@ -303,7 +303,7 @@ object FHIRApiValidator {
     * Validate if update operation is allowed to create a new resource
     */
   def validateUpdateCreate(rtype:String):Unit = {
-    if(!fhirConfig.profileConfigurations(rtype).updateCreate)
+    if(!fhirConfig.resourceConfigurations(rtype).updateCreate)
       throw new MethodNotAllowedException(Seq(
         OutcomeIssue(
           ResultSeverityEnum.ERROR.getCode, //fatal

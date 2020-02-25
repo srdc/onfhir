@@ -1,27 +1,22 @@
 package io.onfhir.config
 
-import ca.uhn.fhir.context.{FhirContext, FhirVersionEnum}
-import ca.uhn.fhir.parser.IParser
-
-import scala.collection.immutable.{HashMap, List}
+import scala.collection.immutable.{HashMap}
 import akka.http.scaladsl.model._
 import io.onfhir.api._
 import io.onfhir.api.validation.{ProfileRestrictions, ValueSetRestrictions}
 
 /**
   * Central OnFhir configuration defining FHIR server capabilities
-  * @param fhirContext HAPI FHIR context for the supported version
+  * @param version FHIR version
   */
-class FhirConfig(val fhirContext:FhirContext) {
+class FhirConfig(version:String) {
   /***
     *  Dynamic configurations for this instance of FHIR repository
     */
-  /** List of supported FHIR resource types e.g. Set(Observation, MedicationRequest,...) */
-  var supportedResources:Set[String] = _
-  /** List of supported profiles for each resource; resource-type -> Set(profile-url) */
+  /** List of supported resource types and profiles for each resource; resource-type -> Set(profile-url) */
   var supportedProfiles:Map[String, Set[String]] = HashMap()
-  /** Rest configuration for each (Resource, Profile) pair (if profile is null)*/
-  var profileConfigurations:Map[String, ResourceConf] = HashMap()
+  /** Rest configuration for each Resource*/
+  var resourceConfigurations:Map[String, ResourceConf] = HashMap()
   /** Supported Query Parameters for each resource-profile pair ; resource-type -> Map(parameter-name -> parameter-configuration)
     * e.g. Observation -> Map(subject -> ..., code -> ...)
     **/
@@ -30,10 +25,10 @@ class FhirConfig(val fhirContext:FhirContext) {
     * e.g. _lastUpdated -> ...
     **/
   var commonQueryParameters:Map[String, SearchParameterConf] = HashMap()
-  /** Represents the set of summary parameters for each resource; resource-type -> Set(summary-element-path)
-    * e.g. Observation -> Set(code, category, ...)
-    **/
-  var summaryParameters:Map[String, Set[String]] = HashMap()
+  /** FHIR Profile definitions including the base profiles (For validation) Profile Url -> Definitions **/
+  var profileRestrictions: Map[String, ProfileRestrictions] = _
+  /** Supported FHIR value set urls with this server (For validation) ValueSet Url -> Map(Version ->Definitions) */
+  var valueSetRestrictions:Map[String, Map[String, ValueSetRestrictions]] = _
   /** Supported compartments and relations with other resources; parameters to link them;  compartment -> Map(resource-type-> Set(parameter-name))
     * e.g. Patient -> Map (Observation -> Set(subject, ....))
     **/
@@ -42,16 +37,10 @@ class FhirConfig(val fhirContext:FhirContext) {
   var supportedInteractions:Set[String] = _
   /** FHIR perations supported; parsing Capability Statement and OperationDefinitions **/
   var supportedOperations:Seq[OperationConf] = _
-  /** Supported FHIR value set urls with this server (For validation) */
-  var supportedValueSets:Set[String] = _
-  /** Supported FHIR code system urls with this server (For validation) */
-  var supportedCodeSystems:Set[String] = _
+
   /** Shard Keys for FHIR resource types; resourceType -> Seq[fhir-search-parameter-name-indicating-the-shard-key] */
   var shardKeys:Map[String, Set[String]] = Map.empty[String, Set[String]]
-  /** FHIR Profile definitions including the base profiles (For validation) Profile Url -> Definitions **/
-  var profileRestrictions: Map[String, ProfileRestrictions] = _
-  /** Supported FHIR value set urls with this server (For validation) ValueSet Url -> Map(Version ->Definitions) */
-  var valueSetRestrictions:Map[String, Map[String, ValueSetRestrictions]] = _
+
   /***
     * Configurations specific to FHIR version
     */
@@ -59,18 +48,7 @@ class FhirConfig(val fhirContext:FhirContext) {
   var FHIR_RESULT_PARAMETERS:Seq[String] = _
   /** List of FHIR Special parameters this FHIR version support */
   var FHIR_SPECIAL_PARAMETERS:Seq[String] = _
-  /** Names of foundational Resource Types for this FHIR version */
-  var FHIR_RESOURCE:String = "Resource"
-  var FHIR_CONFORMANCE:String = "CapabilityStatement"
-  var FHIR_STRUCTURE_DEFINITION:String = "StructureDefinition"
-  var FHIR_SEARCH_PARAMETER:String = "SearchParameter"
-  var FHIR_COMPARTMENT_DEFINITION:String = "CompartmentDefinition"
-  var FHIR_VALUE_SET:String = "ValueSet"
-  var FHIR_CODE_SYSTEM:String = "CodeSystem"
-  var FHIR_AUDIT_EVENT:String = "AuditEvent"
-  var FHIR_OPERATION_DEFINITION:String = "OperationDefinition"
-  var FHIR_DOMAIN_RESOURCE = "DomainResource"
-  var FHIR_TYPES_META = "Meta"
+
   /** MediaType configurations for this FHIR version */
   // List of Supported FHIR JSON Media Types
   var FHIR_JSON_MEDIA_TYPES:Seq[MediaType] = _
@@ -102,9 +80,6 @@ class FhirConfig(val fhirContext:FhirContext) {
     case oth => Some(ContentType.apply(oth, () => HttpCharsets.`UTF-8`))
   }
 
-  //XML and JSON parsers for the given FHIR context
-  def xmlParser:IParser = fhirContext.newXmlParser().setStripVersionsFromReferences(false)
-  def jsonParser:IParser = fhirContext.newJsonParser().setStripVersionsFromReferences(false)
 
   /**
     * Check if the profile is supported
@@ -112,7 +87,7 @@ class FhirConfig(val fhirContext:FhirContext) {
     * @return
     */
   def isProfileSupported(profile:String):Boolean = {
-    supportedProfiles.flatMap(_._2).exists(_.equals(profile)) || supportedResources.exists(r => s"${FHIR_ROOT_URL_FOR_DEFINITIONS}/${FHIR_STRUCTURE_DEFINITION}/$r".equals(profile))
+    supportedProfiles.flatMap(_._2).exists(_.equals(profile))
   }
 
   /**
@@ -159,15 +134,70 @@ class FhirConfig(val fhirContext:FhirContext) {
       .flatMap(p => p.extractElementPaths())
   }
 
-  def isDstu2() = fhirContext.getVersion.getVersion match {
-    case FhirVersionEnum.DSTU2 | FhirVersionEnum.DSTU2_1 | FhirVersionEnum.DSTU2_HL7ORG => true
+  def isDstu2() = version match {
+    case "DSTU2" | "1.0.2" => true
     case _ => false
   }
 
 
   def isResourceTypeVersioned(rtype:String):Boolean = {
-    profileConfigurations.get(rtype).forall(_.versioning != FHIR_VERSIONING_OPTIONS.NO_VERSION)
+    resourceConfigurations.get(rtype).forall(_.versioning != FHIR_VERSIONING_OPTIONS.NO_VERSION)
   }
+
+  /**
+   * Get summary elements defined for
+   * @param rtype
+   * @return
+   */
+  def getSummaryElements(rtype:String):Set[String] = {
+    val cProfile = resourceConfigurations(rtype).profile.getOrElse(s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/$rtype")
+
+    profileRestrictions(cProfile).summaryElements
+  }
+
+  def getBaseProfile(rtype:String):ProfileRestrictions = {
+    findProfile(s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/$rtype").get
+  }
+
+  /**
+   * Find profile with the given URL
+   * @param profileUrl
+   * @return
+   */
+  def findProfile(profileUrl: String):Option[ProfileRestrictions] = {
+    profileRestrictions.get(profileUrl)
+  }
+  /**
+   * Find a chain of parent profiles until the base FHIR spec given the profile
+   *
+   * @param profileUrl Profile definition
+   * @return Profiles in order of evaluation (inner profile - base profile)
+   */
+  def findProfileChain(profileUrl: String): Seq[ProfileRestrictions] = {
+    findProfile(profileUrl) match {
+      case None => Nil
+      case Some(profile) => findChain(profileRestrictions)(profile)
+    }
+  }
+
+  /**
+   * Supplementary method for profile chain finding
+   *
+   * @param restrictions
+   * @param profile
+   * @return
+   */
+  private def findChain(restrictions: Map[String, ProfileRestrictions])(profile: ProfileRestrictions): Seq[ProfileRestrictions] = {
+    profile
+      .baseUrl
+      .map(burl =>
+        restrictions
+          .get(burl)
+          .fold[Seq[ProfileRestrictions]](Seq(profile))(parent => profile +: findChain(restrictions)(parent))
+      )
+      .getOrElse(Seq(profile))
+  }
+
 }
 
 /**
@@ -183,10 +213,13 @@ class FhirConfig(val fhirContext:FhirContext) {
   * @param targets
   *                For reference parameter types, the possible target Resource types
   *                For composite parameter types, the names of the parameters to combine in the same order of query usage
-  * @param modifiers Supported modifiers of the parameter
-  * @param targetTypes Seq of target type for each path (indices are inline with paths)
-  * @param onExtension If this is defined on an extension path
-  * @param restrictions Further restriction on the search for each path e.g. For "f:OrganizationAffiliation/f:telecom[system/@value=&#39;email&#39;]" --> system -> email
+  * @param modifiers      Supported modifiers of the parameter
+  * @param targetTypes    Seq of target type for each path (indices are inline with paths)
+  * @param onExtension    If this is defined on an extension path
+  * @param restrictions   Further restriction on the search for each path e.g. For "f:OrganizationAffiliation/f:telecom[system/@value=&#39;email&#39;]" --> system -> email
+  * @param multipleOr     If or on parameter is supported
+  * @param multipleAnd    If and on parameter is supported
+  * @param comparators    Supported comparators for parameter
   */
 case class SearchParameterConf(pname:String,
                                ptype:String,
@@ -195,7 +228,10 @@ case class SearchParameterConf(pname:String,
                                modifiers:Set[String],
                                targetTypes:Seq[String] = Nil,
                                onExtension:Boolean = false,
-                               restrictions:Seq[Option[(String, String)]] = Nil
+                               restrictions:Seq[Option[(String, String)]] = Nil,
+                               multipleOr:Boolean = true,
+                               multipleAnd:Boolean = true,
+                               comparators:Set[String] = Set.empty[String]
                               ) {
 
   /**
@@ -224,6 +260,7 @@ case class SearchParameterConf(pname:String,
   * @param profile           Base profile for all uses of resource
   * @param supportedProfiles Profiles for use cases supported
   * @param interactions      FHIR interactions supported
+  * @param searchParams      Urls of SearchParameter definitions for supported search parameters
   * @param versioning        Supported versioning code i.e no-version, versioned, versioned-update
   * @param readHistory       Whether vRead can return past versions
   * @param updateCreate      If update can create a new resource
@@ -239,6 +276,7 @@ case class ResourceConf(resource:String,
                         profile:Option[String],
                         supportedProfiles:Set[String],
                         interactions:Set[String],
+                        searchParams:Set[String],
                         versioning:String,
                         readHistory:Boolean,
                         updateCreate:Boolean,
@@ -274,6 +312,7 @@ case class OperationParamDef(name:String, //Parameter name
 
 /**
   * Onfhir configuration for a supported FHIR operation
+  * @param url            URL of the definition
   * @param name           Name of the operation to use e.g. validate --> $validate (parsed from OperationDefinition.code)
   * @param classPath      Full class path for the implementation of operation (parsed from OperationDefinition.name)
   * @param kind           Kind of operation "operation" or "query"
@@ -282,7 +321,8 @@ case class OperationParamDef(name:String, //Parameter name
   * @param inputParams    Input parameter definitions or profile for input as a whole (Parameters resource)
   * @param outputParams   Output parameter definitions or profile for output
   */
-case class OperationConf(name:String,
+case class OperationConf(url:String,
+                         name:String,
                          classPath:String,
                          kind:String,
                          levels:Set[String],

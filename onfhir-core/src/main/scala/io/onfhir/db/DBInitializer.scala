@@ -508,6 +508,7 @@ object DBInitializer {
     * @return
     */
   def getConformance(resourceType:String):Resource = {
+    logger.info(s"Reading $resourceType of server from database ...")
     val job = ResourceManager.getResource(resourceType, SERVER_CONFORMANCE_STATEMENT_ID, None, excludeExtraFields = true) map {
       //No conformance statement
       case None =>
@@ -524,6 +525,7 @@ object DBInitializer {
     * @return
     */
   def getInrastructureResources(resourceType:String):Seq[Resource] = {
+    logger.info(s"Reading $resourceType definitions from database ...")
     val job =
       ResourceManager
         .queryResources(resourceType, List.empty, excludeExtraFields = true)

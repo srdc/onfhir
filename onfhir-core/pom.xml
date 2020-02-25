@@ -41,6 +41,10 @@
             <groupId>onfhir</groupId>
             <artifactId>onfhir-kafka</artifactId>
         </dependency>
+        <dependency>
+            <groupId>onfhir</groupId>
+            <artifactId>onfhir-validation</artifactId>
+        </dependency>
         <!--Configurations-->
         <dependency>
             <groupId>com.typesafe</groupId>

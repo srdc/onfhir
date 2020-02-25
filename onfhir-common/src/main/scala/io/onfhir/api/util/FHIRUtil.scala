@@ -646,17 +646,30 @@ object FHIRUtil {
   }
 
   /**
+   * Convert a multip parameter into map with name -> Param object
+   * @param parameter
+   * @return
+   */
+  def convertToParameterMap(parameter:JValue):Map[String, JValue] = {
+    parameter \ FHIR_COMMON_FIELDS.PARAMETER match {
+      case JArray(values) => values.map(v => (v \ FHIR_COMMON_FIELDS.NAME).extract[String] -> v).toMap
+      case _ => Map.empty
+    }
+  }
+
+  /**
     * Return the parameter value from the parameter object (BackboneElement in Parameters definition) given parameter type as JValue
     * @param parameter
     * @param valueType
     * @return
     */
-  private def getParameterValueByType(parameter:Resource, valueType:String):Option[JValue] = {
+  private def getParameterValueByType(parameter:Resource, valueType:Option[String]):Option[JValue] = {
     val found = valueType match {
-      case "Resource" => parameter \ FHIR_COMMON_FIELDS.RESOURCE //Any resource
-      case dt if FHIR_ALL_DATA_TYPES.contains(valueType) =>
-        parameter \ s"value${valueType.capitalize}"
-      case  _ => parameter \ FHIR_COMMON_FIELDS.RESOURCE //Resource types
+      case None =>  JObject(FHIR_COMMON_FIELDS.PARAMETER ->  (parameter \ "part")) //make it similar to root level
+      case Some("Resource") => parameter \ FHIR_COMMON_FIELDS.RESOURCE //Any resource
+      case Some(dt) if FHIR_ALL_DATA_TYPES.contains(dt) =>
+        parameter \ s"value${dt.capitalize}"
+      case  Some(_) => parameter \ FHIR_COMMON_FIELDS.RESOURCE //Resource types
     }
     found match {
       case JNothing => None
@@ -671,7 +684,7 @@ object FHIRUtil {
     * @param ptype
     * @return
     */
-  def getParameterValue(parametersResource:Resource, pname:String, ptype:String): Seq[JValue] ={
+  def getParameterValue(parametersResource:Resource, pname:String, ptype:Option[String]): Seq[JValue] ={
     getParametersByName(parametersResource, pname)
       .flatMap(getParameterValueByType(_, ptype))
   }

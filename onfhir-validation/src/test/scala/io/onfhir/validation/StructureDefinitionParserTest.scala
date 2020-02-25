@@ -1,6 +1,7 @@
 package io.onfhir.validation
 
 import io.onfhir.api.util.{FHIRUtil, IOUtil}
+import io.onfhir.r4.parsers.StructureDefinitionParser
 import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner

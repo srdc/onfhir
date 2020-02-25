@@ -45,3 +45,7 @@ case class FhirInternalReference(ref:String) extends FhirReference {
   def getReference():String = s"#$ref"
 }
 
+case class FhirUUIDReference(uuid:String)extends FhirReference {
+  def getReference():String = uuid
+}
+

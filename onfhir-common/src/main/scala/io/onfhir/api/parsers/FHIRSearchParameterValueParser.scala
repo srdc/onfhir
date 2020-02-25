@@ -321,8 +321,8 @@ object FHIRSearchParameterValueParser {
 
         //Check if given _include or _revinclude supported for resource type
         if(
-          inclusionType == FHIR_SEARCH_RESULT_PARAMETERS.INCLUDE && joinedParam!= "*" && !fhirConfig.profileConfigurations(rtype).searchInclude.exists(_.contains(joinedParam)) ||
-            inclusionType == FHIR_SEARCH_RESULT_PARAMETERS.REVINCLUDE && joinedParam!= "*" && !fhirConfig.profileConfigurations(rtype).searchRevInclude.exists(_.contains(joinedResourceType + ":" + joinedParam))
+          inclusionType == FHIR_SEARCH_RESULT_PARAMETERS.INCLUDE && joinedParam!= "*" && !fhirConfig.resourceConfigurations(rtype).searchInclude.exists(_.contains(joinedParam)) ||
+            inclusionType == FHIR_SEARCH_RESULT_PARAMETERS.REVINCLUDE && joinedParam!= "*" && !fhirConfig.resourceConfigurations(rtype).searchRevInclude.exists(_.contains(joinedResourceType + ":" + joinedParam))
         )
           throw new UnsupportedParameterException(s"Search parameter _include or _revinclude is not supported for $valueExpr on resource type $rtype ! Please check conformance statement of server!")
 
@@ -331,11 +331,11 @@ object FHIRSearchParameterValueParser {
           (inclusionType, joinedParam) match {
             //Inclusion of all
             case (FHIR_SEARCH_RESULT_PARAMETERS.INCLUDE, "*") =>
-              fhirConfig.profileConfigurations(rtype)
+              fhirConfig.resourceConfigurations(rtype)
                 .searchInclude.toSeq //Get all supported includes
                 .map(p => joinedResourceType -> p)
             case (FHIR_SEARCH_RESULT_PARAMETERS.REVINCLUDE, "*") =>
-              fhirConfig.profileConfigurations(rtype)
+              fhirConfig.resourceConfigurations(rtype)
                 .searchRevInclude.toSeq //Get all supported reverse includes
                 .map(_.split(":")) //Parse them e.g. AllergyIntolerance:patient
                 .map(s => s.head -> s.last)

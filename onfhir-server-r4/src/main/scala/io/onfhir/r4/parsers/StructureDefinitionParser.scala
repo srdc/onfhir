@@ -1,23 +1,16 @@
-package io.onfhir.validation
+package io.onfhir.r4.parsers
 
-import java.io.{File, FileInputStream, InputStream, InputStreamReader}
-import java.util.zip.{ZipEntry, ZipInputStream}
-
-import io.onfhir.api.{FHIR_DATA_TYPES, FHIR_ROOT_URL_FOR_DEFINITIONS, Resource, validation}
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.api.validation.{ConstraintKeys, ElementRestrictions, FhirRestriction, FhirSlicing, ProfileRestrictions}
-import io.onfhir.config.OnfhirConfig
-import io.onfhir.exception.InitializationException
-import io.onfhir.path.FhirPathEvaluator
-import io.onfhir.util.OnFhirZipInputStream
-import org.apache.commons.io.input.BOMInputStream
+import io.onfhir.api.validation._
+import io.onfhir.api.{FHIR_DATA_TYPES, FHIR_ROOT_URL_FOR_DEFINITIONS, Resource, validation}
+import io.onfhir.validation.{AbstractStructureDefinitionParser, ConstraintsRestriction, MaxLengthRestriction, ReferenceRestrictions, TypeRestriction}
 import org.json4s.JsonAST.{JObject, JValue}
-import org.json4s.jackson.JsonMethods
 import org.slf4j.{Logger, LoggerFactory}
 
-import scala.collection.mutable
-
-object StructureDefinitionParser {
+/**
+ * Parser for R4 StructureDefinition resources to convert them to our compact form
+ */
+class StructureDefinitionParser extends AbstractStructureDefinitionParser {
   protected val logger:Logger = LoggerFactory.getLogger(this.getClass)
 
   /**
@@ -25,7 +18,7 @@ object StructureDefinitionParser {
    * @param structureDef Parsed FHIR StructureDefinition
    * @return
    */
-  def parseProfile(structureDef:Resource):Option[ProfileRestrictions] = {
+  override def parseProfile(structureDef:Resource):Option[ProfileRestrictions] = {
     //Get resource type
     val rtype =  FHIRUtil.extractValueOption[String](structureDef, "type").get
     //Do not get primitive type definitions
@@ -51,13 +44,13 @@ object StructureDefinitionParser {
       val elemDefs =
         elementDefs
         .map(parseElementDef(_, rtype, if(profileUrl.startsWith(FHIR_ROOT_URL_FOR_DEFINITIONS)) None else Some(profileUrl))) //Parse the element definitions
-        .map(e => e.path -> e)
 
 
       Some(validation.ProfileRestrictions(
         url = FHIRUtil.extractValueOption[String](structureDef, "url").get,
         baseUrl = FHIRUtil.extractValueOption[String](structureDef, "baseDefinition"),
-        elementRestrictions = elemDefs,
+        elementRestrictions = elemDefs.map(e => e._1.path -> e._1),
+        summaryElements= elemDefs.filter(_._2).map(e => e._1.path).toSet,
         constraints =
           baseResourceElemDefinition
             .flatMap(e =>
@@ -75,9 +68,9 @@ object StructureDefinitionParser {
    * Parse FHIR Element definition to generate our internal model to keep restrictions on element
    * @param elemDef       FHIR Element definition to parse
    * @param profileUrl    URL of the profile that this element definition is defined (If not FHIR base)
-   * @return
+   * @return Parsed Definition and if element is a summary element
    */
-  private def parseElementDef(elemDef:JObject, resourceType:String, profileUrl:Option[String]):ElementRestrictions = {
+  override def parseElementDef(elemDef:JObject, resourceType:String, profileUrl:Option[String]):(ElementRestrictions, Boolean) = {
     val dataTypeAndProfile =
       FHIRUtil
         .extractValueOption[Seq[JObject]](elemDef, "type")
@@ -152,108 +145,6 @@ object StructureDefinitionParser {
         FHIRUtil.extractValueOption[String](elemDef, "contentReference")
           .map(cr => cr.dropWhile( _ != '.').drop(1)),
       profileDefinedIn = profileUrl
-    )
+    ) -> (FHIRUtil.extractValueOption[Boolean](elemDef, "isSummary").getOrElse(false))
   }
-
-  /**
-    * Create a cardinality min restriction from int value
-    * @param n
-    * @return
-    */
-  private def createMinRestriction(n:Int):Option[FhirRestriction] = {
-    n match {
-      case 0 => None
-      case i => Some(CardinalityMinRestriction(i))
-    }
-  }
-
-  /**
-    * Create a max cardinality restriction from string
-    * @param n
-    * @return
-    */
-  private def createMaxRestriction(n:String):Option[FhirRestriction]  = {
-      n match {
-        case "*" => None
-        case i => Some(CardinalityMaxRestriction(i.toInt))
-      }
-  }
-
-  /**
-    * Create a array restriction
-    * @param isBase
-    * @param n
-    * @return
-    */
-  private def createArrayRestriction(isBase:Boolean, n:Option[String]):Option[FhirRestriction] = {
-    if(isBase && n.exists(m=> m  == "*" || m.toInt > 1)) Some(ArrayRestriction()) else None
-  }
-
-  /**
-   * Create Binding restriction
-   * @param bindingDef
-   * @return
-   */
-  private def createBindingRestriction(bindingDef:JObject):Option[FhirRestriction] = {
-    val bindingStrength = FHIRUtil.extractValueOption[String](bindingDef, "strength").get
-    if(bindingStrength == "required" || bindingStrength == "extensible" || bindingStrength == "preferred"){
-      FHIRUtil.extractValueOption[String](bindingDef, "valueSet")
-        .map(v => FHIRUtil.parseCanonicalValue(v))
-        .map { case (vsUrl, version) => CodeBindingRestriction(vsUrl, version, bindingStrength == "required")}
-    } else None
-  }
-
-  private def createMinMaxValueRestriction(dataType:String, value:JValue, isMin:Boolean):FhirRestriction = {
-    MinMaxValueRestriction(value, isMin)
-  }
-
-  private def createFixedPatternRestriction(dataType:String, fixedOrPatternValue:JValue, isFixed:Boolean) = {
-    FixedOrPatternRestriction(fixedOrPatternValue,  isFixed)
-  }
-
-  /**
-   * Parse the Constraint definition within the element definitions of FHIR
-   * @param constraintDef parsed json definition content
-   * @return
-   */
-  private def parseConstraint(constraintDef: JObject):Option[FhirConstraint] = {
-    FHIRUtil.extractValueOption[String](constraintDef, "expression")
-      .flatMap(expression =>
-        expression match {
-          //This is not a FHIR path expression, but they use it for xhtml type
-          case "htmlChecks()" => None
-          //Go on
-          case _ => FHIRUtil.extractValue[String](constraintDef, "key") match {
-            //This is a common constraint that forces elements to have childs (we already check it)
-            case "ele-1" => None
-            case ckey =>
-              Some(FhirConstraint(
-                key = ckey,
-                desc = FHIRUtil.extractValue[String](constraintDef, "human"),
-                expr = FhirPathEvaluator().parse(expression),
-                isWarning = FHIRUtil.extractValueOption[String](constraintDef, "severity").get == "warning"
-              ))
-          }
-        }
-    )
-  }
-
-  /**
-   * Parse slicing definition
-   * @param slicing JSON content of slicing def
-   * @return
-   */
-  private def parseSlicing(slicing: JObject):Option[FhirSlicing] = {
-    val isOrdered = FHIRUtil.extractValueOption[Boolean](slicing, "ordered").getOrElse(false)
-    val discr= FHIRUtil.extractValueOption[Seq[JObject]](slicing, "discriminator").getOrElse(Nil)
-    if(isOrdered || discr.nonEmpty)
-      Some(FhirSlicing(
-        discriminators = discr.map(d => FHIRUtil.extractValueOption[String](d, "type").get -> FHIRUtil.extractValueOption[String](d, "path").get),
-        ordered = isOrdered,
-        rule =  FHIRUtil.extractValueOption[String](slicing, "rules").get
-      ))
-    else
-      None
-  }
-
 }

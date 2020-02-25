@@ -1,12 +1,15 @@
-package io.onfhir.r4.parsers
+package io.onfhir.r4.config
 
-import io.onfhir.api.Resource
-import io.onfhir.api.parsers.{FHIRCapabilityStatement, FHIRSearchParameter, IFHIRFoundationResourceParser}
-import io.onfhir.config.{OnfhirConfig, OperationConf, OperationParamDef, ResourceConf}
+import io.onfhir.api.{FHIR_SEARCH_RESULT_PARAMETERS, Resource}
+import io.onfhir.api.validation.{ProfileRestrictions, ValueSetRestrictions}
+import io.onfhir.config._
+import io.onfhir.r4.parsers.StructureDefinitionParser
 import io.onfhir.util.JsonFormatter.formats
+import io.onfhir.validation.TerminologyParser
 import org.json4s._
 
-class FHIRR4FoundationResourceParser extends IFHIRFoundationResourceParser{
+class FhirR4Configurator extends IFhirVersionConfigurator{
+
   /**
    * Parse a FHIR Capability Statement into our compact form
    *
@@ -24,6 +27,7 @@ class FHIRR4FoundationResourceParser extends IFHIRFoundationResourceParser{
           profile = (resourceDef \ "profile").extractOpt[String],
           supportedProfiles = (resourceDef \ "supportedProfile").extractOrElse[Seq[String]](Nil).toSet,
           interactions = (resourceDef \ "interaction" \ "code").extractOrElse[Seq[String]](Nil).toSet,
+          searchParams = (resourceDef \ "searchParam" \ "definition").extractOrElse[Seq[String]](Nil).toSet,
           versioning = (resourceDef \ "versioning").extractOrElse[String](OnfhirConfig.fhirDefaultVersioning),
           readHistory = (resourceDef \ "readHistory").extractOrElse[Boolean](OnfhirConfig.fhirDefaultReadHistory),
           updateCreate = (resourceDef \ "updateCreate").extractOrElse[Boolean](OnfhirConfig.fhirDefaultUpdateCreate),
@@ -37,7 +41,9 @@ class FHIRR4FoundationResourceParser extends IFHIRFoundationResourceParser{
         )
       ),
       searchParamDefUrls = extractCommonSearchParameterDefinitionUrls(capabilityStmt).toSet,
-      operationDefUrls = extractOperationDefinitionUrls(capabilityStmt).toSet
+      operationDefUrls = extractOperationDefinitionUrls(capabilityStmt).toSet,
+      systemLevelInteractions = (capabilityStmt \ "rest" \ "interaction" \ "code").extractOrElse[Seq[String]](Nil).toSet,
+      compartments = (capabilityStmt \ "rest" \ "compartment").extractOrElse[Seq[String]](Nil).toSet
     )
   }
 
@@ -92,7 +98,7 @@ class FHIRR4FoundationResourceParser extends IFHIRFoundationResourceParser{
    * @param operationDefinition OperationDefinition resource in parsed JSON format
    * @return
    */
-  override def parseOperationDefinition(operationDefinition: Resource, cp:Option[String] = None): OperationConf = {
+  override def parseOperationDefinition(operationDefinition: Resource): OperationConf = {
     val paramDefObjs = (operationDefinition \ "parameter").asInstanceOf[JArray].arr.map(_.asInstanceOf[JObject])
     //Parse all parameter definitions
     val paramDefs = paramDefObjs.map(parseOperationParamDefinition)
@@ -101,8 +107,9 @@ class FHIRR4FoundationResourceParser extends IFHIRFoundationResourceParser{
     val outputProfile = (operationDefinition \  "outputProfile").extractOpt[String]
 
     OperationConf(
+        url = (operationDefinition \  "url").extract[String],
         name =  (operationDefinition \  "code").extract[String],
-        classPath = cp.getOrElse((operationDefinition \  "name").extract[String]),
+        classPath = (operationDefinition \  "name").extract[String],
         kind = (operationDefinition \  "kind").extract[String],
         levels = Seq(
           "system" ->  (operationDefinition \  "system").extract[Boolean],
@@ -153,8 +160,7 @@ class FHIRR4FoundationResourceParser extends IFHIRFoundationResourceParser{
    * @param compartmentDefinition CompartmentDefinition resource in parsed JSON format
    * @return
    */
-  override def parseCompartmentDefinition(compartmentDefinition: Resource): (String, Map[String, Set[String]]) = {
-    val compartmentCode = (compartmentDefinition \ "code").extract[String]
+  override def parseCompartmentDefinition(compartmentDefinition: Resource): FHIRCompartmentDefinition = {
 
     val relations =
       (compartmentDefinition \ "resource").asInstanceOf[JArray].arr
@@ -162,6 +168,35 @@ class FHIRR4FoundationResourceParser extends IFHIRFoundationResourceParser{
           (r \ "code").extract[String] -> (r \ "param").extractOrElse[Seq[String]](Nil).toSet
         ).toMap
 
-    compartmentCode -> relations
+    FHIRCompartmentDefinition(
+      (compartmentDefinition \ "url").extract[String],
+      (compartmentDefinition \ "code").extract[String],
+      relations
+    )
+  }
+
+  override def extractResourcesFromBundle(bundle: Resource, rtype: String): Seq[Resource] = {
+    val resources =  (bundle \ "entry" \ "resource").extract[Seq[JObject]]
+    resources.filter(r => (r \ "resourceType").extract[String] == rtype)
+  }
+
+  /**
+   * Parse a FHIR StructureDefinition into our compact form
+   *
+   * @param structureDefinition
+   * @return
+   */
+  override def parseStructureDefinition(structureDefinition: Resource): Option[ProfileRestrictions] = {
+    new StructureDefinitionParser().parseProfile(structureDefinition)
+  }
+
+  /**
+   * Parse a bundle of FHIR ValueSet and CodeSystem into a compact form for validation
+   *
+   * @param valueSetOrCodeSystems
+   * @return
+   */
+  override def parseValueSetAndCodeSystems(valueSetOrCodeSystems: Seq[Resource]): Map[String, Map[String, ValueSetRestrictions]] = {
+    new TerminologyParser().parseValueSetBundle(valueSetOrCodeSystems)
   }
 }

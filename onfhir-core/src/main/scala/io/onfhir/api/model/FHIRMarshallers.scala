@@ -8,6 +8,7 @@ import akka.http.scaladsl.unmarshalling.Unmarshaller
 import io.onfhir.api.Resource
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
 import io.onfhir.util.JsonFormatter._
+import io.onfhir.util.XmlFormatter._
 
 import org.apache.commons.lang3.StringEscapeUtils
 import org.json4s.JsonAST.JObject
@@ -40,8 +41,7 @@ object FHIRMarshallers {
             } else if ( fhirConfig.FHIR_XML_MEDIA_TYPES.exists(supportedXmlMediaType => entity.contentType.mediaType.matches(supportedXmlMediaType))
             ) {
               //XML Unmarshalling
-              val resourceObj = fhirConfig.xmlParser.parseResource(data)
-              convertToMap(fhirConfig.jsonParser.encodeResourceToString(resourceObj))
+              data.parseXML
             } else if (fhirConfig.FHIR_JSON_PATCH_MEDIA_TYPE.exists(e => entity.contentType.mediaType.matches(e))
 
             ) {
@@ -118,8 +118,7 @@ object FHIRMarshallers {
     * @return
     */
   private def convertToXml(resource: Resource):String = {
-    val hapiResource = fhirConfig.jsonParser.parseResource(resource.toJson)
-    fhirConfig.xmlParser.encodeResourceToString(hapiResource)
+    new XmlConvertable(resource).toXml
   }
 
   /**
