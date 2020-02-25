@@ -129,6 +129,9 @@ object OnfhirConfig {
   /** Indicates how to handle erroneous search requests*/
   lazy val fhirSearchHandling:String = Try(config.getString("fhir.search-handling")).toOption.getOrElse(FHIR_HTTP_OPTIONS.FHIR_SEARCH_LENIENT)
 
+  /** Which Foundation resource types we should persist into database from base standart */
+  lazy val fhirPersistBaseDefinitions:Set[String] = Try(config.getStringList("fhir.persisted-base-definitions")).toOption.map(_.asScala.toSet).getOrElse(Set.empty[String])
+
   /** Auditing related configurations */
   lazy val fhirAuditingRepository:String = Try(config.getString("fhir.auditing.repository")).toOption.getOrElse("local")
   lazy val fhirAuditingRepositoryUrl:Option[String] = Try(config.getString("fhir.auditing.repository-url")).toOption

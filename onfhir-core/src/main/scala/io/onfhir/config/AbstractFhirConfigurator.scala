@@ -220,6 +220,18 @@ abstract class AbstractFhirConfigurator[CONF <: IBaseResource,
     DBInitializer.storeInfrastructureResources(FHIR_OPERATION_DEFINITION,  operationDefinitions.map(vs => encodeResource(FHIR_OPERATION_DEFINITION, vs)))
     //Store the Code systems
     DBInitializer.storeInfrastructureResources(FHIR_CODE_SYSTEM,  codeSystems.map(cs => encodeResource(FHIR_CODE_SYSTEM, cs)))
+
+    //If we need to persist the base standard definitions
+    OnfhirConfig.fhirPersistBaseDefinitions.foreach( pbd => {
+      if(pbd == FHIR_STRUCTURE_DEFINITION)
+        DBInitializer.storeInfrastructureResources(FHIR_STRUCTURE_DEFINITION, getBaseStructureDefinitions.map(profile => encodeResource(FHIR_STRUCTURE_DEFINITION, profile)))
+      else if(pbd == FHIR_SEARCH_PARAMETER)
+        DBInitializer.storeInfrastructureResources(FHIR_SEARCH_PARAMETER, getBaseSearchParameters.map(param => encodeResource(FHIR_SEARCH_PARAMETER, param)))
+      else if(pbd ==  FHIR_OPERATION_DEFINITION)
+        DBInitializer.storeInfrastructureResources(FHIR_OPERATION_DEFINITION, getBaseOperationDefinitions.map(param => encodeResource(FHIR_OPERATION_DEFINITION, param)))
+      else
+        logger.warn(s"We does not support persistence of $pbd for base standart")
+    })
   }
 
 
