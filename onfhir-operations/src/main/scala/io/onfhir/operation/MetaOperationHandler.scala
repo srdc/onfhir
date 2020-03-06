@@ -1,9 +1,8 @@
 package io.onfhir.operation
 
 import akka.http.scaladsl.model.StatusCodes
-import ca.uhn.fhir.validation.ResultSeverityEnum
 import io.onfhir.api._
-import io.onfhir.api.model.{FHIROperationRequest, FHIROperationResponse, FHIRResponse, OutcomeIssue}
+import io.onfhir.api.model.{FHIROperationRequest, FHIROperationResponse, FHIRResponse, FHIRSimpleOperationParam, OutcomeIssue}
 import io.onfhir.api.service.FHIROperationHandlerService
 import io.onfhir.db.ResourceManager
 import io.onfhir.exception._
@@ -52,14 +51,14 @@ class MetaOperationHandler extends FHIROperationHandlerService {
     */
    def handleMetaAdd(operationRequest: FHIROperationRequest, resourceType:String, resourceId:String):Future[FHIROperationResponse] = {
      //Get the input parameter "meta:Meta"
-     val newMeta = operationRequest.getParam("meta").get
+     val newMeta = operationRequest.getParam("meta").get.asInstanceOf[FHIRSimpleOperationParam].value
 
      ResourceManager.getResource(resourceType, resourceId, excludeExtraFields = true).flatMap {
        case None =>
          logger.debug("resource not found, return 404 NotFound...")
          throw new NotFoundException(Seq(
            OutcomeIssue(
-             ResultSeverityEnum.INFORMATION.getCode,
+             FHIRResponse.SEVERITY_CODES.INFORMATION,
              FHIRResponse.OUTCOME_CODES.INFORMATIONAL,
              None,
              Some(s"Resource with type (${resourceType}), id (${resourceId}) not found..."),
@@ -90,14 +89,14 @@ class MetaOperationHandler extends FHIROperationHandlerService {
     */
    def handleMetaDelete(operationRequest: FHIROperationRequest, resourceType:String, resourceId:String):Future[FHIROperationResponse] = {
      //Get the input parameter "meta:Meta"
-     val metaToBeDeleted = operationRequest.getParam("meta").get
+     val metaToBeDeleted = operationRequest.getParam("meta").get.asInstanceOf[FHIRSimpleOperationParam].value
 
      ResourceManager.getResource(resourceType, resourceId).flatMap {
        case None =>
          logger.debug("resource not found, return 404 NotFound...")
          throw new NotFoundException(Seq(
            OutcomeIssue(
-             ResultSeverityEnum.INFORMATION.getCode,
+             FHIRResponse.SEVERITY_CODES.INFORMATION,
              FHIRResponse.OUTCOME_CODES.INFORMATIONAL,
              None,
              Some(s"Resource with type (${resourceType}), id (${resourceId}) not found..."),

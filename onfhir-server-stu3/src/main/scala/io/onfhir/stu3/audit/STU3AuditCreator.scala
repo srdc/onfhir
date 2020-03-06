@@ -9,7 +9,6 @@ import io.onfhir.audit.{AgentsInfo, IFhirAuditCreator}
 import io.onfhir.authz.{AuthContext, AuthzContext}
 import io.onfhir.config.OnfhirConfig
 import io.onfhir.util.DateTimeUtil
-import org.hl7.fhir.dstu3.model.codesystems.AuditEventType
 import org.json4s.JsonAST._
 import org.json4s.JsonDSL._
 
@@ -48,7 +47,7 @@ class STU3AuditCreator extends IFhirAuditCreator {
 
     //Construct audit record
     var auditRecord = createBaseAuditEventRecord() ~
-      ("type" ->  createCodingElement(AuditEventType.REST.getSystem, AuditEventType.REST.toCode)) ~
+      ("type" ->  createCodingElement("http://hl7.org/fhir/audit-event-type","rest")) ~
       ("subtype" -> createCodingElement( "http://hl7.org/fhir/restful-interaction", fhirRequest.interaction)) ~
       ("action" -> resolveAuditEventActionCode(fhirRequest)) ~
       ("recorded" -> DateTimeUtil.serializeInstant(Instant.now())) ~

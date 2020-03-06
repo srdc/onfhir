@@ -1,7 +1,7 @@
 package io.onfhir.operation
 
 import akka.http.scaladsl.model.StatusCodes
-import ca.uhn.fhir.validation.ResultSeverityEnum
+
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIROperationRequest, FHIROperationResponse, FHIRResponse, OutcomeIssue}
 import io.onfhir.api.service.FHIROperationHandlerService
@@ -44,14 +44,14 @@ class ValidationOperationHandler extends FHIROperationHandlerService {
     */
   override def executeOperation(operationName: String, operationRequest: FHIROperationRequest, resourceType: Option[String], resourceId: Option[String]): Future[FHIROperationResponse] = {
     //Validation mode; create, update, delete or default general
-    val mode:String = operationRequest.extractParam[String](PARAMETER_MODE).getOrElse(VALIDATION_MODE_GENERAL)
+    val mode:String = operationRequest.extractParamValue[String](PARAMETER_MODE).getOrElse(VALIDATION_MODE_GENERAL)
     //Profile to validate against
-    val profile:Option[String] = operationRequest.extractParam[String](PARAMETER_PROFILE)
+    val profile:Option[String] = operationRequest.extractParamValue[String](PARAMETER_PROFILE)
     val resource:Option[Resource] = operationRequest.getParam(PARAMETER_RESOURCE).map(_.asInstanceOf[JObject])
     //Check if resource is not empty unless validation mode is delete
     if(mode != VALIDATION_MODE_DELETE && resource.isEmpty)
       throw new BadRequestException(Seq(
-        OutcomeIssue(ResultSeverityEnum.ERROR.getCode,
+        OutcomeIssue(FHIRResponse.SEVERITY_CODES.ERROR,
           FHIRResponse.OUTCOME_CODES.INVALID,
           None,
           Some(s"Empty or invalid resource body while validation mode is not '$VALIDATION_MODE_DELETE'"),
@@ -82,7 +82,7 @@ class ValidationOperationHandler extends FHIROperationHandlerService {
       case _ =>
         Future.apply(FHIRResponse.errorResponse(StatusCodes.BadRequest,
           Seq(
-            OutcomeIssue(ResultSeverityEnum.ERROR.getCode, //fatal
+            OutcomeIssue(FHIRResponse.SEVERITY_CODES.ERROR, //fatal
               FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED,
               None,
               Some(s"Not supported validation mode (create, update, delete) are  supported only!"),
@@ -105,7 +105,7 @@ class ValidationOperationHandler extends FHIROperationHandlerService {
         case None =>
           Future.apply(
             FHIRResponse.errorResponse(StatusCodes.BadRequest,
-              Seq(OutcomeIssue(ResultSeverityEnum.ERROR.getCode, //fatal
+              Seq(OutcomeIssue(FHIRResponse.SEVERITY_CODES.ERROR, //fatal
                 FHIRResponse.OUTCOME_CODES.INVALID,
                 None,
                 Some(s"Parameter '$PARAMETER_RESOURCE' is required for validation in general mode!"),
@@ -119,7 +119,7 @@ class ValidationOperationHandler extends FHIROperationHandlerService {
             //Check if we support profile, if not return not supported
             if(!fhirConfig.isProfileSupported(profileOption.get))
               throw new MethodNotAllowedException(Seq(
-                OutcomeIssue(ResultSeverityEnum.ERROR.getCode,
+                OutcomeIssue(FHIRResponse.SEVERITY_CODES.ERROR,
                   FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED,
                   None,
                   Some(s"Given profile is not supported in this server. See our Conformance statement from ${OnfhirConfig.fhirRootUrl}/metadata for all supported profiles ..."),
@@ -127,7 +127,7 @@ class ValidationOperationHandler extends FHIROperationHandlerService {
             //else Set the profile into the resource
             FHIRUtil.setProfile(resource, profileOption.get)
           } else resource
-          validateContent(resultResource, validationMode) map { issues =>
+          validateContent(resultResource, resourceType, validationMode) map { issues =>
             //Not error response, but we should return OperationOutcome so we use this
             FHIRResponse.errorResponse(StatusCodes.OK, issues)
           }
@@ -137,18 +137,16 @@ class ValidationOperationHandler extends FHIROperationHandlerService {
 
   /**
     * Validate content of a resource
-    * @param json
+    * @param resource
     * @param validationMode
     * @return
     */
-  private def validateContent(resource:Resource, validationMode:Option[String]=None):Future[Seq[OutcomeIssue]] = {
+  private def validateContent(resource:Resource, resourceType:String, validationMode:Option[String]=None):Future[Seq[OutcomeIssue]] = {
     //Validate resource in silent mode to get only the issues (preventing exception throwing)
-    fhirValidator.validateResource(resource, silent = true) map { issues =>
+    fhirValidator.validateResource(resource, resourceType, silent = true) map { issues =>
       //If no error, add information issue that everything is ok
       if(
-          !issues.exists(issue =>
-              issue.severity.equals(ResultSeverityEnum.ERROR.getCode) |
-                issue.severity.equals(ResultSeverityEnum.FATAL.getCode))
+          !issues.exists(i => i.isError)
         )
         Seq(everythingOk) ++ issues
       else
@@ -193,7 +191,7 @@ class ValidationOperationHandler extends FHIROperationHandlerService {
     if(rid.isEmpty)
       throw new BadRequestException(Seq(
         OutcomeIssue(
-          ResultSeverityEnum.ERROR.getCode,
+          FHIRResponse.SEVERITY_CODES.ERROR,
           FHIRResponse.OUTCOME_CODES.INVALID,
           None,
           Some(s"Invalid request for validation mode '$validationMode'."+ " Use the request scheme 'URL: [base]/[Resource]/[id]/$validate'"),
@@ -215,13 +213,13 @@ class ValidationOperationHandler extends FHIROperationHandlerService {
         case false =>
         //If resource does not exist
           Future.apply(FHIRResponse.errorResponse(StatusCodes.OK,
-            Seq(OutcomeIssue(ResultSeverityEnum.ERROR.getCode, FHIRResponse.OUTCOME_CODES.INFORMATIONAL, None, Some("Resource with the given id does not exist. So operation is not allowed!"), Nil))))
+            Seq(OutcomeIssue(FHIRResponse.SEVERITY_CODES.ERROR, FHIRResponse.OUTCOME_CODES.INFORMATIONAL, None, Some("Resource with the given id does not exist. So operation is not allowed!"), Nil))))
         case true=>
           if (validationMode.equals(VALIDATION_MODE_UPDATE)) {
             resourceOption match {
               case None =>
                 Future.apply(FHIRResponse.errorResponse(StatusCodes.BadRequest,
-                  Seq(OutcomeIssue(ResultSeverityEnum.ERROR.getCode, //fatal
+                  Seq(OutcomeIssue(FHIRResponse.SEVERITY_CODES.ERROR, //fatal
                     FHIRResponse.OUTCOME_CODES.INVALID,
                     None,
                     Some(s"Parameter '$PARAMETER_RESOURCE' is required for validation in general mode!"),
@@ -257,14 +255,14 @@ class ValidationOperationHandler extends FHIROperationHandlerService {
     * @return
     */
   private def problemExists(operation:String):OutcomeIssue =
-    OutcomeIssue(ResultSeverityEnum.INFORMATION.getCode, FHIRResponse.OUTCOME_CODES.INFORMATIONAL, None, Some(s"Problem(s) detected for your $operation, it will be not valid"), Nil)
+    OutcomeIssue(FHIRResponse.SEVERITY_CODES.INFORMATION, FHIRResponse.OUTCOME_CODES.INFORMATIONAL, None, Some(s"Problem(s) detected for your $operation, it will be not valid"), Nil)
 
   /**
     * Informational Outcome Issue stating everything is OK
     * @return
     */
   private def everythingOk:OutcomeIssue =
-    OutcomeIssue(ResultSeverityEnum.INFORMATION.getCode, FHIRResponse.OUTCOME_CODES.INFORMATIONAL, None, Some("All OK :)"), Nil)
+    OutcomeIssue(FHIRResponse.SEVERITY_CODES.INFORMATION, FHIRResponse.OUTCOME_CODES.INFORMATIONAL, None, Some("All OK :)"), Nil)
 
 
 }

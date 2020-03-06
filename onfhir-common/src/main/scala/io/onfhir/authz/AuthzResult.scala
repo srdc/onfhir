@@ -1,7 +1,5 @@
 package io.onfhir.authz
 
-import ca.uhn.fhir.validation.ResultSeverityEnum
-
 import io.onfhir.api.FHIR_HTTP_OPTIONS
 import io.onfhir.api.model.{FHIRResponse, OutcomeIssue, Parameter}
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
@@ -24,7 +22,7 @@ case class AuthzResult(
   def toOutcomeIssue:Option[OutcomeIssue] =
     if(!isAuthorized)
       Some(OutcomeIssue(
-        ResultSeverityEnum.ERROR.getCode,
+        FHIRResponse.SEVERITY_CODES.ERROR,
         FHIRResponse.OUTCOME_CODES.SECURITY,
         None,
         Some(s"Error: ${errorCode.get}; ${errorDesc.get}"),

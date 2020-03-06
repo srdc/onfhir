@@ -1,5 +1,6 @@
 package io.onfhir
 
+import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.OnfhirConfig
 import org.json4s.JsonAST.JObject
 
@@ -25,7 +26,7 @@ package object api {
   /**
     * Default Root Folder for FHIR infrastructure resource configurations
     */
-  var DEFAULT_ROOT_FOLDER = ""
+  var DEFAULT_ROOT_FOLDER:Option[String] = None
 
   /**
     * Names of main FHIR versions to be used within configurations
@@ -52,21 +53,21 @@ package object api {
     * Default paths for the infrastructure resources to configure the platform
     */
   object DEFAULT_RESOURCE_PATHS {
-    def BASE_DEFINITONS:String = DEFAULT_ROOT_FOLDER + "/definitions.json.zip"
-    def PROFILES_FOLDER:String = DEFAULT_ROOT_FOLDER + "/profiles.zip"
-    def CONFORMANCE_PATH:String = DEFAULT_ROOT_FOLDER + "/conformance-statement"+CONFORMANCE_FILE_SUFFIX
-    def SEARCH_PARAMETER:String = DEFAULT_ROOT_FOLDER + "/search-parameters.zip"
-    def COMPARTMENTS_PATH:String = DEFAULT_ROOT_FOLDER + "/compartments.zip"
-    def VALUESETS_PATH:String = DEFAULT_ROOT_FOLDER + "/value-sets.zip"
-    def CODESYSTEMS_PATH:String = DEFAULT_ROOT_FOLDER + "/code-systems.zip"
-    def OPDEFS_PATH:String = DEFAULT_ROOT_FOLDER + "/operation-definitions.zip"
-    def INDEX_CONF_PATH:String = DEFAULT_ROOT_FOLDER + "/db-index-conf.json"
+    def BASE_DEFINITONS:String = FHIRUtil.mergeFilePath(DEFAULT_ROOT_FOLDER, s"definitions${FOUNDATION_RESOURCES_FILE_SUFFIX}.zip")
+    def PROFILES_FOLDER:String = FHIRUtil.mergeFilePath(DEFAULT_ROOT_FOLDER, "profiles.zip")
+    def CONFORMANCE_PATH:String = FHIRUtil.mergeFilePath(DEFAULT_ROOT_FOLDER, s"conformance-statement$FOUNDATION_RESOURCES_FILE_SUFFIX")
+    def SEARCH_PARAMETER:String = FHIRUtil.mergeFilePath(DEFAULT_ROOT_FOLDER,  "search-parameters.zip")
+    def COMPARTMENTS_PATH:String = FHIRUtil.mergeFilePath(DEFAULT_ROOT_FOLDER , "compartments.zip")
+    def VALUESETS_PATH:String = FHIRUtil.mergeFilePath(DEFAULT_ROOT_FOLDER, "value-sets.zip")
+    def CODESYSTEMS_PATH:String = FHIRUtil.mergeFilePath(DEFAULT_ROOT_FOLDER, "code-systems.zip")
+    def OPDEFS_PATH:String =  FHIRUtil.mergeFilePath(DEFAULT_ROOT_FOLDER,"operation-definitions.zip")
+    def INDEX_CONF_PATH:String = FHIRUtil.mergeFilePath(DEFAULT_ROOT_FOLDER,"db-index-conf.json")
   }
 
   /**
     * Indicates the file extension for Conformance statement
     */
-  var CONFORMANCE_FILE_SUFFIX = ".xml"
+  var FOUNDATION_RESOURCES_FILE_SUFFIX = ".json"
 
   /**
     * Different types of FHIR Bundle See https://www.hl7.org/fhir/valueset-bundle-type.html
@@ -316,11 +317,11 @@ package object api {
     val IDENTIFIER = "Identifier"
     val ANNOTATION = "Annotation"
     val QUANTITY = "Quantity"
-    val AGE = "age"
-    val COUNT = "count"
-    val DISTANCE = "distance"
-    val DURATION = "duration"
-    val MONEY = "money"
+    val AGE = "Age"
+    val COUNT = "Count"
+    val DISTANCE = "Distance"
+    val DURATION = "Duration"
+    val MONEY = "Money"
     val SIMPLE_QUANTITY = "SimpleQuantity"
     val MONEY_QUANTITY = "MoneyQuantity"
   }

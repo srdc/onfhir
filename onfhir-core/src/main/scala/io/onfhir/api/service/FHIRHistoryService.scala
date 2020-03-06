@@ -1,7 +1,6 @@
 package io.onfhir.api.service
 
 import akka.http.scaladsl.model.StatusCodes
-import ca.uhn.fhir.validation.ResultSeverityEnum
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
 import io.onfhir.api.util.FHIRUtil
@@ -76,7 +75,7 @@ class FHIRHistoryService (transactionSession: Option[TransactionSession] = None)
               logger.debug(s"No such resource with type(${_type}) and id(${_id}), returning 404 NotFound")
               throw new NotFoundException(Seq(
                 OutcomeIssue(
-                  ResultSeverityEnum.INFORMATION.getCode,
+                  FHIRResponse.SEVERITY_CODES.INFORMATION,
                   FHIRResponse.OUTCOME_CODES.INFORMATIONAL,
                   None,
                   Some(s"No such resource with type(${_type}) and id(${_id})"),

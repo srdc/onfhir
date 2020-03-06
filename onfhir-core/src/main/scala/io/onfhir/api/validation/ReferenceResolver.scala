@@ -110,9 +110,10 @@ class ReferenceResolver(fhirConfig:FhirConfig, resource: Resource, bundle:Option
             case (_, r:JObject) =>
               version match {
                 case None => Some(r)
-                case Some(v) if FHIRUtil.extractVersionFromResource(r) =>
+                case Some(v) if FHIRUtil.extractVersionFromResource(r).toString == v  =>
+                  Some(r)
+                case _ => None
               }
-              FHIRUtil.extractVersionFromResource(r)
             case _ => None
           }
         case FhirUUIDReference(uuid) =>

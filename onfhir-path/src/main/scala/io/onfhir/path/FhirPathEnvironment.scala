@@ -1,6 +1,5 @@
 package io.onfhir.path
 
-import io.onfhir.api.Resource
 import io.onfhir.api.validation.IReferenceResolver
 
 import scala.util.matching.Regex

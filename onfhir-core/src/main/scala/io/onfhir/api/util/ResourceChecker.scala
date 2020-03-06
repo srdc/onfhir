@@ -1,6 +1,5 @@
 package io.onfhir.api.util
 
-import ca.uhn.fhir.validation.ResultSeverityEnum
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRResponse, OutcomeIssue, Parameter}
 import io.onfhir.api.util.ImMemorySearchUtil.typeHandlerFunction
@@ -45,7 +44,7 @@ object ResourceChecker {
       if (searchParameConf.isEmpty)
         throw new NotImplementedException(Seq(
           OutcomeIssue(
-            ResultSeverityEnum.ERROR.getCode,
+            FHIRResponse.SEVERITY_CODES.ERROR,
             FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED,
             None,
             Some(s"Search operation doesn't support parameter ($parameterName). Please check the conformance statement of the server !!!"),
@@ -85,7 +84,7 @@ object ResourceChecker {
           if (searchParamConf.isEmpty)
             throw new NotImplementedException(Seq(
               OutcomeIssue(
-                ResultSeverityEnum.ERROR.getCode,
+                FHIRResponse.SEVERITY_CODES.ERROR,
                 FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED,
                 None,
                 Some(s"Search operation doesn't support parameter (${parameter.name}). Please check the conformance statement of the server !!!"),

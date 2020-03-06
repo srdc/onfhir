@@ -48,7 +48,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     }
 
     fhirReferences
-      .flatMap(fr => context.referenceResolver.flatMap(rr => rr.resolveReference(fr, context._this.asInstanceOf[FhirPathComplex].json)))
+      .flatMap(fr => context.referenceResolver.flatMap(rr => rr.resolveReference(fr)))
       .map(FhirPathComplex)
   }
 

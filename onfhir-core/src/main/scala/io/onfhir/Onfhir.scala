@@ -10,7 +10,7 @@ import io.onfhir.api.endpoint.FHIREndpoint
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.audit.AuditManager
 import io.onfhir.authz._
-import io.onfhir.config.{FhirConfigurationManager, IFhirConfigurator, OnfhirConfig, SSLConfig}
+import io.onfhir.config.{FhirConfigurationManager, IFhirVersionConfigurator, OnfhirConfig, SSLConfig}
 import io.onfhir.db.DBConflictManager
 import io.onfhir.db.DBConflictManager.ACTOR_NAME
 import io.onfhir.event.{FhirEvent, FhirEventBus, FhirEventSubscription}
@@ -24,14 +24,14 @@ import scala.io.StdIn
   * Created by tuncay on 10/16/2017.
   * Instance of an OnFhir server
   *
-  * @param fhirConfigurator      Module that will configure the FHIR capabilities of the server based on the version
+  * @param fhirConfigurator      Module that will configure the FHIR capabilities of the server based on the base FHIR version
   * @param customAuthorizer      Module to handle authorization with a custom protocol
   * @param customTokenResolver   Module to handle access token resolution with a custom way
   * @param customAuditHandler    Module to handle auditing with a custom strategy
   * @param externalRoutes        External non-fhir routes for the server
   */
 class Onfhir(
-              val fhirConfigurator:IFhirConfigurator,
+              val fhirConfigurator:IFhirVersionConfigurator,
               val customAuthorizer:Option[IAuthorizer],
               val customTokenResolver:Option[ITokenResolver],
               val customAuditHandler:Option[ICustomAuditHandler],
@@ -143,7 +143,7 @@ object Onfhir {
     * @return
     */
   def apply(
-             fhirConfigurator:IFhirConfigurator,
+             fhirConfigurator:IFhirVersionConfigurator,
              customAuthorizer:Option[IAuthorizer] = None,
              customTokenResolver:Option[ITokenResolver] = None,
              customAuditHandler:Option[ICustomAuditHandler] = None,

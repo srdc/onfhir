@@ -2,7 +2,6 @@ package io.onfhir.api.parsers
 
 import akka.http.scaladsl.model.headers.{EntityTag, `If-Modified-Since`, `If-None-Match`}
 import akka.http.scaladsl.model.{StatusCodes, Uri}
-import ca.uhn.fhir.validation.ResultSeverityEnum
 
 import io.onfhir.exception._
 import io.onfhir.api.{FHIR_BUNDLE_FIELDS, FHIR_HTTP_OPTIONS, FHIR_INTERACTIONS, FHIR_METHOD_NAMES}
@@ -49,7 +48,7 @@ object BundleRequestParser {
       case e:Exception =>
         throw new BadRequestException(Seq(
           OutcomeIssue(
-            ResultSeverityEnum.ERROR.getCode, //fatal
+            FHIRResponse.SEVERITY_CODES.ERROR, //fatal
             FHIRResponse.OUTCOME_CODES.INVALID,
             None,
             Some(s"Invalid bundle request, please check the sytax of FHIR Bundle"),
@@ -181,7 +180,7 @@ object BundleRequestParser {
   def invalidOperation(interaction:String, path:String):Seq[OutcomeIssue] = {
     Seq(
       OutcomeIssue(
-        ResultSeverityEnum.ERROR.getCode, //fatal
+        FHIRResponse.SEVERITY_CODES.ERROR, //fatal
         FHIRResponse.OUTCOME_CODES.INVALID,
         None,
         Some(s"Invalid type of path for ${interaction} interaction; path: '$path'"),

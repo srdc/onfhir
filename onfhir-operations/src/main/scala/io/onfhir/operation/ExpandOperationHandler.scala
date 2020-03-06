@@ -3,7 +3,7 @@ package io.onfhir.operation
 import java.util.UUID
 
 import akka.http.scaladsl.model.{DateTime, StatusCodes, Uri}
-import ca.uhn.fhir.validation.ResultSeverityEnum
+
 import io.onfhir.api.Resource
 import io.onfhir.api.model._
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
@@ -47,17 +47,17 @@ class ExpandOperationHandler extends FHIROperationHandlerService {
     if (resourceId.isDefined)
       Map(SEARCHPARAM_ID -> List(resourceId.get))
       //searchParams.put(SEARCHPARAM_ID, List(Parameter(FHIR_PARAMETER_TYPES.TOKEN, SEARCHPARAM_ID, resourceId.get)))
-    else if (operationRequest.extractParam[String](SEARCHPARAM_ID).isDefined)
+    else if (operationRequest.extractParamValue[String](SEARCHPARAM_ID).isDefined)
       //searchParams.put(SEARCHPARAM_ID, List(Parameter(FHIR_PARAMETER_TYPES.TOKEN, SEARCHPARAM_ID, operationRequest.extractParam[String](SEARCHPARAM_ID).get)))
-      Map(SEARCHPARAM_ID -> List(operationRequest.extractParam[String](SEARCHPARAM_ID).get))
-    else if (operationRequest.extractParam[String](SEARCHPARAM_URL).isDefined)
+      Map(SEARCHPARAM_ID -> List(operationRequest.extractParamValue[String](SEARCHPARAM_ID).get))
+    else if (operationRequest.extractParamValue[String](SEARCHPARAM_URL).isDefined)
       //searchParams.put(SEARCHPARAM_URL, List(Parameter(FHIR_PARAMETER_TYPES.URI, SEARCHPARAM_URL, operationRequest.extractParam[String](SEARCHPARAM_URL).get)))
-      Map(SEARCHPARAM_URL -> List(operationRequest.extractParam[String](SEARCHPARAM_URL).get))
+      Map(SEARCHPARAM_URL -> List(operationRequest.extractParamValue[String](SEARCHPARAM_URL).get))
     else {
       logger.debug("ValueSet cannot be identified, return 400 BadRequest...")
       throw new BadRequestException(Seq(
         OutcomeIssue(
-          ResultSeverityEnum.ERROR.getCode,
+          FHIRResponse.SEVERITY_CODES.ERROR,
           FHIRResponse.OUTCOME_CODES.PROCESSING,
           None,
           Some("$expand operation at the type level (no ID specified) requires an identifier as part of the request"),
@@ -79,7 +79,7 @@ class ExpandOperationHandler extends FHIROperationHandlerService {
         logger.debug("resource not found, return 404 NotFound...")
         throw new NotFoundException(Seq(
           OutcomeIssue(
-            ResultSeverityEnum.INFORMATION.getCode,
+            FHIRResponse.SEVERITY_CODES.INFORMATION,
             FHIRResponse.OUTCOME_CODES.INFORMATIONAL,
             None,
             if (queryParams.contains(SEARCHPARAM_ID))
@@ -175,7 +175,7 @@ class ExpandOperationHandler extends FHIROperationHandlerService {
   def buildExpansion(valueSet:Resource, operationRequest: FHIROperationRequest):Resource = {
     val compose = (valueSet \ VALUESET_COMPOSE).extractOrElse(JObject())
 
-    val filterKeys: Seq[String] = operationRequest.extractParam[String](EXPAND_PARAM_FILTER).getOrElse("").split(",")
+    val filterKeys: Seq[String] = operationRequest.extractParamValue[String](EXPAND_PARAM_FILTER).getOrElse("").split(",")
 
 
     // 1) First, filter all the matching concepts

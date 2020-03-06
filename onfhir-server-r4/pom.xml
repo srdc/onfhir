@@ -78,22 +78,16 @@
             <groupId>onfhir</groupId>
             <artifactId>onfhir-operations</artifactId>
         </dependency>
-        <!--HAPI FHIR dependencies for configuration and validation-->
+        <!-- Unit Testing -->
         <dependency>
-            <groupId>ca.uhn.hapi.fhir</groupId>
-            <artifactId>hapi-fhir-base</artifactId>
+            <groupId>org.specs2</groupId>
+            <artifactId>specs2-core_2.12</artifactId>
+            <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>ca.uhn.hapi.fhir</groupId>
-            <artifactId>hapi-fhir-structures-r4</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>ca.uhn.hapi.fhir</groupId>
-            <artifactId>hapi-fhir-validation</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>ca.uhn.hapi.fhir</groupId>
-            <artifactId>hapi-fhir-validation-resources-r4</artifactId>
+            <groupId>org.specs2</groupId>
+            <artifactId>specs2-junit_2.12</artifactId>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 </project>

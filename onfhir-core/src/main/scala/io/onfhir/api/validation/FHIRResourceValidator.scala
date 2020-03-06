@@ -2,7 +2,7 @@ package io.onfhir.api.validation
 
 import io.onfhir.api._
 import io.onfhir.Onfhir
-import io.onfhir.api.model.{FHIRResponse, FhirReference, OutcomeIssue}
+import io.onfhir.api.model.{FHIRResponse, OutcomeIssue}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.{FhirConfig, OnfhirConfig}
 import io.onfhir.exception.BadRequestException
@@ -22,12 +22,24 @@ class FHIRResourceValidator(fhirConfig:FhirConfig) extends IFhirResourceValidato
   implicit val executionContext = Onfhir.actorSystem.dispatchers.lookup("akka.actor.onfhir-blocking-dispatcher")
 
   /**
-    * Validates resource based on business rules
-    * Return OutcomeIssue if successful or throw exception
-    * @param resource   JSON content of the resource
-    * @param silent     If true, does not throw exception but return issues
-    */
-  def validateResource(resource: Resource, rtype:String, profile:Option[String], bundle:Option[Resource] = None, silent:Boolean = false): Future[Seq[OutcomeIssue]] = {
+   * Validates resource based on the related FHIR profiles (StructureDefinition), check the CapabilityStatement.rest.resource.baseProfile
+   * @param resource  JSON content of the resource
+   * @param rtype     Resource type expected
+   * @param silent
+   * @return
+   */
+  def validateResource(resource: Resource, rtype:String, silent:Boolean = false): Future[Seq[OutcomeIssue]] = {
+    validateResourceAgainstProfile(resource, rtype, fhirConfig.resourceConfigurations(rtype).profile, silent)
+  }
+  /**
+   * Validates resource based on the related FHIR profiles (StructureDefinition)
+   * @param resource   Parsed JSON content of the resource
+   * @param rtype      Resource type expected
+   * @param profile    Profile that resource is expected to conform (if not exist just validated for base resource type)
+   * @param silent     If true, does not throw exception but return issues
+   * @return
+   */
+  def validateResourceAgainstProfile(resource: Resource, rtype:String, profile:Option[String], silent:Boolean = false): Future[Seq[OutcomeIssue]] = {
     Future.apply {
       OnfhirConfig.fhirValidation match {
         case FHIR_VALIDATION_ALTERNATIVES.NONE => Nil // Ignore validation, no issues
@@ -51,7 +63,7 @@ class FHIRResourceValidator(fhirConfig:FhirConfig) extends IFhirResourceValidato
           val profileChainsToValidate = profileChains.filter(pc => !allInnerProfiles.contains(pc._1)).map(_._2)
 
           val issues = profileChainsToValidate.flatMap(pc => {
-            val contentValidator = new FhirContentValidator(fhirConfig, pc.head.url, Some(new ReferenceResolver(fhirConfig, resource, bundle)))
+            val contentValidator = new FhirContentValidator(fhirConfig, pc.head.url, Some(new ReferenceResolver(fhirConfig, resource, None)))
             contentValidator.validateComplexContentAgainstProfile(pc, resource, None)
               .map(oi => oi.copy(diagnostics = Some(s"[Validating against profile chain starting with ${pc.head.url}] => " + oi.diagnostics.getOrElse(""))))
           })

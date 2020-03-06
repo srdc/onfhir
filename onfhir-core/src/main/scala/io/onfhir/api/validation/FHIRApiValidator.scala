@@ -4,7 +4,6 @@ import java.net.{URI, URL}
 
 import akka.http.scaladsl.model.DateTime
 import akka.http.scaladsl.model.headers.{EntityTag, `If-Modified-Since`, `If-None-Match`}
-import ca.uhn.fhir.validation.ResultSeverityEnum
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRResponse, OutcomeIssue}
 import io.onfhir.api.util.FHIRUtil
@@ -41,7 +40,7 @@ object FHIRApiValidator {
     if(ID_REGEX.findFirstMatchIn(id).isEmpty)
       throw new BadRequestException(Seq(
         OutcomeIssue(
-          ResultSeverityEnum.ERROR.getCode, //error
+          FHIRResponse.SEVERITY_CODES.ERROR, //error
           FHIRResponse.OUTCOME_CODES.INVALID, //invalid
           None,
           Some("Invalid identifier: id field can be formed by " +
@@ -66,7 +65,7 @@ object FHIRApiValidator {
     if(id.isEmpty) {
       throw new BadRequestException(Seq(
         OutcomeIssue(
-          ResultSeverityEnum.ERROR.getCode, //error
+          FHIRResponse.SEVERITY_CODES.ERROR, //error
           FHIRResponse.OUTCOME_CODES.INVALID, //invalid
           None,
           Some("Missing 'id' field in given resource"),
@@ -80,7 +79,7 @@ object FHIRApiValidator {
         if(!s.equals(_id))
           throw new BadRequestException(Seq(
             OutcomeIssue(
-              ResultSeverityEnum.ERROR.getCode, //error
+              FHIRResponse.SEVERITY_CODES.ERROR, //error
               FHIRResponse.OUTCOME_CODES.INVALID, //invalid
               None,
               Some(s"id in request URL (${_id}) does not match " +
@@ -91,7 +90,7 @@ object FHIRApiValidator {
       case _ =>
         throw new BadRequestException(Seq(
           OutcomeIssue(
-            ResultSeverityEnum.ERROR.getCode, //error
+            FHIRResponse.SEVERITY_CODES.ERROR, //error
             FHIRResponse.OUTCOME_CODES.INVALID, //invalid
             None,
             Some(s"id field must have String type"),
@@ -112,7 +111,7 @@ object FHIRApiValidator {
     if(id.isDefined) {
       throw new BadRequestException(Seq(
         OutcomeIssue(
-          ResultSeverityEnum.ERROR.getCode, //error
+          FHIRResponse.SEVERITY_CODES.ERROR, //error
           FHIRResponse.OUTCOME_CODES.INVALID, //invalid
           None,
           Some("'id' field of resources should not be provided in 'create' operations"),
@@ -132,7 +131,7 @@ object FHIRApiValidator {
     if(rtype.isEmpty) {
       throw new BadRequestException(Seq(
         OutcomeIssue(
-          ResultSeverityEnum.FATAL.getCode, //error
+          FHIRResponse.SEVERITY_CODES.FATAL, //error
           FHIRResponse.OUTCOME_CODES.INVALID, //invalid
           None,
           Some("Missing resourceType field for given resource"),
@@ -143,7 +142,7 @@ object FHIRApiValidator {
     if(!rtype.get.toString.equals(_rtype)){
       throw new BadRequestException(Seq(
         OutcomeIssue(
-          ResultSeverityEnum.ERROR.getCode, //error
+          FHIRResponse.SEVERITY_CODES.ERROR, //error
           FHIRResponse.OUTCOME_CODES.INVALID, //invalid
           None,
           Some("type in request URL (" + _rtype + ") does not match " +
@@ -174,7 +173,7 @@ object FHIRApiValidator {
       if(resourceProfiles.intersect(supportedProfiles).isEmpty)
         throw new BadRequestException(Seq(
           OutcomeIssue(
-            ResultSeverityEnum.ERROR.getCode, //error
+            FHIRResponse.SEVERITY_CODES.ERROR, //error
             FHIRResponse.OUTCOME_CODES.PROCESSING, //processing
             None,
             if(resourceProfiles.isEmpty)
@@ -199,7 +198,7 @@ object FHIRApiValidator {
     if(fhirConfig.resourceConfigurations.apply(rtype).versioning == FHIR_VERSIONING_OPTIONS.VERSIONED_UPDATE && ifmatch.isEmpty)
       throw new NotFoundException(Seq(
         OutcomeIssue(
-          ResultSeverityEnum.ERROR.getCode, //fatal
+          FHIRResponse.SEVERITY_CODES.ERROR, //fatal
           FHIRResponse.OUTCOME_CODES.INVALID, //not supported
           None,
           Some(s"Client error, only versioned updates are supported for resource type $rtype! Please use If-Match header to perform version aware updates!"),
@@ -216,7 +215,7 @@ object FHIRApiValidator {
     if(!fhirConfig.supportedInteractions.contains(operation))
       throw new NotFoundException(Seq(
         OutcomeIssue(
-          ResultSeverityEnum.FATAL.getCode, //fatal
+          FHIRResponse.SEVERITY_CODES.FATAL, //fatal
           FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED, //not supported
           None,
           Some(s"System level interaction $operation is not supported !!! Please check the conformance statement of the system..."),
@@ -238,7 +237,7 @@ object FHIRApiValidator {
     if(profileConfiguration.isEmpty){
       throw new NotFoundException(Seq(
         OutcomeIssue(
-          ResultSeverityEnum.FATAL.getCode, //fatal
+          FHIRResponse.SEVERITY_CODES.FATAL, //fatal
           FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED, //not supported
           None,
           Some(s"Resource type '$rtype' is not supported!"),
@@ -250,7 +249,7 @@ object FHIRApiValidator {
     if(!profileConfiguration.get.interactions.contains(operation))
       throw new NotFoundException(Seq(
         OutcomeIssue(
-          ResultSeverityEnum.FATAL.getCode, //fatal
+          FHIRResponse.SEVERITY_CODES.FATAL, //fatal
           FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED, //not supported
           None,
           Some(s"Interaction $operation is not supported for resource type $rtype"),
@@ -264,7 +263,7 @@ object FHIRApiValidator {
           if(!profileConfiguration.get.conditionalCreate)
             throw new PreconditionFailedException(Seq(
               OutcomeIssue(
-                ResultSeverityEnum.FATAL.getCode, //fatal
+                FHIRResponse.SEVERITY_CODES.FATAL, //fatal
                 FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED, //not supported
                 None,
                 Some(s"Conditional $operation is not supported for resource type $rtype! Please check the conformance statement of the server..."),
@@ -275,7 +274,7 @@ object FHIRApiValidator {
           if(!profileConfiguration.get.conditionalUpdate)
             throw new BadRequestException(Seq(
               OutcomeIssue(
-                ResultSeverityEnum.ERROR.getCode, //fatal
+                FHIRResponse.SEVERITY_CODES.ERROR, //fatal
                 FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED, //not supported
                 None,
                 Some(s"Conditional $operation is not supported for resource type $rtype! Please check the conformance statement of the server..."),
@@ -286,7 +285,7 @@ object FHIRApiValidator {
           if(profileConfiguration.get.conditionalDelete.equals("not-supported"))
             throw new BadRequestException(Seq(
               OutcomeIssue(
-                ResultSeverityEnum.ERROR.getCode, //fatal
+                FHIRResponse.SEVERITY_CODES.ERROR, //fatal
                 FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED, //not supported
                 None,
                 Some(s"Conditional $operation is not supported for resource type $rtype! Please check the conformance statement of the server..."),
@@ -306,7 +305,7 @@ object FHIRApiValidator {
     if(!fhirConfig.resourceConfigurations(rtype).updateCreate)
       throw new MethodNotAllowedException(Seq(
         OutcomeIssue(
-          ResultSeverityEnum.ERROR.getCode, //fatal
+          FHIRResponse.SEVERITY_CODES.ERROR, //fatal
           FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED, //not supported
           None,
           Some(s"Clients are not allowed to create new resources with update operation!!! Please check the conformance statement..."),
@@ -330,7 +329,7 @@ def validateSearchParameters(_type:String, parameters:Set[String], preferHeader:
           // In case of ?=.. definitons(e.g. ....power2dm.eu?=somevalue or ...power2dm.eu?)
           throw new UnprocessableEntityException(Seq(
             OutcomeIssue(
-              ResultSeverityEnum.FATAL.getCode,
+              FHIRResponse.SEVERITY_CODES.FATAL,
               FHIRResponse.OUTCOME_CODES.INVALID,
               None,
               Some("Invalid empty parameter in search query"),
@@ -347,7 +346,7 @@ def validateSearchParameters(_type:String, parameters:Set[String], preferHeader:
           if (prefer.contains(FHIR_HTTP_OPTIONS.FHIR_SEARCH_STRICT))
             throw new NotImplementedException(Seq(
               OutcomeIssue(
-                ResultSeverityEnum.ERROR.getCode,
+                FHIRResponse.SEVERITY_CODES.ERROR,
                 FHIRResponse.OUTCOME_CODES.INVALID,
                 None,
                 Some(s"Search operation doesn't support parameter ($parameter) for resource (${_type})!!!"),
@@ -380,7 +379,7 @@ def validateSearchParameters(_type:String, parameters:Set[String], preferHeader:
         logger.debug("conflicting version, returning 409 Conflict...")
         throw new ConflictException(
           OutcomeIssue(
-            ResultSeverityEnum.FATAL.getCode, //fatal
+            FHIRResponse.SEVERITY_CODES.FATAL, //fatal
             FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED, //not supported
             None,
             Some(s"Conflicting Version: The version ($version) in If-Match header" +
@@ -436,7 +435,7 @@ def validateSearchParameters(_type:String, parameters:Set[String], preferHeader:
       if(!fhirConfig.compartmentRelations(compartmentType).isDefinedAt(_type)) {
         throw new NotFoundException(Seq(
           OutcomeIssue(
-            ResultSeverityEnum.FATAL.getCode, //fatal
+            FHIRResponse.SEVERITY_CODES.FATAL, //fatal
             FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED, //not supported
             None,
             Some(s"Querying on resource type ${_type} is not supported for compartment $compartmentType !!! Please check the compartment definition..."),
@@ -448,7 +447,7 @@ def validateSearchParameters(_type:String, parameters:Set[String], preferHeader:
     } else
       throw new NotFoundException(Seq(
         OutcomeIssue(
-          ResultSeverityEnum.FATAL.getCode, //fatal
+          FHIRResponse.SEVERITY_CODES.FATAL, //fatal
           FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED, //not supported
           None,
           Some(s"Compartment type '$compartmentType' is not supported!!! Please check the conformance statement of the system..."),
@@ -471,7 +470,7 @@ def validateSearchParameters(_type:String, parameters:Set[String], preferHeader:
         throw new PreconditionFailedException(
           Seq(
             OutcomeIssue(
-              ResultSeverityEnum.ERROR.getCode,
+              FHIRResponse.SEVERITY_CODES.ERROR,
               FHIRResponse.OUTCOME_CODES.INVALID,
               None,
               Some(s"Interdependency to batch entry with url $eachUrl."),

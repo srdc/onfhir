@@ -65,7 +65,7 @@ class DocumentOperationHandler extends FHIROperationHandlerService {
         entry.remove("search")
       }*/
 
-      val persist = operationRequest.extractParam[String]("persist")
+      val persist = operationRequest.extractParamValue[String]("persist")
 
       val generatedBundle = persist match {
         case Some("true") =>

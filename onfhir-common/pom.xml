@@ -74,11 +74,6 @@
             <groupId>com.typesafe</groupId>
             <artifactId>config</artifactId>
         </dependency>
-        <!-- Base FHIR models for onfhir configuratio-->
-        <dependency>
-            <groupId>ca.uhn.hapi.fhir</groupId>
-            <artifactId>hapi-fhir-base</artifactId>
-        </dependency>
         <!-- Authorization Configuration and Handling-->
         <dependency>
             <groupId>com.nimbusds</groupId>
@@ -87,6 +82,22 @@
         <dependency>
             <groupId>com.nimbusds</groupId>
             <artifactId>oauth2-oidc-sdk</artifactId>
+        </dependency>
+        <!-- Logging-->
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>${logback.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-core</artifactId>
+            <version>${logback.version}</version>
+        </dependency>
+        <!--IO Utilities-->
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
         </dependency>
     </dependencies>
 

@@ -5,7 +5,7 @@ import io.onfhir.api.model.{FhirLiteralReference, FhirReference}
 import io.onfhir.api.util.IOUtil
 import io.onfhir.api.validation.IReferenceResolver
 import io.onfhir.config.FhirConfigurationManager
-import io.onfhir.r4.config.R4Configurator
+import io.onfhir.r4.config.FhirR4Configurator
 import io.onfhir.r4.parsers.StructureDefinitionParser
 import org.json4s.JsonAST.JObject
 import org.json4s.jackson.JsonMethods
@@ -17,48 +17,49 @@ import scala.io.Source
 
 @RunWith(classOf[JUnitRunner])
 class ProfileValidationTest extends Specification {
+  val sdParser = new StructureDefinitionParser
   //Initialize the environment
-  val resourceProfiles = IOUtil.readStandardBundleFile("profiles-resources.json", Set("StructureDefinition")).flatMap(StructureDefinitionParser.parseProfile)
-  val dataTypeProfiles = IOUtil.readStandardBundleFile("profiles-types.json", Set("StructureDefinition")).flatMap(StructureDefinitionParser.parseProfile)
-  val otherProfiles = IOUtil.readStandardBundleFile("profiles-others.json", Set("StructureDefinition")).flatMap(StructureDefinitionParser.parseProfile)
-  val extensions = IOUtil.readStandardBundleFile("extension-definitions.json", Set("StructureDefinition")).flatMap(StructureDefinitionParser.parseProfile)
+  val resourceProfiles = IOUtil.readStandardBundleFile("profiles-resources.json", Set("StructureDefinition")).flatMap(sdParser.parseProfile)
+  val dataTypeProfiles = IOUtil.readStandardBundleFile("profiles-types.json", Set("StructureDefinition")).flatMap(sdParser.parseProfile)
+  val otherProfiles = IOUtil.readStandardBundleFile("profiles-others.json", Set("StructureDefinition")).flatMap(sdParser.parseProfile)
+  val extensions = IOUtil.readStandardBundleFile("extension-definitions.json", Set("StructureDefinition")).flatMap(sdParser.parseProfile)
 
   val valueSetsOrCodeSystems =
     IOUtil.readStandardBundleFile("valuesets.json", Set("ValueSet", "CodeSystem")) ++
       IOUtil.readStandardBundleFile("v3-codesystems.json", Set("ValueSet", "CodeSystem"))
 
   val extraProfiles = Seq(
-    IOUtil.readInnerResource("/fhir/r4/profiles/MyObservation.StructureDefinition.json"),
-    IOUtil.readInnerResource("/fhir/r4/profiles/MySampledData.StructureDefinition.json"),
-    IOUtil.readInnerResource("/fhir/r4/profiles/MyMyObservation.StructureDefinition.json"),
-    IOUtil.readInnerResource("/fhir/r4/profiles/MyList.StructureDefinition.json"),
-    IOUtil.readInnerResource("/fhir/r4/profiles/MyList2.StructureDefinition.json"),
-    IOUtil.readInnerResource("/fhir/r4/profiles/MyExtension.StructureDefinition.json"),
-    IOUtil.readInnerResource("/fhir/r4/profiles/MyExtension2.StructureDefinition.json")
-  ).flatMap(StructureDefinitionParser.parseProfile)
+    IOUtil.readInnerResource("fhir/r4/profiles/MyObservation.StructureDefinition.json"),
+    IOUtil.readInnerResource("fhir/r4/profiles/MySampledData.StructureDefinition.json"),
+    IOUtil.readInnerResource("fhir/r4/profiles/MyMyObservation.StructureDefinition.json"),
+    IOUtil.readInnerResource("fhir/r4/profiles/MyList.StructureDefinition.json"),
+    IOUtil.readInnerResource("fhir/r4/profiles/MyList2.StructureDefinition.json"),
+    IOUtil.readInnerResource("fhir/r4/profiles/MyExtension.StructureDefinition.json"),
+    IOUtil.readInnerResource("fhir/r4/profiles/MyExtension2.StructureDefinition.json")
+  ).flatMap(sdParser.parseProfile)
 
 
 
-  FhirConfigurationManager.initialize(new R4Configurator)
+  FhirConfigurationManager.initialize(new FhirR4Configurator)
   FhirConfigurationManager.fhirConfig.profileRestrictions = (dataTypeProfiles ++ resourceProfiles ++ otherProfiles ++ extensions  ++ extraProfiles).map(p => p.url -> p).toMap
-  FhirConfigurationManager.fhirConfig.valueSetRestrictions = TerminologyParser.parseValueSetBundle(valueSetsOrCodeSystems)
+  FhirConfigurationManager.fhirConfig.valueSetRestrictions = new TerminologyParser().parseValueSetBundle(valueSetsOrCodeSystems)
 
   //Reference resolver for tests
   var referenceResolverForLipidProfileSample = new IReferenceResolver {
-    override def resolveReference(reference: FhirReference, currentResource: Resource): Option[Resource] = {
+    override def resolveReference(reference: FhirReference): Option[Resource] = {
       reference match {
         case FhirLiteralReference(_, "Observation", rid, _) =>
           rid match {
             case "cholesterol" =>
-              Some(IOUtil.readInnerResource("/fhir/r4/dreport/cholesterol.json"))
+              Some(IOUtil.readInnerResource("fhir/r4/dreport/cholesterol.json"))
             case "triglyceride" =>
-              Some(IOUtil.readInnerResource("/fhir/r4/dreport/tryglyceride.json"))
+              Some(IOUtil.readInnerResource("fhir/r4/dreport/tryglyceride.json"))
             case "hdlcholesterol" =>
-              Some(IOUtil.readInnerResource("/fhir/r4/dreport/hdlcholesterol.json"))
+              Some(IOUtil.readInnerResource("fhir/r4/dreport/hdlcholesterol.json"))
             case "ldlcholesterol" =>
-              Some(IOUtil.readInnerResource("/fhir/r4/dreport/ldlcholesterol.json"))
+              Some(IOUtil.readInnerResource("fhir/r4/dreport/ldlcholesterol.json"))
             case "extra" =>
-              Some(IOUtil.readInnerResource("/fhir/r4/valid/observation-bp.json"))
+              Some(IOUtil.readInnerResource("fhir/r4/valid/observation-bp.json"))
             case _ => None
           }
         case _ => None
@@ -93,7 +94,7 @@ class ProfileValidationTest extends Specification {
 
   sequential
   "ProfileValidation" should {
-   "validate a valid FHIR resource against base definitions" in {
+   /*"validate a valid FHIR resource against base definitions" in {
       val fhirContentValidator = FhirContentValidator(FhirConfigurationManager.fhirConfig, "http://hl7.org/fhir/StructureDefinition/Observation")
       var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/valid/observation-glucose.json")).mkString).asInstanceOf[JObject]
       var issues = fhirContentValidator.validateComplexContent(observation)
@@ -339,6 +340,13 @@ class ProfileValidationTest extends Specification {
       issues.exists(i => i.location.head == "entry[2].item.extension[1].valueString" && i.severity == "error") mustEqual true //legnth of string exceeds max length
       issues.exists(i => i.location.head == "entry" && i.severity == "error" && i.diagnostics.exists(d => d.contains("e2"))) mustEqual true //slice e2 has minimum cardinality 1
       issues.exists(i => i.location.head == "entry" && i.severity == "error" && i.diagnostics.exists(d => d.contains("openAtEnd"))) mustEqual true //extra entry is given in beginning
+    }*/
+
+    "validate base conformance statement" in  {
+      var cptStatement = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/foundation/conformance-statement.json")).mkString).asInstanceOf[JObject]
+      val fhirContentValidator = FhirContentValidator(FhirConfigurationManager.fhirConfig, "\"http://hl7.org/fhir/StructureDefinition/CapabilityStatement")
+      var issues = fhirContentValidator.validateComplexContent(cptStatement)
+      issues.exists(_.severity == "error") mustEqual(true)
     }
 
   }

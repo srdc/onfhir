@@ -100,7 +100,7 @@ class AuditManager(customAuditHandler:Option[ICustomAuditHandler]) extends Actor
       //Create a batch request for all audits
       val auditBundle = FHIRUtil.createTransactionBatchBundle("batch", audits.map(audit =>
         ("resource" -> audit) ~
-          ("request" -> ("method" -> "POST") ~ ("url" -> fhirConfig.FHIR_AUDIT_EVENT))
+          ("request" -> ("method" -> "POST") ~ ("url" -> "AuditEvent"))
       ))
 
       val response = Http().singleRequest(createAuditBatchCreationRequest(OnfhirConfig.fhirAuditingRepositoryUrl.get, auditBundle))
@@ -194,7 +194,7 @@ class AuditManager(customAuditHandler:Option[ICustomAuditHandler]) extends Actor
                 //Saving the audits to local FHIR repo
                 if(OnfhirConfig.fhirAuditingRepository == "local")
                   auditRecords.map(auditRecord => {
-                    ResourceManager.createResource(fhirConfig.FHIR_AUDIT_EVENT, auditRecord)
+                    ResourceManager.createResource("AuditEvent", auditRecord)
                     //new FHIRCreateService().performCreate(auditRecord, fhirConfig.FHIR_AUDIT_EVENT)
                   })
                 else //Sending the audits to a remote FHIR repo

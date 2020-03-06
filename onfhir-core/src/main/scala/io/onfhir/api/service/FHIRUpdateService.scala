@@ -1,7 +1,6 @@
 package io.onfhir.api.service
 
 import akka.http.scaladsl.model.{StatusCodes, Uri}
-import ca.uhn.fhir.validation.ResultSeverityEnum
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
 import io.onfhir.api.util.FHIRUtil
@@ -61,7 +60,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
     //1.4) Check if only versioned update is supported, then ifMatch should exist
     FHIRApiValidator.validateVersionedUpdate(_type, ifmatch)
     //1.5) Validate the conformance of resource
-    fhirValidator.validateResource(resource).map(_ => Unit)
+    fhirValidator.validateResource(resource, _type).map(_ => Unit)
   }
 
 
@@ -80,7 +79,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
     //1.3) Check the resource type consistency
     FHIRApiValidator.validateResourceType(resource, _type)
     //1.4) Validate the conformance of resource
-    fhirValidator.validateResource(resource).map(_ => Unit)
+    fhirValidator.validateResource(resource, _type).map(_ => Unit)
   }
 
   /**
@@ -126,7 +125,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
                   logger.debug("Supplied resource id matches another FHIR resource which does not satisfy the given query!")
                   throw new BadRequestException(Seq(
                     OutcomeIssue(
-                      ResultSeverityEnum.ERROR.getCode,
+                      FHIRResponse.SEVERITY_CODES.ERROR,
                       FHIRResponse.OUTCOME_CODES.INVALID,
                       None,
                       Some(s"Supplied resource id matches another FHIR resource which does not satisfy the given query!"),
@@ -148,7 +147,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
           logger.debug("There is one match in conditional update query, but resource id provided but does not match the resource found")
           throw new BadRequestException(Seq(
             OutcomeIssue(
-              ResultSeverityEnum.ERROR.getCode,
+              FHIRResponse.SEVERITY_CODES.ERROR,
               FHIRResponse.OUTCOME_CODES.INVALID,
               None,
               Some(s"There is one match in conditional update query, but resource id provided but does not match the resource found!"),
@@ -161,7 +160,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
         logger.debug("Multiple matches exist with given parameters, return 412 - Precondition Failed")
         throw new PreconditionFailedException(Seq(
           OutcomeIssue(
-            ResultSeverityEnum.ERROR.getCode,
+            FHIRResponse.SEVERITY_CODES.ERROR,
             FHIRResponse.OUTCOME_CODES.INVALID,
             None,
             Some(s"Multiple matches exist with given parameters, for the conditional update"),

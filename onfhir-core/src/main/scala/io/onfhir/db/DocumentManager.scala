@@ -3,7 +3,6 @@ package io.onfhir.db
 import java.util.UUID
 
 import akka.http.scaladsl
-import ca.uhn.fhir.validation.ResultSeverityEnum
 import com.mongodb.bulk.BulkWriteUpsert
 import com.mongodb.client.model.{Field, InsertOneModel}
 import io.onfhir.Onfhir
@@ -601,7 +600,7 @@ object DocumentManager {
               //Throw 409 Conflict exception
               throw throw new ConflictException(
                 OutcomeIssue(
-                  ResultSeverityEnum.ERROR.getCode,
+                  FHIRResponse.SEVERITY_CODES.ERROR,
                   FHIRResponse.OUTCOME_CODES.TRANSIENT,
                   None,
                   Some(s"Concurrent update on resource $rid, another interaction is currently overriding the resource! Please try again after a few seconds..."),

@@ -1,7 +1,6 @@
 package io.onfhir.api.service
 
 import akka.http.scaladsl.model.StatusCodes
-import ca.uhn.fhir.validation.ResultSeverityEnum
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
 import io.onfhir.api.util.FHIRUtil
@@ -133,7 +132,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
         //3) Apply the pathces
         val updatedResource = applyPatches(FHIRUtil.clearExtraFields(foundResource), patches)
         //4) Validate if new changes are valid
-        fhirValidator.validateResource(updatedResource) flatMap { _ =>
+        fhirValidator.validateResource(updatedResource, _type) flatMap { _ =>
           //5) Perform the update operation
           new FHIRUpdateService(transactionSession).performUpdate(updatedResource, _type, Some(_id), prefer, isTesting, Some(currentVersion -> foundResource), wasDeleted)
         }
@@ -162,7 +161,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
       //No matching
       case (0, _) => throw new NotFoundException(Seq(
         OutcomeIssue(
-          ResultSeverityEnum.ERROR.getCode,
+          FHIRResponse.SEVERITY_CODES.ERROR,
           FHIRResponse.OUTCOME_CODES.INVALID,
           None,
           Some(s"No matching resource fot her query!"),
@@ -181,7 +180,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
         //3) Apply the pathces
         val updatedResource = applyPatches(FHIRUtil.clearExtraFields(foundResource), patches)
         //4) Validate if new changes are valid
-        fhirValidator.validateResource(updatedResource) flatMap { _ =>
+        fhirValidator.validateResource(updatedResource, _type) flatMap { _ =>
           //5) Perform the actual update operation
           new FHIRUpdateService(transactionSession).performUpdate(updatedResource, _type, Some(rid), prefer, isTesting, Some(currentVersion -> foundResource))
         }
@@ -191,7 +190,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
         logger.debug("Multiple matches exist with given parameters, return 412 - Precondition Failed")
         throw new PreconditionFailedException(Seq(
           OutcomeIssue(
-            ResultSeverityEnum.ERROR.getCode,
+            FHIRResponse.SEVERITY_CODES.ERROR,
             FHIRResponse.OUTCOME_CODES.INVALID,
             None,
             Some(s"Multiple matches exist with given parameters, for the conditional update"),
@@ -240,7 +239,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
               finalResource = patchAdd(finalResource, pitem.path, pitem.value.get)
             } catch {
               case e:Exception => throw new BadRequestException(Seq(OutcomeIssue(
-                ResultSeverityEnum.ERROR.getCode,
+                FHIRResponse.SEVERITY_CODES.ERROR,
                 FHIRResponse.OUTCOME_CODES.INVALID,
                 None,
                 Some(s"Invalid JSON patch operation (add); invalid path '" + convertPathToString(pitem.path) +"'"),
@@ -252,7 +251,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
               finalResource = patchCopy(finalResource, pitem.from, pitem.path)
             } catch {
               case e:Exception => throw new BadRequestException(Seq(OutcomeIssue(
-                ResultSeverityEnum.ERROR.getCode,
+                FHIRResponse.SEVERITY_CODES.ERROR,
                 FHIRResponse.OUTCOME_CODES.INVALID,
                 None,
                 Some(s"Invalid JSON patch operation (copy): invalid path '" + convertPathToString(pitem.path)+"' or invalid from '"+convertPathToString(pitem.from)+"'"),
@@ -264,7 +263,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
               finalResource = patchMove(finalResource, pitem.from, pitem.path)
             } catch {
               case e:Exception => throw new BadRequestException(Seq(OutcomeIssue(
-                ResultSeverityEnum.ERROR.getCode,
+                FHIRResponse.SEVERITY_CODES.ERROR,
                 FHIRResponse.OUTCOME_CODES.INVALID,
                 None,
                 Some(s"Invalid JSON patch operation (move): invalid path '" + convertPathToString(pitem.path)+"' or invalid from '"+convertPathToString(pitem.from)+"'"),
@@ -276,7 +275,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
               finalResource = patchReplace(finalResource, pitem.path, pitem.value.get)
             }catch {
               case e:Exception => throw new BadRequestException(Seq(OutcomeIssue(
-                ResultSeverityEnum.ERROR.getCode,
+                FHIRResponse.SEVERITY_CODES.ERROR,
                 FHIRResponse.OUTCOME_CODES.INVALID,
                 None,
                 Some(s"Invalid JSON patch operation (replace); invalid path '" + convertPathToString(pitem.path) +"'"),
@@ -288,7 +287,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
               finalResource = patchRemove(finalResource, pitem.path)
             } catch {
               case e:Exception => throw new BadRequestException(Seq(OutcomeIssue(
-                ResultSeverityEnum.ERROR.getCode,
+                FHIRResponse.SEVERITY_CODES.ERROR,
                 FHIRResponse.OUTCOME_CODES.INVALID,
                 None,
                 Some(s"Invalid JSON patch operation (remove); invalid path '" + convertPathToString(pitem.path) +"'"),
@@ -301,7 +300,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
     } else {
       throw new PreconditionFailedException(Seq(
         OutcomeIssue(
-          ResultSeverityEnum.INFORMATION.getCode,
+          FHIRResponse.SEVERITY_CODES.INFORMATION,
           FHIRResponse.OUTCOME_CODES.INFORMATIONAL,
           None,
           Some(s"JSON patch tests failed, so skipping patch operation..."),
@@ -323,7 +322,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
       case _ =>
         throw new BadRequestException(Seq(
           OutcomeIssue(
-            ResultSeverityEnum.INFORMATION.getCode,
+            FHIRResponse.SEVERITY_CODES.INFORMATION,
             FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED,
             None,
             Some(s"Only supporting Json patch for now !!!"),
@@ -356,7 +355,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
           if (path.isEmpty || value.isEmpty || !path.get.isInstanceOf[String])
             throw new BadRequestException(Seq(
               OutcomeIssue(
-                ResultSeverityEnum.ERROR.getCode,
+                FHIRResponse.SEVERITY_CODES.ERROR,
                 FHIRResponse.OUTCOME_CODES.INVALID,
                 None,
                 Some(s"Invalid Json-patch , 'path' or 'value' element is not found or invalid in '${patch.toJson}'"),
@@ -370,7 +369,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
           if (path.isEmpty || !path.get.isInstanceOf[String])
             throw new BadRequestException(Seq(
               OutcomeIssue(
-                ResultSeverityEnum.ERROR.getCode,
+                FHIRResponse.SEVERITY_CODES.ERROR,
                 FHIRResponse.OUTCOME_CODES.INVALID,
                 None,
                 Some(s"Invalid Json-patch , 'path' element is not found or invalid in '${patch.toJson}'"),
@@ -383,7 +382,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
           if (path.isEmpty || from.isEmpty || !path.get.isInstanceOf[String] || !from.get.isInstanceOf[String])
             throw new BadRequestException(Seq(
               OutcomeIssue(
-                ResultSeverityEnum.ERROR.getCode,
+                FHIRResponse.SEVERITY_CODES.ERROR,
                 FHIRResponse.OUTCOME_CODES.INVALID,
                 None,
                 Some(s"Invalid Json-patch , 'path' or 'from' element is not found or invalid in '${patch.toJson}'"),
@@ -395,7 +394,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
 
         case _ => throw new BadRequestException(Seq(
           OutcomeIssue(
-            ResultSeverityEnum.ERROR.getCode,
+            FHIRResponse.SEVERITY_CODES.ERROR,
             FHIRResponse.OUTCOME_CODES.INVALID,
             None,
             Some(s"Invalid Json patch, 'op' element not found or invalid in '${patch.toJson}'"),

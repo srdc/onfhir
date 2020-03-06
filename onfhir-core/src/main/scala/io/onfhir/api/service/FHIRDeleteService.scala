@@ -1,7 +1,6 @@
 package io.onfhir.api.service
 
 import akka.http.scaladsl.model.{StatusCode, StatusCodes, Uri}
-import ca.uhn.fhir.validation.ResultSeverityEnum
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
 import io.onfhir.api.util.FHIRUtil
@@ -70,7 +69,7 @@ class FHIRDeleteService(transactionSession: Option[TransactionSession] = None) e
         logger.debug("no document with given parameters, return 200 - OK...")
         Future( FHIRResponse.errorResponse(StatusCodes.OK, Seq(
           OutcomeIssue(
-            ResultSeverityEnum.WARNING.getCode,
+            FHIRResponse.SEVERITY_CODES.WARNING,
             FHIRResponse.OUTCOME_CODES.INFORMATIONAL,
             None,
             Some(s"There is no such resource matching with given parameters!!!"),
@@ -91,7 +90,7 @@ class FHIRDeleteService(transactionSession: Option[TransactionSession] = None) e
             logger.debug("Multiple matches exist and multiple conditional delete is not supported, returning 412 Precondition failed...")
             throw new PreconditionFailedException(Seq(
               OutcomeIssue(
-                ResultSeverityEnum.ERROR.getCode,
+                FHIRResponse.SEVERITY_CODES.ERROR,
                 FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED,
                 None,
                 Some(s"Multiple matches exist with given parameters and multiple conditional delete is not supported. "),

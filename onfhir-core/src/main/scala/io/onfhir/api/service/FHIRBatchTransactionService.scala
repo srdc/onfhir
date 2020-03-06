@@ -4,7 +4,6 @@ import java.time.Instant
 import java.util.concurrent.TimeUnit
 
 import akka.http.scaladsl.model.StatusCodes
-import ca.uhn.fhir.validation.ResultSeverityEnum
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
@@ -61,7 +60,7 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
       case FHIR_BUNDLE_TYPES.TRANSACTION => performTransactionRequest(fhirRequest, authzContext)
       case anyType => throw new NotFoundException(Seq(
         OutcomeIssue(
-          ResultSeverityEnum.ERROR.getCode, //fatal
+          FHIRResponse.SEVERITY_CODES.ERROR, //fatal
           FHIRResponse.OUTCOME_CODES.INVALID,
           None,
           Some(s"Invalid bundle type $anyType, please use one of ${FHIR_BUNDLE_TYPES.BATCH} or ${FHIR_BUNDLE_TYPES.TRANSACTION}."),
@@ -210,7 +209,7 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
     */
   private def getIssuesForTransaction(requests:Seq[FHIRRequest]):Seq[OutcomeIssue] = {
     Seq(OutcomeIssue(
-      ResultSeverityEnum.ERROR.getCode,
+      FHIRResponse.SEVERITY_CODES.ERROR,
       FHIRResponse.OUTCOME_CODES.INVALID,
       None,
       Some("Some of the requests are failed! Transaction can not be performed ..."),
@@ -251,7 +250,7 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
       //Check if there is identity overlapping in resources
       if (uuidMappings.map(_._1).distinct.size != uuidMappings.size)
         throw new BadRequestException(Seq(OutcomeIssue(
-          ResultSeverityEnum.ERROR.getCode,
+          FHIRResponse.SEVERITY_CODES.ERROR,
           FHIRResponse.OUTCOME_CODES.INVALID,
           None,
           Some("Identity overlapping, check your 'uuid's given to the entries! Transaction can not be performed ..."),

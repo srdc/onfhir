@@ -1,12 +1,11 @@
 package io.onfhir.api.parsers
 
 import akka.http.scaladsl.server.{Directive1, Directives}
-import org.slf4j.{Logger, LoggerFactory}
-
 import io.onfhir.api._
 import io.onfhir.exception._
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
 import io.onfhir.api.model.Parameter
+import org.slf4j.{LoggerFactory, Logger}
 
 import scala.util.Try
 import scala.util.parsing.combinator.RegexParsers

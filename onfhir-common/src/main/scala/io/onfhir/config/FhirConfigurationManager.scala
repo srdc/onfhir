@@ -20,18 +20,17 @@ object FhirConfigurationManager {
     * Read FHIR foundational definitions and configure the platform
     * @param fhirConfigurator Specific FHIR configurator for the FHIR version to be supported
     */
-  def initialize(fhirConfigurator:IFhirConfigurator) : Unit = {
+  def initialize(fhirConfigurator:IFhirVersionConfigurator) : Unit = {
     //Initialize platform, and save the configuration
-    val platformConfigs = fhirConfigurator.initializePlatform(OnfhirConfig.fhirInitialize)
-    fhirConfig = platformConfigs._1
+    fhirConfig = fhirConfigurator.initializePlatform(OnfhirConfig.fhirInitialize)
 
     //If it is the first setup or update of the platform (definition of new profile, etc), apply the setups
     if(OnfhirConfig.fhirInitialize) {
       //Read the Value sets
-      fhirConfigurator.setupPlatform(fhirConfig, platformConfigs._2, platformConfigs._3, platformConfigs._4, platformConfigs._5, platformConfigs._6, platformConfigs._7, platformConfigs._8, platformConfigs._9)
+      fhirConfigurator.setupPlatform(fhirConfig)
     }
     //Initialize FHIR Resource Validator
-    fhirValidator = fhirConfigurator.getResourceValidator()
+    fhirValidator = fhirConfigurator.getResourceValidator(fhirConfig)
     //Initialize FHIR Audit creator if necessary
     if(OnfhirConfig.fhirAuditingRepository.equalsIgnoreCase("local") || OnfhirConfig.fhirAuditingRepository.equalsIgnoreCase("remote"))
       fhirAuditCreator = fhirConfigurator.getAuditCreator()

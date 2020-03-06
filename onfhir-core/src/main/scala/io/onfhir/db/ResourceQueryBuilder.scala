@@ -1,6 +1,5 @@
 package io.onfhir.db
 
-import ca.uhn.fhir.validation.ResultSeverityEnum
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRResponse, OutcomeIssue, Parameter}
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
@@ -292,7 +291,7 @@ object ResourceQueryBuilder {
               FHIRUtil.extractValueOptionByPath[String](resource, elementPath) match {
                 case None => throw new BadRequestException(Seq(
                   OutcomeIssue(
-                    ResultSeverityEnum.FATAL.getCode,
+                    FHIRResponse.SEVERITY_CODES.FATAL,
                     FHIRResponse.OUTCOME_CODES.INVALID,
                     None,
                     Some(s"Collection for the resource type $rtype is sharded on path $elementPath! Therefore it is required, but the resource does not include the field! Please consult with the maintainer of the OnFhir repository."),

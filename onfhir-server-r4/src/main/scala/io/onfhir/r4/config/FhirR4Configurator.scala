@@ -1,14 +1,21 @@
 package io.onfhir.r4.config
 
-import io.onfhir.api.{FHIR_SEARCH_RESULT_PARAMETERS, Resource}
+import io.onfhir.api.Resource
 import io.onfhir.api.validation.{ProfileRestrictions, ValueSetRestrictions}
+import io.onfhir.audit.IFhirAuditCreator
 import io.onfhir.config._
+import io.onfhir.r4.audit.R4AuditCreator
 import io.onfhir.r4.parsers.StructureDefinitionParser
 import io.onfhir.util.JsonFormatter.formats
 import io.onfhir.validation.TerminologyParser
 import org.json4s._
 
-class FhirR4Configurator extends IFhirVersionConfigurator{
+/**
+ * Configurator for FHIR R4 standard (parsing R4 foundation resources, etc)
+ */
+class FhirR4Configurator extends BaseFhirConfigurator {
+
+  def getAuditCreator():IFhirAuditCreator = new R4AuditCreator()
 
   /**
    * Parse a FHIR Capability Statement into our compact form
@@ -17,8 +24,10 @@ class FhirR4Configurator extends IFhirVersionConfigurator{
    * @return
    */
   override def parseCapabilityStatement(capabilityStmt: Resource): FHIRCapabilityStatement = {
+    val restDef =
+      (capabilityStmt \ "rest").asInstanceOf[JArray].arr.find(r => (r \ "mode").extract[String] == "server").get
 
-    var resourceDefs = (capabilityStmt \ "rest" \ "resource").asInstanceOf[JArray]
+    val resourceDefs = (restDef \ "resource").asInstanceOf[JArray]
 
     FHIRCapabilityStatement(
       restResourceConf = resourceDefs.arr.map(_.asInstanceOf[JObject]).map(resourceDef =>
@@ -59,7 +68,7 @@ class FhirR4Configurator extends IFhirVersionConfigurator{
 
   /**
    * Extract definition URLs for system level operations
-   * @param capabilityStmt
+   * @param capabilityStmt    Parsed JSON object for CapabilityStatement
    * @return
    */
   protected def extractOperationDefinitionUrls(capabilityStmt:Resource):Seq[String] = {
@@ -102,9 +111,6 @@ class FhirR4Configurator extends IFhirVersionConfigurator{
     val paramDefObjs = (operationDefinition \ "parameter").asInstanceOf[JArray].arr.map(_.asInstanceOf[JObject])
     //Parse all parameter definitions
     val paramDefs = paramDefObjs.map(parseOperationParamDefinition)
-    //Get input or output profile
-    val inputProfile = (operationDefinition \  "inputProfile").extractOpt[String]
-    val outputProfile = (operationDefinition \  "outputProfile").extractOpt[String]
 
     OperationConf(
         url = (operationDefinition \  "url").extract[String],
@@ -117,14 +123,9 @@ class FhirR4Configurator extends IFhirVersionConfigurator{
           "instance" -> (operationDefinition \  "instance").extract[Boolean],
          ).filter(_._2).map(_._1).toSet,
         resources = (operationDefinition \  "resource").extractOrElse[Seq[String]](Nil).toSet,
-        inputParams = inputProfile match {
-          case None => Left(paramDefs.filter(_._1 == "in").map(_._2))
-          case Some(ip) => Right(ip)
-        },
-        outputParams = outputProfile match {
-          case None => Left(paramDefs.filter(_._1 == "out").map(_._2))
-          case Some(op) => Right(op)
-        },
+        inputParams = paramDefs.filter(_._1 == "in").map(_._2),
+        outputParams = paramDefs.filter(_._1 == "out").map(_._2),
+        inputParamsProfile = (operationDefinition \  "inputProfile").extractOpt[String],
         affectsState = (operationDefinition \  "affectsState").extractOrElse[Boolean](false)
       )
   }
@@ -135,7 +136,7 @@ class FhirR4Configurator extends IFhirVersionConfigurator{
    * @return
    */
   protected def parseOperationParamDefinition(paramDef:JObject):(String, OperationParamDef) = {
-   val binding = (paramDef \ "binding" ) match {
+   val binding = paramDef \ "binding"  match {
       case obj:JObject =>
        Some( (obj \ "strength").extract[String] ->  (obj \ "valueSet").extract[String])
       case _ => None
@@ -149,7 +150,10 @@ class FhirR4Configurator extends IFhirVersionConfigurator{
         pType = (paramDef \ "type").extractOpt[String],
         pProfile = (paramDef \ "targetProfile").extractOrElse[Seq[String]](Nil),
         pSearchType = (paramDef \ "searchType").extractOpt[String],
-        parts = (paramDef \ "part").asInstanceOf[JArray].arr.map(p => parseOperationParamDefinition(p.asInstanceOf[JObject])._2),
+        parts = (paramDef \ "part") match {
+          case JArray(arr) => arr.map(p => parseOperationParamDefinition(p.asInstanceOf[JObject])._2)
+          case _ => Nil
+        },
         binding = binding
       )
   }
@@ -183,7 +187,7 @@ class FhirR4Configurator extends IFhirVersionConfigurator{
   /**
    * Parse a FHIR StructureDefinition into our compact form
    *
-   * @param structureDefinition
+   * @param structureDefinition   Parsed JSON object for FHIR StructureDefinition
    * @return
    */
   override def parseStructureDefinition(structureDefinition: Resource): Option[ProfileRestrictions] = {
@@ -193,7 +197,7 @@ class FhirR4Configurator extends IFhirVersionConfigurator{
   /**
    * Parse a bundle of FHIR ValueSet and CodeSystem into a compact form for validation
    *
-   * @param valueSetOrCodeSystems
+   * @param valueSetOrCodeSystems   Parsed JSON objects for all ValueSet and CodeSystem resources that will be related with server
    * @return
    */
   override def parseValueSetAndCodeSystems(valueSetOrCodeSystems: Seq[Resource]): Map[String, Map[String, ValueSetRestrictions]] = {

@@ -4,16 +4,14 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.headers.{HttpChallenge, `WWW-Authenticate`}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server._
-import ca.uhn.fhir.parser.DataFormatException
-import ca.uhn.fhir.validation.ResultSeverityEnum
 import com.fasterxml.jackson.core.JsonParseException
 import com.fasterxml.jackson.databind.JsonMappingException
-
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue}
 import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.exception.AuthorizationFailedRejection
 
 import scala.language.implicitConversions
+import scala.xml.{SAXException, SAXParseException}
 
 /**
   * Created by tuncay on 2/22/2017.
@@ -46,7 +44,7 @@ object FHIRRejectionHandler {
         FHIRResponse.errorResponse(
           StatusCodes.UnsupportedMediaType,
           Seq(OutcomeIssue(
-            ResultSeverityEnum.ERROR.getCode,
+            FHIRResponse.SEVERITY_CODES.ERROR,
             FHIRResponse.OUTCOME_CODES.INVALID,
             None,
             Some("Unsupported Content-Type!"),
@@ -57,7 +55,7 @@ object FHIRRejectionHandler {
       case AuthorizationFailedRejection(authzResponse) =>
           FHIRResponse.authorizationErrorResponse(
             Seq(OutcomeIssue(
-              ResultSeverityEnum.ERROR.getCode,
+              FHIRResponse.SEVERITY_CODES.ERROR,
               FHIRResponse.OUTCOME_CODES.SECURITY,
               None,
               Some(s"Error: ${authzResponse.errorCode.get}; ${authzResponse.errorDesc.get}"),
@@ -77,7 +75,7 @@ object FHIRRejectionHandler {
                 StatusCodes.BadRequest,
                 Seq(
                   OutcomeIssue(
-                    ResultSeverityEnum.ERROR.getCode,
+                    FHIRResponse.SEVERITY_CODES.ERROR,
                     FHIRResponse.OUTCOME_CODES.INVALID,
                     None,
                     Some("Invalid JSON: "+jme.getMessage),
@@ -89,7 +87,7 @@ object FHIRRejectionHandler {
                 StatusCodes.BadRequest,
                 Seq(
                   OutcomeIssue(
-                    ResultSeverityEnum.ERROR.getCode,
+                    FHIRResponse.SEVERITY_CODES.ERROR,
                     FHIRResponse.OUTCOME_CODES.INVALID,
                     None,
                     Some("Invalid JSON: "+jpe.getMessage),
@@ -101,7 +99,7 @@ object FHIRRejectionHandler {
                 StatusCodes.BadRequest,
                 Seq(
                   OutcomeIssue(
-                    ResultSeverityEnum.ERROR.getCode,
+                    FHIRResponse.SEVERITY_CODES.ERROR,
                     FHIRResponse.OUTCOME_CODES.INVALID,
                     None,
                     Some("Unaccepted numeric value: "+ex.getMessage),
@@ -109,12 +107,12 @@ object FHIRRejectionHandler {
                   ))
               )
             //HAPI XML Parsing
-            case dfe:DataFormatException =>
+            case dfe:SAXParseException =>
               FHIRResponse.errorResponse(
                 StatusCodes.BadRequest,
                 Seq(
                   OutcomeIssue(
-                    ResultSeverityEnum.ERROR.getCode,
+                    FHIRResponse.SEVERITY_CODES.ERROR,
                     FHIRResponse.OUTCOME_CODES.INVALID,
                     None,
                     Some("Invalid XML: "+dfe.getMessage),
@@ -127,7 +125,7 @@ object FHIRRejectionHandler {
                 StatusCodes.BadRequest,
                 Seq(
                   OutcomeIssue(
-                    ResultSeverityEnum.ERROR.getCode,
+                    FHIRResponse.SEVERITY_CODES.ERROR,
                     FHIRResponse.OUTCOME_CODES.INVALID,
                     None,
                     Some("Invalid XML: "+x.getMessage),

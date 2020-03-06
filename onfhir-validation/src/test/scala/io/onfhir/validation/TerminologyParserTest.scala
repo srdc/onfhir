@@ -14,7 +14,7 @@ class TerminologyParserTest extends Specification {
   sequential
   "TerminologyParserTest" should {
     "Parse the base valueset definitions" in {
-      val results = TerminologyParser.parseValueSetBundle(valueSetsOrCodeSystems)
+      val results = new TerminologyParser().parseValueSetBundle(valueSetsOrCodeSystems)
 
       results.nonEmpty
     }

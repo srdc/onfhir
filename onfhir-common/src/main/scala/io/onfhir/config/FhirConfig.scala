@@ -327,11 +327,12 @@ case class OperationConf(url:String,
                          kind:String,
                          levels:Set[String],
                          resources:Set[String],
-                         inputParams:Either[Seq[OperationParamDef], String],
-                         outputParams:Either[Seq[OperationParamDef], String],
+                         inputParams:Seq[OperationParamDef],
+                         outputParams:Seq[OperationParamDef],
+                         inputParamsProfile:Option[String] = None,
                          affectsState:Boolean = false
                         ) {
   //If HTTP Get is allowed for operation; if it does not affect state of resources and all input parameters are primitive
-  def isHttpGetAllowed() = !affectsState && inputParams.isLeft && inputParams.left.get.forall(ip => ip.pType.isDefined &&  FHIR_PRIMITIVE_TYPES.contains(ip.pType.get))
+  def isHttpGetAllowed() = !affectsState && inputParams.forall(ip => ip.pType.isDefined &&  FHIR_PRIMITIVE_TYPES.contains(ip.pType.get))
 
 }

@@ -521,7 +521,7 @@ class FhirPathEvaluatorTest extends Specification {
 
     "evaluate special functions" in {
       var referenceResolver: IReferenceResolver = new IReferenceResolver {
-        override def resolveReference(reference: FhirReference, currentResource:Resource): Option[Resource] = {
+        override def resolveReference(reference: FhirReference): Option[Resource] = {
            reference match {
              case FhirLiteralReference(url, "Patient", rid, version) =>
                Some(Source.fromInputStream(getClass.getResourceAsStream("/patient.json")).mkString.parseJson)

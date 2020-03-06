@@ -31,7 +31,7 @@ class StructureDefinitionParserTest extends Specification {
 
     "parse the other profiles" in {
       var lipidProfileSd = otherProfiles.find(r => FHIRUtil.extractValue[String](r, "url") == "http://hl7.org/fhir/StructureDefinition/lipidprofile").get
-      val lipidProfile = StructureDefinitionParser.parseProfile(lipidProfileSd)
+      val lipidProfile = new StructureDefinitionParser().parseProfile(lipidProfileSd)
       lipidProfile mustNotEqual(null)
       //val profiles = otherProfiles.flatMap(StructureDefinitionParser.parseProfile)
       //profiles.length mustEqual furtherProfiles.length

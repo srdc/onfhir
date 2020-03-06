@@ -11,7 +11,7 @@ import org.apache.commons.io.input.BOMInputStream
 import org.json4s.JsonAST.JObject
 import org.json4s.jackson.JsonMethods
 import org.slf4j.{Logger, LoggerFactory}
-
+import io.onfhir.util.XmlFormatter
 import scala.collection.mutable
 import scala.io.Source
 
@@ -38,11 +38,11 @@ object IOUtil {
   }
 
   def readResource(filePath:String):Resource = {
-    JsonMethods.parse( new InputStreamReader(new BOMInputStream(new FileInputStream(new File(filePath))))).asInstanceOf[JObject]
+    parseResource( new InputStreamReader(new BOMInputStream(new FileInputStream(new File(filePath)))), filePath).asInstanceOf[JObject]
   }
 
   def readInnerResource(resourcePath:String):Resource = {
-    JsonMethods.parse(new InputStreamReader(new BOMInputStream(getClass.getResourceAsStream(resourcePath)))).asInstanceOf[JObject]
+    parseResource(new InputStreamReader(new BOMInputStream(getClass.getClassLoader.getResourceAsStream(resourcePath))), resourcePath).asInstanceOf[JObject]
   }
 
   /**
@@ -71,7 +71,7 @@ object IOUtil {
           //Given as folder
           givenFile.listFiles().toSeq.map(file => {
             try {
-              JsonMethods.parse(new InputStreamReader(new BOMInputStream(new FileInputStream(file)))).asInstanceOf[JObject]
+              parseResource(new InputStreamReader(new BOMInputStream(new FileInputStream(file))), file.getAbsolutePath).asInstanceOf[JObject]
             } catch {
               case e:Exception =>
                 throw new InitializationException(s"Cannot parse resource in ${path + "/" + file.getName}  ...", Some(e))
@@ -98,13 +98,13 @@ object IOUtil {
    * @return
    */
   def readStandardBundleFile(fileName:String, resourceTypeFilter:Set[String]) :Seq[Resource] = {
-    readResourceInZip(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS, fileName, "Bundle") match {
+    readResourceInZip(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS, fileName, resourceTypeFilter.mkString(",")) match {
       case None =>
         throw new InitializationException(s"Cannot find  resource bundle '$fileName' in path ${OnfhirConfig.baseDefinitions.getOrElse(DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS)}!")
       case Some(is) =>
         try {
           //Parse the Bundle
-          val bundle = JsonMethods.parse(new InputStreamReader(new BOMInputStream(is))).asInstanceOf[JObject]
+          val bundle = parseResource(new InputStreamReader(new BOMInputStream(is)), fileName).asInstanceOf[JObject]
           //Get the resources
           FHIRUtil.extractValueOptionByPath[Seq[Resource]](bundle, "entry.resource")
             .getOrElse(Nil)
@@ -174,7 +174,7 @@ object IOUtil {
 
       while(zipEntry != null){
         val reader = new InputStreamReader(new BOMInputStream(zipStream), "UTF-8")
-        resources.append(parseResource(reader, path))
+        resources.append(parseResource(reader, zipEntry.getName))
         zipStream.closeEntry()
         zipEntry = zipStream.getNextEntry
       }
@@ -183,11 +183,16 @@ object IOUtil {
 
   private def parseResource(reader:Reader, path:String):Resource = {
     try{
-      JsonMethods.parse(reader).asInstanceOf[JObject]
+      if(path.endsWith(".json"))
+        JsonMethods.parse(reader).asInstanceOf[JObject]
+      else if(path.endsWith(".xml"))
+        new XmlFormatter.XmlParsable2(reader).parseXML
+      else
+        throw new InitializationException(s"Cannot read parse resource from path $path, it should be XML or JSON file!")
     }
     catch {
       case e:Exception =>
-        throw new InitializationException(s"Cannot read parse resource from path $path into JSON!", Some(e))
+        throw new InitializationException(s"Cannot read parse resource from path $path!", Some(e))
     }
   }
 

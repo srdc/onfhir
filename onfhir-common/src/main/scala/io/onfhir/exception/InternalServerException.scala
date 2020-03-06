@@ -1,5 +1,7 @@
 package io.onfhir.exception
 
-class InternalServerException(reason:String) extends Exception(reason:String) {
+import io.onfhir.api.model.OutcomeIssue
 
+class InternalServerException(reason:String, issues:Seq[OutcomeIssue] = Nil) extends Exception(reason:String) {
+  val outcomeIssues = issues
 }

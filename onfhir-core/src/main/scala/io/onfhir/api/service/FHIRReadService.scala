@@ -2,7 +2,6 @@ package io.onfhir.api.service
 
 import akka.http.scaladsl.model.headers.{`If-Modified-Since`, `If-None-Match`}
 import akka.http.scaladsl.model.{StatusCodes, Uri}
-import ca.uhn.fhir.validation.ResultSeverityEnum
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue}
 import io.onfhir.api.parsers.FHIRResultParameterResolver
@@ -85,7 +84,7 @@ class FHIRReadService(transactionSession: Option[TransactionSession] = None) ext
         logger.debug("resource not found, return 404 NotFound...")
         throw new NotFoundException(Seq(
           OutcomeIssue(
-            ResultSeverityEnum.INFORMATION.getCode,
+            FHIRResponse.SEVERITY_CODES.INFORMATION,
             FHIRResponse.OUTCOME_CODES.INFORMATIONAL,
             None,
             if(_vid.isDefined)
@@ -104,7 +103,7 @@ class FHIRReadService(transactionSession: Option[TransactionSession] = None) ext
           FHIRResponse.errorResponse(
             StatusCodes.Gone, //Status code
             Seq(OutcomeIssue(//Issues
-              ResultSeverityEnum.INFORMATION.getCode,
+              FHIRResponse.SEVERITY_CODES.INFORMATION,
               FHIRResponse.OUTCOME_CODES.INFORMATIONAL,
               None,
               if (_vid.isDefined)

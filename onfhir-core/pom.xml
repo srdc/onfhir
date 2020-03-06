@@ -51,17 +51,11 @@
             <artifactId>config</artifactId>
         </dependency>
 
-        <!--HAPI FHIR dependencies for configuration and validation-->
-        <dependency>
-            <groupId>ca.uhn.hapi.fhir</groupId>
-            <artifactId>hapi-fhir-base</artifactId>
-        </dependency>
         <!-- MongoDB Driver -->
         <dependency>
             <groupId>org.mongodb.scala</groupId>
             <artifactId>mongo-scala-driver_2.12</artifactId>
         </dependency>
-
 
         <!-- Akka HTTP Suite -->
         <dependency>

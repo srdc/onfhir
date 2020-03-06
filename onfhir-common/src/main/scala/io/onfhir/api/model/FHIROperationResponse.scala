@@ -19,7 +19,7 @@ class FHIROperationResponse(statusCode:StatusCode,
                             lastModified:Option[DateTime] = None,
                             newVersion:Option[Long]=None) extends FHIRResponse(statusCode, location = location, lastModified = lastModified, newVersion = newVersion) {
   //Return parameters for Operation
-  private val outputParams:mutable.Map[String, JValue]  = new mutable.HashMap[String, JValue]()
+  private val outputParams:mutable.ListBuffer[(String, FHIROperationParam)]  = new mutable.ListBuffer[(String, FHIROperationParam)]()
 
   /**
     * Set primitive output param
@@ -27,7 +27,7 @@ class FHIROperationResponse(statusCode:StatusCode,
     * @param value Parameter value
     * @return
     */
-  def setPrimitiveParam(pname:String, value:Any):Option[JValue] = outputParams.put(pname, Extraction.decompose(value))
+  def setPrimitiveParam(pname:String, value:Any):Unit = outputParams.append(pname -> FHIRSimpleOperationParam(Extraction.decompose(value)))
 
   /**
     * Set a list of primitive output param
@@ -35,7 +35,7 @@ class FHIROperationResponse(statusCode:StatusCode,
     * @param values Parameter values
     * @return
     */
-  def setPrimitiveParamList(pname:String, values:List[Any]):Option[JValue] = outputParams.put(pname, JArray(values.map(Extraction.decompose(_))))
+  def setPrimitiveParamList(pname:String, values:Seq[Any]):Unit = values.foreach(v =>  setPrimitiveParam(pname, v))
 
   /**
     * Set a FHIR complex type or Resource output param
@@ -43,7 +43,7 @@ class FHIROperationResponse(statusCode:StatusCode,
     * @param value  Parameter value in JSON object format
     * @return
     */
-  def setComplexOrResourceParam(pname:String, value:Resource):Option[JValue] = outputParams.put(pname, value)
+  def setComplexOrResourceParam(pname:String, value:Resource):Unit = outputParams.append(pname -> FHIRSimpleOperationParam(value))
 
   /**
     * Set FHIR complex type or Resource output params
@@ -51,21 +51,27 @@ class FHIROperationResponse(statusCode:StatusCode,
     * @param values   Parameter values in JSON object format
     * @return
     */
-  def setComplexOrResourceParams(pname:String, values:List[Resource]):Option[JValue] = outputParams.put(pname, JArray(values))
+  def setComplexOrResourceParams(pname:String, values:List[Resource]):Unit = values.foreach(v => setComplexOrResourceParam(pname, v))
+
+  /**
+   * Set a multi param
+   * @param pname
+   * @param value
+   */
+  def setMultiParam(pname:String, value:FHIRMultiOperationParam):Unit = outputParams.append(pname ->value)
 
   /**
     * Set single response with the given resource
     * @param value Set the single FHIR resource response
     * @return
     */
-  def setResponse(value:Resource):Option[JValue] = {
-    outputParams.put("return", value)
+  def setResponse(value:Resource):Unit = {
+    setPrimitiveParam("return", value)
   }
 
   /**
     * Get output parameters returned from the operation
     * @return
     */
-  def getOutputParams:Map[String,JValue] = outputParams.toMap
-
+  def getOutputParams:Seq[(String,FHIROperationParam)] = outputParams
 }

@@ -2,7 +2,8 @@ package io.onfhir.config
 
 import akka.http.scaladsl.model.{MediaType, MediaTypes}
 import io.onfhir.api.{FHIR_SEARCH_RESULT_PARAMETERS, FHIR_SEARCH_SPECIAL_PARAMETERS, Resource}
-import io.onfhir.api.validation.{ProfileRestrictions, ValueSetRestrictions}
+import io.onfhir.api.validation.{IFhirResourceValidator, ProfileRestrictions, ValueSetRestrictions}
+import io.onfhir.audit.IFhirAuditCreator
 
 /**
  * Compact form for FHIR CapabilityStatement
@@ -111,19 +112,19 @@ trait IFhirVersionConfigurator {
 
   /** MediaType configurations for this FHIR version */
   // List of Supported FHIR JSON Media Types
-  var FHIR_JSON_MEDIA_TYPES:Seq[MediaType] = Seq(
+  val FHIR_JSON_MEDIA_TYPES:Seq[MediaType] = Seq(
     MediaTypes.`application/json`,
     FHIR_JSON_MEDIA_TYPE
   )
   // List of Supported FHIR XML Media Types
-  var FHIR_XML_MEDIA_TYPES:Seq[MediaType] = Seq(
+  val FHIR_XML_MEDIA_TYPES:Seq[MediaType] = Seq(
     MediaTypes.`application/xml`,
     FHIR_XML_MEDIA_TYPE
   )
   // Json patch media type supported
-  var FHIR_JSON_PATCH_MEDIA_TYPE:Option[MediaType] = Some(MediaType.applicationWithOpenCharset("json-patch+json"))
+  val FHIR_JSON_PATCH_MEDIA_TYPE:Option[MediaType] = Some(MediaType.applicationWithOpenCharset("json-patch+json"))
   //Map from _format param value to actual MediaType
-  var FHIR_FORMAT_MIME_TYPE_MAP:Map[String, MediaType] = Map(
+  val FHIR_FORMAT_MIME_TYPE_MAP:Map[String, MediaType] = Map(
     "html" -> MediaTypes.`text/html`,
     "text/html" -> MediaTypes.`text/html`,
     "application/json" -> MediaTypes.`application/json`,
@@ -135,11 +136,36 @@ trait IFhirVersionConfigurator {
     "text/xml" -> FHIR_XML_MEDIA_TYPE
   )
   //Default media type used when no match
-  var FHIR_DEFAULT_MEDIA_TYPE:MediaType = FHIR_JSON_MEDIA_TYPE
+  val FHIR_DEFAULT_MEDIA_TYPE:MediaType = FHIR_JSON_MEDIA_TYPE
 
   //Code system to indicate a search result is summarized
-  var FHIR_SUMMARIZATION_INDICATOR_CODE_SYSTEM = "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
+  val FHIR_SUMMARIZATION_INDICATOR_CODE_SYSTEM = "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
 
+  /**
+   * Parse the base FHIR standard bundle and provide a configuration for the server
+   * @param fromConfig  If false, initialization is performed from the FHIR foundation resources stored in database
+   * @return
+   */
+  def initializePlatform(fromConfig:Boolean = false):FhirConfig
+
+  /**
+   * Setup the platform (database initialization) for the first time (or updated the configurations)
+   * @param fhirConfig
+   */
+  def setupPlatform(fhirConfig: FhirConfig):Unit
+
+  /**
+   * Get a resource validator for this FHIR version
+   * @param fhirConfig
+   * @return
+   */
+  def getResourceValidator(fhirConfig: FhirConfig):IFhirResourceValidator
+
+  /**
+   * Return a class that implements the interface to create AuditEvents conformant to the given base specification
+   * @return
+   */
+  def getAuditCreator():IFhirAuditCreator
 
   /**
    * Parse a FHIR Capability Statement into our compact form

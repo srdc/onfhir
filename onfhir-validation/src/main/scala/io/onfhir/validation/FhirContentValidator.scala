@@ -87,13 +87,14 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
           extractFieldNameAndDataType(field, allRestrictions) match {
             //If there is no definition for the element, return error
             case None =>
-              FhirContentValidator.convertToOutcomeIssue(FHIRUtil.mergeElementPath(parentPath, field), Seq(ConstraintFailure(s"Unrecognized element $field !")))
+              FhirContentValidator.convertToOutcomeIssue(FHIRUtil.mergeElementPath(parentPath, field), Seq(ConstraintFailure(s"Unrecognized element ${FHIRUtil.mergeElementPath(parentPath, field)} !")))
             //If we found such a defined field e.g. valueQuantity -> value, Quantity
             case Some((fieldName, dataType)) =>
               //Add the field to validated fields
               validatedFields += fieldName
               //Find all restrictions chain defined for the field (in priority order)
               val elementRestrictions = findElementRestrictionsChain(fieldName, allRestrictions)
+
               //Validate element
               validateElement(FHIRUtil.mergeElementPath(parentPath, field), fieldName, dataType, fieldValue, elementRestrictions)
           }
@@ -1017,19 +1018,27 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
 
   /**
    * Find the path within root chain for referenced contents
-   * @param field
+   * @param path
    * @return
    */
-  def findWithinRootChain(field:String):(Option[ElementRestrictions], Seq[(String, ElementRestrictions)]) = {
-    for(profileRestriction <- rootProfileChain.reverse){
-      findElementRestriction(field, profileRestriction.elementRestrictions) match {
-        case Some(er) =>
-          return Some(er) -> profileRestriction.elementRestrictions.filter(p => p._1.startsWith(field + ".") || p._1.startsWith(field + ":"))
-        case _ =>
+  def findWithinRootChain(path:String):(Option[ElementRestrictions], Seq[(String, ElementRestrictions)]) = {
+    val pathItems = path.split('.')
+    var found:(Option[ElementRestrictions], Seq[(String, ElementRestrictions)]) = (None, Nil)
+    import util.control.Breaks._
+    breakable {
+      for (profileRestriction <- rootProfileChain.reverse) {
+        findElementRestriction(pathItems.head, profileRestriction.elementRestrictions) match {
+          case Some(er) =>
+            found = (profileRestriction.elementRestrictions.find(p => p._1 == path).map(_._2) ,
+              profileRestriction.elementRestrictions.filter(p => p._1.startsWith(path + ".") || p._1.startsWith(path + ":")))
+            break()
+          case _ =>
+        }
       }
     }
-    None -> Nil
+    found
   }
+
 
   /**
    * Find a chain of ElementRestrictions and sub element restrictions under that element for a given field in priority order of profiles
@@ -1046,9 +1055,13 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
         val er = findElementRestriction(field, rr)
         //if this refers another element, get the restrictions and sub restrictions from that element
         if(er.exists(_.contentReference.isDefined)){
-          val (refEr, refErSubElements) = findWithinRootChain(field)
+          val (refEr, refErSubElements) = findWithinRootChain(er.get.contentReference.get)
           //combine the ca
-          Some(refEr.head.copy(restrictions = refEr.head.restrictions ++ er.head.restrictions)) -> refErSubElements
+          Some(refEr.head
+            .copy(
+              path = er.head.path,
+              restrictions = refEr.head.restrictions ++ er.head.restrictions)) ->
+            refErSubElements.map(e => e._1.replace(refEr.head.path, field) -> e._2.copy(path = e._2.path.replace(refEr.head.path, er.head.path)))
         } else
           er -> rr.filter(p => p._1.startsWith(field + ".") || p._1.startsWith(field + ":")) //find child definitions in each set of element defs coming from a profile
       })
