@@ -282,8 +282,16 @@ class SearchParameterConfigurator(
     }
   }
 
-  private def findPathCardinalityInSubpaths(): Unit ={
+  private def findPathCardinalityInSubpaths(pathParts:Seq[String], profile:ProfileRestrictions, i:Int =1):Option[Boolean] ={
+    //Split the path accordingly
+    val pathToDataType = pathParts.slice(0, pathParts.length-i).mkString(".")
+    val pathAfterDataType = pathParts.slice(pathParts.length-i, pathParts.length).mkString(".")
 
+    findTargetTypeOfPath(pathToDataType, Seq(profile)).map(_._1) match {
+      case None if i < pathParts.length - 1 => findPathCardinalityInSubpaths(pathParts, profile, i+1)
+      case Some(foundType) =>
+        fhirConfig.getBaseProfile(foundType)
+    }
   }
 
   /**
