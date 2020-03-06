@@ -394,14 +394,14 @@ object SearchUtil {
           case FHIR_PREFIXES_MODIFIERS.BELOW =>
             val (canonicalUrl, canonicalVersion) = FHIRUtil.parseCanonicalValue(reference)
             // Escape characters for to have valid regular expression
-            val regularExpressionValue = FHIRUtil.escapeCharacters(canonicalUrl + canonicalVersion.map(v => s"|$v."))
+            val regularExpressionValue = FHIRUtil.escapeCharacters(canonicalUrl) + canonicalVersion.map(v => s"\\|$v(\\.[0-9]*)+").getOrElse("")
             // Match at the beginning of the uri
-            regex(FHIRUtil.normalizeElementPath(path), "\\A" + regularExpressionValue + ".*")
+            regex(FHIRUtil.normalizeElementPath(path), "\\A" + regularExpressionValue + "$")
           case _ =>
             val (canonicalUrl, canonicalVersion) = FHIRUtil.parseCanonicalValue(reference)
             canonicalVersion match{
               case None => //Otherwise should match any version
-                regex(FHIRUtil.normalizeElementPath(path), "\\A" + canonicalUrl + ".*" )
+                regex(FHIRUtil.normalizeElementPath(path), "\\A" + FHIRUtil.escapeCharacters(canonicalUrl) + "(\\|[0-9]+(\\.[0-9]*)*)?$")
               case Some(_) => // Exact match if version exist
                 Filters.eq(FHIRUtil.normalizeElementPath(path), reference)
             }
