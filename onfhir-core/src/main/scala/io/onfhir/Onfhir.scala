@@ -25,6 +25,7 @@ import scala.io.StdIn
   * Instance of an OnFhir server
   *
   * @param fhirConfigurator      Module that will configure the FHIR capabilities of the server based on the base FHIR version
+  * @param fhirOperationImplms   Map for FHIR operation implementations; URL of FHIR Operation -> Class path for the implementation of operation
   * @param customAuthorizer      Module to handle authorization with a custom protocol
   * @param customTokenResolver   Module to handle access token resolution with a custom way
   * @param customAuditHandler    Module to handle auditing with a custom strategy
@@ -32,6 +33,7 @@ import scala.io.StdIn
   */
 class Onfhir(
               val fhirConfigurator:IFhirVersionConfigurator,
+              val fhirOperationImplms:Map[String, String],
               val customAuthorizer:Option[IAuthorizer],
               val customTokenResolver:Option[ITokenResolver],
               val customAuditHandler:Option[ICustomAuditHandler],
@@ -144,13 +146,14 @@ object Onfhir {
     */
   def apply(
              fhirConfigurator:IFhirVersionConfigurator,
+             fhirOperationImplms:Map[String, String] = Map.empty[String, String],
              customAuthorizer:Option[IAuthorizer] = None,
              customTokenResolver:Option[ITokenResolver] = None,
              customAuditHandler:Option[ICustomAuditHandler] = None,
              externalRoutes:Seq[(FHIRRequest, (AuthContext, Option[AuthzContext])) => Route] = Nil): Onfhir = {
 
     if(_instance == null)
-      _instance = new Onfhir(fhirConfigurator, customAuthorizer, customTokenResolver,customAuditHandler,externalRoutes)
+      _instance = new Onfhir(fhirConfigurator, fhirOperationImplms, customAuthorizer, customTokenResolver,customAuditHandler,externalRoutes)
     _instance
   }
 }

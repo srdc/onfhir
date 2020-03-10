@@ -2,7 +2,7 @@ package io.onfhir.config
 
 import scala.collection.immutable.{HashMap}
 import akka.http.scaladsl.model._
-import io.onfhir.api._
+import io.onfhir.api.{FHIR_VERSIONING_OPTIONS, FHIR_ROOT_URL_FOR_DEFINITIONS}
 import io.onfhir.api.validation.{ProfileRestrictions, ValueSetRestrictions}
 
 /**
@@ -41,6 +41,12 @@ class FhirConfig(version:String) {
   /** Shard Keys for FHIR resource types; resourceType -> Seq[fhir-search-parameter-name-indicating-the-shard-key] */
   var shardKeys:Map[String, Set[String]] = Map.empty[String, Set[String]]
 
+  /** Base FHIR Resource Types defined in the standard */
+  var FHIR_RESOURCE_TYPES:Set[String] = _
+  /** Base FHIR Complex data types defined in the standard */
+  var FHIR_COMPLEX_TYPES:Set[String] = _
+  /** Base FHIR primitive data types defined in the standard */
+  var FHIR_PRIMITIVE_TYPES:Set[String] = _
   /***
     * Configurations specific to FHIR version
     */
@@ -323,7 +329,7 @@ case class OperationParamDef(name:String, //Parameter name
   */
 case class OperationConf(url:String,
                          name:String,
-                         classPath:String,
+                         var classPath:String = "",
                          kind:String,
                          levels:Set[String],
                          resources:Set[String],
@@ -333,6 +339,6 @@ case class OperationConf(url:String,
                          affectsState:Boolean = false
                         ) {
   //If HTTP Get is allowed for operation; if it does not affect state of resources and all input parameters are primitive
-  def isHttpGetAllowed() = !affectsState && inputParams.forall(ip => ip.pType.isDefined &&  FHIR_PRIMITIVE_TYPES.contains(ip.pType.get))
+  def isHttpGetAllowed() = !affectsState && inputParams.forall(ip => ip.pType.isDefined &&  ip.pType.get.head.isLower)
 
 }

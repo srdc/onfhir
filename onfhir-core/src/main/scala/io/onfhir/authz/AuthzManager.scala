@@ -124,7 +124,7 @@ object AuthzManager {
             Future.find(results)(!_._2.isAuthorized).map {
               case None => AuthzResult.success() //If there is no failed authorization in child requests
               case Some(az) =>
-                fhirRequest.setResponse(FHIRResponse.errorResponse(StatusCodes.Unauthorized, az._2.toOutcomeIssue.map(o => o.copy(location = o.location ++ Seq(s"Request Uri:${az._1.requestUri}"))).toSeq))
+                fhirRequest.setResponse(FHIRResponse.errorResponse(StatusCodes.Unauthorized, az._2.toOutcomeIssue.map(o => o.copy(expression = o.expression ++ Seq(s"Request Uri:${az._1.requestUri}"))).toSeq))
                 az._2 //If there is one failed, return it
             }
         }

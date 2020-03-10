@@ -106,8 +106,9 @@ object IOUtil {
           //Parse the Bundle
           val bundle = parseResource(new InputStreamReader(new BOMInputStream(is)), fileName).asInstanceOf[JObject]
           //Get the resources
-          FHIRUtil.extractValueOptionByPath[Seq[Resource]](bundle, "entry.resource")
-            .getOrElse(Nil)
+          val resources = FHIRUtil.extractValueOptionByPath[Seq[Resource]](bundle, "entry.resource").getOrElse(Nil)
+
+          resources
             .filter(r =>
               resourceTypeFilter
                 .contains(FHIRUtil.extractValue[String](r, "resourceType")) //Filter the specific Resource types

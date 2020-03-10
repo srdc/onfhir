@@ -65,7 +65,7 @@ class FHIRResourceValidator(fhirConfig:FhirConfig) extends IFhirResourceValidato
           val issues = profileChainsToValidate.flatMap(pc => {
             val contentValidator = new FhirContentValidator(fhirConfig, pc.head.url, Some(new ReferenceResolver(fhirConfig, resource, None)))
             contentValidator.validateComplexContentAgainstProfile(pc, resource, None)
-              .map(oi => oi.copy(diagnostics = Some(s"[Validating against profile chain starting with ${pc.head.url}] => " + oi.diagnostics.getOrElse(""))))
+              .map(oi => oi.copy(diagnostics = Some(s"[Validating against '${pc.head.url}'] => " + oi.diagnostics.getOrElse(""))))
           })
 
           val unknownProfileWarnings = unknownProfiles.map(up => OutcomeIssue(FHIRResponse.SEVERITY_CODES.WARNING, FHIRResponse.OUTCOME_CODES.INFORMATIONAL, None, Some(s"Profile with url '$up' is not known to this server! Therefore, validation is skipped for this profile!"), Seq("meta.profile")))

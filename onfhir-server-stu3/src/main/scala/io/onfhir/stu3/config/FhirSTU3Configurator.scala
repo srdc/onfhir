@@ -95,7 +95,6 @@ class FhirSTU3Configurator extends FhirR4Configurator {
     OperationConf(
       url = (operationDefinition \  "url").extract[String],
       name =  (operationDefinition \  "code").extract[String],
-      classPath = (operationDefinition \  "name").extract[String],
       kind = (operationDefinition \  "kind").extract[String],
       levels = Seq(
         "system" ->  (operationDefinition \  "system").extract[Boolean],

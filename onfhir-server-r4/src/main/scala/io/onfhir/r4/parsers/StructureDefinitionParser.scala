@@ -10,7 +10,7 @@ import org.slf4j.{Logger, LoggerFactory}
 /**
  * Parser for R4 StructureDefinition resources to convert them to our compact form
  */
-class StructureDefinitionParser extends AbstractStructureDefinitionParser {
+class StructureDefinitionParser(fhirComplexTypes:Set[String], fhirPrimitiveTypes:Set[String]) extends AbstractStructureDefinitionParser(fhirComplexTypes, fhirPrimitiveTypes) {
   protected val logger:Logger = LoggerFactory.getLogger(this.getClass)
 
   /**
@@ -18,12 +18,19 @@ class StructureDefinitionParser extends AbstractStructureDefinitionParser {
    * @param structureDef Parsed FHIR StructureDefinition
    * @return
    */
-  override def parseProfile(structureDef:Resource):Option[ProfileRestrictions] = {
+  override def parseProfile(structureDef:Resource):ProfileRestrictions = {
     //Get resource type
     val rtype =  FHIRUtil.extractValueOption[String](structureDef, "type").get
     //Do not get primitive type definitions
     if(rtype.apply(0).isLower){
-      None
+      validation.ProfileRestrictions(
+        url = FHIRUtil.extractValueOption[String](structureDef, "url").get,
+        baseUrl = None,
+        elementRestrictions = Nil,
+        summaryElements = Set.empty[String],
+        constraints = None,
+        isAbstract = FHIRUtil.extractValueOption[Boolean](structureDef, "abstract").get
+      )
     } else {
       val profileUrl = FHIRUtil.extractValueOption[String](structureDef, "url").get
       //Get the element definitions
@@ -46,7 +53,7 @@ class StructureDefinitionParser extends AbstractStructureDefinitionParser {
         .map(parseElementDef(_, rtype, if(profileUrl.startsWith(FHIR_ROOT_URL_FOR_DEFINITIONS)) None else Some(profileUrl))) //Parse the element definitions
 
 
-      Some(validation.ProfileRestrictions(
+      validation.ProfileRestrictions(
         url = FHIRUtil.extractValueOption[String](structureDef, "url").get,
         baseUrl = FHIRUtil.extractValueOption[String](structureDef, "baseDefinition"),
         elementRestrictions = elemDefs.map(e => e._1.path -> e._1),
@@ -60,7 +67,7 @@ class StructureDefinitionParser extends AbstractStructureDefinitionParser {
               } //Get constraint elements
             ),
         isAbstract = FHIRUtil.extractValueOption[Boolean](structureDef, "abstract").get
-      ))
+      )
     }
   }
 
@@ -98,17 +105,17 @@ class StructureDefinitionParser extends AbstractStructureDefinitionParser {
           ConstraintKeys.ARRAY -> createArrayRestriction(profileUrl.isEmpty,  FHIRUtil.extractValueOption[String](elemDef, "max")),
           ConstraintKeys.BINDING -> FHIRUtil.extractValueOption[JObject](elemDef, "binding").flatMap(createBindingRestriction),
           ConstraintKeys.MINVALUE ->
-            FHIRUtil.findElementWithMultipleFhirTypes("minValue", elemDef)
+            findElementWithMultipleFhirTypes("minValue", elemDef)
               .map(f => createMinMaxValueRestriction(f._2, f._3, isMin = true)),
           ConstraintKeys.MINVALUE ->
-            FHIRUtil.findElementWithMultipleFhirTypes("maxValue", elemDef)
+            findElementWithMultipleFhirTypes("maxValue", elemDef)
               .map(f => createMinMaxValueRestriction(f._2, f._3, isMin = false)),
           ConstraintKeys.PATTERN ->
             (
-              FHIRUtil.findElementWithMultipleFhirTypes("fixed", elemDef) match {
+              findElementWithMultipleFhirTypes("fixed", elemDef) match {
                 case Some((_, dt, v)) =>  Some(createFixedPatternRestriction(dt, v, isFixed = true))
                 case None =>
-                  FHIRUtil.findElementWithMultipleFhirTypes("pattern", elemDef)
+                  findElementWithMultipleFhirTypes("pattern", elemDef)
                     .map(f => createFixedPatternRestriction(f._2, f._3, isFixed = false))
               }
             ),
@@ -147,4 +154,6 @@ class StructureDefinitionParser extends AbstractStructureDefinitionParser {
       profileDefinedIn = profileUrl
     ) -> (FHIRUtil.extractValueOption[Boolean](elemDef, "isSummary").getOrElse(false))
   }
+
+
 }

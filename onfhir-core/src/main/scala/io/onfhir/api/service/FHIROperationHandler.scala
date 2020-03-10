@@ -12,6 +12,8 @@ import io.onfhir.config.FhirConfigurationManager.fhirValidator
 import io.onfhir.config.{OperationConf, OperationParamDef}
 import io.onfhir.db.{ResourceManager, TransactionSession}
 import io.onfhir.exception.{BadRequestException, InternalServerException, NotFoundException}
+import io.onfhir.util.JsonFormatter._
+import org.json4s.{JArray, JNull}
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
@@ -100,6 +102,72 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
 
 
   /**
+   * Return the FHIR Parameter object (within FHIR Parameters Resource) given with the name from Parameters resource
+   * @param name
+   * @return
+   */
+  private def getOperationParametersByName(parametersResource:Resource, name:String):Seq[Resource] = {
+    parametersResource \ FHIR_COMMON_FIELDS.PARAMETER match {
+      case JArray(values) => values.filter(p => (p \ FHIR_COMMON_FIELDS.NAME).extract[String] == name).map(_.asInstanceOf[JObject])
+      case _ => Nil
+    }
+  }
+
+  /**
+   * Return the parameter value from the parameter object (BackboneElement in Parameters definition) given parameter type as JValue
+   * @param parameter      Parameter obj (Parameters.parameter or Parameters.parameter.part ...)
+   * @param paramDef
+   * @return
+   */
+  private def getOperationParameterValueByDef(parameter:Resource, paramDef:OperationParamDef):Option[FHIROperationParam] = {
+
+    paramDef.pType match {
+      case None =>
+        (parameter \ "part") match {
+          case JArray(arr) =>
+            val valueMap =
+              arr.map(cp => (cp \ "name").extract[String] -> cp)
+                .map(cp =>
+                  cp._1 ->
+                    (
+                      paramDef.parts.find(_.name == cp._1) match {
+                        case None => None
+                        case Some(cpDef) => getOperationParameterValueByDef(cp._2.asInstanceOf[JObject], cpDef)
+                      }
+                      )
+                ).filter(_._2.isDefined).map(cp => cp._1 -> cp._2.get)
+            if(valueMap.isEmpty)
+              None
+            else
+              Some(FHIRMultiOperationParam(valueMap))
+          case _ => None
+        }
+      case Some(dt) if fhirConfig.FHIR_PRIMITIVE_TYPES.contains(dt) || fhirConfig.FHIR_COMPLEX_TYPES.contains(dt) =>
+        parameter \ s"value${dt.capitalize}" match {
+          case JNothing | JNull => None
+          case oth => Some(FHIRSimpleOperationParam(oth))
+        }
+      //Resource types
+      case  Some(_) =>
+        parameter \ FHIR_COMMON_FIELDS.RESOURCE match {
+          case obj:JObject => Some(FHIRSimpleOperationParam(obj))
+          case _ => None
+        }
+    }
+  }
+
+  /**
+   * Return the value of parameter from the Parameters resource given name and type of parameter
+   * @param parametersResource Parameter obj (Parameters.parameter or Parameters.parameter.part ...)
+   * @param parameterDef       Definition for Operation parameter
+   * @return
+   */
+  def getOperationParameterValue(parametersResource:Resource, parameterDef:OperationParamDef): Seq[FHIROperationParam] = {
+    getOperationParametersByName(parametersResource, parameterDef.name)
+      .flatMap(getOperationParameterValueByDef(_, parameterDef))
+  }
+
+  /**
     * Extract parameter value from the OperationRequest
     * @param operationConf  Operation definition
     * @param paramDef       Operation parameter definition
@@ -122,7 +190,7 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
         //If the Request Body is given by Parameters resource. See https://www.hl7.org/fhir/operations.html.
         case Some(FHIR_DATA_TYPES.PARAMETERS) =>
           //Retrieve the parameter values
-          val paramValue: Seq[FHIROperationParam] = FHIRUtil.getOperationParameterValue(requestBody.get, paramDef)
+          val paramValue: Seq[FHIROperationParam] = getOperationParameterValue(requestBody.get, paramDef)
           validateOperationParameter(operationConf.name, paramValue, paramDef) map (issues =>
             if(issues.exists(_.isError))
               Right(issues)
@@ -187,10 +255,10 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
         val fissues: Future[Seq[OutcomeIssue]] =
           paramDef.pType match {
             //Paremeter is primitive FHIR type e.g. string, int, etc
-            case Some(primitive) if FHIR_PRIMITIVE_TYPES.contains(primitive) =>
+            case Some(primitive) if fhirConfig.FHIR_PRIMITIVE_TYPES.contains(primitive) =>
               Future.apply(paramValue.flatMap(pv => validatePrimitiveForOperations(paramDef.name, pv.asInstanceOf[FHIRSimpleOperationParam].value, primitive)))
             //Paremeter is complex FHIR type e.g. CodeableConcept
-            case Some(complex) if FHIR_COMPLEX_TYPES.contains(complex) =>
+            case Some(complex) if fhirConfig.FHIR_COMPLEX_TYPES.contains(complex) =>
               Future.apply(paramValue.flatMap(pv => validateComplexForOperations(paramDef.name, pv.asInstanceOf[FHIRSimpleOperationParam].value, complex)))
 
             //Parameter is multi parameter
@@ -247,7 +315,7 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
   private def validateAndGetParamFromURL(operationConf: OperationConf, paramDef:OperationParamDef, values:List[String]):Future[Either[Seq[FHIROperationParam], Seq[OutcomeIssue]]] = {
     Future.apply {
       //If parameter type is not primitive, then you cannot give it within the URL
-      if (paramDef.pType.isEmpty || !FHIR_PRIMITIVE_TYPES.contains(paramDef.pType.get))
+      if (paramDef.pType.isEmpty || !fhirConfig.FHIR_PRIMITIVE_TYPES.contains(paramDef.pType.get))
         Right(Seq(OutcomeIssue(
           FHIRResponse.SEVERITY_CODES.ERROR, //fatal
           FHIRResponse.OUTCOME_CODES.INVALID,
@@ -418,7 +486,7 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
     * @return
     */
   private def constuctFHIRResponse(operationConf: OperationConf, operationResponse:FHIROperationResponse):FHIRResponse = {
-    if(operationConf.outputParams.length == 1 && operationConf.outputParams.head.name == "return" && !FHIR_ALL_DATA_TYPES.contains(operationConf.outputParams.head.pType.getOrElse(""))) {
+    if(operationConf.outputParams.length == 1 && operationConf.outputParams.head.name == "return" && !(fhirConfig.FHIR_COMPLEX_TYPES ++ fhirConfig.FHIR_PRIMITIVE_TYPES).contains(operationConf.outputParams.head.pType.getOrElse(""))) {
       operationResponse.copy(responseBody = Some(operationResponse.getOutputParams.head._2.asInstanceOf[Resource]))
     } else if(operationConf.outputParams.isEmpty){
       operationResponse
@@ -437,8 +505,33 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
     (FHIR_COMMON_FIELDS.RESOURCE_TYPE -> "Parameters") ~
       ("parameter" ->
         operationResponse.getOutputParams.map( param => {
-          FHIRUtil.serializeOperationParameter(param._2, operationConf.outputParams.find(_.name == param._1).get)
+          serializeOperationParameter(param._2, operationConf.outputParams.find(_.name == param._1).get)
         }))
+  }
+
+  /**
+  * Serialize a Operation output parameter
+    * @param value
+    * @param parameterDef
+    * @return
+  */
+  private def serializeOperationParameter(value:FHIROperationParam, parameterDef:OperationParamDef):JObject = {
+    value match {
+      case m:FHIRMultiOperationParam =>
+        ("name" ->  parameterDef.name) ~
+          ("part" -> JArray(
+            m.params.map(cp => serializeOperationParameter(cp._2, parameterDef.parts.find(_.name == cp._1).get)).toList
+          ))
+      case s:FHIRSimpleOperationParam =>
+        ("name" ->  parameterDef.name) ~ (
+          parameterDef.pType.get match {
+            case dtype if fhirConfig.FHIR_COMPLEX_TYPES.contains(dtype) || fhirConfig.FHIR_PRIMITIVE_TYPES.contains(dtype) =>
+              s"value${dtype.capitalize}" -> s.value
+            case _ =>
+              "resource" -> s.value
+          }
+          )
+    }
   }
 
   /**

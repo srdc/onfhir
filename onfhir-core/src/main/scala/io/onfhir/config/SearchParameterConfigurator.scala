@@ -3,8 +3,10 @@ package io.onfhir.config
 import org.slf4j.{Logger, LoggerFactory}
 import io.onfhir.api._
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.api.validation.{ConstraintKeys, ProfileRestrictions}
+import io.onfhir.api.validation.{ConstraintKeys, ElementRestrictions, ProfileRestrictions}
 import io.onfhir.validation.{ArrayRestriction, TypeRestriction}
+
+import scala.util.control.Breaks.breakable
 /**
   * Created by ozan before
   * Update by tuncay on 11/16/2016
@@ -142,9 +144,36 @@ class SearchParameterConfigurator(
   private def checkPathsMatch(searchPath:String, elementPath:String):Boolean = {
     elementPath == searchPath || //If we have a path that is equal to search path e.g. Element path:  Observation.code --> Search Path: Observation.code
       (elementPath.endsWith("[x]") && searchPath.startsWith(elementPath.replace("[x]", "")) && //Or the path has multiple values and path starts with given element path e.g. Element path: Observation.value[x] -> Search path Observation.valueQuantity
-        (FHIR_COMPLEX_TYPES.contains(searchPath.replace(elementPath.replace("[x]", ""), "")) || //If complex type, type name starts with a capital e.g. CodeableConcept
-          FHIR_PRIMITIVE_TYPES.contains(FHIRUtil.decapitilize(searchPath.replace(elementPath.replace("[x]", ""), "")))) //If simple type, type name is lowercase
+        (fhirConfig.FHIR_COMPLEX_TYPES.contains(searchPath.replace(elementPath.replace("[x]", ""), "")) || //If complex type, type name starts with a capital e.g. CodeableConcept
+          fhirConfig.FHIR_PRIMITIVE_TYPES.contains(FHIRUtil.decapitilize(searchPath.replace(elementPath.replace("[x]", ""), "")))) //If simple type, type name is lowercase
         )
+  }
+
+  /**
+   * Find the element restriction for the given path within the given profile
+   * @param path
+   * @param profile
+   * @return
+   */
+  private def findElementRestrictionForPath(path:String, profile:ProfileRestrictions):Option[(String, ElementRestrictions)] = {
+      profile.elementRestrictions
+          .find(p => p._2.contentReference match {
+            //If it is not a content reference, check if path matches
+            case None => checkPathsMatch(path, p._1)
+            //If it is a content reference than
+            case Some(cr) if path.startsWith(p._1) =>
+              //if common prefix is not empty
+              cr.zip(path).takeWhile(c => c._1 == c._2).map(_._1).mkString != ""
+            //Otherwise false
+            case _ => false
+          }) match {
+            //Searched path is on a referenced content
+            case Some(er) if path != er._1 &&  path.startsWith(er._1) =>
+              val rootPrefix =  er._2.contentReference.get.zip(path).takeWhile(c => c._1 == c._2).map(_._1).mkString
+              val pathOnReferencedContent = er._2.contentReference.get + "." + path.replace(rootPrefix, "").split('.').tail.mkString(".")
+              findElementRestrictionForPath(pathOnReferencedContent, profile)
+            case oth => oth
+          }
   }
 
   /**
@@ -161,35 +190,35 @@ class SearchParameterConfigurator(
       //Search in the profile chain starting from the lower
       for(i <- profileChain.indices)
       {
-        profileChain.apply(i).elementRestrictions
-          .find(p => checkPathsMatch(path, p._1)) match {
-          case Some(er) =>
-            //Possible data type e.g. valueCodeableConcept -> CodeableConcept
-            val possibleDataType =
-              if(path == er._1)
-                None
-              else {
-                val temp = path.replace(er._1.replace("[x]", ""), "")
-                if(FHIR_COMPLEX_TYPES.contains(temp)) Some(temp) else Some(FHIRUtil.decapitilize(temp))
-              }
-
-            er._2.restrictions.get(ConstraintKeys.DATATYPE) match {
-              case Some(dtr) =>
-                possibleDataType match {
-                  case None =>
-                    targetTypeAndProfiles = dtr.asInstanceOf[TypeRestriction].dataTypesAndProfiles.headOption
-                    break()
-                  case Some(pdt) =>  dtr.asInstanceOf[TypeRestriction].dataTypesAndProfiles.find(_._1 == pdt) match {
-                    case Some(dtp) =>
-                      targetTypeAndProfiles = Some(dtp)
-                      break()
-                    case None =>
-                  }
+        findElementRestrictionForPath(path, profileChain.apply(i))
+          match {
+            case Some(er) =>
+              //Possible data type e.g. valueCodeableConcept -> CodeableConcept
+              val possibleDataType =
+                if(!er._1.contains("[x]") || path == er._1)
+                  None
+                else {
+                  val temp = path.replace(er._1.replace("[x]", ""), "")
+                  if(fhirConfig.FHIR_COMPLEX_TYPES.contains(temp)) Some(temp) else Some(FHIRUtil.decapitilize(temp))
                 }
-              case None =>
-            }
-          case None =>
-        }
+
+              er._2.restrictions.get(ConstraintKeys.DATATYPE) match {
+                case Some(dtr) =>
+                  possibleDataType match {
+                    case None =>
+                      targetTypeAndProfiles = dtr.asInstanceOf[TypeRestriction].dataTypesAndProfiles.headOption
+                      break()
+                    case Some(pdt) =>  dtr.asInstanceOf[TypeRestriction].dataTypesAndProfiles.find(_._1 == pdt) match {
+                      case Some(dtp) =>
+                        targetTypeAndProfiles = Some(dtp)
+                        break()
+                      case None =>
+                    }
+                  }
+                case None =>
+              }
+            case None =>
+          }
       }
     }
     targetTypeAndProfiles
@@ -259,30 +288,20 @@ class SearchParameterConfigurator(
     */
   private def findPathCardinality(path:String, profile:ProfileRestrictions):Boolean = {
     //Search in the base profile defined in the standard for resource type
-    profile.elementRestrictions
-      .find(e => checkPathsMatch(path, e._1)) match {
+    findElementRestrictionForPath(path, profile)
+      match {
         case Some(er) => er._2.restrictions.get(ConstraintKeys.ARRAY).exists(_.asInstanceOf[ArrayRestriction].isArray)
         //If such a path not exist
         case None =>
-          //Split the path; last part is the inner path the DataType, remaining is the path to the data type
-          val pathParts = path.split('.')
-          val pathAfterDataType = pathParts.last
-          val pathToDataType = pathParts.dropRight(1).mkString(".")
-          //Find the data type referred
-          findTargetTypeOfPathInProfileChain(pathToDataType, Seq(profile)) match {
-            case Some(dt) =>
-              //find the base standard profile of data type
-              val dtProfile = fhirConfig.getBaseProfile(dt._1)
-              //find the remaining path cardinality there
-              findPathCardinality(pathAfterDataType, dtProfile)
-            case None =>
-              logger.warn(s"Problem while identifying cardinality of path $path in profile $profile!")
-              false
-          }
+          if(path.contains('.'))
+            findPathCardinalityInSubpaths(path.split('.'), profile)
+          else
+            false
     }
   }
 
-  private def findPathCardinalityInSubpaths(pathParts:Seq[String], profile:ProfileRestrictions, i:Int =1):Option[Boolean] ={
+  private def findPathCardinalityInSubpaths(pathParts:Seq[String], profile:ProfileRestrictions, i:Int =1):Boolean ={
+
     //Split the path accordingly
     val pathToDataType = pathParts.slice(0, pathParts.length-i).mkString(".")
     val pathAfterDataType = pathParts.slice(pathParts.length-i, pathParts.length).mkString(".")
@@ -290,7 +309,11 @@ class SearchParameterConfigurator(
     findTargetTypeOfPath(pathToDataType, Seq(profile)).map(_._1) match {
       case None if i < pathParts.length - 1 => findPathCardinalityInSubpaths(pathParts, profile, i+1)
       case Some(foundType) =>
-        fhirConfig.getBaseProfile(foundType)
+        val baseProfileForDataType = fhirConfig.getBaseProfile(foundType)
+        findPathCardinality(pathAfterDataType, baseProfileForDataType)
+      case _ =>
+        logger.warn(s"Problem while identifying cardinality of path ${pathParts.mkString(".")} in profile $profile!")
+        false
     }
   }
 
@@ -432,7 +455,7 @@ class SearchParameterConfigurator(
             .split(".").last //Just get the value* part
             .replace("value", "") //Replace the value to get the type name
         )
-        .map(ttype => if(FHIR_COMPLEX_TYPES.contains(ttype)) ttype else ttype.toLowerCase) // if it is a simple type, convert to lowercase e.g. valueString -> string
+        .map(ttype => if(fhirConfig.FHIR_COMPLEX_TYPES.contains(ttype)) ttype else ttype.toLowerCase) // if it is a simple type, convert to lowercase e.g. valueString -> string
 
     constructConfFromDef(searchParameterDef, paramereterJsonPaths, targetTypes, Nil, true)
   }

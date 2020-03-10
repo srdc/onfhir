@@ -24,15 +24,18 @@ class ReferenceResolver(fhirConfig:FhirConfig, resource: Resource, bundle:Option
   /**
    * Extract bundle items
    */
-  val bundleItems:Option[Seq[(String, JValue)]] = bundle.map(b => (b._2 \ "entry") match {
+  val bundleItems:Option[Seq[(String, JValue)]] = bundle.flatMap(b => (b._2 \ "entry") match {
     case JArray(arr) =>
-      arr
+      Some(arr
         .map(e =>
           (e \ "fullUrl")
             .extractOpt[String].getOrElse(
               s"${OnfhirConfig.fhirRootUrl}/${(e \ "resource" \ "resourceType").extract[String]}/${(e \ "resource" \ "id").extract[String]}"
             ) -> //Extract fullUrl from Bundle
             (e \ "resource"))
+      )
+    case _ =>
+      None
   })
 
   /**

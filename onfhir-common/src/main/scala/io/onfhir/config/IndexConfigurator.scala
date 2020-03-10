@@ -1,8 +1,10 @@
 package io.onfhir.config
 
+import io.onfhir.api.util.IOUtil
 import org.json4s.JsonAST.JArray
 import org.slf4j.{Logger, LoggerFactory}
 import io.onfhir.util.JsonFormatter._
+
 import scala.io.Source
 
 /**
@@ -29,16 +31,18 @@ object IndexConfigurator {
     */
   def parseIndexConfigurationFile(configPath:Option[String], defaultPath:String, compartmentRelations:Map[String, Map[String, Set[String]]]):Map[String, ResourceIndexConfiguration] = {
     //Read the configuration file
-    val source = configPath match {
+    val parsedIndexConfiguration = configPath match {
       case Some(path) =>
         logger.info(s"Reading DB Index Configuration file from '$path'")
-        Source.fromFile(path)
+        //Source.fromFile(path)
+        IOUtil.readResource(path)
       case None =>
         logger.info(s"Reading DB Index Configuration file path '$defaultPath'")
-        Source.fromInputStream(getClass.getResourceAsStream(defaultPath))
+        IOUtil.readInnerResource(defaultPath)
+        //Source.fromInputStream( getClass.getResourceAsStream(defaultPath))
     }
     //Convert to the map
-    val parsedIndexConfiguration = source.getLines().mkString.parseJson
+    //val parsedIndexConfiguration = source.getLines().mkString.parseJson
 
     //Parse the json and create ResourceIndexConfiguration objects
     val createIndexForCompartments:Boolean =  (parsedIndexConfiguration \ ELEM_CREATE_INDEX_FOR_COMPARTMENTS).extract[Boolean]

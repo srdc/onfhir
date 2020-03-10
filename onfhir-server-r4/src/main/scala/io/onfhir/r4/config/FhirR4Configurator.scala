@@ -115,7 +115,6 @@ class FhirR4Configurator extends BaseFhirConfigurator {
     OperationConf(
         url = (operationDefinition \  "url").extract[String],
         name =  (operationDefinition \  "code").extract[String],
-        classPath = (operationDefinition \  "name").extract[String],
         kind = (operationDefinition \  "kind").extract[String],
         levels = Seq(
           "system" ->  (operationDefinition \  "system").extract[Boolean],
@@ -190,8 +189,8 @@ class FhirR4Configurator extends BaseFhirConfigurator {
    * @param structureDefinition   Parsed JSON object for FHIR StructureDefinition
    * @return
    */
-  override def parseStructureDefinition(structureDefinition: Resource): Option[ProfileRestrictions] = {
-    new StructureDefinitionParser().parseProfile(structureDefinition)
+  override def parseStructureDefinition(structureDefinition: Resource): ProfileRestrictions = {
+    new StructureDefinitionParser(FHIR_COMPLEX_TYPES, FHIR_PRIMITIVE_TYPES).parseProfile(structureDefinition)
   }
 
   /**

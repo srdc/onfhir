@@ -1,19 +1,19 @@
 package io.onfhir.validation
 
-import io.onfhir.api.Resource
+import io.onfhir.api.{Resource}
 import io.onfhir.api.util.FHIRUtil
+import io.onfhir.api.util.FHIRUtil.decapitilize
 import io.onfhir.api.validation.{ElementRestrictions, FhirRestriction, FhirSlicing, ProfileRestrictions}
 import io.onfhir.path.FhirPathEvaluator
 import org.json4s.JsonAST.{JObject, JValue}
 
-abstract class AbstractStructureDefinitionParser {
-
+abstract class AbstractStructureDefinitionParser(fhirComplexTypes:Set[String], fhirPrimitiveTypes:Set[String]) {
   /**
    * Parse a StructureDefinition resource
    * @param structureDef
    * @return
    */
-  def parseProfile(structureDef:Resource):Option[ProfileRestrictions]
+  def parseProfile(structureDef:Resource):ProfileRestrictions
   /**
    * Parse a element definition and construct a set of restrictions for the element
    * @param elemDef       JSON object for Element Definition
@@ -137,5 +137,26 @@ abstract class AbstractStructureDefinitionParser {
       ))
     else
       None
+  }
+
+  /**
+   * In FHIR, some elements may have multiple types in which case the data type is appended to element name for JSON serialization to indicate the data type
+   * This method is to find such an element, and its data type
+   * @param field     Field name e.g. Observation.value[x] --> value
+   * @param content   JSON content to search the field
+   * @return  Actual field name, data type and the JSON content of the found field e.g. valueQuantity, Quantity, ...
+   */
+  protected def findElementWithMultipleFhirTypes(field:String, content:JObject):Option[(String, String, JValue)] = {
+    content.obj
+      .find(f => f._1.startsWith(field)) //Find the field starts with the given field name
+      .map(f => (f._1, f._1.replace(field, ""), f._2))  //Extract the data type field
+      .flatMap(f =>
+        if (fhirComplexTypes.contains(f._2))
+          Some(f)
+        else if (fhirPrimitiveTypes.contains(decapitilize(f._2)))
+          Some(f._1, decapitilize(f._2), f._3) //if it is a primitive, decapitilize it
+        else
+          None
+      )
   }
 }

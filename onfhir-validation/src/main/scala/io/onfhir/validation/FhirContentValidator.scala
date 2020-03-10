@@ -79,7 +79,7 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
       value.obj.flatMap {
         case ("resourceType", resourceType) =>
           if (!resourceType.isInstanceOf[JString] || !resourceOrDataType.contains(resourceType.extract[String]))
-            FhirContentValidator.convertToOutcomeIssue("resourceType", Seq(ConstraintFailure(s"Resource type ${resourceType.extract[String]} does not match with the target profile ${profileUrl}!")))
+            FhirContentValidator.convertToOutcomeIssue("resourceType", Seq(ConstraintFailure(s"Resource type '${resourceType.extract[String]}' does not match with the target profile '${profileUrl}'!")))
           else
             Nil
         case (field, fieldValue) =>
@@ -87,7 +87,7 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
           extractFieldNameAndDataType(field, allRestrictions) match {
             //If there is no definition for the element, return error
             case None =>
-              FhirContentValidator.convertToOutcomeIssue(FHIRUtil.mergeElementPath(parentPath, field), Seq(ConstraintFailure(s"Unrecognized element ${FHIRUtil.mergeElementPath(parentPath, field)} !")))
+              FhirContentValidator.convertToOutcomeIssue(FHIRUtil.mergeElementPath(parentPath, field), Seq(ConstraintFailure(s"Unrecognized element '${FHIRUtil.mergeElementPath(parentPath, field)}' !")))
             //If we found such a defined field e.g. valueQuantity -> value, Quantity
             case Some((fieldName, dataType)) =>
               //Add the field to validated fields
@@ -111,7 +111,7 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
       requiredButMissingElements
         .flatMap(el => {
           val path = FHIRUtil.mergeElementPath(parentPath, el._1)
-          FhirContentValidator.convertToOutcomeIssue(path, Seq(ConstraintFailure(s"Element ${path} with data type(s) ${el._2.mkString(", ")} is required , but does not exist!")))
+          FhirContentValidator.convertToOutcomeIssue(path, Seq(ConstraintFailure(s"Element '${path}' with data type(s) '${el._2.mkString(", ")}' is required , but does not exist!")))
         })
 
     val fhirConstraintIssues =
@@ -224,11 +224,11 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
             rule match {
               //This means there should be no other value not matching any slice
               case "closed" =>
-                Seq(ConstraintFailure(s"Slicing rule on the element is defined as 'closed' and element at index(es) ${sliceValues.map(_._2).mkString(",")} does not match any slice!"))
+                Seq(ConstraintFailure(s"Slicing rule on the element is defined as 'closed' and element at index(es) '${sliceValues.map(_._2).mkString(",")}' does not match any slice!"))
               case "openAtEnd" =>
                 findFirstUnorderedElementForSlicing(arrIndex, sliceValues.map(_._2)) match {
                   case None => Nil
-                  case Some((i1, i2)) => Seq(ConstraintFailure(s"Slicing rule on the element is defined as 'openAtEnd' and element at index $i1 should be at the end (at index $i2)!"))
+                  case Some((i1, i2)) => Seq(ConstraintFailure(s"Slicing rule on the element is defined as 'openAtEnd' and element at index '$i1' should be at the end (at index $i2)!"))
                 }
               case "open" =>
                 Nil //If it is open, so element can be anywhere
@@ -239,7 +239,7 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
             val orderFailure =
               if (isOrdered)
                 findFirstUnorderedElementForSlicing(arrIndex, sliceValues.map(_._2)) match {
-                  case Some((i1, i2)) => Some(ConstraintFailure(s"Problem in order of values matched to slice ${svm._1}. The element within the array with index $i1 should be in index ${i2}"))
+                  case Some((i1, i2)) => Some(ConstraintFailure(s"Problem in order of values matched to slice '${svm._1}'. The element within the array with index '$i1' should be in index '${i2}'"))
                   case None => None
                 }
               else
@@ -249,7 +249,7 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
             //Cardinality checks on the slice values
             failures = failures ++
               evaluateCardinalityConstraints(dataType, JArray(sliceValues.map(_._1).toList), Seq(svm._4), testArray = false)
-                .map(cf => ConstraintFailure(s"Based on the slice definition ${svm._1}: ${cf.errorOrWarningMessage}"))
+                .map(cf => ConstraintFailure(s"Based on the slice definition '${svm._1}': ${cf.errorOrWarningMessage}"))
 
             failures
         }
@@ -264,7 +264,7 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
               sliceValueMatchings._2.flatMap(v => furtherValidateElement(path + s"[${v._2}]", fieldName, dataType, v._1, normalDefinitions))
             case Some(svm) =>
               val errorsOnSlice = sliceValueMatchings._2.flatMap(v => furtherValidateElement(path + s"[${v._2}]", fieldName, dataType, v._1, (Some(svm._4) -> svm._5.flatten) +: normalDefinitions))
-              errorsOnSlice.map(e => e.copy(diagnostics = Some(s"Based on the slice definition ${svm._1}: ${e.diagnostics.get}")))
+              errorsOnSlice.map(e => e.copy(diagnostics = Some(s"Based on the slice definition '${svm._1}': ${e.diagnostics.get}")))
           }
         } else
           FhirContentValidator.convertToOutcomeIssue(path, sliceErrors)
@@ -1090,8 +1090,8 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
       if (er._1.endsWith("[x]")) { //If multi valued
         val fieldName = er._1.dropRight(3) //remove the [x] to find the defined field root
         field.replace(fieldName, "") match { //replace the root to find the Data type part
-          case ct if api.FHIR_COMPLEX_TYPES.contains(ct) => Some(er._1 -> ct) //If it is a complex type
-          case st if api.FHIR_PRIMITIVE_TYPES.contains(decapitilize(st)) => Some(er._1 -> decapitilize(st)) //Or check if it is simple type
+          case ct if fhirConfig.FHIR_COMPLEX_TYPES.contains(ct) => Some(er._1 -> ct) //If it is a complex type
+          case st if fhirConfig.FHIR_PRIMITIVE_TYPES.contains(decapitilize(st)) => Some(er._1 -> decapitilize(st)) //Or check if it is simple type
           case _ => None
         }
       } else
@@ -1206,7 +1206,7 @@ object FhirContentValidator {
         code = OUTCOME_CODES.INVALID,
         details = None,
         diagnostics = Some(error.errorOrWarningMessage),
-        location = Seq(path)
+        expression = Seq(path)
       )
     )
   }

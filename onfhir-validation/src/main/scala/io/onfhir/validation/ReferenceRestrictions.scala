@@ -1,7 +1,7 @@
 package io.onfhir.validation
 
 import io.onfhir.api.model.{FhirLiteralReference, FhirLogicalReference}
-import io.onfhir.api.{FHIR_COMMON_FIELDS, FHIR_ROOT_URL_FOR_DEFINITIONS}
+import io.onfhir.api.{FHIR_COMMON_FIELDS}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.{AbstractFhirContentValidator, ConstraintFailure, FhirRestriction}
 import io.onfhir.config.OnfhirConfig
@@ -33,8 +33,8 @@ case class ReferenceRestrictions(targetProfiles:Seq[String], versioning:Option[B
 
         val invalidReferenceIssues =
           fhirReferenceUrl match {
-            case Some(rurl) if (!rurl.startsWith("#") && parsedFhirReference.isEmpty) =>
-              Seq(ConstraintFailure("Invalid reference format, cannot parse reference!"))
+            case Some(rurl) if (!rurl.startsWith("#") && (parsedFhirReference.isEmpty || !fhirContentValidator.fhirConfig.FHIR_RESOURCE_TYPES.contains(parsedFhirReference.get._2))) =>
+              Seq(ConstraintFailure(s"Invalid reference format '$rurl', cannot parse reference!"))
             case _ => Nil
           }
 
@@ -64,7 +64,7 @@ case class ReferenceRestrictions(targetProfiles:Seq[String], versioning:Option[B
               .forall(dt => expectedDataTypeAndProfiles.contains("Resource") || expectedDataTypeAndProfiles.contains(dt))) //target type is an expected FHIR Resource
             Nil
           else
-            Seq(ConstraintFailure(s"Referenced type does not match one of the expected target types ${expectedDataTypeAndProfiles.keys.mkString(", ")}!"))
+            Seq(ConstraintFailure(s"Referenced type does not match one of the expected target types '${expectedDataTypeAndProfiles.keys.mkString(", ")}'!"))
 
 
         val referenceFormatIssue =
@@ -88,15 +88,15 @@ case class ReferenceRestrictions(targetProfiles:Seq[String], versioning:Option[B
 
                 //If logical reference policy is not given and but used
                 if (refIdentifier.isDefined && !resourceConf.referencePolicies.contains("logical"))
-                  allIssues = allIssues :+ ConstraintFailure(s"Element uses logical referencing (with Reference.identifier) while it is not allowed for resource  $resourceType! ")
+                  allIssues = allIssues :+ ConstraintFailure(s"Element uses logical referencing (with Reference.identifier) while it is not allowed for resource  '$resourceType'! ")
 
                 //If literal policy is not given and but literal policy is used
                 if(resourceConf.referencePolicies.nonEmpty && !resourceConf.referencePolicies.contains("literal") && parsedFhirReference.isDefined)
-                  allIssues = allIssues :+ ConstraintFailure(s"Element uses literal referencing (with Reference.reference) while it is not allowed for resource  $resourceType! ")
+                  allIssues = allIssues :+ ConstraintFailure(s"Element uses literal referencing (with Reference.reference) while it is not allowed for resource  '$resourceType'! ")
 
                 //If reference policy is local, all references should be local
                 if(resourceConf.referencePolicies.contains("local") && parsedFhirReference.flatMap(_._1).exists(! _.startsWith(OnfhirConfig.fhirRootUrl)))
-                  allIssues = allIssues :+ ConstraintFailure(s"Element uses literal referencing (with Reference.reference) while it is not allowed for resource  $resourceType! ")
+                  allIssues = allIssues :+ ConstraintFailure(s"Element uses literal referencing (with Reference.reference) while it is not allowed for resource  '$resourceType'! ")
 
                 if(resourceConf.referencePolicies.contains("enforced")){
                   if(parsedFhirReference.isDefined) {
@@ -114,13 +114,11 @@ case class ReferenceRestrictions(targetProfiles:Seq[String], versioning:Option[B
                           -> Set.empty[String])
                 }
             }
-        }
-
           //TODO handle other target profiles (not base FHIR)
           //TODO handle aggregation mode restrictions
-          targetProfileIssue ++ referenceFormatIssue
           //If this is not a reference element, just skip validation
-
+          allIssues
+        }
       case _ => Nil
 
     }

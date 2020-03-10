@@ -327,83 +327,6 @@ package object api {
   }
 
   /**
-    * List of FHIR Primitive Data Types. See https://www.hl7.org/fhir/datatypes.html
-    */
-  val FHIR_PRIMITIVE_TYPES =
-    Set(
-      FHIR_DATA_TYPES.BOOLEAN,
-      FHIR_DATA_TYPES.INTEGER,
-      FHIR_DATA_TYPES.STRING,
-      FHIR_DATA_TYPES.DECIMAL,
-      FHIR_DATA_TYPES.URI,
-      FHIR_DATA_TYPES.URL,
-      FHIR_DATA_TYPES.CANONICAL,
-      FHIR_DATA_TYPES.OID,
-      FHIR_DATA_TYPES.UUID,
-      FHIR_DATA_TYPES.BASE64BINARY,
-      FHIR_DATA_TYPES.INSTANT,
-      FHIR_DATA_TYPES.DATE,
-      FHIR_DATA_TYPES.DATETIME,
-      FHIR_DATA_TYPES.TIME,
-      FHIR_DATA_TYPES.CODE,
-      FHIR_DATA_TYPES.ID,
-      FHIR_DATA_TYPES.MARKDOWN,
-      FHIR_DATA_TYPES.UNSIGNEDINT,
-      FHIR_DATA_TYPES.POSITIVEINT,
-      FHIR_DATA_TYPES.XHTML
-      )
-
-  /**
-    * List of FHIR Complex Data Types. See https://www.hl7.org/fhir/datatypes.html
-    */
-  val FHIR_COMPLEX_TYPES:Set[String] = Set(
-    //Special purpose
-    FHIR_DATA_TYPES.META,
-    FHIR_DATA_TYPES.REFERENCE,
-    FHIR_DATA_TYPES.EXTENSION,
-    FHIR_DATA_TYPES.NARRATIVE,
-    FHIR_DATA_TYPES.BACKBONE,
-    FHIR_DATA_TYPES.DOSAGE,
-    FHIR_DATA_TYPES.ELEMENT_DEFINITION,
-    //metadata types
-    FHIR_DATA_TYPES.CONTACT_DETAIL,
-    FHIR_DATA_TYPES.USAGE_CONTEXT,
-    FHIR_DATA_TYPES.DATA_REQUIREMENT,
-    FHIR_DATA_TYPES.CONTRIBUTOR,
-    FHIR_DATA_TYPES.RELATED_ARTIFACT,
-    FHIR_DATA_TYPES.PARAMETER_DEFINITION,
-    FHIR_DATA_TYPES.TRIGGER_DEFINITION,
-    FHIR_DATA_TYPES.EXPRESSION,
-    //Other general
-    FHIR_DATA_TYPES.RANGE,
-    FHIR_DATA_TYPES.PERIOD,
-    FHIR_DATA_TYPES.TIMING,
-    FHIR_DATA_TYPES.RATIO,
-    FHIR_DATA_TYPES.QUANTITY,
-    FHIR_DATA_TYPES.SAMPLED_DATA,
-    FHIR_DATA_TYPES.ATTACHMENT,
-    FHIR_DATA_TYPES.CODING,
-    FHIR_DATA_TYPES.CODEABLE_CONCEPT,
-    FHIR_DATA_TYPES.HUMAN_NAME,
-    FHIR_DATA_TYPES.ADDRESS,
-    FHIR_DATA_TYPES.CONTACT_POINT,
-    FHIR_DATA_TYPES.SIGNATURE,
-    FHIR_DATA_TYPES.IDENTIFIER,
-    FHIR_DATA_TYPES.ANNOTATION,
-    FHIR_DATA_TYPES.AGE,
-    FHIR_DATA_TYPES.DISTANCE,
-    FHIR_DATA_TYPES.DURATION,
-    FHIR_DATA_TYPES.COUNT,
-    FHIR_DATA_TYPES.MONEY,
-    FHIR_DATA_TYPES.SIMPLE_QUANTITY,
-    FHIR_DATA_TYPES.MONEY_QUANTITY
-  )
-
-  /**
-    * List of All FHIR Data Types. See https://www.hl7.org/fhir/datatypes.html
-    */
-  val FHIR_ALL_DATA_TYPES:Set[String] = FHIR_PRIMITIVE_TYPES ++ FHIR_COMPLEX_TYPES
-  /**
     * Fhir search result parameter names. See Search Control Parameters in https://www.hl7.org/fhir/search.html
     */
   object FHIR_SEARCH_RESULT_PARAMETERS {
@@ -688,16 +611,16 @@ package object api {
   }
 
   /**
-    * FHIR Operations that are defined by FHIR and implemented in default
+    * FHIR Operations that are defined by FHIR and implemented in default within onFhir
     */
   val DEFAULT_IMPLEMENTED_FHIR_OPERATIONS:Map[String, String] =
     Map(
-      "meta" -> "io.onfhir.operation.MetaOperationHandler",
-      "meta-add" -> "io.onfhir.operation.MetaOperationHandler",
-      "meta-delete" -> "io.onfhir.operation.MetaOperationHandler",
-      "validate" -> "io.onfhir.operation.ValidationOperationHandler",
-      "expand" -> "io.onfhir.operation.ExpandOperationHandler",
-      "document" -> "io.onfhir.operation.DocumentOperationHandler"
+      "http://hl7.org/fhir/OperationDefinition/Resource-meta" -> "io.onfhir.operation.MetaOperationHandler",
+      "http://hl7.org/fhir/OperationDefinition/Resource-meta-add" -> "io.onfhir.operation.MetaOperationHandler",
+      "http://hl7.org/fhir/OperationDefinition/Resource-meta-delete" -> "io.onfhir.operation.MetaOperationHandler",
+      "http://hl7.org/fhir/OperationDefinition/Resource-validate" -> "io.onfhir.operation.ValidationOperationHandler",
+      "http://hl7.org/fhir/OperationDefinition/ValueSet-expand" -> "io.onfhir.operation.ExpandOperationHandler",
+      "http://hl7.org/fhir/OperationDefinition/Composition-document" -> "io.onfhir.operation.DocumentOperationHandler"
     )
 
 

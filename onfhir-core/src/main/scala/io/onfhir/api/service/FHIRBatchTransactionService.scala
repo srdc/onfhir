@@ -218,7 +218,7 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
       requests
       .flatMap(r =>
         r.response
-          .map(_.outcomeIssues.map(oi => oi.copy(location = oi.location :+ r.getRequestLocation()))).getOrElse(Nil))
+          .map(_.outcomeIssues.map(oi => oi.copy(expression = oi.expression :+ r.getRequestLocation()))).getOrElse(Nil))
   }
 
   /**

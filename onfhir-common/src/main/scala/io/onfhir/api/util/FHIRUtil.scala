@@ -631,97 +631,6 @@ object FHIRUtil {
     }
   }
 
-
-
-  /**
-    * Return the FHIR Parameter object (within FHIR Parameters Resource) given with the name from Parameters resource
-    * @param name
-    * @return
-    */
-  private def getOperationParametersByName(parametersResource:Resource, name:String):Seq[Resource] = {
-    parametersResource \ FHIR_COMMON_FIELDS.PARAMETER match {
-      case JArray(values) => values.filter(p => (p \ FHIR_COMMON_FIELDS.NAME).extract[String] == name).map(_.asInstanceOf[JObject])
-      case _ => Nil
-    }
-  }
-
-  /**
-    * Return the parameter value from the parameter object (BackboneElement in Parameters definition) given parameter type as JValue
-    * @param parameter      Parameter obj (Parameters.parameter or Parameters.parameter.part ...)
-    * @param paramDef
-    * @return
-    */
-  private def getOperationParameterValueByDef(parameter:Resource, paramDef:OperationParamDef):Option[FHIROperationParam] = {
-    paramDef.pType match {
-      case None =>
-        (parameter \ "part") match {
-          case JArray(arr) =>
-            val valueMap =
-              arr.map(cp => (cp \ "name").extract[String] -> cp)
-                .map(cp =>
-                  cp._1 ->
-                    (
-                      paramDef.parts.find(_.name == cp._1) match {
-                        case None => None
-                        case Some(cpDef) => getOperationParameterValueByDef(cp._2.asInstanceOf[JObject], cpDef)
-                      }
-                    )
-                ).filter(_._2.isDefined).map(cp => cp._1 -> cp._2.get)
-            if(valueMap.isEmpty)
-              None
-            else
-              Some(FHIRMultiOperationParam(valueMap))
-          case _ => None
-        }
-      case Some(dt) if FHIR_ALL_DATA_TYPES.contains(dt) =>
-        parameter \ s"value${dt.capitalize}" match {
-          case JNothing | JNull => None
-          case oth => Some(FHIRSimpleOperationParam(oth))
-        }
-      //Resource types
-      case  Some(_) =>
-        parameter \ FHIR_COMMON_FIELDS.RESOURCE match {
-          case obj:JObject => Some(FHIRSimpleOperationParam(obj))
-        }
-    }
-  }
-
-  /**
-    * Return the value of parameter from the Parameters resource given name and type of parameter
-    * @param parametersResource Parameter obj (Parameters.parameter or Parameters.parameter.part ...)
-    * @param parameterDef       Definition for Operation parameter
-    * @return
-    */
-  def getOperationParameterValue(parametersResource:Resource, parameterDef:OperationParamDef): Seq[FHIROperationParam] = {
-    getOperationParametersByName(parametersResource, parameterDef.name)
-      .flatMap(getOperationParameterValueByDef(_, parameterDef))
-  }
-
-  /**
-   * Serialize a Operation output parameter
-   * @param value
-   * @param parameterDef
-   * @return
-   */
-  def serializeOperationParameter(value:FHIROperationParam, parameterDef:OperationParamDef):JObject = {
-    value match {
-      case m:FHIRMultiOperationParam =>
-        ("name" ->  parameterDef.name) ~
-          ("part" -> JArray(
-            m.params.map(cp => serializeOperationParameter(cp._2, parameterDef.parts.find(_.name == cp._1).get)).toList
-          ))
-      case s:FHIRSimpleOperationParam =>
-        ("name" ->  parameterDef.name) ~ (
-            parameterDef.pType.get match {
-              case dtype if FHIR_ALL_DATA_TYPES.contains(dtype) =>
-                s"value${dtype.capitalize}" -> s.value
-              case _ =>
-                "resource" -> s.value
-            }
-          )
-    }
-  }
-
  /* /**
     * Run json path (with dots) on the resource
     * @param resource Resource
@@ -994,26 +903,7 @@ object FHIRUtil {
   def mergeElementPath(mainPath:String, subPath:String):String = if(mainPath == "") subPath else if(subPath == "") mainPath else mainPath + "."+ subPath
 
   def mergeFilePath(mainPath:Option[String], subPath:String):String = mainPath.map(_ + "/").getOrElse("") + subPath
-  /**
-   * In FHIR, some elements may have multiple types in which case the data type is appended to element name for JSON serialization to indicate the data type
-   * This method is to find such an element, and its data type
-   * @param field     Field name e.g. Observation.value[x] --> value
-   * @param content   JSON content to search the field
-   * @return  Actual field name, data type and the JSON content of the found field e.g. valueQuantity, Quantity, ...
-   */
-  def findElementWithMultipleFhirTypes(field:String, content:JObject):Option[(String, String, JValue)] = {
-    content.obj
-      .find(f => f._1.startsWith(field)) //Find the field starts with the given field name
-      .map(f => (f._1, f._1.replace(field, ""), f._2))  //Extract the data type field
-      .flatMap(f =>
-        if (FHIR_COMPLEX_TYPES.contains(f._2))
-          Some(f)
-        else if (FHIR_PRIMITIVE_TYPES.contains(decapitilize(f._2)))
-          Some(f._1, decapitilize(f._2), f._3) //if it is a primitive, decapitilize it
-        else
-          None
-      )
-  }
+
 
   /**
    * Decapitilize a string

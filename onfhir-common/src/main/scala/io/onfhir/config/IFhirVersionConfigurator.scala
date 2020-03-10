@@ -146,7 +146,7 @@ trait IFhirVersionConfigurator {
    * @param fromConfig  If false, initialization is performed from the FHIR foundation resources stored in database
    * @return
    */
-  def initializePlatform(fromConfig:Boolean = false):FhirConfig
+  def initializePlatform(fromConfig:Boolean = false, fhirOperationImplms:Map[String, String]):FhirConfig
 
   /**
    * Setup the platform (database initialization) for the first time (or updated the configurations)
@@ -166,6 +166,13 @@ trait IFhirVersionConfigurator {
    * @return
    */
   def getAuditCreator():IFhirAuditCreator
+
+  /**
+   * Get Resource type or Data type from a StructureDefinition resource if it is not abstract
+   * @param structureDefinition
+   * @return
+   */
+  def getTypeFromStructureDefinition(structureDefinition:Resource):Option[String]
 
   /**
    * Parse a FHIR Capability Statement into our compact form
@@ -201,7 +208,7 @@ trait IFhirVersionConfigurator {
    * @param structureDefinition
    * @return
    */
-  def parseStructureDefinition(structureDefinition:Resource):Option[ProfileRestrictions]
+  def parseStructureDefinition(structureDefinition:Resource):ProfileRestrictions
 
   /**
    * Parse a bundle of FHIR ValueSet and CodeSystem into a compact form for validation

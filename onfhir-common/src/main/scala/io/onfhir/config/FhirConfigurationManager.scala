@@ -3,7 +3,7 @@ package io.onfhir.config
 import io.onfhir.api.validation.IFhirResourceValidator
 import io.onfhir.audit.IFhirAuditCreator
 import org.slf4j.{Logger, LoggerFactory}
-
+import io.onfhir.api.DEFAULT_IMPLEMENTED_FHIR_OPERATIONS
 /**
   * Created by tuncay on 11/14/2016.
   * Central OnFhir configurations defining FHIR server capabilities
@@ -20,9 +20,9 @@ object FhirConfigurationManager {
     * Read FHIR foundational definitions and configure the platform
     * @param fhirConfigurator Specific FHIR configurator for the FHIR version to be supported
     */
-  def initialize(fhirConfigurator:IFhirVersionConfigurator) : Unit = {
+  def initialize(fhirConfigurator:IFhirVersionConfigurator, fhirOperationImplms:Map[String, String] = Map.empty[String, String]) : Unit = {
     //Initialize platform, and save the configuration
-    fhirConfig = fhirConfigurator.initializePlatform(OnfhirConfig.fhirInitialize)
+    fhirConfig = fhirConfigurator.initializePlatform(OnfhirConfig.fhirInitialize, DEFAULT_IMPLEMENTED_FHIR_OPERATIONS ++ fhirOperationImplms)
 
     //If it is the first setup or update of the platform (definition of new profile, etc), apply the setups
     if(OnfhirConfig.fhirInitialize) {

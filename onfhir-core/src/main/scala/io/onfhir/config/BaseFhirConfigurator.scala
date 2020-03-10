@@ -23,6 +23,10 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
   final val PROFILES_RESOURCES_BUNDLE_FILE_NAME = s"profiles-resources$FOUNDATION_RESOURCES_FILE_SUFFIX"
   //Name of the file that includes the Bundle for Structure Definitions for Types in base FHIR specification
   final val PROFILES_TYPES_BUNDLE_FILE_NAME = s"profiles-types$FOUNDATION_RESOURCES_FILE_SUFFIX"
+  //Name of the file that includes the Bundle for Structure Definitions for other FHIR profiles given in base
+  final val PROFILES_OTHERS_BUNDLE_FILE_NAME = s"profiles-others$FOUNDATION_RESOURCES_FILE_SUFFIX"
+  //Name of the file that includes the Bundle for Structure Definitions for extensions given in base
+  final val PROFILES_EXTENSIONS_BUNDLE_FILE_NAME = s"extension-definitions$FOUNDATION_RESOURCES_FILE_SUFFIX"
   //Name of the files that includes the Bundle for ValueSets and CodeSystems in base FHIR specification
   final val VALUESET_AND_CODESYSTEM_BUNDLE_FILES = Seq(s"valuesets$FOUNDATION_RESOURCES_FILE_SUFFIX", s"v3-codesystems$FOUNDATION_RESOURCES_FILE_SUFFIX")
 
@@ -35,17 +39,25 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
   var valueSetResources:Seq[Resource] = _
   var codeSystemResources:Seq[Resource] = _
   var indexConfigurations:Map[String, IndexConfigurator.ResourceIndexConfiguration] = _
+
+  var FHIR_COMPLEX_TYPES:Set[String] = _
+  var FHIR_PRIMITIVE_TYPES:Set[String] = _
+
   /**
    * Initialize the platform by preparing a FHIR configuration from the given FHIR Foundation resources and base standard
-   * @param fromConfig
+   * @param fromConfig            If initialized from configuration files or from database (previously stored configs)
+   * @param fhirOperationImplms   FHIR Operation implementations (URL -> Classpath)
    * @return
    */
-  override def initializePlatform(fromConfig:Boolean = false):FhirConfig = {
+  override def initializePlatform(fromConfig:Boolean = false, fhirOperationImplms:Map[String, String]):FhirConfig = {
     logger.info("Reading base FHIR foundation resources (base standard) to start configuration of onFhir server ...")
     //Read base resource profiles defined in the standard
     val baseResourceProfileResources = IOUtil.readStandardBundleFile(PROFILES_RESOURCES_BUNDLE_FILE_NAME, Set(FHIR_STRUCTURE_DEFINITION))
     //Read the base data type profiles defined in the standard
     val baseDataTypeProfileResources = IOUtil.readStandardBundleFile(PROFILES_TYPES_BUNDLE_FILE_NAME, Set(FHIR_STRUCTURE_DEFINITION))
+    //Read other profiles and extensions given in zip file
+    val baseOtherProfileResources = IOUtil.readStandardBundleFile(PROFILES_OTHERS_BUNDLE_FILE_NAME, Set(FHIR_STRUCTURE_DEFINITION))
+    val baseExtensionProfileResources = IOUtil.readStandardBundleFile(PROFILES_EXTENSIONS_BUNDLE_FILE_NAME, Set(FHIR_STRUCTURE_DEFINITION))
     //Read the base search parameters defined in the standard
     val baseSearchParameterResources = IOUtil.readStandardBundleFile(SEARCH_PARAMETERS_BUNDLE_FILE_NAME, Set(FHIR_SEARCH_PARAMETER))
     //Read the base ValueSet definitions defined in the standard
@@ -54,6 +66,17 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
     val baseOperationDefinitionResources = IOUtil.readStandardBundleFile(PROFILES_RESOURCES_BUNDLE_FILE_NAME, Set(FHIR_OPERATION_DEFINITION))
     //Read the base compartment definitions
     val baseCompartmentDefinitionResources = IOUtil.readStandardBundleFile(PROFILES_RESOURCES_BUNDLE_FILE_NAME, Set(FHIR_COMPARTMENT_DEFINITION))
+
+    //Initalize fhir configuration
+    var fhirConfig = new FhirConfig(fhirVersion)
+
+    val allTypes = baseDataTypeProfileResources.flatMap(getTypeFromStructureDefinition)
+    FHIR_COMPLEX_TYPES = allTypes.filter(_.head.isUpper).toSet
+    FHIR_PRIMITIVE_TYPES = allTypes.filter(_.head.isLower).toSet
+    //Initialize base types and resource types
+    fhirConfig.FHIR_COMPLEX_TYPES = FHIR_COMPLEX_TYPES
+    fhirConfig.FHIR_PRIMITIVE_TYPES = FHIR_PRIMITIVE_TYPES
+    fhirConfig.FHIR_RESOURCE_TYPES = baseResourceProfileResources.flatMap(getTypeFromStructureDefinition).toSet
 
     logger.info("Reading FHIR foundation resources to start configuration of onFhir server ...")
     //Read the FHIR Conformance statement specified for this server
@@ -72,18 +95,24 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
     codeSystemResources = getInfrastructureResources(fromConfig, FHIR_CODE_SYSTEM)
 
     logger.info("Configuring the platform accordingly ...")
-    //Initalize fhir configuration
-    var fhirConfig = new FhirConfig(fhirVersion)
+
     logger.info("Parsing base FHIR foundation resources (base standard) ...")
     //Parsing base definitions
+    val baseResourceProfiles = baseResourceProfileResources.map(parseStructureDefinition).map(p => p.url -> p).toMap
+    val baseDataTypeProfiles = baseDataTypeProfileResources.map(parseStructureDefinition).map(p => p.url -> p).toMap
     val baseProfiles =
-      baseResourceProfileResources.flatMap(parseStructureDefinition).map(p => p.url -> p).toMap ++
-        baseDataTypeProfileResources.flatMap(parseStructureDefinition).map(p => p.url -> p).toMap
+      baseResourceProfiles ++
+        baseDataTypeProfiles.filter(_._1.split('/').last.head.isUpper) ++
+          baseOtherProfileResources.map(parseStructureDefinition).map(p => p.url -> p).toMap ++
+            baseExtensionProfileResources.map(parseStructureDefinition).map(p => p.url -> p).toMap
     val baseSearchParameters = baseSearchParameterResources.map(parseSearchParameter).map(s => s.url -> s).toMap
     val baseOperationDefinitions = baseOperationDefinitionResources.map(parseOperationDefinition).map(p => p.url -> p).toMap
     val baseCompartmentDefinitions = baseCompartmentDefinitionResources.map(parseCompartmentDefinition).map(c => c.url -> c).toMap
 
     //Initialize fhir config with base profiles and value sets to prepare for validation
+    //fhirConfig.FHIR_RESOURCE_TYPES = baseResourceProfiles.filterNot(_._2.isAbstract).map(_._1.split('/').last).toSet
+    //fhirConfig.FHIR_COMPLEX_TYPES = baseDataTypeProfiles.filterNot(_._2.isAbstract).filter(_._1.split('/').last.head.isUpper).map(_._1.split('/').last).toSet
+    //fhirConfig.FHIR_PRIMITIVE_TYPES = baseDataTypeProfiles.filterNot(_._2.isAbstract).filter(_._1.split('/').last.head.isLower).map(_._1.split('/').last).toSet
     fhirConfig.profileRestrictions = baseProfiles
     fhirConfig.valueSetRestrictions = parseValueSetAndCodeSystems(baseValueSetsAndCodeSystems)
 
@@ -100,7 +129,7 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
     logger.info("Parsing given FHIR foundation resources ...")
     //Parsing the Conformance statement into our compact form
     val conformance = parseCapabilityStatement(conformanceResource)
-    val profiles = profileResources.flatMap(parseStructureDefinition).map(p => p.url -> p).toMap
+    val profiles = profileResources.map(parseStructureDefinition).map(p => p.url -> p).toMap
     val searchParameters = searchParameterResources.map(parseSearchParameter).map(s => s.url -> s).toMap
     val operationDefs = operationDefResources.map(opDef => parseOperationDefinition(opDef)).map(o => o.url -> o).toMap
     val compartments = compartmentDefResources.map(parseCompartmentDefinition).map(c => c.url -> c).toMap
@@ -114,7 +143,7 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
     fhirConfig = validateAndConfigureSearchParameters(fhirConfig, conformance, searchParameters, baseSearchParameters, baseProfiles ++ profiles)
 
     logger.info("Configuring supported FHIR operations ...")
-    fhirConfig = validateAndConfigureOperations(fhirConfig, conformance, operationDefs, baseOperationDefinitions)
+    fhirConfig = validateAndConfigureOperations(fhirConfig, conformance, operationDefs, baseOperationDefinitions, fhirOperationImplms)
 
     logger.info("Configuring supported FHIR compartments ...")
     fhirConfig = validateAndConfigureCompartments(fhirConfig, conformance, compartments, baseCompartmentDefinitions)
@@ -139,6 +168,20 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
     fhirConfig.FHIR_DEFAULT_MEDIA_TYPE = FHIR_DEFAULT_MEDIA_TYPE
 
     fhirConfig
+  }
+
+  /**
+   * Retrieve type from a structure definition
+   * @param structureDefinition
+   * @return
+   */
+  def getTypeFromStructureDefinition(structureDefinition:Resource):Option[String] = {
+    val rtype =  FHIRUtil.extractValueOption[String](structureDefinition, "type").get
+    val isAbstract = FHIRUtil.extractValueOption[Boolean](structureDefinition, "abstract").get
+    if(isAbstract)
+      None
+    else
+      Some(rtype)
   }
 
   /**
@@ -227,7 +270,7 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
 
 
     //Check if all mentioned profiles within the given profiles also exist in profile set (Profile set is closed)
-    var allProfilesAndExtensionsMentionedInSomewhere = findMentionedProfiles(profiles.values.toSeq)
+    var allProfilesAndExtensionsMentionedInSomewhere = findMentionedProfiles(fhirConfig, profiles.values.toSeq)
     profileDefinitionsNotGiven = allProfilesAndExtensionsMentionedInSomewhere.filter(p => !profiles.contains(p) && !baseProfiles.contains(p)).toSeq
     if(profileDefinitionsNotGiven.nonEmpty)
       throw new InitializationException(s"Missing StructureDefinition in o profile configurations for the referred profiles (${profileDefinitionsNotGiven.mkString(",")}) within the given profiles (e.g. as base profile 'StructureDefinition.baseDefinition', target profile for an element StructureDefinition.differential.element.type.profile or reference StructureDefinition.differential.element.type.targetProfile) ! All mentioned profiles should be given for validation!")
@@ -239,16 +282,16 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
 
     fhirConfig.profileRestrictions =
       profiles ++
-        findClosureForBaseProfiles(allProfilesAndExtensionsMentionedInSomewhere, baseProfiles) //Only add base profiles that are mentioned
+        findClosureForBaseProfiles(fhirConfig, allProfilesAndExtensionsMentionedInSomewhere, baseProfiles) //Only add base profiles that are mentioned
     fhirConfig
   }
 
-  private def findClosureForBaseProfiles(mentionedBaseProfileUrls:Set[String], baseProfiles:Map[String, ProfileRestrictions]):Map[String, ProfileRestrictions] = {
+  private def findClosureForBaseProfiles(fhirConfig: FhirConfig, mentionedBaseProfileUrls:Set[String], baseProfiles:Map[String, ProfileRestrictions]):Map[String, ProfileRestrictions] = {
     val mentionedBaseProfiles = mentionedBaseProfileUrls.map(url => url -> baseProfiles.apply(url)).toMap
-    val deepMentionedBaseProfiles = findMentionedProfiles(mentionedBaseProfiles.values.toSeq)
+    val deepMentionedBaseProfiles = findMentionedProfiles(fhirConfig, mentionedBaseProfiles.values.toSeq)
     val newUrls = deepMentionedBaseProfiles.diff(mentionedBaseProfileUrls)
     if(newUrls.nonEmpty)
-      findClosureForBaseProfiles(mentionedBaseProfileUrls ++ newUrls, baseProfiles)
+      findClosureForBaseProfiles(fhirConfig, mentionedBaseProfileUrls ++ newUrls, baseProfiles)
     else
       mentionedBaseProfiles
   }
@@ -258,7 +301,7 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
    * @param profiles
    * @return
    */
-  private def findMentionedProfiles(profiles:Seq[ProfileRestrictions]):Set[String] = {
+  private def findMentionedProfiles(fhirConfig: FhirConfig, profiles:Seq[ProfileRestrictions]):Set[String] = {
     profiles.flatMap(p => {
       if (p.url == "http://hl7.org/fhir/StructureDefinition/ChargeItem")
         ""
@@ -267,7 +310,7 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
           e.restrictions.get(ConstraintKeys.DATATYPE).toSeq.map(_.asInstanceOf[TypeRestriction])
             .flatMap(_.dataTypesAndProfiles.flatMap(dtp => dtp._2 match {
               case Nil =>
-                if (FHIR_COMPLEX_TYPES.contains(dtp._1))
+                if (fhirConfig.FHIR_COMPLEX_TYPES.contains(dtp._1))
                   Seq(s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/${dtp._1}")
                 else
                   Nil
@@ -337,24 +380,31 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
    * @param baseOperationDefinitions  Base OperationDefinitions given in standard bundle
    * @return
    */
-  private def validateAndConfigureOperations(fhirConfig: FhirConfig, conformance:FHIRCapabilityStatement, operationDefs:Map[String, OperationConf], baseOperationDefinitions:Map[String, OperationConf]): FhirConfig = {
+  private def validateAndConfigureOperations(fhirConfig: FhirConfig, conformance:FHIRCapabilityStatement, operationDefs:Map[String, OperationConf], baseOperationDefinitions:Map[String, OperationConf], fhirOperationImplms:Map[String, String]): FhirConfig = {
     //Check if all operations mentioned in Conformance are given in operation definition configurations
     val operationDefinitionsNotGiven = conformance.operationDefUrls.diff(operationDefs.keySet ++ baseOperationDefinitions.keySet)
     if(operationDefinitionsNotGiven.nonEmpty)
       throw new InitializationException(s"Missing OperationDefinition in operation definition configurations for the operation definitions (${operationDefinitionsNotGiven.mkString(",")}) declared in CapabilityStatement (CapabilityStatement.rest.resource.operation | CapabilityStatement.rest.operation)! ")
 
-    //Check if operation class paths are given correctly
-    val opHandler = new FHIROperationHandler()
-    operationDefs.values.map(_.classPath).foreach(cpath => opHandler.loadOperationClass(cpath) match {
-      case None =>
-        throw new InitializationException(s"OperationDefinition resources given as configuration for onFhir should have a 'name' element which provides a valid class path implementing FHIROperationHandlerService!")
-      case Some(cls) if !cls.newInstance().isInstanceOf[FHIROperationHandlerService] =>
-        throw new InitializationException(s"OperationDefinition resources given as configuration for onFhir should have a 'name' element which provides a valid class path implementing FHIROperationHandlerService!")
-      case _ =>
-      //Nothing
-    })
+    val operationImplementationsNotExist = conformance.operationDefUrls.diff(fhirOperationImplms.keySet)
+    if(operationImplementationsNotExist.nonEmpty)
+      throw new InitializationException(s"Missing implementations for FHIR operations ${operationImplementationsNotExist.mkString(",")}! Please provide class path of the implementation for each FHIR operation declared in CapabilityStatement.")
 
-    fhirConfig.supportedOperations = operationDefs.values.toSeq
+    val opHandler = new FHIROperationHandler()
+    val operationsWithInvalidClassPaths =
+      fhirOperationImplms
+        .filterKeys(conformance.operationDefUrls.contains)
+        .filter(opImpl => opHandler.loadOperationClass(opImpl._2).isEmpty)
+
+     if(operationsWithInvalidClassPaths.nonEmpty)
+       throw new InitializationException(s"Invalid class paths ${operationsWithInvalidClassPaths.map(op => op._2).mkString(",")} for FHIR operation implementations!")
+
+    fhirConfig.supportedOperations =
+      conformance.operationDefUrls.map(opDefUrl => {
+        val opDef = operationDefs.getOrElse(opDefUrl, baseOperationDefinitions.apply(opDefUrl))
+        opDef.classPath = fhirOperationImplms(opDefUrl)
+        opDef
+      }).toSeq
 
     fhirConfig
   }

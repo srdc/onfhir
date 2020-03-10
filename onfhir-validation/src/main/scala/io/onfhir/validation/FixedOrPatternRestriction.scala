@@ -18,10 +18,10 @@ case class FixedOrPatternRestriction(fixedValue:JValue, isFixed:Boolean) extends
       if(diff.added == JNothing && diff.changed == JNothing && diff.deleted == JNothing)
         Nil
       else
-        Seq(ConstraintFailure(s"Given value (${compact(render(value))}) is not equal to fixed specified value ${compact(render(fixedValue))}!"))
+        Seq(ConstraintFailure(s"Given value (${compact(render(value))}) is not equal to fixed specified value; ${compact(render(fixedValue))}!"))
     } else {
       if(!hasPattern(fixedValue, value))
-        Seq(ConstraintFailure(s"Given value (${compact(render(value))}) does not conform to pattern ${compact(render(fixedValue))}!"))
+        Seq(ConstraintFailure(s"Given value (${compact(render(value))}) does not conform to pattern; ${compact(render(fixedValue))}!"))
       else
         Nil
     }
