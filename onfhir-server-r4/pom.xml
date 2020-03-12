@@ -13,7 +13,7 @@
     <packaging>jar</packaging>
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
-        <!--testSourceDirectory>src/test/scala</testSourceDirectory-->
+        <testSourceDirectory>src/test/scala</testSourceDirectory>
         <plugins>
             <!-- Allows compiling/testing/running/documenting Scala code in Maven. -->
             <plugin>
@@ -77,6 +77,17 @@
         <dependency>
             <groupId>onfhir</groupId>
             <artifactId>onfhir-operations</artifactId>
+        </dependency>
+        <!--Testing toolkits for Akka-->
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-testkit_2.12</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-http-testkit_2.12</artifactId>
+            <scope>test</scope>
         </dependency>
         <!-- Unit Testing -->
         <dependency>

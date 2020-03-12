@@ -28,7 +28,7 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
   //Name of the file that includes the Bundle for Structure Definitions for extensions given in base
   final val PROFILES_EXTENSIONS_BUNDLE_FILE_NAME = s"extension-definitions$FOUNDATION_RESOURCES_FILE_SUFFIX"
   //Name of the files that includes the Bundle for ValueSets and CodeSystems in base FHIR specification
-  final val VALUESET_AND_CODESYSTEM_BUNDLE_FILES = Seq(s"valuesets$FOUNDATION_RESOURCES_FILE_SUFFIX", s"v3-codesystems$FOUNDATION_RESOURCES_FILE_SUFFIX")
+  final val VALUESET_AND_CODESYSTEM_BUNDLE_FILES = Seq(s"valuesets$FOUNDATION_RESOURCES_FILE_SUFFIX", s"v3-codesystems$FOUNDATION_RESOURCES_FILE_SUFFIX", s"v2-tables$FOUNDATION_RESOURCES_FILE_SUFFIX")
 
   // Configuration resources to configure FHIR Capabilities of the server
   var conformanceResource:Resource = _

@@ -11,9 +11,8 @@ import org.apache.commons.io.input.BOMInputStream
 import org.json4s.JsonAST.JObject
 import org.json4s.jackson.JsonMethods
 import org.slf4j.{Logger, LoggerFactory}
-import io.onfhir.util.XmlFormatter
+
 import scala.collection.mutable
-import scala.io.Source
 
 /**
  * Utility functions to read FHIR resources (in JSON format) from file system
@@ -183,18 +182,16 @@ object IOUtil {
    }
 
   private def parseResource(reader:Reader, path:String):Resource = {
-    try{
-      if(path.endsWith(".json"))
-        JsonMethods.parse(reader).asInstanceOf[JObject]
-      else if(path.endsWith(".xml"))
-        new XmlFormatter.XmlParsable2(reader).parseXML
-      else
-        throw new InitializationException(s"Cannot read parse resource from path $path, it should be XML or JSON file!")
-    }
-    catch {
-      case e:Exception =>
-        throw new InitializationException(s"Cannot read parse resource from path $path!", Some(e))
-    }
+    if(path.endsWith(".json"))
+      try {
+          JsonMethods.parse(reader).asInstanceOf[JObject]
+      }
+      catch {
+        case e:Exception =>
+          throw new InitializationException(s"Cannot read parse resource from path $path!", Some(e))
+      }
+    else
+      throw new InitializationException(s"Cannot read parse resource from path $path, it should be JSON file!")
   }
 
 }

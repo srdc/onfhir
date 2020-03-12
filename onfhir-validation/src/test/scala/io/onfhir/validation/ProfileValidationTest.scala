@@ -38,7 +38,8 @@ class ProfileValidationTest extends Specification {
 
   val valueSetsOrCodeSystems =
     IOUtil.readStandardBundleFile("valuesets.json", Set("ValueSet", "CodeSystem")) ++
-      IOUtil.readStandardBundleFile("v3-codesystems.json", Set("ValueSet", "CodeSystem"))
+      IOUtil.readStandardBundleFile("v3-codesystems.json", Set("ValueSet", "CodeSystem")) ++
+      IOUtil.readStandardBundleFile("v2-tables.json", Set("ValueSet", "CodeSystem"))
 
   val extraProfiles = Seq(
     IOUtil.readInnerResource("fhir/r4/profiles/MyObservation.StructureDefinition.json"),
@@ -176,6 +177,22 @@ class ProfileValidationTest extends Specification {
       issues.exists(i => i.expression.head == "category[0]" && i.severity == "warning") mustEqual true
       issues.exists(i => i.expression.head == "interpretation[0]" && i.severity == "warning") mustEqual true
       issues.exists(i => i.expression.head == "component[0].interpretation[0]" && i.severity == "warning") mustEqual true
+    }
+
+    "validate a valid FHIR resource with primitive extensions against base definitions" in {
+      val fhirContentValidator = FhirContentValidator(fhirConfig, "http://hl7.org/fhir/StructureDefinition/Patient")
+      val patient = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/valid/patient.json")).mkString).asInstanceOf[JObject]
+      val issues = fhirContentValidator.validateComplexContent(patient)
+      issues.exists(_.severity == "error") mustEqual(false)
+    }
+    "not validate an invalid FHIR resource with primitive extensions against base definitions" in {
+      val fhirContentValidator = FhirContentValidator(fhirConfig, "http://hl7.org/fhir/StructureDefinition/Patient")
+      val patient = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/invalid/patient.json")).mkString).asInstanceOf[JObject]
+      val issues = fhirContentValidator.validateComplexContent(patient)
+      issues.exists(_.severity == "error") mustEqual(true)
+      issues.exists(i => i.expression.head == "birthDate.as" && i.severity == "error") mustEqual true
+      issues.exists(i => i.expression.head == "contact[0].name.family" && i.severity == "error") mustEqual true
+      issues.exists(i => i.expression.head == "contact[0].name.given" && i.severity == "error") mustEqual true
     }
 
     "validate a valid FHIR resource against profile" in {

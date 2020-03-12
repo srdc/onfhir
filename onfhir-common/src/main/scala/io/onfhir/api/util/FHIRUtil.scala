@@ -222,9 +222,10 @@ object FHIRUtil {
     * @return
     */
   def populateResourceWithMeta(resource: Resource, id: Option[String], versionId: Long, lastModified: DateTime): Resource = {
-    var result:Resource = resource
-    //Put id
-    if (id.isDefined) result = result merge (JObject() ~ (FHIR_COMMON_FIELDS.ID -> id.get)) //add id field to resource
+    val resourceTypeField = resource.findField(_._1 == FHIR_COMMON_FIELDS.RESOURCE_TYPE).get
+
+    var result:Resource = resource.obj.filterNot(f => f._1 == FHIR_COMMON_FIELDS.ID || f._1 == FHIR_COMMON_FIELDS.META || f._1 == FHIR_COMMON_FIELDS.RESOURCE_TYPE)
+
     //Generate meta if not exist
     val meta:Resource =
       (FHIR_COMMON_FIELDS.META ->
@@ -232,7 +233,13 @@ object FHIRUtil {
         (FHIR_COMMON_FIELDS.LAST_UPDATED -> (lastModified.toIsoDateTimeString + "Z"))
       )
     //Merge it
-    result = result merge meta
+    result = meta merge result
+
+    //Put id
+    if (id.isDefined)
+      result = (JObject() ~ (FHIR_COMMON_FIELDS.ID -> id.get)) merge result  //add id field to resource
+
+    result = resourceTypeField ~ result
     result
   }
 

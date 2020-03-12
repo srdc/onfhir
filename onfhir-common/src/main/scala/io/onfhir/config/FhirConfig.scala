@@ -165,6 +165,10 @@ class FhirConfig(version:String) {
     findProfile(s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/$rtype").get
   }
 
+  def getBaseProfileChain(rtype:String):Seq[ProfileRestrictions] = {
+    findProfileChain(s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/$rtype")
+  }
+
   /**
    * Find profile with the given URL
    * @param profileUrl

@@ -283,6 +283,7 @@ package object api {
     val XHTML = "xhtml"
     //Complex types
     //Special purpose Types
+    val ELEMENT = "Element"
     val RESOURCE = "Resource"
     val PARAMETERS = "Parameters"
     val META = "Meta"

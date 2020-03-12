@@ -72,11 +72,14 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
     val allRestrictions = resourceElementRestrictions ++ profileChain.map(_.elementRestrictions)
     //Validated fields within this object
     val validatedFields = new mutable.HashSet[String]()
-
+    //Find out resource or data type
     val resourceOrDataType = findResourceType(profileChain)
 
-    val issues =
-      value.obj.flatMap {
+    //Find out elements given as extension to primitive fields (e.g. _birthDate)
+    val possiblePrimitiveExtensions =  value.obj.filter(f => f._1.startsWith("_")).map(f => f._1.drop(1) -> f._2).toMap
+
+    var issues =
+      value.obj.filter(!_._1.startsWith("_")).flatMap {
         case ("resourceType", resourceType) =>
           if (!resourceType.isInstanceOf[JString] || !resourceOrDataType.contains(resourceType.extract[String]))
             FhirContentValidator.convertToOutcomeIssue("resourceType", Seq(ConstraintFailure(s"Resource type '${resourceType.extract[String]}' does not match with the target profile '${profileUrl}'!")))
@@ -94,11 +97,38 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
               validatedFields += fieldName
               //Find all restrictions chain defined for the field (in priority order)
               val elementRestrictions = findElementRestrictionsChain(fieldName, allRestrictions)
-
+              //Possible primitive extension
+              val possiblePrimitiveExtension = possiblePrimitiveExtensions.get(field)
               //Validate element
-              validateElement(FHIRUtil.mergeElementPath(parentPath, field), fieldName, dataType, fieldValue, elementRestrictions)
+              validateElement(FHIRUtil.mergeElementPath(parentPath, field), fieldName, dataType, fieldValue, elementRestrictions, possiblePrimitiveExtension)
           }
       }
+
+    //Find out primitives that are not with a value e.g. birthDate does not exist but _birthDate exist
+    val primitivesWithoutValues = possiblePrimitiveExtensions.filterKeys( k => !validatedFields.contains(k))
+    val primitiveWithoutValuesIssues = primitivesWithoutValues.flatMap {
+      case (field, fieldValue) =>
+        //Find out the field name and DataType for the given field
+        extractFieldNameAndDataType(field, allRestrictions) match {
+          case None =>
+            FhirContentValidator.convertToOutcomeIssue(FHIRUtil.mergeElementPath(parentPath, s"_$field"), Seq(ConstraintFailure(s"Unrecognized element '${FHIRUtil.mergeElementPath(parentPath, s"_$field")}' !")))
+          case Some((fieldName, dataType)) if fhirConfig.FHIR_PRIMITIVE_TYPES.contains(dataType) =>
+            validatedFields += fieldName
+            //Find all restrictions chain defined for the field (in priority order)
+            val elementRestrictions = findElementRestrictionsChain(fieldName, allRestrictions)
+            val cardinalityIssues = evaluateCardinalityConstraints(dataType, fieldValue, elementRestrictions.flatMap(_._1))
+            if(cardinalityIssues.nonEmpty)
+              FhirContentValidator.convertToOutcomeIssue(FHIRUtil.mergeElementPath(parentPath, s"_$field"), cardinalityIssues)
+            else
+              fieldValue match {
+                case JArray(arr) =>
+                  arr.flatMap(i => validatePrimitiveExtension(FHIRUtil.mergeElementPath(parentPath, s"_$field"), i))
+                case v:JValue =>
+                  validatePrimitiveExtension(FHIRUtil.mergeElementPath(parentPath, s"_$field"), v)
+              }
+        }
+    }
+    issues = issues ++ primitiveWithoutValuesIssues
 
     //Find required elements
     val requiredElements = findRequiredElements(allRestrictions).toSeq
@@ -132,7 +162,7 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
    * @param elementRestrictions Element definition chain found for this element (with also sub element definitions under that path)
    * @return
    */
-  private def validateElement(path: String, fieldName: String, dataType: String, value: JValue, elementRestrictions: Seq[(Option[ElementRestrictions], Seq[(String, ElementRestrictions)])]): Seq[OutcomeIssue] = {
+  private def validateElement(path: String, fieldName: String, dataType: String, value: JValue, elementRestrictions: Seq[(Option[ElementRestrictions], Seq[(String, ElementRestrictions)])], possiblePrimitiveExtension:Option[JValue]): Seq[OutcomeIssue] = {
     logger.debug(s"Validating element at path $path with field $fieldName and data type $dataType...")
     //First perform cardinality validations
     val cardinalityValidations = evaluateCardinalityConstraints(dataType, value, elementRestrictions.flatMap(_._1))
@@ -151,13 +181,25 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
         val normalDefinitions = normalizePathsForSubElements(fieldName, elementRestrictions)
         value match {
           case JArray(arr) =>
-            //all elements should be valid based on the restrictions
-            arr.zipWithIndex
-              .flatMap(v => furtherValidateElement(path + s"[${v._2}]", fieldName, dataType, v._1, normalDefinitions))
-
+            // if extension of primitive exists, it should also be an array
+            if(!possiblePrimitiveExtension.forall( pp => pp.isInstanceOf[JArray] && pp.asInstanceOf[JArray].arr.length == arr.length))
+              FhirContentValidator
+                .convertToOutcomeIssue(path,
+                  Seq(ConstraintFailure(s"Extension for FHIR primitive element (_${fieldName}) should be given as array (not as an object or simple value) and number of items in the arrays should match!")))
+            else {
+              //all elements should be valid based on the restrictions
+              arr.zipWithIndex
+                .flatMap(v => furtherValidateElement(path + s"[${v._2}]", fieldName, dataType, v._1, normalDefinitions,
+                  possiblePrimitiveExtension.map(_.asInstanceOf[JArray].arr.apply(v._2))))
+            }
           //Non array
           case oth =>
-            furtherValidateElement(path, fieldName, dataType, oth, normalDefinitions)
+            if(!possiblePrimitiveExtension.forall(_.isInstanceOf[JObject]))
+              FhirContentValidator
+                .convertToOutcomeIssue(path,
+                  Seq(ConstraintFailure(s"Extension for FHIR primitive element (_${fieldName}) should not be given as array, it is an object or simple value!")))
+            else
+              furtherValidateElement(path, fieldName, dataType, oth, normalDefinitions, possiblePrimitiveExtension)
         }
       }
     }
@@ -291,6 +333,19 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
   }
 
   /**
+   * Validate the primitive extension
+   * @param path
+   * @param ppe
+   * @return
+   */
+  private def validatePrimitiveExtension(path:String, ppe:JValue):Seq[OutcomeIssue] = {
+    if(!ppe.isInstanceOf[JObject])
+      FhirContentValidator.convertToOutcomeIssue(path, Seq(ConstraintFailure(s"Extension for FHIR primitive element within array should be given as JSON object!")))
+    else
+      validateComplexContentAgainstProfile(Seq(fhirConfig.getBaseProfile(FHIR_DATA_TYPES.ELEMENT)), ppe.asInstanceOf[JObject], Some(path), Nil)
+  }
+
+  /**
    * @param path                    Actual path to the element to be validated e.g. valueQuantity
    * @param fieldName               Field name (as defined) e.g. value[x] --> value
    * @param dataType                FHIR DataType of the field e.g. Quantity
@@ -298,14 +353,14 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
    * @param elementRestrictionChain Chain of definitions for the element (coming from profile chain)  (together with sub element definitions)
    * @return
    */
-  private def furtherValidateElement(path: String, fieldName: String, dataType: String, value: JValue, elementRestrictionChain: Seq[(Option[ElementRestrictions], Seq[(String, ElementRestrictions)])]): Seq[OutcomeIssue] = {
+  private def furtherValidateElement(path: String, fieldName: String, dataType: String, value: JValue, elementRestrictionChain: Seq[(Option[ElementRestrictions], Seq[(String, ElementRestrictions)])], possiblePrimitiveExtension:Option[JValue] = None): Seq[OutcomeIssue] = {
     val isPrimitive = dataType.apply(0).isLower
     val thisElementRestrictions = elementRestrictionChain.flatMap(_._1)
     //Go over all possible restrictions in some order, and collect errors and warnings
     val allWarningsOrErrorsForThis = {
       //If the dataType is primitive, validate it and if there is an error do not check other constraints
       if (isPrimitive && !FhirContentValidator.validatePrimitive(value, dataType)) {
-        Seq(ConstraintFailure(s"Invalid value '${value.extract[String]}' for FHIR primitive type '$dataType'!"))
+          Seq(ConstraintFailure(s"Invalid value '${value.extract[String]}' for FHIR primitive type '$dataType'!"))
       } else {
         //If data type is complex, it should be a JObject and not empty
         if (!isPrimitive && (!value.isInstanceOf[JObject] || value.asInstanceOf[JObject].obj.isEmpty))
@@ -328,31 +383,40 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
       FhirContentValidator.convertToOutcomeIssue(path, allWarningsOrErrorsForThis)
     //Otherwise, and if it is complex continue with childs
     else if (!isPrimitive) {
-      val profileUrls = findExpectedProfilesUrl(dataType, thisElementRestrictions)
-      //Find profile chain for each profile
-      val profileChains =
-        profileUrls
-          .map(fhirConfig.findProfileChain).sortWith((c1, c2) => c1.size >= c2.size)
-      //Get all urls
-      var allUrls = profileChains.flatMap(_.map(_.url)).toSet
-      val totalNumUrls = allUrls.size
-      //Append already Validated Profile Urls to chains
-      val profileChainsToValidate =
-        profileChains.map(c => {
-          val thisUrls = c.map(_.url).toSet
-          val temp = c -> thisUrls.diff(allUrls)
-          allUrls = allUrls.diff(thisUrls)
-          temp
-        }).filter(c => c._2.size < totalNumUrls) //Get the ones that has some profile to validate
-          .map(_._1)
+      //If this is not a primitive, extension method for primitive can not be used
+      if(possiblePrimitiveExtension.isDefined) {
+        val actualPath = (path.split('.').dropRight(1) +: s"_${fieldName}").mkString(".")
+        FhirContentValidator.convertToOutcomeIssue(actualPath, Seq(ConstraintFailure(s"Unrecognized element ${actualPath} !")))
+      } else {
+        val profileUrls = findExpectedProfilesUrl(dataType, thisElementRestrictions)
+        //Find profile chain for each profile
+        val profileChains =
+          profileUrls
+            .map(fhirConfig.findProfileChain).sortWith((c1, c2) => c1.size >= c2.size)
+        //Get all urls
+        var allUrls = profileChains.flatMap(_.map(_.url)).toSet
+        val totalNumUrls = allUrls.size
+        //Append already Validated Profile Urls to chains
+        val profileChainsToValidate =
+          profileChains.map(c => {
+            val thisUrls = c.map(_.url).toSet
+            val temp = c -> thisUrls.diff(allUrls)
+            allUrls = allUrls.diff(thisUrls)
+            temp
+          }).filter(c => c._2.size < totalNumUrls) //Get the ones that has some profile to validate
+            .map(_._1)
 
-      //Otherwise
-      FhirContentValidator.convertToOutcomeIssue(path, allWarningsOrErrorsForThis) ++ //Still we may have warnings
-        //Validate against the profiles
-        profileChainsToValidate
-          .flatMap(c => validateComplexContentAgainstProfile(c, value.asInstanceOf[JObject], Some(path), elementRestrictionChain.map(_._2)))
+        //Otherwise
+        FhirContentValidator.convertToOutcomeIssue(path, allWarningsOrErrorsForThis) ++ //Still we may have warnings
+          //Validate against the profiles
+          profileChainsToValidate
+            .flatMap(c => validateComplexContentAgainstProfile(c, value.asInstanceOf[JObject], Some(path), elementRestrictionChain.map(_._2)))
+      }
     } else {
-      FhirContentValidator.convertToOutcomeIssue(path, allWarningsOrErrorsForThis) //Still we may
+      //Also validate the primitive extension if exist
+      val extensionErrors = possiblePrimitiveExtension.map(ppe => validatePrimitiveExtension(path, ppe)).getOrElse(Nil)
+      extensionErrors ++
+        FhirContentValidator.convertToOutcomeIssue(path, allWarningsOrErrorsForThis) //Still we may
     }
   }
 
