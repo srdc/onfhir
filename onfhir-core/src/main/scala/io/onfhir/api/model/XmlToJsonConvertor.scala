@@ -13,22 +13,23 @@ import org.slf4j.{Logger, LoggerFactory}
 
 import scala.language.implicitConversions
 import scala.util.Try
-import scala.xml.{Attribute, Elem, NamespaceBinding, Node, NodeSeq, PrettyPrinter}
-import io.onfhir.util.JsonFormatter.formats
+import scala.xml.{Elem, Node}
+
 /**
  * Class that handles conversion of FHIR XML representation to FHIR JSON and back
  * @param fhirConfig
  */
-class XmlFormatter(fhirConfig: FhirConfig) extends BaseFhirProfileHandler(fhirConfig) {
-  val logger:Logger = LoggerFactory.getLogger(this.getClass)
-  var prettyPrinter:PrettyPrinter = new PrettyPrinter(3, 2)
+class XmlToJsonConvertor(fhirConfig: FhirConfig) extends BaseFhirProfileHandler(fhirConfig) {
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
 
   /**
    * Convert a FHIR resource serialized in XML into JSON
-   * @param parsedXml   XML Parsed
+   *
+   * @param parsedXml XML Parsed
    * @return
    */
-  def convertResourceToJson(parsedXml:Elem):Resource = {
+  def convertResourceToJson(parsedXml: Elem): Resource = {
     try {
       if (!fhirConfig.FHIR_RESOURCE_TYPES.contains(parsedXml.label))
         throw new UnprocessableEntityException(Seq(OutcomeIssue(FHIRResponse.SEVERITY_CODES.ERROR, FHIRResponse.OUTCOME_CODES.INVALID, None, Some(s"Invalid resource type ${parsedXml.label} in XML format!"), Seq("resourceType"))))
@@ -40,25 +41,31 @@ class XmlFormatter(fhirConfig: FhirConfig) extends BaseFhirProfileHandler(fhirCo
         convertNodeGroupToJson(parsedXml, baseProfileChain)
 
       result
-    }catch {
-      case u:UnprocessableEntityException =>
+    } catch {
+      case u: UnprocessableEntityException =>
         throw u
-      case e:Exception =>
+      case e: Exception =>
         throw new UnprocessableEntityException(Seq(OutcomeIssue(FHIRResponse.SEVERITY_CODES.ERROR, FHIRResponse.OUTCOME_CODES.INVALID, Some("Unknown Problem while parsing the XML"), None, Nil)))
     }
   }
 
   /**
    * Convert an XML Node to JValue
-   * @param node          XML Node itself
-   * @param profileChain  Profile chain for this resource type
-   * @param path          JSON Path to the node
+   *
+   * @param node         XML Node itself
+   * @param profileChain Profile chain for this resource type
+   * @param path         JSON Path to the node
    * @return
    */
-  private def convertNodeToJson(node:Node, profileChain:Seq[ProfileRestrictions], path:String):JValue = {
+  private def convertNodeToJson(node: Node, profileChain: Seq[ProfileRestrictions], path: String): JValue = {
     //If an element has id field, make it a JSON field
     val idField = node.attribute("id").map(id => JField("id", JString(id.head.text)))
     node.label match {
+      case "resource" if profileChain.head.url == fhirConfig.getBaseProfile("Bundle").url =>
+        val children = node.nonEmptyChildren.filter(_.isInstanceOf[Elem])
+        if (children.length != 1 || !children.head.isInstanceOf[Elem])
+          throw new UnprocessableEntityException(Seq(OutcomeIssue(FHIRResponse.SEVERITY_CODES.ERROR, FHIRResponse.OUTCOME_CODES.INVALID, None, Some(s"Invalid resource in Bundle at ${path} in XML format!"), Seq(path))))
+        convertResourceToJson(children.head.asInstanceOf[Elem])
       //Extension is serialized in a special way
       case "extension" =>
         val urlElem = node.attribute("url") match {
@@ -66,7 +73,7 @@ class XmlFormatter(fhirConfig: FhirConfig) extends BaseFhirProfileHandler(fhirCo
             JField("url", JString(n.text))
           case None => JField("url", JNull)
         }
-        if(idField.isDefined)
+        if (idField.isDefined)
           idField.get ~ urlElem ~ convertNodeGroupToJson(node, profileChain, Some(path))
         else
           urlElem ~ convertNodeGroupToJson(node, profileChain, Some(path))
@@ -81,12 +88,12 @@ class XmlFormatter(fhirConfig: FhirConfig) extends BaseFhirProfileHandler(fhirCo
               //if not found, convert it to JString
               case None => JString(v.text)
               //Otherwise convert accordingly
-              case Some((dt , _)) =>
+              case Some((dt, _)) =>
                 convertPrimitive(dt, v.text)
             }
           //If there is no attribute, it should be a complex
           case None =>
-            if(idField.isDefined)
+            if (idField.isDefined)
               idField.get ~ convertNodeGroupToJson(node, profileChain, Some(path))
             else
               convertNodeGroupToJson(node, profileChain, Some(path))
@@ -96,11 +103,12 @@ class XmlFormatter(fhirConfig: FhirConfig) extends BaseFhirProfileHandler(fhirCo
 
   /**
    * Convert a FHIR primitive value to JValue
-   * @param fhirDataType    FHIR Data type for the value
-   * @param value           Value in string representation
+   *
+   * @param fhirDataType FHIR Data type for the value
+   * @param value        Value in string representation
    * @return
    */
-  private def convertPrimitive(fhirDataType:String, value:String):JValue  = {
+  private def convertPrimitive(fhirDataType: String, value: String): JValue = {
     fhirDataType match {
       case FHIR_DATA_TYPES.INTEGER | FHIR_DATA_TYPES.UNSIGNEDINT | FHIR_DATA_TYPES.POSITIVEINT =>
         Try(Integer.parseInt(value)).toOption.map(i => JInt(i)).getOrElse(JString(value))
@@ -120,12 +128,13 @@ class XmlFormatter(fhirConfig: FhirConfig) extends BaseFhirProfileHandler(fhirCo
 
   /**
    * Convert all children in a node to JObject
-   * @param parent          The parent node
-   * @param profileChain    Profile chain for resource type
-   * @param parentPath      JSON Path to the parent
+   *
+   * @param parent       The parent node
+   * @param profileChain Profile chain for resource type
+   * @param parentPath   JSON Path to the parent
    * @return
    */
-  private def convertNodeGroupToJson(parent:Node, profileChain:Seq[ProfileRestrictions], parentPath:Option[String] = None):JObject = {
+  private def convertNodeGroupToJson(parent: Node, profileChain: Seq[ProfileRestrictions], parentPath: Option[String] = None): JObject = {
     val elements =
       parent
         .nonEmptyChildren.filter(_.isInstanceOf[Elem])
@@ -142,18 +151,19 @@ class XmlFormatter(fhirConfig: FhirConfig) extends BaseFhirProfileHandler(fhirCo
 
   /**
    * Convert an element to JField
-   * @param elem          Element name and values
-   * @param profileChain  Profile chain for resource type
-   * @param parentPath    JSON Path to the parent node
+   *
+   * @param elem         Element name and values
+   * @param profileChain Profile chain for resource type
+   * @param parentPath   JSON Path to the parent node
    * @return
    */
-  private def convertElementToJson(elem:(String, Seq[Node]), profileChain:Seq[ProfileRestrictions], parentPath:Option[String] = None):Seq[JField] = {
+  private def convertElementToJson(elem: (String, Seq[Node]), profileChain: Seq[ProfileRestrictions], parentPath: Option[String] = None): Seq[JField] = {
     val path = FHIRUtil.mergeElementPath(parentPath, elem._1)
     var isArray = true
     val mainField = JField(
       elem._1,
       elem._2 match {
-        case Seq(single:Node) =>
+        case Seq(single: Node) =>
           findPathCardinality(path, profileChain) match {
             case true => JArray(List(convertNodeToJson(single, profileChain, path)))
             case false =>
@@ -169,9 +179,9 @@ class XmlFormatter(fhirConfig: FhirConfig) extends BaseFhirProfileHandler(fhirCo
     )
 
     val extendedPrimitiveValues =
-      elem._2.map(p =>  (p.attribute("id"), p.attribute("value")) match {
+      elem._2.map(p => (p.attribute("id"), p.attribute("value")) match {
         //If it is a FHIR primitive with extension; has a value and has some children
-        case (Some(Seq(id)),Some(Seq(_))) if p.child.nonEmpty =>
+        case (Some(Seq(id)), Some(Seq(_))) if p.child.nonEmpty =>
           JField(FHIR_COMMON_FIELDS.ID, id.text) ~ convertNodeGroupToJson(p, Seq(fhirConfig.getBaseProfile("Element")), None)
         case (None, Some(Seq(_))) if p.child.nonEmpty =>
           convertNodeGroupToJson(p, Seq(fhirConfig.getBaseProfile("Element")), None)
@@ -180,120 +190,33 @@ class XmlFormatter(fhirConfig: FhirConfig) extends BaseFhirProfileHandler(fhirCo
       })
 
 
-    if(extendedPrimitiveValues.exists(_ != JNull)){
+    if (extendedPrimitiveValues.exists(_ != JNull)) {
       val extendedField =
         JField(s"_${elem._1}",
-          if(isArray || extendedPrimitiveValues.length > 1)
+          if (isArray || extendedPrimitiveValues.length > 1)
             JArray(extendedPrimitiveValues.toList)
           else
             extendedPrimitiveValues.head
         )
-      Seq(mainField,extendedField)
+      Seq(mainField, extendedField)
     } else
       Seq(mainField)
   }
 
-  class XmlParsable(xmlStr:String){
+
+  class XmlParsable(xmlStr: String) {
     def parseXML: Resource = {
       val parsedXml = scala.xml.XML.loadString(xmlStr)
       convertResourceToJson(parsedXml)
     }
   }
 
-  class XmlParsable2(reader:Reader) {
+  class XmlParsable2(reader: Reader) {
     def parseXML: Resource = {
       val parsedXml = scala.xml.XML.load(reader)
       convertResourceToJson(parsedXml)
     }
   }
-
-  def convertResourceToXml(resource: Resource):Elem = {
-    val resourceType = resource.findField(_._1 == FHIR_COMMON_FIELDS.RESOURCE_TYPE).get._2.extract[String]
-
-    val children = convertJObjectToXml(resource.removeField(_._1 == FHIR_COMMON_FIELDS.RESOURCE_TYPE).asInstanceOf[JObject])
-
-    createComplexElement(resourceType, children)
-  }
-
-  def convertJObjectToXml(jobj:JObject):Seq[Node] = {
-    val extendedPrimitieveElemMap = jobj.obj.filter(_._1.startsWith("_")).map(e => e._1.drop(1) -> e._2).toMap
-
-    jobj.obj
-      .filterNot(_._1.startsWith("_"))
-      .flatMap(field => field match {
-        case ("extension", earr:JArray) =>
-          earr.arr.map(_.asInstanceOf[JObject]).map(eobj => {
-            val extensionChildren = convertJObjectToXml(eobj)
-            val urlAttr = Attribute.apply("", "url", eobj.obj.find(_._1 == "url").map(_._2.extract[String]).get, null)
-            Elem.apply("", "extension",urlAttr , null, true,extensionChildren:_*)
-          })
-        case ("div", JString(xhtml)) =>
-          val parsedXhtml = scala.xml.XML.loadString(xhtml)
-          Seq(createComplexElement("div", Seq(parsedXhtml)))
-        case (fieldName, JArray(arr)) =>
-          arr.zipWithIndex.map(i => i._1 match {
-            case JString || JBool || JInt || JDecimal || JDouble =>
-              if(extendedPrimitieveElemMap.contains(fieldName)) {
-                extendedPrimitieveElemMap.apply(fieldName).asInstanceOf[JArray].arr.apply(i._2)
-              } else
-                createPrimitiveElement(fieldName, i._1.extract[String])
-            case cobj:JObject =>
-              createComplexElement(fieldName, convertJObjectToXml(cobj))
-          })
-        case (fieldName, cobj:JObject) =>
-          Seq(createComplexElement(fieldName, convertJObjectToXml(cobj)))
-        //Handle primitives
-        case (fieldName, JString(s)) =>
-          Seq(createPrimitiveElement(fieldName,s))
-        case (fieldName, JInt(i)) =>
-          Seq(createPrimitiveElement(fieldName, i.toString()))
-        case (fieldName, JDecimal(dec)) =>
-          Seq(createPrimitiveElement(fieldName, dec.toString()))
-        case (fieldName, JDouble(db)) =>
-          Seq(createPrimitiveElement(fieldName,db.toString()))
-        case (fieldName, JBool(b)) =>
-          Seq(createPrimitiveElement(fieldName, b.toString()))
-    })
-  }
-
-
-  private def extractPrimitiveExtraction(obj:JObject):(Option[String], Seq[Node]) = {
-    val idField = obj.obj.find(_._1 == FHIR_COMMON_FIELDS.ID).map(_._2.extract[String])
-    val remaining = obj.obj.filterNot(_._1 != FHIR_COMMON_FIELDS.ID)
-    convertJObjectToXml(remaining)
-  }
-
-  private def createComplexElement(name:String, childNodes:Seq[Node]):Elem = {
-    Elem.apply("", name, null, null, true, childNodes:_*)
-  }
-
-  private def createPrimitiveElement(name:String, value:String):Elem = {
-    Elem.apply("", name, createValueAttribute(value), null, true, null)
-  }
-
-  private def createValueAttribute(value:String):Attribute = {
-    Attribute.apply("", "value", value, null)
-  }
-
-
-  class XmlConvertable(resource:Resource) {
-
-    def toXml: String = {
-      val rtype =  FHIRUtil.extractValue[String](resource, "resourceType")
-      val parsedXml = org.json4s.Xml.toXml(resource)
-      val root = Elem.apply("", rtype, null, NamespaceBinding.apply("", "http://hl7.org/fhir", null), true, parsedXml:_*)
-      root.toString()
-    }
-
-    def toPrettyXml:String = {
-      val rtype =  FHIRUtil.extractValue[String](resource, "resourceType")
-      val parsedXml = org.json4s.Xml.toXml(resource)
-      val root = Elem.apply("", rtype, null, NamespaceBinding.apply("", "http://hl7.org/fhir", null), true, parsedXml:_*)
-
-      prettyPrinter.format(root)
-    }
-  }
-
 
   /**
    * Implicit conversion that ties the new JsonParsable class to the Scala Strings
@@ -301,10 +224,6 @@ class XmlFormatter(fhirConfig: FhirConfig) extends BaseFhirProfileHandler(fhirCo
   implicit def parseFromXml(string: String):XmlParsable = new XmlParsable(string)
 
   implicit def parseFromXml(reader: Reader):XmlParsable2 = new XmlParsable2(reader)
-
-  /**
-   * Implicit conversion that ties the new JsonConvertable class to Scala LinkedHashMaps
-   */
-  implicit def convertToXml(resource:Resource):XmlConvertable = new XmlConvertable(resource)
-
 }
+
+

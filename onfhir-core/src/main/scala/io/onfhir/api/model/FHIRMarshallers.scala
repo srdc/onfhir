@@ -39,7 +39,7 @@ object FHIRMarshallers {
             } else if ( fhirConfig.FHIR_XML_MEDIA_TYPES.exists(supportedXmlMediaType => entity.contentType.mediaType.matches(supportedXmlMediaType))
             ) {
               //XML Unmarshalling
-              new XmlFormatter(FhirConfigurationManager.fhirConfig).parseFromXml(data).parseXML
+              new XmlToJsonConvertor(FhirConfigurationManager.fhirConfig).parseFromXml(data).parseXML
             } else if (fhirConfig.FHIR_JSON_PATCH_MEDIA_TYPE.exists(e => entity.contentType.mediaType.matches(e))
 
             ) {
@@ -116,7 +116,7 @@ object FHIRMarshallers {
     * @return
     */
   private def convertToXml(resource: Resource):String = {
-    new XmlFormatter(FhirConfigurationManager.fhirConfig).convertToXml(resource).toXml
+    new JsonToXmlConvertor().convertToXml(resource).toXml
   }
 
   /**
