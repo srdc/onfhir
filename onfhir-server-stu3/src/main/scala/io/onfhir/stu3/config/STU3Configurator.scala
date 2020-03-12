@@ -207,6 +207,18 @@ class STU3Configurator extends AbstractFhirConfigurator[CapabilityStatement, Str
       .map(bundleEntry => bundleEntry.getResource.asInstanceOf[OperationDefinition])
   }
 
+  protected def extractValueSetsFromBundle(bundle: Bundle):Seq[ValueSet] = {
+    bundle.getEntry.asScala
+      .filter(bundleEntry => bundleEntry.getResource.isInstanceOf[ValueSet])
+      .map(bundleEntry => bundleEntry.getResource.asInstanceOf[ValueSet])
+  }
+
+  protected def extractCodeSystemsFromBundle(bundle:Bundle):Seq[CodeSystem] = {
+    bundle.getEntry.asScala
+      .filter(bundleEntry => bundleEntry.getResource.isInstanceOf[CodeSystem])
+      .map(bundleEntry => bundleEntry.getResource.asInstanceOf[CodeSystem])
+  }
+
   /**
     * Check and find if there is a Rest definition as server
     * @param conformance

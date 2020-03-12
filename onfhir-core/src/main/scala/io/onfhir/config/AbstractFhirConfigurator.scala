@@ -56,6 +56,8 @@ abstract class AbstractFhirConfigurator[CONF <: IBaseResource,
   //Name of the file that includes the Bundle for Structure Definitions for Types in base FHIR specification
   val PROFILES_TYPES_BUNDLE_FILE_NAME = "profiles-types.xml"
 
+  val VALUE_SET_BUNDLE_NAMES = Set("valuesets.xml", "v3-codesystems.xml", "v2-tables.xml")
+
   //XML and JSON parsers for the given FHIR context
   def getXmlParser(rtype:String = "Bundle"):IParser = fhirContext.newXmlParser().setStripVersionsFromReferences(false)
   def getJsonParser(rtype:String = "Bundle"):IParser = fhirContext.newJsonParser().setStripVersionsFromReferences(false)
@@ -190,6 +192,9 @@ abstract class AbstractFhirConfigurator[CONF <: IBaseResource,
     */
   protected def extractOperationDefinitionsFromBundle(bundle:BUNDLE):Seq[OPDEF]
 
+  protected def extractValueSetsFromBundle(bundle:BUNDLE):Seq[VALSET]
+  protected def extractCodeSystemsFromBundle(bundle:BUNDLE):Seq[CODESYSTEM]
+
   /**
     * Store the infrastructure resources into the database
     * @param conformance Conformance statement for the FHIR repository
@@ -229,7 +234,11 @@ abstract class AbstractFhirConfigurator[CONF <: IBaseResource,
         DBInitializer.storeInfrastructureResources(FHIR_SEARCH_PARAMETER, getBaseSearchParameters.map(param => encodeResource(FHIR_SEARCH_PARAMETER, param)))
       else if(pbd ==  FHIR_OPERATION_DEFINITION)
         DBInitializer.storeInfrastructureResources(FHIR_OPERATION_DEFINITION, getBaseOperationDefinitions.map(param => encodeResource(FHIR_OPERATION_DEFINITION, param)))
-      else
+      else if(pbd == FHIR_VALUE_SET) {
+        val (valueSets, codeSystems) = getBaseValueSetsAndCodeSystems
+        DBInitializer.storeInfrastructureResources(FHIR_VALUE_SET, valueSets.map(param => encodeResource(FHIR_VALUE_SET, param)))
+        DBInitializer.storeInfrastructureResources(FHIR_CODE_SYSTEM, codeSystems.map(param => encodeResource(FHIR_CODE_SYSTEM, param)))
+      } else
         logger.warn(s"We does not support persistence of $pbd for base standart")
     })
   }
@@ -315,6 +324,21 @@ abstract class AbstractFhirConfigurator[CONF <: IBaseResource,
     extractOperationDefinitionsFromBundle(resourcesBundle.asInstanceOf[BUNDLE])
   }
 
+  protected def getBaseValueSetsAndCodeSystems:(Seq[VALSET], Seq[CODESYSTEM]) = {
+    val inputStreams = VALUE_SET_BUNDLE_NAMES.map(vb =>
+      readInfrastructureResourceInZip(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS, vb, "ValueSet and CodeSystem Definitions")
+    )
+    if(inputStreams.exists(_.isEmpty))
+      throw new InitializationException(s"Problem with FHIR validation package, " +
+      s"file(s) $VALUE_SET_BUNDLE_NAMES does not exist " +
+      s"in ${OnfhirConfig.baseDefinitions.getOrElse(DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS)} ...")
+
+    var bundles = inputStreams.map(insp => getXmlParser().parseResource(b.runtimeClass.asInstanceOf[Class[BUNDLE]], new InputStreamReader(insp.get)))
+
+    bundles
+      .map(bundle => extractValueSetsFromBundle(bundle.asInstanceOf[BUNDLE]) -> extractCodeSystemsFromBundle(bundle.asInstanceOf[BUNDLE]))
+      .reduce((g1,g2) => (g1._1 ++ g2._1) -> (g1._2 ++ g2._2))
+  }
 
   /**
     * Read and parse the extra SearchParameters defined (either from the Config or Default folder path for SearchParameters)
