@@ -3,6 +3,7 @@ package io.onfhir.path
 import java.time.{Duration, LocalDate, LocalDateTime, LocalTime, Period, Year, YearMonth, ZoneId, ZonedDateTime}
 import java.time.temporal.{ChronoField, ChronoUnit, Temporal, TemporalAmount}
 
+import io.onfhir.api.util.FHIRUtil
 import io.onfhir.path.FhirPathValueTransformer.transform
 import org.json4s.JsonAST.{JBool, JDecimal, JLong, JObject, JString, JValue}
 
@@ -302,12 +303,16 @@ case class FhirPathBoolean(b:Boolean) extends FhirPathResult {
   * @param q
   * @param unit
   */
-case class FhirPathQuantity(q:FhirPathNumber, unit:String) extends FhirPathResult {
+case class FhirPathQuantity(q:FhirPathNumber, unit:String) extends FhirPathResult with Ordered[FhirPathQuantity]  {
   override def isEqual(that:FhirPathResult):Option[Boolean] = {
     that match {
       case FhirPathQuantity(q2, u2) => Some(q.isEqual(q2).getOrElse(false) && unit == u2)
       case _ => Some(false)
     }
+  }
+
+  override def compare(that:FhirPathQuantity):Int = {
+    q.compareTo(that.q)
   }
 
   def toJson:JValue = JObject("value" -> q.toJson ,  "system" -> JString("http://unitsofmeasure.org"), "code"-> JString(unit),"unit" -> JString(unit))
@@ -324,6 +329,24 @@ case class FhirPathComplex(json:JObject) extends FhirPathResult {
         Some(json.equals(j2))
       case _ => Some(false)
     }
+  }
+
+  /**
+   * Try to convert it to Quantity if it is
+   * @return
+   */
+  def toQuantity():Option[FhirPathQuantity] = {
+    val fields = json.obj.map(_._1).toSet
+    if(fields.contains("value") && fields.subsetOf(Set("value", "unit", "system", "code", "comparator", "extension", "id"))){
+      val n = FhirPathNumber(FHIRUtil.extractValue[BigDecimal](json, "value"))
+
+      val unit = FHIRUtil.extractValueOption[String](json, "code") match {
+        case None => FHIRUtil.extractValueOption[String](json, "unit")
+        case Some(x) => Some(x)
+      }
+      Some(FhirPathQuantity.apply(n, unit.getOrElse("")))
+    } else
+      None
   }
 
   def toJson:JValue = json

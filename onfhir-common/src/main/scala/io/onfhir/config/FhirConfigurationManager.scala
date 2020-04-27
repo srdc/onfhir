@@ -1,6 +1,6 @@
 package io.onfhir.config
 
-import io.onfhir.api.validation.IFhirResourceValidator
+import io.onfhir.api.validation.{IFhirResourceValidator, IFhirTerminologyValidator}
 import io.onfhir.audit.IFhirAuditCreator
 import org.slf4j.{Logger, LoggerFactory}
 import io.onfhir.api.DEFAULT_IMPLEMENTED_FHIR_OPERATIONS
@@ -14,6 +14,8 @@ object FhirConfigurationManager {
   var fhirConfig:FhirConfig = _
   //FHIR Resource validator
   var fhirValidator:IFhirResourceValidator = _
+  //FHIR terminology validator
+  var fhirTerminologyValidator:IFhirTerminologyValidator = _
   //Audit generator in FHIR AuditEvent format based on the specific version
   var fhirAuditCreator:IFhirAuditCreator = _
   /**
@@ -29,8 +31,9 @@ object FhirConfigurationManager {
       //Read the Value sets
       fhirConfigurator.setupPlatform(fhirConfig)
     }
-    //Initialize FHIR Resource Validator
+    //Initialize FHIR Resource and terminology Validator
     fhirValidator = fhirConfigurator.getResourceValidator(fhirConfig)
+    fhirTerminologyValidator = fhirConfigurator.getTerminologyValidator(fhirConfig)
     //Initialize FHIR Audit creator if necessary
     if(OnfhirConfig.fhirAuditingRepository.equalsIgnoreCase("local") || OnfhirConfig.fhirAuditingRepository.equalsIgnoreCase("remote"))
       fhirAuditCreator = fhirConfigurator.getAuditCreator()

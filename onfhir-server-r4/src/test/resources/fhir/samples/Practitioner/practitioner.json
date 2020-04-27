@@ -1,0 +1,58 @@
+{
+  "resourceType": "Practitioner",
+  "id": "pr1",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">Dr. Beverly Crusher</div>"
+  },
+  "identifier": [
+    {
+      "type": {
+        "coding": [
+          {
+            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+            "code": "SS"
+          }
+        ]
+      },
+      "system": "http://hl7.org/fhir/sid/us-ssn",
+      "value": "333333333"
+    },
+    {
+      "type": {
+        "coding": [
+          {
+            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+            "code": "NPI"
+          }
+        ]
+      },
+      "system": "http://hl7.org/fhir/sid/us-npi",
+      "value": "1122334499"
+    },
+    {
+      "type": {
+        "coding": [
+          {
+            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+            "code": "DEA"
+          }
+        ]
+      },
+      "system": "https://www.deanumber.com/",
+      "value": "F91234567-001AB"
+    }
+  ],
+  "name": [
+    {
+      "family": "Beverly",
+      "given": [
+        "Crusher"
+      ],
+      "prefix": [
+        "Dr"
+      ]
+    }
+  ],
+  "gender": "female"
+}

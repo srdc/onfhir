@@ -1,12 +1,10 @@
 package io.onfhir.util
 
-import java.time.Instant
+import java.time.{Instant, ZonedDateTime}
 import java.time.format.DateTimeFormatter
 
 import akka.http.scaladsl.model.DateTime
-
-import io.onfhir.api.{MONTH_DAY_MAP}
-
+import io.onfhir.api.MONTH_DAY_MAP
 import org.apache.commons.lang3.time.FastDateFormat
 
 object DateTimeUtil {
@@ -26,10 +24,10 @@ object DateTimeUtil {
     val month = yearMonth.last.toInt
     // If year is divisible by 4 then that year is called leap year(Feb has 29 days)
     if(year%4==0 && month==2) {
-      "-29T23:59:59Z"
+      "-29T23:59:59.999Z"
     } else {
       // Else fetch the days from the constants
-      MONTH_DAY_MAP(month) + "T23:59:59Z"
+      MONTH_DAY_MAP(month) + "T23:59:59.999Z"
     }
   }
 
@@ -66,44 +64,62 @@ object DateTimeUtil {
     value.count(_ == '-') match {
       case 0 =>
         // YYYY value types
-        (value + "-01-01T00:00:00Z", value + "-12-31T23:59:59Z")
+        (value + "-01-01T00:00:00.000Z", value + "-12-31T23:59:59.999Z")
       case 1 =>
         // YYYY-MM value types
-        (value + "-01T00:00:00Z", value + DateTimeUtil.dayMonthConversionDateTime(value))
+        (value + "-01T00:00:00.000Z", value + DateTimeUtil.dayMonthConversionDateTime(value))
       case 2 =>
         // If there is already a defined time field(complement if required)
         if(value.contains("T")) {
-          val timePrecision = value.count(_ == ':')
-          if(value.contains('+') && timePrecision == 2) {
-            // ..HH:MM+.. => ..HH:MM:00+../..HH:MM:59+..
-            val split = value.split('+')
-            (split.head + ":00+" + split.last, split.head + ":59+" + split.last)
-          } else if(value.contains('Z') && timePrecision == 1) {
-            // ..HH:MMZ => ..HH:MM:00Z/..HH:MM:59Z
-            val split = value.split('Z')
-            (split.head + ":00Z", split.head + ":59Z")
-          } else if(!value.contains('Z') && timePrecision == 1) {
-            // ..HH:MM => ..HH:MM:00Z/..HH:MM:59Z
-            (value + ":00Z", value + ":59Z")
-          } else if(!value.contains('Z') && timePrecision == 2) {
-            // ..HH:MM:SS => ..HH:MM:SSZ/..HH:MM:SSZ
-            (value + "Z", value + "Z")
-          } else {
+          //instant precision
+          if(value.contains(".")){
             (value, value)
+          } else {
+            val timePrecision = value.count(_ == ':')
+            //With a time zone
+            if (value.contains('+')) {
+              // ..HH:MM+.. => ..HH:MM:00+../..HH:MM:59+..
+              val split = value.split('+')
+              if(timePrecision == 2) // Hour and minute
+                (split.head + ":00.000+" + split.last, split.head + ":59.999+" + split.last)
+              else  //Hour minute second
+                (split.head + ".000+" + split.last, split.head + ".999+" + split.last)
+            } else if (value.contains('Z')) {
+              val split = value.split('Z')
+              if(timePrecision == 1)
+                // ..HH:MMZ => ..HH:MM:00Z/..HH:MM:59Z
+                (split.head + ":00.000Z", split.head + ":59.999Z")
+              else
+                (split.head + ".000Z", split.head + ".999Z")
+            } else if (!value.contains('Z')) {
+              if(timePrecision == 1)
+                // ..HH:MM => ..HH:MM:00Z/..HH:MM:59Z
+                (value + ":00.000Z", value + ":59.999Z")
+              else
+              // ..HH:MM:SS => ..HH:MM:SSZ/..HH:MM:SSZ
+                (value + ".000Z", value + ".999Z")
+            } else {
+              //Not possible
+              (value, value)
+            }
           }
         } else {
           // Fully date provided without time field
-          (value + "T00:00:00Z", value + "T23:59:59Z")
+          (value + "T00:00:00.000Z", value + "T23:59:59.999Z")
         }
       case 3 =>
-        // Means time zone sperated with the '-'
-        if(value.count(_ == ':') == 1) {
-          // ..HH:MM-.. => ..HH:MM:00-../..HH:MM:59-..
-          val split = value.splitAt(value.lastIndexOf('-'))
-          (split._1 + ":00" + split._2, split._1 + ":59" + split._2)
-        } else {
+        if(value.contains("."))
           (value, value)
-        }
+        else
+          // Means time zone sperated with the '-'
+          if(value.count(_ == ':') == 2) {
+            // ..HH:MM-.. => ..HH:MM:00-../..HH:MM:59-..
+            val split = value.splitAt(value.lastIndexOf('-'))
+            (split._1 + ":00.000" + split._2, split._1 + ":59.999" + split._2)
+          } else {
+            val split = value.splitAt(value.lastIndexOf('-'))
+            (split._1 + ".000" + split._2, split._1 + ".999" + split._2)
+          }
     }
   }
 
@@ -160,4 +176,10 @@ object DateTimeUtil {
     */
   def serializeInstant(instant:Instant):String = DateTimeFormatter.ISO_INSTANT.format(instant)
 
+
+  def parseFhirDateTimeOrInstant(value:String):Instant = {
+    Instant.parse(value)
+  }
+
+  def instantToDateTime(i:Instant):DateTime = DateTime.fromIsoDateTimeString(serializeInstant(i)).get
 }

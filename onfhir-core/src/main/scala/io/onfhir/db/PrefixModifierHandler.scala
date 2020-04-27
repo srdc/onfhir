@@ -1,16 +1,21 @@
 package io.onfhir.db
 
+import java.net.URL
+
 import io.onfhir.api._
 import com.mongodb.client.model.Filters
 import io.onfhir.api.util.FHIRUtil
+import io.onfhir.config.FhirConfigurationManager
 import io.onfhir.exception.{InvalidParameterException, UnsupportedParameterException}
 import io.onfhir.util.DateTimeUtil
-import org.mongodb.scala.bson.BsonValue
+import org.mongodb.scala.bson.{BsonDateTime, BsonValue}
 import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.Filters.{exists, _}
 
 import scala.collection.mutable.ListBuffer
+import scala.concurrent.Future
 import scala.math.pow
+import scala.util.Try
 
 /**
   * Handles prefixes and modifiers over the parameters
@@ -51,16 +56,79 @@ object PrefixModifierHandler {
     * @return BsonDocument for the query
     */
   def intPrefixHandler(path:String, value:String, prefix:String): Bson = {
-    // Prefix matching and query filter generation
-    prefix match {
-      case FHIR_PREFIXES_MODIFIERS.BLANK_EQUAL | FHIR_PREFIXES_MODIFIERS.EQUAL => equal(path, value.toInt)
-      case FHIR_PREFIXES_MODIFIERS.GREATER_THAN | FHIR_PREFIXES_MODIFIERS.GREATER_THAN_M => gt(path, value.toInt)
-      case FHIR_PREFIXES_MODIFIERS.LESS_THAN | FHIR_PREFIXES_MODIFIERS.LESS_THAN_M => lt(path, value.toInt)
-      case FHIR_PREFIXES_MODIFIERS.GREATER_THAN_EQUAL => gte(path, value.toInt)
-      case FHIR_PREFIXES_MODIFIERS.LESS_THAN_EQUAL => lte(path, value.toInt)
-      case FHIR_PREFIXES_MODIFIERS.NOT_EQUAL => not(equal(path, value.toInt))
-      case FHIR_PREFIXES_MODIFIERS.APPROXIMATE => and(gte(path, value.toDouble * 0.9), lte(path, value.toDouble * 1.1))
-      case FHIR_PREFIXES_MODIFIERS.STARTS_AFTER | FHIR_PREFIXES_MODIFIERS.ENDS_BEFORE => throw new IllegalArgumentException("Prefixes sa and eb can not be used with integer values.")
+    //If there is non-zero digits after a decimal point, there cannot be any matches
+    if(value.toDouble != value.toDouble.toLong * 1.0)
+      equal(path, 0.05)
+    else {
+      //If the value is given in exponential form, we use precision
+      if(value.contains("e") || value.contains("E")){
+        val precision = calculatePrecisionDelta(value)
+        // Generated function values for comparison
+        val floor = value.toDouble - precision
+        val ceil = value.toDouble + precision
+
+        prefix match {
+          case FHIR_PREFIXES_MODIFIERS.BLANK_EQUAL | FHIR_PREFIXES_MODIFIERS.EQUAL => and(gte(path, floor), lt(path, ceil))
+          case FHIR_PREFIXES_MODIFIERS.GREATER_THAN | FHIR_PREFIXES_MODIFIERS.GREATER_THAN_M => gt(path, value.toLong)
+          case FHIR_PREFIXES_MODIFIERS.LESS_THAN | FHIR_PREFIXES_MODIFIERS.LESS_THAN_M => lt(path, value.toLong)
+          case FHIR_PREFIXES_MODIFIERS.GREATER_THAN_EQUAL => gte(path, value.toLong)
+          case FHIR_PREFIXES_MODIFIERS.LESS_THAN_EQUAL => lte(path, value.toLong)
+          case FHIR_PREFIXES_MODIFIERS.NOT_EQUAL =>  or(lt(path, floor), gte(path, ceil))
+          case FHIR_PREFIXES_MODIFIERS.APPROXIMATE => and(gte(path, value.toDouble * 0.9), lte(path, value.toDouble * 1.1))
+          case FHIR_PREFIXES_MODIFIERS.STARTS_AFTER | FHIR_PREFIXES_MODIFIERS.ENDS_BEFORE => throw new IllegalArgumentException("Prefixes sa and eb can not be used with integer values.")
+        }
+      } else { //Otherwise we need extact integer match
+        // Prefix matching and query filter generation
+        prefix match {
+          case FHIR_PREFIXES_MODIFIERS.BLANK_EQUAL | FHIR_PREFIXES_MODIFIERS.EQUAL => equal(path, value.toLong)
+          case FHIR_PREFIXES_MODIFIERS.GREATER_THAN | FHIR_PREFIXES_MODIFIERS.GREATER_THAN_M => gt(path, value.toLong)
+          case FHIR_PREFIXES_MODIFIERS.LESS_THAN | FHIR_PREFIXES_MODIFIERS.LESS_THAN_M => lt(path, value.toLong)
+          case FHIR_PREFIXES_MODIFIERS.GREATER_THAN_EQUAL => gte(path, value.toLong)
+          case FHIR_PREFIXES_MODIFIERS.LESS_THAN_EQUAL => lte(path, value.toLong)
+          case FHIR_PREFIXES_MODIFIERS.NOT_EQUAL => not(equal(path, value.toLong))
+          case FHIR_PREFIXES_MODIFIERS.APPROXIMATE => and(gte(path, value.toDouble * 0.9), lte(path, value.toDouble * 1.1))
+          case FHIR_PREFIXES_MODIFIERS.STARTS_AFTER | FHIR_PREFIXES_MODIFIERS.ENDS_BEFORE => throw new IllegalArgumentException("Prefixes sa and eb can not be used with integer values.")
+        }
+      }
+    }
+  }
+
+  /**
+   * Calculate the delta for precision issues
+   * @param value
+   * @return
+   */
+  private def calculatePrecisionDelta(value:String):Double = {
+    val preprocessedValue = if(value.startsWith("-")) value.drop(1)  else value
+    preprocessedValue match {
+      case d if(d.contains('.')) =>
+        val parts = if(d.contains('e')) d.split('e') else d.split('E')
+        //Find the precision e.g. 5.4 --> -2 -->  0.05 -->  5.4 +- 0.05
+        var i = (parts.apply(0).length - parts.apply(0).indexOf('.')) * -1  + 1
+        //Also include the power part e.g. 5.4e-2 --> -4 --> 0.0005 -> [5.35e-2,5.45e-2)
+        if(parts.length > 1) {
+          if(parts.apply(1).startsWith("-"))
+            i = i + (parts.apply(1).drop(1).toInt * -1)
+          else
+            i = i + parts.apply(1).replace("+", "").toInt
+        }
+        pow(10, i) * 0.5
+
+      case n if(!n.contains('.')) =>
+        val parts = if(n.contains('e')) n.split('e') else n.split('E')
+        var i = if(parts.apply(0).length != 1) 0 else -1
+        if(parts.length > 1){
+          if(!parts.apply(1).startsWith("-")){
+            val p = parts.apply(1).replace("+", "").toInt
+            i = i + p
+          } else {
+            val p = parts.apply(1).drop(1).toInt
+            i = i - p
+          }
+
+        }
+
+        pow(10, i) * 0.5
     }
   }
 
@@ -73,7 +141,8 @@ object PrefixModifierHandler {
     */
   def decimalPrefixHandler(path:String, value:String, prefix:String): Bson = {
     // Calculation of precision to generate implicit ranges
-    val precision = if(!value.contains('.')) 0.5 else pow(0.1, value.length - (value.indexOf(".") + 1)) * 0.5
+    val precision = calculatePrecisionDelta(value)
+    //if(!value.contains('.')) 0.5 else pow(0.1, value.length - (value.indexOf(".") + 1)) * 0.5
     // Generated function values for comparison
     val floor = value.toDouble - precision
     val ceil = value.toDouble + precision
@@ -82,11 +151,11 @@ object PrefixModifierHandler {
       case FHIR_PREFIXES_MODIFIERS.BLANK_EQUAL | FHIR_PREFIXES_MODIFIERS.EQUAL => and(gte(path, floor), lt(path, ceil))
       case FHIR_PREFIXES_MODIFIERS.GREATER_THAN | FHIR_PREFIXES_MODIFIERS.GREATER_THAN_M => gt(path, value.toDouble)
       case FHIR_PREFIXES_MODIFIERS.LESS_THAN | FHIR_PREFIXES_MODIFIERS.LESS_THAN_M => lt(path, value.toDouble)
-      case FHIR_PREFIXES_MODIFIERS.GREATER_THAN_EQUAL => or(decimalPrefixHandler(path, value, FHIR_PREFIXES_MODIFIERS.EQUAL), decimalPrefixHandler(path, value, FHIR_PREFIXES_MODIFIERS.GREATER_THAN))
-      case FHIR_PREFIXES_MODIFIERS.LESS_THAN_EQUAL => or(decimalPrefixHandler(path, value, FHIR_PREFIXES_MODIFIERS.EQUAL), decimalPrefixHandler(path, value, FHIR_PREFIXES_MODIFIERS.LESS_THAN))
+      case FHIR_PREFIXES_MODIFIERS.GREATER_THAN_EQUAL => gte(path, value.toDouble)
+      case FHIR_PREFIXES_MODIFIERS.LESS_THAN_EQUAL => lte(path, value.toDouble)
       case FHIR_PREFIXES_MODIFIERS.NOT_EQUAL => or(lt(path, floor), gte(path, ceil))
-      case FHIR_PREFIXES_MODIFIERS.STARTS_AFTER => and(decimalPrefixHandler(path, value, FHIR_PREFIXES_MODIFIERS.NOT_EQUAL), decimalPrefixHandler(path, value, FHIR_PREFIXES_MODIFIERS.LESS_THAN))
-      case FHIR_PREFIXES_MODIFIERS.ENDS_BEFORE => and(decimalPrefixHandler(path, value, FHIR_PREFIXES_MODIFIERS.NOT_EQUAL), decimalPrefixHandler(path, value, FHIR_PREFIXES_MODIFIERS.GREATER_THAN))
+      case FHIR_PREFIXES_MODIFIERS.STARTS_AFTER =>  gt(path, value.toDouble)
+      case FHIR_PREFIXES_MODIFIERS.ENDS_BEFORE => lt(path, value.toDouble)
       case FHIR_PREFIXES_MODIFIERS.APPROXIMATE =>
         val approximateLow = decimalPrefixHandler(path, (value.toDouble*0.9).toString, FHIR_PREFIXES_MODIFIERS.GREATER_THAN_EQUAL)
         val approximateHigh = decimalPrefixHandler(path, (value.toDouble*1.1).toString, FHIR_PREFIXES_MODIFIERS.LESS_THAN_EQUAL)
@@ -104,10 +173,10 @@ object PrefixModifierHandler {
     */
   def rangePrefixHandler(path:String, value:String, prefix:String, isSampleData:Boolean = false): Bson = {
     // Calculation of precision to generate implicit ranges
-    val precision = if(!value.contains('.')) 0.5 else pow(0.1, value.length - (value.indexOf(".") + 1)) * 0.5
+    val precision = calculatePrecisionDelta(value)
     // Paths to the range structure's high and low values
-    val pathLow = if(isSampleData) FHIRUtil.mergeElementPath(path, FHIR_COMMON_FIELDS.LOWER_LIMIT) else  path + FHIRUtil.mergeElementPath(path,FHIR_COMMON_FIELDS.LOW)
-    val pathHigh = if(isSampleData) FHIRUtil.mergeElementPath(path, FHIR_COMMON_FIELDS.UPPER_LIMIT) else FHIRUtil.mergeElementPath(path, FHIR_COMMON_FIELDS.HIGH)
+    val pathLow = if(isSampleData) FHIRUtil.mergeElementPath(path, FHIR_COMMON_FIELDS.LOWER_LIMIT) else  FHIRUtil.mergeElementPath(path,s"${FHIR_COMMON_FIELDS.LOW}.${FHIR_COMMON_FIELDS.VALUE}")
+    val pathHigh = if(isSampleData) FHIRUtil.mergeElementPath(path, FHIR_COMMON_FIELDS.UPPER_LIMIT) else FHIRUtil.mergeElementPath(path, s"${FHIR_COMMON_FIELDS.HIGH}.${FHIR_COMMON_FIELDS.VALUE}")
     // Implicit input value ranges
     val floor = value.toDouble - precision
     val ceil = value.toDouble + precision
@@ -117,17 +186,17 @@ object PrefixModifierHandler {
     // Prefix matching and query generation
     prefix match {
       case FHIR_PREFIXES_MODIFIERS.BLANK_EQUAL | FHIR_PREFIXES_MODIFIERS.EQUAL => and(gte(pathLow, floor), lt(pathHigh, ceil))
-      case FHIR_PREFIXES_MODIFIERS.GREATER_THAN | FHIR_PREFIXES_MODIFIERS.GREATER_THAN_M => or(gt(pathHigh, ceil), fieldHighNotExist)
-      case FHIR_PREFIXES_MODIFIERS.LESS_THAN | FHIR_PREFIXES_MODIFIERS.LESS_THAN_M => or(lt(pathLow, floor), fieldLowNotExist)
-      case FHIR_PREFIXES_MODIFIERS.GREATER_THAN_EQUAL => or(rangePrefixHandler(path, value, FHIR_PREFIXES_MODIFIERS.EQUAL), rangePrefixHandler(path, value, FHIR_PREFIXES_MODIFIERS.GREATER_THAN))
-      case FHIR_PREFIXES_MODIFIERS.LESS_THAN_EQUAL => or(rangePrefixHandler(path, value, FHIR_PREFIXES_MODIFIERS.EQUAL), rangePrefixHandler(path, value, FHIR_PREFIXES_MODIFIERS.LESS_THAN))
-      case FHIR_PREFIXES_MODIFIERS.NOT_EQUAL => or(rangePrefixHandler(path, value, FHIR_PREFIXES_MODIFIERS.LESS_THAN), rangePrefixHandler(path, value, FHIR_PREFIXES_MODIFIERS.GREATER_THAN))
-      case FHIR_PREFIXES_MODIFIERS.STARTS_AFTER => or(rangePrefixHandler(path, value, FHIR_PREFIXES_MODIFIERS.NOT_EQUAL), rangePrefixHandler(path, value, FHIR_PREFIXES_MODIFIERS.LESS_THAN))
-      case FHIR_PREFIXES_MODIFIERS.ENDS_BEFORE => or(rangePrefixHandler(path, value, FHIR_PREFIXES_MODIFIERS.NOT_EQUAL), rangePrefixHandler(path, value, FHIR_PREFIXES_MODIFIERS.GREATER_THAN))
+      case FHIR_PREFIXES_MODIFIERS.GREATER_THAN | FHIR_PREFIXES_MODIFIERS.GREATER_THAN_M => or(gt(pathHigh, value.toDouble), fieldHighNotExist)
+      case FHIR_PREFIXES_MODIFIERS.LESS_THAN | FHIR_PREFIXES_MODIFIERS.LESS_THAN_M => or(lt(pathLow, value.toDouble), fieldLowNotExist)
+      case FHIR_PREFIXES_MODIFIERS.GREATER_THAN_EQUAL => or(gte(pathHigh, value.toDouble), fieldHighNotExist)
+      case FHIR_PREFIXES_MODIFIERS.LESS_THAN_EQUAL => or(lte(pathLow, value.toDouble), fieldLowNotExist)
+      case FHIR_PREFIXES_MODIFIERS.NOT_EQUAL => or(lt(pathLow, floor), gte(pathHigh, ceil))
+      case FHIR_PREFIXES_MODIFIERS.STARTS_AFTER => gt(pathLow, value.toDouble)
+      case FHIR_PREFIXES_MODIFIERS.ENDS_BEFORE => lt(pathHigh, value.toDouble)
       case FHIR_PREFIXES_MODIFIERS.APPROXIMATE =>
         val approximateLow = decimalPrefixHandler(FHIRUtil.mergeElementPath(path,FHIR_COMMON_FIELDS.LOW), (value.toDouble*0.9).toString, FHIR_PREFIXES_MODIFIERS.GREATER_THAN_EQUAL)
         val approximateHigh = decimalPrefixHandler(FHIRUtil.mergeElementPath(path,FHIR_COMMON_FIELDS.HIGH), (value.toDouble*1.1).toString, FHIR_PREFIXES_MODIFIERS.LESS_THAN_EQUAL)
-        and(approximateLow, approximateHigh, fieldHighNotExist, fieldLowNotExist)
+        and(approximateLow, approximateHigh)
     }
   }
 
@@ -139,6 +208,8 @@ object PrefixModifierHandler {
     * @return
     */
   def stringModifierHandler(path:String, value:String, modifier:String):Bson = {
+    //TODO Ignorance of accents or other diacritical marks, punctuation and non-significant whitespace is not supported yet
+
     // Escape characters for to have valid regular expression
     val regularExpressionValue = FHIRUtil.escapeCharacters(value)
     // Generator for regular expression queries(Only regex fields empty)
@@ -162,25 +233,51 @@ object PrefixModifierHandler {
   /**
     * FHIR uri type query handler (including modifiers)
     * @param path absolute path of the target element
-    * @param value value of the parameter
+    * @param uri Uri value
     * @param modifier Search modifier
     * @return
     */
   def uriModifierHandler(path:String, uri:String, modifier:String):Bson = {
     modifier match {
       case FHIR_PREFIXES_MODIFIERS.ABOVE if uri.contains("/")=>
-        val parentUri = uri.split("/").dropRight(2).mkString("/")
-        val regularExpressionValue = FHIRUtil.escapeCharacters(parentUri)
-        // Match at the end of the uri
-        regex(path, "\\A" + regularExpressionValue + ".*")
+        val url =  Try(new URL(uri)).toOption
+        if(url.isEmpty)
+          throw new InvalidParameterException(s"Modifier ${FHIR_PREFIXES_MODIFIERS.ABOVE} is only supported for URLs not URNs or OIDs!")
+
+        val initialPart = url.get.getProtocol + "://" + url.get.getHost + (if(uri.contains(url.get.getHost + ":"+url.get.getPort.toString)) ":" + url.get.getPort else "")
+        var urlPath = url.get.getPath
+        if(urlPath.length == 0 || urlPath == "/") urlPath = "" else urlPath = urlPath.drop(1)
+        val parts = urlPath.split("/")
+
+        def constructRegexForAbove(parts:Seq[String]):String = {
+          parts match {
+            case Nil => ""
+            case oth => "(" + FHIRUtil.escapeCharacters("/"+ parts.head) + constructRegexForAbove(parts.drop(1))  +  ")?"
+          }
+        }
+        //Constuct the regex to match any url above
+        val regularExpressionValue = FHIRUtil.escapeCharacters(initialPart) + constructRegexForAbove(parts)
+        regex(path, "\\A" + regularExpressionValue + "$")
       case FHIR_PREFIXES_MODIFIERS.BELOW if uri.contains("/") =>
+        val url =  Try(new URL(uri)).toOption
+        if(url.isEmpty)
+          throw new InvalidParameterException(s"Modifier ${FHIR_PREFIXES_MODIFIERS.ABOVE} is only supported for URLs not URNs or OIDs!")
         // Escape characters for to have valid regular expression
-        val regularExpressionValue = FHIRUtil.escapeCharacters(uri)
+        val regularExpressionValue = FHIRUtil.escapeCharacters(uri) + "("+ FHIRUtil.escapeCharacters("/")+".*)*"
         // Match at the beginning of the uri
-        regex(path, "\\A" + regularExpressionValue + ".*")
+        regex(path, "\\A" + regularExpressionValue + "$")
       case "" =>
-        // Exact match
-        equal(path, uri)
+        //If this is a query on  Canonical URLs of the conformance and knowledge resources (e.g. StructureDefinition, ValueSet, PlanDefinition etc) and a version part is given |[version]
+        if(path == "url" && uri.contains("|")){
+          val canonicalRef = Try(FHIRUtil.parseCanonicalReference(uri)).toOption
+          if(canonicalRef.exists(_.version.isDefined))
+            and(equal(path, canonicalRef.get.getUrl()), equal("version", canonicalRef.get.version.get))
+          else
+            equal(path, uri)
+        } else {
+          // Exact match
+          equal(path, uri)
+        }
       case other =>
         throw new InvalidParameterException(s"Modifier $other is not supported for FHIR uri queries!")
     }
@@ -189,7 +286,7 @@ object PrefixModifierHandler {
   /**
     * Handle FHIR token type queries on FHIR boolean values
     * @param path absolute path of the target element
-    * @param value value of the parameter
+    * @param boolean Boolean value of the parameter
     * @param modifier Search modifier
     * @return
     */
@@ -230,10 +327,44 @@ object PrefixModifierHandler {
       //Without modifier
       case "" =>
         handleTokenCodeSystemQuery(systemPath, codePath, system, code)
-      case FHIR_PREFIXES_MODIFIERS.IN | FHIR_PREFIXES_MODIFIERS.NOT_IN | FHIR_PREFIXES_MODIFIERS.BELOW | FHIR_PREFIXES_MODIFIERS.ABOVE =>
+      case FHIR_PREFIXES_MODIFIERS.IN | FHIR_PREFIXES_MODIFIERS.NOT_IN =>
+        handleTokenInModifier(systemPath, codePath, code.get, modifier)
+      case FHIR_PREFIXES_MODIFIERS.BELOW | FHIR_PREFIXES_MODIFIERS.ABOVE =>
         throw new UnsupportedParameterException("Modifier is not supported by onFhir.io system yet!")
       case other =>
         throw new InvalidParameterException(s"Modifier $other is not supported for FHIR token queries!")
+    }
+  }
+
+  /**
+   * Handle the in modifier for token search
+   * @param systemPath  Path to the system element
+   * @param codePath    Path to the code element
+   * @param vsUrl       URL of the ValueSet to search in
+   * @return
+   */
+  private def handleTokenInModifier(systemPath:String, codePath:String,  vsUrl:String, modifier:String) :Bson = {
+    val vs = FHIRUtil.parseCanonicalReference(vsUrl)
+    if(FhirConfigurationManager.fhirTerminologyValidator.isValueSetSupported(vs.getUrl(), vs.version)){
+      val vsCodes = FhirConfigurationManager.fhirTerminologyValidator.getAllCodes(vs.getUrl(), vs.version).toSeq
+
+      val queriesForEachCodeSystem = modifier match {
+        case FHIR_PREFIXES_MODIFIERS.IN =>
+          vsCodes.map(vsc => and(Filters.eq(systemPath, vsc._1), Filters.in(codePath, vsc._2.toSeq :_* )))
+        case FHIR_PREFIXES_MODIFIERS.NOT_IN =>
+          vsCodes.map(vsc => or(Filters.ne(systemPath, vsc._1), Filters.nin(codePath, vsc._2.toSeq :_* )))
+      }
+
+      queriesForEachCodeSystem.length match {
+        case 0 =>  throw new UnsupportedParameterException(s"ValueSet given with url '$vsUrl' by 'in' or 'not-in' modifier is empty!")
+        case 1 => queriesForEachCodeSystem.head
+        case _ => if(modifier == FHIR_PREFIXES_MODIFIERS.IN) or(queriesForEachCodeSystem:_*) else and(queriesForEachCodeSystem:_*)
+      }
+    }
+    //If it is not a canonical reference
+    else {
+      //TODO check if it is a literal reference and hande that
+      throw new UnsupportedParameterException(s"ValueSet url '$vsUrl' given with 'in' or 'not-in' modifier is not known!")
     }
   }
 
@@ -242,7 +373,6 @@ object PrefixModifierHandler {
     *
     * @param path  Absolute path for the query parameter
     * @param value value of the parameter
-    * @param targetType Type that path goes to
     * @return BsonDocument for the query
     */
   def handleTokenTextModifier(path: String, value: String): Bson = {
@@ -350,6 +480,71 @@ object PrefixModifierHandler {
     //or(periodQueryBuilder(periodRanges, prefix, implicitDate), periodQueryBuilder(periodRanges, prefix, implicitDateTime))
   }
 
+  /**
+   * Special processing for Timing.event; all elements should satisfy the query
+   * @param path
+   * @param value
+   * @param prefix
+   * @return
+   */
+  def timingEventHandler(path:String, value:String, prefix:String):Bson = {
+      // Populate Implicit ranges(e.g. 2010-10-10 represents the range 2010-10-10T00:00Z/2010-10-10T23:59ZZ)
+      val implicitRanges = DateTimeUtil.populateImplicitDateTimeRanges(value)
+      // Convert implicit range to dateTime objects(inputted values have already been converted to dataTime format)
+      var (floor, ceil) = (BsonTransformer.dateToISODate(implicitRanges._1), BsonTransformer.dateToISODate(implicitRanges._2))
+
+      val subpath = if (value.contains("T")) FHIR_EXTRA_FIELDS.TIME_TIMESTAMP else FHIR_EXTRA_FIELDS.TIME_DATE
+      dateRangePrefixHandler(subpath, value, prefix)
+      val oppositeQuery = prefix match {
+        case FHIR_PREFIXES_MODIFIERS.BLANK_EQUAL | FHIR_PREFIXES_MODIFIERS.EQUAL => or(lt(subpath, floor), gt(subpath, ceil))
+        case FHIR_PREFIXES_MODIFIERS.GREATER_THAN | FHIR_PREFIXES_MODIFIERS.GREATER_THAN_M => or(lt(subpath, floor), and(gte(subpath, floor), lt(subpath, ceil)), equal(path, floor))
+        case FHIR_PREFIXES_MODIFIERS.LESS_THAN | FHIR_PREFIXES_MODIFIERS.LESS_THAN_M => or(gt(subpath, ceil), and(gte(subpath, floor), lt(subpath, ceil)), equal(subpath, floor))
+        case FHIR_PREFIXES_MODIFIERS.GREATER_THAN_EQUAL => lt(subpath, floor)
+        case FHIR_PREFIXES_MODIFIERS.LESS_THAN_EQUAL => gt(subpath, ceil)
+        case FHIR_PREFIXES_MODIFIERS.NOT_EQUAL => or(lt(subpath, floor), gt(subpath, ceil))
+        case FHIR_PREFIXES_MODIFIERS.STARTS_AFTER => or(lt(subpath, ceil), equal(subpath, ceil))
+        case FHIR_PREFIXES_MODIFIERS.ENDS_BEFORE => or(gt(subpath, floor), equal(subpath, floor))
+        case FHIR_PREFIXES_MODIFIERS.APPROXIMATE =>
+          if (ceil == floor)
+            or(lt(subpath, floor), gt(subpath, ceil))
+          else {
+            val delta: Long = ((ceil.asInstanceOf[BsonDateTime].getValue - floor.asInstanceOf[BsonDateTime].getValue) * 0.1).toLong
+            ceil = BsonDateTime.apply(ceil.asInstanceOf[BsonDateTime].getValue + delta)
+            floor = BsonDateTime.apply(floor.asInstanceOf[BsonDateTime].getValue - delta)
+            or(lt(subpath, floor), gt(subpath, ceil))
+          }
+      }
+      val (fieldStart, fieldEnd) = (FHIR_EXTRA_FIELDS.TIME_RANGE_START, FHIR_EXTRA_FIELDS.TIME_RANGE_END)
+
+      val oppositeQuery2 = prefix match {
+        case FHIR_PREFIXES_MODIFIERS.BLANK_EQUAL | FHIR_PREFIXES_MODIFIERS.EQUAL => or(lt(fieldStart, floor), gt(fieldEnd, ceil))
+        case FHIR_PREFIXES_MODIFIERS.GREATER_THAN | FHIR_PREFIXES_MODIFIERS.GREATER_THAN_M => lte(fieldEnd, ceil)
+        case FHIR_PREFIXES_MODIFIERS.LESS_THAN | FHIR_PREFIXES_MODIFIERS.LESS_THAN_M => gte(fieldStart, floor)
+        case FHIR_PREFIXES_MODIFIERS.GREATER_THAN_EQUAL => or(lte(fieldEnd, ceil), lt(fieldStart, floor), gt(fieldEnd, ceil))
+        case FHIR_PREFIXES_MODIFIERS.LESS_THAN_EQUAL => or(gte(fieldStart, floor), lt(fieldStart, floor), gt(fieldEnd, ceil))
+        case FHIR_PREFIXES_MODIFIERS.NOT_EQUAL => or(lt(fieldStart, floor), gt(fieldEnd, ceil))
+        case FHIR_PREFIXES_MODIFIERS.STARTS_AFTER => lte(fieldStart, ceil)
+        case FHIR_PREFIXES_MODIFIERS.ENDS_BEFORE => gte(fieldEnd, floor)
+        case FHIR_PREFIXES_MODIFIERS.APPROXIMATE =>
+          if (ceil == floor)
+            or(lt(fieldStart, floor), gt(fieldEnd, ceil))
+          else {
+            val delta: Long = ((ceil.asInstanceOf[BsonDateTime].getValue - floor.asInstanceOf[BsonDateTime].getValue) * 0.1).toLong
+            ceil = BsonDateTime.apply(ceil.asInstanceOf[BsonDateTime].getValue + delta)
+            floor = BsonDateTime.apply(floor.asInstanceOf[BsonDateTime].getValue - delta)
+            or(lt(fieldStart, floor), gt(fieldEnd, ceil))
+          }
+      }
+
+      and(
+        Filters.exists(FHIRUtil.mergeElementPath(path, "event")),
+        if(prefix == FHIR_PREFIXES_MODIFIERS.NOT_EQUAL)
+          elemMatch(FHIRUtil.mergeElementPath(path, "event"), or(oppositeQuery, oppositeQuery2))
+        else
+          Filters.nor(elemMatch(FHIRUtil.mergeElementPath(path, "event"), or(oppositeQuery, oppositeQuery2)))
+      )
+  }
+
 
   /**
     * Query builders for period type searches
@@ -371,7 +566,7 @@ object PrefixModifierHandler {
     // Initiliaze start and end fields of the ranges
     val (fieldStart, fieldEnd) = path
     // Implicit date range
-    val(floor, ceil) = isoDate
+    var(floor, ceil) = isoDate
     // BsonDocuments that represent the nonexistence of boundary values
     val fieldEndNotExist = and(exists(fieldStart, exists=true), exists(fieldEnd, exists=false))
     val fieldStartNotExist = and(exists(fieldStart, exists=false), exists(fieldEnd, exists=true))
@@ -388,6 +583,15 @@ object PrefixModifierHandler {
         //or(periodQueryBuilder(path, FHIR_PREFIXES_MODIFIERS.NOT_EQUAL, valueRange), periodQueryBuilder(path, FHIR_PREFIXES_MODIFIERS.LESS_THAN, valueRange))
       case FHIR_PREFIXES_MODIFIERS.ENDS_BEFORE => lt(fieldEnd, floor)
         //or(periodQueryBuilder(path, FHIR_PREFIXES_MODIFIERS.NOT_EQUAL, valueRange), periodQueryBuilder(path, FHIR_PREFIXES_MODIFIERS.GREATER_THAN, valueRange))
+      case FHIR_PREFIXES_MODIFIERS.APPROXIMATE =>
+        if(ceil == floor)
+          and(gte(fieldStart, floor), lte(fieldEnd, ceil))
+        else {
+           val delta:Long = ((ceil.asInstanceOf[BsonDateTime].getValue -  floor.asInstanceOf[BsonDateTime].getValue) * 0.1).toLong
+          ceil = BsonDateTime.apply(ceil.asInstanceOf[BsonDateTime].getValue + delta)
+          floor = BsonDateTime.apply(floor.asInstanceOf[BsonDateTime].getValue - delta)
+          and(gte(fieldStart, floor), lte(fieldEnd, ceil))
+        }
     }
   }
 
@@ -401,7 +605,7 @@ object PrefixModifierHandler {
     */
   private def dateTimeQueryBuilder(path:String, prefix:String, valueRange:(String, String)):Bson = {
     // Convert implicit range to dateTime objects(inputted values have already been converted to dataTime format)
-    val(floor, ceil) = (BsonTransformer.dateToISODate(valueRange._1), BsonTransformer.dateToISODate(valueRange._2))
+    var(floor, ceil) = (BsonTransformer.dateToISODate(valueRange._1), BsonTransformer.dateToISODate(valueRange._2))
     prefix match {
       case FHIR_PREFIXES_MODIFIERS.BLANK_EQUAL | FHIR_PREFIXES_MODIFIERS.EQUAL => or(and(gte(path, floor), lt(path, ceil)), equal(path, floor))
       case FHIR_PREFIXES_MODIFIERS.GREATER_THAN | FHIR_PREFIXES_MODIFIERS.GREATER_THAN_M => gt(path, ceil)
@@ -413,6 +617,15 @@ object PrefixModifierHandler {
         //or(dateTimeQueryBuilder(path, FHIR_PREFIXES_MODIFIERS.NOT_EQUAL, valueRange), dateTimeQueryBuilder(path, FHIR_PREFIXES_MODIFIERS.LESS_THAN, valueRange))
       case FHIR_PREFIXES_MODIFIERS.ENDS_BEFORE => lt(path, floor)
         //or(dateTimeQueryBuilder(path, FHIR_PREFIXES_MODIFIERS.NOT_EQUAL, valueRange), dateTimeQueryBuilder(path, FHIR_PREFIXES_MODIFIERS.GREATER_THAN, valueRange))
+      case FHIR_PREFIXES_MODIFIERS.APPROXIMATE =>
+        if(ceil == floor)
+          or(and(gte(path, floor), lt(path, ceil)), equal(path, floor))
+        else {
+          val delta:Long = ((ceil.asInstanceOf[BsonDateTime].getValue -  floor.asInstanceOf[BsonDateTime].getValue) * 0.1).toLong
+          ceil = BsonDateTime.apply(ceil.asInstanceOf[BsonDateTime].getValue + delta)
+          floor = BsonDateTime.apply(floor.asInstanceOf[BsonDateTime].getValue - delta)
+          or(and(gte(path, floor), lt(path, ceil)), equal(path, floor))
+        }
     }
   }
 }

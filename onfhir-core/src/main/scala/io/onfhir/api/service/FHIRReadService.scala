@@ -122,7 +122,7 @@ class FHIRReadService(transactionSession: Option[TransactionSession] = None) ext
 
           //2.1.2.2) post process the resource
           var resource = FHIRUtil.clearExtraFields(foundResource)
-          if(summary.isDefined)
+          if(summary.isDefined && summary.get != "false")
             resource = FHIRUtil.indicateSummarization(resource)
           logger.debug("resource found, returning...")
           FHIRResponse(

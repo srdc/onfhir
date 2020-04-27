@@ -367,6 +367,14 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
         case (dt1:FhirPathDateTime, dt2:FhirPathDateTime) => dt1.compare(dt2)
         case (t1:FhirPathTime, t2:FhirPathTime) => t1.compare(t2)
         case (s1:FhirPathString, s2:FhirPathString) => s1.compare(s2)
+        case (q1:FhirPathQuantity, q2:FhirPathQuantity) => q1.compare(q2)
+        case (o1:FhirPathComplex, o2:FhirPathComplex) =>
+          val q1 = o1.toQuantity()
+          val q2 = o2.toQuantity()
+          if(q1.isDefined && q2.isDefined)
+            q1.get.compare(q2.get)
+          else
+            throw new Exception(s"Invalid $op operation between ${o1.toJson} and ${o2.toJson} !!!")
         case (a1, a2) => throw new Exception(s"Invalid $op operation between $a1 and $a2 !!!")
       }
       op match {

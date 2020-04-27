@@ -1,5 +1,7 @@
 package io.onfhir.db
 
+import java.time.Instant
+
 import akka.http.scaladsl.model.{DateTime, StatusCodes}
 import com.mongodb.client.model.IndexOptions
 import io.onfhir.api._
@@ -209,7 +211,7 @@ object DBInitializer {
             val updatesFuture = resourcesToUpdate.map(r => {
               //If versions are same, replace the document
               if(r._2._1 == idsAndVersionsExist.apply(r._1)._1) {
-                var ur = FHIRUtil.populateResourceWithMeta(r._2._2, Some(r._1), r._2._1, DateTime.now)
+                var ur = FHIRUtil.populateResourceWithMeta(r._2._2, Some(r._1), r._2._1, Instant.now())
                 ur = FHIRUtil.populateResourceWithExtraFields(ur, FHIR_METHOD_NAMES.METHOD_PUT, StatusCodes.OK)
                 ResourceManager.replaceResource(resourceType, r._1, ur)
               } else { //Otherwise update, so we can keep the versions

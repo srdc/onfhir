@@ -6,7 +6,7 @@ import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.OnfhirConfig
 import io.onfhir.exception.{InternalServerException, InvalidParameterException}
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.model.Filters.{regex, _}
+import org.mongodb.scala.model.Filters.{exists, regex, _}
 
 import scala.collection.immutable.HashMap
 
@@ -82,7 +82,12 @@ object SearchUtil {
       case FHIR_DATA_TYPES.PERIOD =>
         PrefixModifierHandler.periodPrefixHandler(queryPath.getOrElse(""), dateValue, prefix, isTiming = false)
       case FHIR_DATA_TYPES.TIMING =>
-        PrefixModifierHandler.periodPrefixHandler(queryPath.getOrElse(""), dateValue, prefix, isTiming = true)
+        //TODO Handle event case better by special query on array (should match for all elements, not or)
+        Filters.or(
+          PrefixModifierHandler.timingEventHandler(queryPath.getOrElse(""), dateValue, prefix),
+          //PrefixModifierHandler.dateRangePrefixHandler(FHIRUtil.mergeElementPath(queryPath, "event"), dateValue, prefix),
+          PrefixModifierHandler.periodPrefixHandler(queryPath.getOrElse(""), dateValue, prefix, isTiming = true)
+        )
       case other =>
         throw new InternalServerException(s"Unknown target element type $other !!!")
     }
@@ -92,7 +97,6 @@ object SearchUtil {
       case Some(emp) => elemMatch(emp, mainQuery)
     }
   }
-
 
   /**
     * String parameter serves as the input for a case- and accent-insensitive search against sequences of
@@ -267,15 +271,28 @@ object SearchUtil {
           //Query on the quentity
           val valueQuery = PrefixModifierHandler.decimalPrefixHandler(FHIRUtil.mergeElementPath(queryPath, FHIR_COMMON_FIELDS.VALUE), value, prefix)
           //Also merge it with query on system and code
-          mergeValueQueryWithSystemCode(valueQuery, system, code, queryPath, FHIR_COMMON_FIELDS.SYSTEM, FHIR_COMMON_FIELDS.CODE, FHIR_COMMON_FIELDS.UNIT)
+          val sysCodeQuery = unitSystemCodeQuery(system, code, queryPath, FHIR_COMMON_FIELDS.SYSTEM, FHIR_COMMON_FIELDS.CODE, FHIR_COMMON_FIELDS.UNIT)
+          sysCodeQuery.map(sq => and(valueQuery, sq)).getOrElse(valueQuery)
+        //Handle range
+        case FHIR_DATA_TYPES.RANGE =>
+          //Query on range values
+          val valueQuery = PrefixModifierHandler.rangePrefixHandler(queryPath.getOrElse(""), value, prefix)
+          val lowPath = FHIRUtil.mergeElementPath(queryPath, FHIR_COMMON_FIELDS.LOW)
+          val highPath =FHIRUtil.mergeElementPath(queryPath, FHIR_COMMON_FIELDS.HIGH)
+
+          val lq = unitSystemCodeQuery(system, code, Some(lowPath), FHIR_COMMON_FIELDS.SYSTEM, FHIR_COMMON_FIELDS.CODE, FHIR_COMMON_FIELDS.UNIT).map(sq => or(exists(lowPath, exists = false), sq))
+          val hq = unitSystemCodeQuery(system, code, Some(highPath), FHIR_COMMON_FIELDS.SYSTEM, FHIR_COMMON_FIELDS.CODE, FHIR_COMMON_FIELDS.UNIT).map(sq => or(exists(highPath, exists = false), sq))
+          //Merge all (both lq and hq should be SOME or NONE
+          lq.map(and(_, hq.get, valueQuery)).getOrElse(valueQuery)
 
         case FHIR_DATA_TYPES.SAMPLED_DATA =>
           //For SampleData, we should check for lowerLimit and upperLimit like a range query
-          val valueQuery = PrefixModifierHandler.rangePrefixHandler(FHIRUtil.mergeElementPath(queryPath, ""), value, prefix, isSampleData = true)
-          mergeValueQueryWithSystemCode(valueQuery, system, code, queryPath,
+          val valueQuery = PrefixModifierHandler.rangePrefixHandler(queryPath.getOrElse(""), value, prefix, isSampleData = true)
+          val sysCodeQuery = unitSystemCodeQuery(system, code, queryPath,
             systemPath = s"${FHIR_COMMON_FIELDS.ORIGIN}.${FHIR_COMMON_FIELDS.SYSTEM}",
             codePath=s"${FHIR_COMMON_FIELDS.ORIGIN}.${FHIR_COMMON_FIELDS.CODE}",
             unitPath= s"${FHIR_COMMON_FIELDS.ORIGIN}.${FHIR_COMMON_FIELDS.UNIT}")
+          sysCodeQuery.map(sq => and(valueQuery, sq)).getOrElse(valueQuery)
       }
 
     //If an array exist, use elemMatch otherwise return the query
@@ -296,15 +313,14 @@ object SearchUtil {
     * @param unitPath unit field path within the element
     * @return
     */
-  private def mergeValueQueryWithSystemCode(valueQuery:Bson, system:Option[String], code:Option[String], queryPath:Option[String], systemPath:String, codePath:String, unitPath:String):Bson = {
+  private def unitSystemCodeQuery(system:Option[String], code:Option[String], queryPath:Option[String], systemPath:String, codePath:String, unitPath:String):Option[Bson] = {
     (system, code) match {
       //Only query on value
       case (None, None) =>
-        valueQuery
+        None
       //Query on value + unit
       case (None, Some(c)) =>
-        and(
-          valueQuery,
+        Some(
           or(
             Filters.eq(FHIRUtil.mergeElementPath(queryPath, codePath), c),
             Filters.eq(FHIRUtil.mergeElementPath(queryPath, unitPath), c)
@@ -312,10 +328,11 @@ object SearchUtil {
         )
       //query on value + system + code
       case (Some(s), Some(c)) =>
-        and(
-          valueQuery,
-          Filters.eq(FHIRUtil.mergeElementPath(queryPath, codePath), c),
-          Filters.eq(FHIRUtil.mergeElementPath(queryPath, systemPath), s)
+        Some(
+          and(
+            Filters.eq(FHIRUtil.mergeElementPath(queryPath, codePath), c),
+            Filters.eq(FHIRUtil.mergeElementPath(queryPath, systemPath), s)
+          )
         )
       case _ => throw new InternalServerException("Invalid state!")
     }
@@ -394,14 +411,16 @@ object SearchUtil {
           case FHIR_PREFIXES_MODIFIERS.BELOW =>
             val (canonicalUrl, canonicalVersion) = FHIRUtil.parseCanonicalValue(reference)
             // Escape characters for to have valid regular expression
-            val regularExpressionValue = FHIRUtil.escapeCharacters(canonicalUrl + canonicalVersion.map(v => s"|$v."))
+            val regularExpressionValue = FHIRUtil.escapeCharacters(canonicalUrl) + canonicalVersion.map(v => s"\\|$v(\\.[0-9]*)+").getOrElse("")
             // Match at the beginning of the uri
-            regex(FHIRUtil.normalizeElementPath(path), "\\A" + regularExpressionValue + ".*")
+            //regex(FHIRUtil.normalizeElementPath(path), "\\A" + regularExpressionValue + ".*")
+            regex(FHIRUtil.normalizeElementPath(path), "\\A" + regularExpressionValue + "$")
           case _ =>
             val (canonicalUrl, canonicalVersion) = FHIRUtil.parseCanonicalValue(reference)
             canonicalVersion match{
               case None => //Otherwise should match any version
-                regex(FHIRUtil.normalizeElementPath(path), "\\A" + canonicalUrl + ".*" )
+                //regex(FHIRUtil.normalizeElementPath(path), "\\A" + canonicalUrl + ".*" )
+                regex(FHIRUtil.normalizeElementPath(path), "\\A" + FHIRUtil.escapeCharacters(canonicalUrl) + "(\\|[0-9]+(\\.[0-9]*)*)?$")
               case Some(_) => // Exact match if version exist
                 Filters.eq(FHIRUtil.normalizeElementPath(path), reference)
             }

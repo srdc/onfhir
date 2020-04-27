@@ -55,24 +55,32 @@ class SearchParameterConfigurator(
           // Parameter has xPath for multiple path parameters (e.g. effective -> effectiveDateTime | effectivePeriod)
           case Some(pWithOr) if pWithOr.contains("|") =>
             val pathsAndRestrictions = parseXPathMultiple(rtype, pWithOr)
-            val (finalPaths, finalTargetTypes, restrictions) = transformPathsAndExtractTargetTypes(searchParameterDef.ptype, pathsAndRestrictions)
-            Some(constructConfFromDef(searchParameterDef, finalPaths, finalTargetTypes, restrictions))
+            val (finalPaths, finalTargetTypes, restrictions, targetReferencedProifles) = transformPathsAndExtractTargetTypes(searchParameterDef.ptype, pathsAndRestrictions)
+            Some(constructConfFromDef(searchParameterDef, finalPaths, finalTargetTypes, restrictions, targetReferencedProifles))
 
           // Parameter has basic xpath, the parameter corresponds to single path
           case Some(pAny) =>
             val pathsAndRestrictions = Seq(parseXPathBasic(pAny))
-            val (finalPaths, finalTargetTypes, restrictions) = transformPathsAndExtractTargetTypes(searchParameterDef.ptype, pathsAndRestrictions)
-            Some(constructConfFromDef(searchParameterDef, finalPaths, finalTargetTypes, restrictions))
+            val (finalPaths, finalTargetTypes, restrictions, targetReferencedProifles) = transformPathsAndExtractTargetTypes(searchParameterDef.ptype, pathsAndRestrictions)
+            Some(constructConfFromDef(searchParameterDef, finalPaths, finalTargetTypes, restrictions, targetReferencedProifles))
         }
     }
   }
 
-  private def constructConfFromDef(searchParameterDef:FHIRSearchParameter, finalPaths:Seq[Any], finalTargetTypes:Seq[String], restrictions:Seq[Option[(String, String)]], onExtension:Boolean = false):SearchParameterConf = {
+  private def constructConfFromDef(searchParameterDef:FHIRSearchParameter, finalPaths:Seq[Any], finalTargetTypes:Seq[String], restrictions:Seq[Option[(String, String)]], targetReferences:Seq[Set[String]] = Nil, onExtension:Boolean = false):SearchParameterConf = {
     SearchParameterConf(
       pname = searchParameterDef.name,
       ptype = searchParameterDef.ptype,
       paths = finalPaths,
-      targets = searchParameterDef.target.toSeq,
+      targets =
+        if(searchParameterDef.ptype == FHIR_PARAMETER_TYPES.REFERENCE) {
+          targetReferences.reduce((s1, s2) => s1.union(s2)).flatMap(fhirConfig.findResourceType).toSeq match {
+            case Nil => searchParameterDef.target.toSeq
+            case oth => searchParameterDef.target.toSeq.intersect(oth)
+          }
+        } else
+          Nil
+      ,
       modifiers = searchParameterDef.modifiers,
       targetTypes = finalTargetTypes,
       restrictions = restrictions,
@@ -89,21 +97,22 @@ class SearchParameterConfigurator(
     * @param pathsAndRestrictions Paths to evaluate (and the restrictions on path)
     * @return
     */
-  private def transformPathsAndExtractTargetTypes(ptype:String, pathsAndRestrictions:Seq[(String, Option[(String, String)])]):(Seq[String], Seq[String], Seq[Option[(String, String)]]) = {
+  private def transformPathsAndExtractTargetTypes(ptype:String, pathsAndRestrictions:Seq[(String, Option[(String, String)])]):(Seq[String], Seq[String], Seq[Option[(String, String)]], Seq[Set[String]]) = {
     //Filter the paths that exist in the given profile
-    val filteredPaths:Seq[(String, String, Option[(String, String)])] = pathsAndRestrictions.flatMap { case (path, restriction) =>
+    val filteredPaths:Seq[(String, String, Option[(String, String)], Set[String])] = pathsAndRestrictions.flatMap { case (path, restriction) =>
       if(path == "") //If this is a composition root path with the resource as root
-        Some((path, "Resource", None))
+        Some((path, "Resource", None, Set.empty[String]))
       else {
         //Find the target type for the path
-        var targetTypeOption = findTargetTypeOfPath(path, profileChain).map(_._1)
+        val targetTypeDetails = findTargetTypeOfPath(path, profileChain)
+        var targetTypeOption = targetTypeDetails.map(_._1)
 
         //Filter out the paths with type that is not compatible to search parameter type
         if(ptype != FHIR_PARAMETER_TYPES.COMPOSITE)
           targetTypeOption = targetTypeOption.filter(tt => FHIR_PARAMETER_TYPE_TARGETS(ptype).contains(tt))
 
         //If there is no target type, it means this path is not valid for this profile (cardinality set to 0, or removed from choices like value[x])
-        targetTypeOption.map(targetType => (path, targetType, restriction))
+        targetTypeOption.map(targetType => (path, targetType, restriction, targetTypeDetails.get._3))
       }
     }
 
@@ -112,8 +121,8 @@ class SearchParameterConfigurator(
     val finalPaths =
       filteredPaths
         .map {
-          case("", _, _) => ""
-          case(path, _, _) =>
+          case("", _, _, _) => ""
+          case(path, _, _, _) =>
             //Split the path
             val pathParts = path.split('.')
             //Find cardinality of each prefixes of path
@@ -128,7 +137,7 @@ class SearchParameterConfigurator(
             }.mkString(".") //Merge path again
         }
     //Return paths and types separately
-    (finalPaths, filteredPaths.map(_._2), filteredPaths.map(_._3))
+    (finalPaths, filteredPaths.map(_._2), filteredPaths.map(_._3), filteredPaths.map(_._4))
   }
 
   /**
@@ -213,7 +222,7 @@ class SearchParameterConfigurator(
           .map(p => if(p!="") p.drop(1) else  p) //Remove the dot after resource type if exist
           .map(p => p -> None)
 
-      val (finalPaths, finalTargetTypes, _) = transformPathsAndExtractTargetTypes(searchParameterDef.ptype, compositionPaths)
+      val (finalPaths, finalTargetTypes, _, _) = transformPathsAndExtractTargetTypes(searchParameterDef.ptype, compositionPaths)
       Some(constructConfFromDef(searchParameterDef, finalPaths, finalTargetTypes, Nil))
     }
   }
@@ -271,7 +280,7 @@ class SearchParameterConfigurator(
         )
         .map(ttype => if(fhirConfig.FHIR_COMPLEX_TYPES.contains(ttype)) ttype else ttype.toLowerCase) // if it is a simple type, convert to lowercase e.g. valueString -> string
 
-    constructConfFromDef(searchParameterDef, paramereterJsonPaths, targetTypes, Nil, true)
+    constructConfFromDef(searchParameterDef, paramereterJsonPaths, targetTypes, Nil, Nil,true)
   }
 }
 

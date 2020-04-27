@@ -130,7 +130,7 @@ object OnfhirConfig {
   lazy val fhirValidation:String = Try(config.getString("fhir.validation")).toOption.getOrElse(FHIR_VALIDATION_ALTERNATIVES.PROFILE)
 
   /** Indicates how to handle erroneous search requests*/
-  lazy val fhirSearchHandling:String = Try(config.getString("fhir.search-handling")).toOption.getOrElse(FHIR_HTTP_OPTIONS.FHIR_SEARCH_LENIENT)
+  lazy val fhirSearchHandling:String = Try(config.getString("fhir.search-handling")).toOption.getOrElse(FHIR_HTTP_OPTIONS.FHIR_SEARCH_STRICT)
 
   /** Auditing related configurations */
   lazy val fhirAuditingRepository:String = Try(config.getString("fhir.auditing.repository")).toOption.getOrElse("local")

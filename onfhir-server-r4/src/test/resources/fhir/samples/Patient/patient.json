@@ -160,6 +160,6 @@
     }
   ],
   "managingOrganization": {
-    "reference": "Organization/1"
+    "reference": "http://example.com/fhir/Organization/1/_history/1"
   }
 }

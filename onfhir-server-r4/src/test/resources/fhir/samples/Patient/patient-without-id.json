@@ -29,10 +29,9 @@
   "name": [
     {
       "use": "official",
-      "family": "Chalmers",
+      "family": "Doe",
       "given": [
-        "Peter",
-        "James"
+        "John"
       ]
     },
     {
@@ -79,7 +78,7 @@
     }
   ],
   "gender": "male",
-  "birthDate": "1974-12-25",
+  "birthDate": "1974-12",
   "_birthDate": {
     "extension": [
       {

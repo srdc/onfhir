@@ -88,7 +88,7 @@ class XmlToJsonConvertor(fhirConfig: FhirConfig) extends BaseFhirProfileHandler(
               //if not found, convert it to JString
               case None => JString(v.text)
               //Otherwise convert accordingly
-              case Some((dt, _)) =>
+              case Some((dt, _, _)) =>
                 convertPrimitive(dt, v.text)
             }
           //If there is no attribute, it should be a complex

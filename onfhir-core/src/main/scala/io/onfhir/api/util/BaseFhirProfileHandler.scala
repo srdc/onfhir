@@ -1,8 +1,8 @@
 package io.onfhir.api.util
-
+import io.onfhir.api.FHIR_DATA_TYPES
 import io.onfhir.api.validation.{ConstraintKeys, ElementRestrictions, ProfileRestrictions}
 import io.onfhir.config.FhirConfig
-import io.onfhir.validation.{ArrayRestriction, TypeRestriction}
+import io.onfhir.validation.{ArrayRestriction, ReferenceRestrictions, TypeRestriction}
 import org.slf4j.Logger
 
 abstract class BaseFhirProfileHandler(fhirConfig: FhirConfig) {
@@ -52,10 +52,11 @@ abstract class BaseFhirProfileHandler(fhirConfig: FhirConfig) {
    * Find a target FHIR type of path in a profile chain if direct definition exists
    * @param path
    * @param profileChain
-   * @return
+   * @return (Target data type for FHIR path, profiles for this path, if reference target resource profiles otherwise empty)
    */
-  private def findTargetTypeOfPathInProfileChain(path:String, profileChain:Seq[ProfileRestrictions]):Option[(String, Seq[String])] = {
+  private def findTargetTypeOfPathInProfileChain(path:String, profileChain:Seq[ProfileRestrictions]):Option[(String, Seq[String], Set[String])] = {
     var targetTypeAndProfiles:Option[(String, Seq[String])] = None
+    var targetResourceProfilesForReference:Set[String] = Set.empty[String]
     import scala.util.control.Breaks._
     breakable
     {
@@ -79,11 +80,14 @@ abstract class BaseFhirProfileHandler(fhirConfig: FhirConfig) {
                 possibleDataType match {
                   case None =>
                     targetTypeAndProfiles = dtr.asInstanceOf[TypeRestriction].dataTypesAndProfiles.headOption
+                    if(targetTypeAndProfiles.exists(_._1 == FHIR_DATA_TYPES.REFERENCE))
+                      targetResourceProfilesForReference = er._2.restrictions.get(ConstraintKeys.REFERENCE_TARGET).map(_.asInstanceOf[ReferenceRestrictions]).map(_.targetProfiles).getOrElse(Nil).toSet
                     break()
                   case Some(pdt) =>  dtr.asInstanceOf[TypeRestriction].dataTypesAndProfiles.find(_._1 == pdt) match {
                     case Some(dtp) =>
                       targetTypeAndProfiles = Some(dtp)
-                      break()
+                      targetResourceProfilesForReference = er._2.restrictions.get(ConstraintKeys.REFERENCE_TARGET).map(_.asInstanceOf[ReferenceRestrictions]).map(_.targetProfiles).getOrElse(Nil).toSet
+                        break()
                     case None =>
                   }
                 }
@@ -93,7 +97,7 @@ abstract class BaseFhirProfileHandler(fhirConfig: FhirConfig) {
         }
       }
     }
-    targetTypeAndProfiles
+    targetTypeAndProfiles.map(t=> (t._1, t._2, targetResourceProfilesForReference))
   }
 
   /**
@@ -101,8 +105,8 @@ abstract class BaseFhirProfileHandler(fhirConfig: FhirConfig) {
    * @param path Search path
    * @return
    */
-  def findTargetTypeOfPath(path:String, profiles:Seq[ProfileRestrictions]):Option[(String, Seq[String])] = {
-    var targetTypeAndProfiles:Option[(String, Seq[String])] = findTargetTypeOfPathInProfileChain(path, profiles)
+  def findTargetTypeOfPath(path:String, profiles:Seq[ProfileRestrictions]):Option[(String, Seq[String], Set[String])] = {
+    var targetTypeAndProfiles:Option[(String, Seq[String], Set[String])] = findTargetTypeOfPathInProfileChain(path, profiles)
 
     //If still it is empty, path may be referring to an inner element of a FHIR Complex DataType so does not exist in Resource e.g. Patient.name.given (name refers to HumanName)
     if(targetTypeAndProfiles.isEmpty && path.contains('.')){
@@ -121,8 +125,9 @@ abstract class BaseFhirProfileHandler(fhirConfig: FhirConfig) {
    * @param i
    * @return
    */
-  private def findTargetTypeInSubPaths(pathParts:Seq[String],profiles:Seq[ProfileRestrictions],  i:Int = 1):Option[(String, Seq[String])] = {
-    var targetTypeAndProfiles:Option[(String, Seq[String])] = None
+  private def findTargetTypeInSubPaths(pathParts:Seq[String],profiles:Seq[ProfileRestrictions],  i:Int = 1):Option[(String, Seq[String], Set[String])] = {
+    var targetTypeAndProfiles:Option[(String, Seq[String], Set[String])] = None
+
     //Split the path accordingly
     val pathToDataType = pathParts.slice(0, pathParts.length-i).mkString(".")
     val pathAfterDataType = pathParts.slice(pathParts.length-i, pathParts.length).mkString(".")

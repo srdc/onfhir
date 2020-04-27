@@ -1,5 +1,7 @@
 package io.onfhir.db
 
+import java.time.Instant
+
 import akka.http.scaladsl.model.{DateTime, StatusCode, StatusCodes}
 import io.onfhir.Onfhir
 import io.onfhir.api._
@@ -7,12 +9,13 @@ import io.onfhir.api.model.Parameter
 import io.onfhir.api.parsers.FHIRResultParameterResolver
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
-import io.onfhir.config.OnfhirConfig
+import io.onfhir.config.{FhirConfigurationManager, OnfhirConfig}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.conversions.Bson
 import io.onfhir.db.BsonTransformer._
 import io.onfhir.event.{FhirEventBus, ResourceCreated, ResourceDeleted, ResourceUpdated}
 import io.onfhir.exception.UnsupportedParameterException
+import io.onfhir.util.DateTimeUtil
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -240,7 +243,6 @@ object ResourceManager {
       }
     })
   }
-
 
   /**
     * Handle FHIR _revinclude to return revinclude resources
@@ -654,7 +656,7 @@ object ResourceManager {
     PrefixModifierHandler.dateRangePrefixHandler(
       s"${FHIR_COMMON_FIELDS.META}.${FHIR_COMMON_FIELDS.LAST_UPDATED}",
       atTime,
-      FHIR_PREFIXES_MODIFIERS.EQUAL)
+      FHIR_PREFIXES_MODIFIERS.LESS_THAN)
 
 
   /**
@@ -668,15 +670,25 @@ object ResourceManager {
     //Resolve history parameters
     val since = searchParameters.find(_.name == FHIR_SEARCH_RESULT_PARAMETERS.SINCE).map(_.valuePrefixList.head._2)
     val at = searchParameters.find(_.name == FHIR_SEARCH_RESULT_PARAMETERS.AT).map(_.valuePrefixList.head._2)
-    val list = searchParameters.find(_.name == FHIR_SEARCH_SPECIAL_PARAMETERS.LIST).map(_.valuePrefixList.head._2)
+
     val (page, count) = FHIRResultParameterResolver.resolveCountPageParameters(searchParameters)
 
-    //Construct query
-    //TODO handle list query
-    val query = DocumentManager.andQueries(since.map(sinceQuery).toSeq ++ at.map(atQuery).toSeq)
+    val listQueryFuture = searchParameters.find(_.name == FHIR_SEARCH_SPECIAL_PARAMETERS.LIST) match {
+      case None => Future.apply(None)
+      case Some(p) => handleListSearch(rtype, p)
+    }
 
-    DocumentManager
-      .searchHistoricDocuments(rtype, rid, query, count, page)
+    val result = listQueryFuture flatMap(listQuery => {
+      if(at.isDefined){
+        val finalQuery = DocumentManager.andQueries(listQuery.toSeq :+ atQuery(at.get))
+        DocumentManager.searchHistoricDocumentsWithAt(rtype, rid, finalQuery, count, page)
+      } else {
+        val finalQuery = DocumentManager.andQueries(since.map(sinceQuery).toSeq ++ listQuery.toSeq)
+        DocumentManager.searchHistoricDocuments(rtype, rid, finalQuery, count, page)
+      }
+    })
+
+    result
       .map {
         case (total, docs) => total -> docs.map(_.fromBson)
       }
@@ -714,7 +726,7 @@ object ResourceManager {
   def createResource(rtype:String, resource:Resource, generatedId:Option[String] = None, withUpdate:Boolean = false)(implicit transactionSession: Option[TransactionSession] = None):Future[(String, Long, DateTime, Resource)] = {
     //1) set resource version and last update time
     val newVersion   = 1L                                                     //new version is always 1 for create operation
-    val lastModified = DateTime.now                                           //last modified will be "now"
+    val lastModified = Instant.now()                                          //last modified will be "now"
     val newId        = generatedId.getOrElse(FHIRUtil.generateResourceId())   //generate an identifier for the new resource
     val resourceWithMeta = FHIRUtil.populateResourceWithMeta(resource, Some(newId), newVersion, lastModified)
 
@@ -730,7 +742,7 @@ object ResourceManager {
       .insertDocument(rtype, Document(populatedResource.toBson))
       .map( c => resourceCreated(rtype, newId, resourceWithMeta)) //trigger the event
       .map( _ =>
-        (newId, newVersion, lastModified, resourceWithMeta)
+        (newId, newVersion, DateTimeUtil.instantToDateTime(lastModified), resourceWithMeta)
       )
   }
 
@@ -742,7 +754,7 @@ object ResourceManager {
     */
   def createResources(rtype:String, resources:Map[String, Resource]):Future[Seq[Resource]] = {
     val newVersion   = 1L                                                     //new version is always 1 for create operation
-    val lastModified = DateTime.now                                           //last modified will be "now"
+    val lastModified = Instant.now()                                          //last modified will be "now"
     val resourcesWithMeta = resources.map {
       case (rid, resource) => FHIRUtil.populateResourceWithMeta(resource, Some(rid), newVersion, lastModified)
     }.toSeq
@@ -797,7 +809,7 @@ object ResourceManager {
   def updateResource(rtype:String, rid:String, resource:Resource, previousVersion:(Long, Resource), wasDeleted :Boolean = false)(implicit transactionSession: Option[TransactionSession] = None):Future[(Long, DateTime, Resource)] = {
     //1) Update the resource version and last update time
     val newVersion   = previousVersion._1 + 1L   //new version always be 1 incremented of current version
-    val lastModified = DateTime.now           //last modified will be "now"
+    val lastModified = Instant.now()             //last modified will be "now"
     val resourceWithMeta = FHIRUtil.populateResourceWithMeta(resource, Some(rid), newVersion, lastModified)
 
     //2) Add "current" field with value. (after serializing to json)
@@ -823,7 +835,7 @@ object ResourceManager {
     fop
       .map( c => resourceUpdated(rtype, rid, resource)) //trigger the event
       .map( _ =>
-        (newVersion, lastModified, resourceWithMeta)
+        (newVersion, DateTimeUtil.instantToDateTime(lastModified), resourceWithMeta)
       )
   }
 
@@ -863,7 +875,7 @@ object ResourceManager {
   def deleteResource(rtype:String, rid:String, previousVersion:(Long, Resource), statusCode:StatusCode = StatusCodes.NoContent)(implicit transactionSession: Option[TransactionSession] = None):Future[(Long, DateTime)]  = {
     //1) Create a empty document to represent deletion
     val newVersion     = previousVersion._1 + 1L   //new version is 1 incremented
-    val lastModified = DateTime.now
+    val lastModified = Instant.now()
 
     //2) Construct shard query if sharding is enabled and on a field other than id
     val shardQueryOpt = ResourceQueryBuilder.constructShardingQuery(rtype, previousVersion._2)
@@ -884,7 +896,7 @@ object ResourceManager {
      fop
       .map( _ => resourceDeleted(rtype, rid)) //trigger the event
       .map( _ =>
-        (newVersion, lastModified)
+        (newVersion, DateTimeUtil.instantToDateTime(lastModified))
       )
   }
 

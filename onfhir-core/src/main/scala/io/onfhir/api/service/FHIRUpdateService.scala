@@ -220,7 +220,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
             case (newId, newVersion, lastModified, createdResource) =>
               FHIRResponse(
                 StatusCodes.Created ,
-                Some(FHIRUtil.getResourceContentByPreference(createdResource, prefer)), //HTTP Body
+                FHIRUtil.getResourceContentByPreference(createdResource, prefer), //HTTP Body
                 Some(Uri(FHIRUtil.resourceLocationWithVersion(rtype, newId, newVersion))), //HTTP Location header
                 Some(lastModified), //HTTP Last-Modified header
                 Some(newVersion) //HTTP ETag header
@@ -236,7 +236,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
             case (newVersion, lastModified, updatedResource) =>
               FHIRResponse(
                 if(ov._1 > 0 && !wasDeleted) StatusCodes.OK else StatusCodes.Created,
-                Some(FHIRUtil.getResourceContentByPreference(updatedResource, prefer)), //HTTP Body
+                FHIRUtil.getResourceContentByPreference(updatedResource, prefer), //HTTP Body
                 Some(Uri(FHIRUtil.resourceLocationWithVersion(rtype, rid.get, newVersion))), //HTTP Location header
                 Some(lastModified), //HTTP Last-Modified header
                 Some(newVersion) //HTTP ETag header

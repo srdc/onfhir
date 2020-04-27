@@ -254,9 +254,9 @@ object BsonTransformer{
   private def populatePeriodEnd(value:String): BsonValue = {
     val datePrecision = value.count(_ == '-')
     datePrecision match {
-      case 0 => BsonDateTime(dateTimeWSecFormat.parse(value + "-12-31T23:59:59Z").getTime)
-      case 1 =>  BsonDateTime(dateTimeWSecFormat.parse(value + DateTimeUtil.dayMonthConversionDateTime(value)).getTime)
-      case 2 =>  BsonDateTime(dateTimeWSecFormat.parse(value + "T23:59:59Z").getTime)
+      case 0 => BsonDateTime(dateTimeWMiliFormat.parse(value + "-12-31T23:59:59.999Z").getTime)
+      case 1 =>  BsonDateTime(dateTimeWMiliFormat.parse(value + DateTimeUtil.dayMonthConversionDateTime(value)).getTime)
+      case 2 =>  BsonDateTime(dateTimeWMiliFormat.parse(value + "T23:59:59.999Z").getTime)
     }
   }
 
@@ -272,18 +272,18 @@ object BsonTransformer{
     datePrecision match {
       case 0 => //IMPORTANT May conflict with similar syntax (2015 might be inputted as id)
         val rangeStart = dateTimeWSecFormat.parse(string + "-01-01T00:00:00Z").getTime
-        val rangeEnd = dateTimeWSecFormat.parse(string + "-12-31T23:59:59Z").getTime
+        val rangeEnd = dateTimeWMiliFormat.parse(string + "-12-31T23:59:59.999Z").getTime
         BsonDateTime(rangeStart) -> BsonDateTime(rangeEnd)
       case 1 =>
         // Append start dateTime to input type YYYY-MM
         val rangeStart = dateTimeWSecFormat.parse(string + "-01T00:00:00Z").getTime
         // Populate end dateTime(may differ from month to month)
-        val rangeEnd = dateTimeWSecFormat.parse(string + DateTimeUtil.dayMonthConversionDateTime(string)).getTime
+        val rangeEnd = dateTimeWMiliFormat.parse(string + DateTimeUtil.dayMonthConversionDateTime(string)).getTime
         BsonDateTime(rangeStart) -> BsonDateTime(rangeEnd)
       case 2 =>
         // Append start and end time to input type YYYY-MM-DD
         val rangeStart = dateTimeWSecFormat.parse(string + "T00:00:00Z").getTime
-        val rangeEnd = dateTimeWSecFormat.parse(string + "T23:59:59Z").getTime
+        val rangeEnd = dateTimeWMiliFormat.parse(string + "T23:59:59.999Z").getTime
         BsonDateTime(rangeStart) -> BsonDateTime(rangeEnd)
     }
   }
@@ -300,14 +300,7 @@ object BsonTransformer{
       .map(_ => {
       //If it is a FHIR datetime or instant
       if(value.contains("T")) {
-        val ts = dateToISODate(value)
-        val onlyDate:BsonValue = BsonDateTime(dateTimeWSecFormat.parse(value.split("T").head + "T00:00:00Z").getTime)
-        //Create a Json object with original time string, a parsed timestamp ISODate, and only date part
-        BsonDocument(
-          FHIR_EXTRA_FIELDS.TIME_ORIGINAL -> value,
-          FHIR_EXTRA_FIELDS.TIME_TIMESTAMP -> ts,
-          FHIR_EXTRA_FIELDS.TIME_DATE -> onlyDate
-        )
+        createBsonTimeObject(value)
       } else {
         field match {
           //If this is a FHIR period element with start and end fields that has given as FHIR date
@@ -381,6 +374,17 @@ object BsonTransformer{
     } else {
       transformDocument(immutable.Document(document)) //otherwise it is regular document
     }
+  }
+
+  def createBsonTimeObject(value:String) = {
+    val ts = dateToISODate(value)
+    val onlyDate:BsonValue = BsonDateTime(dateTimeWSecFormat.parse(value.split("T").head + "T00:00:00Z").getTime)
+    //Create a Json object with original time string, a parsed timestamp ISODate, and only date part
+    BsonDocument(
+      FHIR_EXTRA_FIELDS.TIME_ORIGINAL -> value,
+      FHIR_EXTRA_FIELDS.TIME_TIMESTAMP -> ts,
+      FHIR_EXTRA_FIELDS.TIME_DATE -> onlyDate
+    )
   }
 
   /**

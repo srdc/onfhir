@@ -1,11 +1,32 @@
 package io.onfhir.validation
 
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.api.validation.{ValueSetDef, ValueSetRestrictions}
+import io.onfhir.api.validation.{IFhirTerminologyValidator, ValueSetDef, ValueSetRestrictions}
 import io.onfhir.config.FhirConfig
 
-class FhirTerminologyValidator(fhirConfig:FhirConfig) {
+class FhirTerminologyValidator(fhirConfig:FhirConfig) extends IFhirTerminologyValidator{
 
+  /**
+   * Check if a value set is supported for validation within OnFHir setup
+   * @param vsUrl   URL of the value set
+   * @param version Version of the value set (If not given, the latest version available is chosen)
+   * @return  All codes in value set from each code system within it
+   */
+  def getAllCodes(vsUrl:String, version:Option[String] = None):Map[String, Set[String]] = {
+    getValueSet(vsUrl, version).map(vs => {
+      val allMaps:Seq[Map[String, Set[String]]] = vs.includes.valueSets.map(vs => {
+        val cr = FHIRUtil.parseCanonicalReference(vs)
+        getAllCodes(cr.getUrl(), cr.version)
+      }).toSeq ++ Seq(vs.includes.codes)
+      allMaps.reduce((m1, m2) => mergeMap(m1,m2))
+    }).getOrElse(Map.empty[String, Set[String]])
+  }
+
+  private def mergeMap(m1:Map[String, Set[String]], m2:Map[String, Set[String]]) :Map[String, Set[String]] = {
+    (m1.keySet ++ m2.keySet).toSeq.map(k =>
+       k -> (m1.getOrElse(k, Set.empty[String]) ++ m2.getOrElse(k, Set.empty[String]))
+    ).toMap
+  }
   /**
    * Check if a given ValueSet is supported for validation in this onFhir setup
    * @param vsUrl   Url of ValueSet
@@ -74,7 +95,7 @@ class FhirTerminologyValidator(fhirConfig:FhirConfig) {
       .get(vsUrl)
       .flatMap(versionMap => version match {
         case Some(v) => versionMap.get(v)
-        case None  => versionMap.headOption.map(_._2)
+        case None  => versionMap.toSeq.sortBy(_._1).headOption.map(_._2)
       })
   }
 }

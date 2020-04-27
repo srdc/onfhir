@@ -5,9 +5,9 @@ import io.onfhir.api.{DEFAULT_RESOURCE_PATHS, FHIR_ROOT_URL_FOR_DEFINITIONS, Res
 import io.onfhir.db.DBInitializer
 import org.slf4j.{Logger, LoggerFactory}
 import io.onfhir.api.util.{FHIRUtil, IOUtil}
-import io.onfhir.api.validation.{ConstraintKeys, FHIRResourceValidator, IFhirResourceValidator, ProfileRestrictions}
+import io.onfhir.api.validation.{ConstraintKeys, FHIRResourceValidator, IFhirResourceValidator, IFhirTerminologyValidator, ProfileRestrictions}
 import io.onfhir.exception.InitializationException
-import io.onfhir.validation.{FhirContentValidator, ReferenceRestrictions, TypeRestriction}
+import io.onfhir.validation.{FhirContentValidator, FhirTerminologyValidator, ReferenceRestrictions, TypeRestriction}
 import org.json4s.Extraction
 import io.onfhir.api._
 
@@ -243,6 +243,15 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
    */
   override def getResourceValidator(fhirConfig: FhirConfig):IFhirResourceValidator = {
     new FHIRResourceValidator(fhirConfig)
+  }
+
+  /**
+   * Return our generic terminology validator
+   * @param fhirConfig
+   * @return
+   */
+  override def getTerminologyValidator(fhirConfig: FhirConfig):IFhirTerminologyValidator = {
+    new FhirTerminologyValidator(fhirConfig)
   }
 
   /**

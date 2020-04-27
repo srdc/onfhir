@@ -121,7 +121,7 @@ class FHIRCreateService(transactionSession: Option[TransactionSession] = None) e
       ResourceManager.createResource(_type, resource, generatedId)(transactionSession) flatMap { case (newId, newVersion, lastModified, createdResource) =>
         Future.apply(FHIRResponse (
           StatusCodes.Created, //Http Status code
-          Some(FHIRUtil.getResourceContentByPreference(createdResource, prefer)), //HTTP body
+          FHIRUtil.getResourceContentByPreference(createdResource, prefer), //HTTP body
           Some(Uri(FHIRUtil.resourceLocationWithVersion(_type, newId, newVersion))), //HTTP Location header
           Some(lastModified), //HTTP Last-Modified header
           Some(newVersion) // HTTP ETag header

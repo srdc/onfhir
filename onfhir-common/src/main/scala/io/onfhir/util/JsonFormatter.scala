@@ -13,6 +13,7 @@ import scala.language.implicitConversions
 object JsonFormatter{
   implicit lazy val formats: Formats = Serialization.formats(NoTypeHints)
 
+
   class JsonParsable2(reader:io.Reader){
     def parseJson: Resource = {
       parse(reader).asInstanceOf[JObject]

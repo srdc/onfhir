@@ -1,5 +1,7 @@
 package io.onfhir.operation
 
+import java.time.Instant
+
 import akka.http.scaladsl.model.{DateTime, StatusCodes}
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIROperationRequest, FHIROperationResponse}
@@ -73,7 +75,7 @@ class DocumentOperationHandler extends FHIROperationHandlerService {
           bundle
         case _ => {
           val newVersion = 1L //new version is always 1 for create operation
-          val lastModified = DateTime.now
+          val lastModified = Instant.now()
           val newBundle = FHIRUtil.populateResourceWithMeta(result, (result \ "id").extractOpt[String], newVersion, lastModified)
           //newBundle.put(FHIR_EXTRA_FIELDS.STATUS_CODE, "")
           newBundle ~ (FHIR_EXTRA_FIELDS.STATUS_CODE, "")

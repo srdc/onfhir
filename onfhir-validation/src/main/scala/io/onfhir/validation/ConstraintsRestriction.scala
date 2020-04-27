@@ -34,9 +34,15 @@ case class FhirConstraint(key: String, desc: String, expr: FhirPathExprParser.Ex
    * @return
    */
   def evaluate(value: JValue): Option[ConstraintFailure] = {
-    if (!FhirPathEvaluator().satisfiesParsed(expr, value))
-      Some(ConstraintFailure(s"Constraint '$key' is not satisfied for the given value! Constraint Description: '$desc'. FHIR Path expression: '${expr.getText}'", isWarning))
-    else
-      None
+    try {
+      if (!FhirPathEvaluator().satisfiesParsed(expr, value))
+        Some(ConstraintFailure(s"Constraint '$key' is not satisfied for the given value! Constraint Description: '$desc'. FHIR Path expression: '${expr.getText}'", isWarning))
+      else
+        None
+    } catch {
+      case e:Exception =>
+        //Exception during FHIR path evaluation
+        Some(ConstraintFailure(s"Problem [exception = ${e.getMessage}] while evaluating constraint with id '$key' and description '$desc'. FHIR Path expression: '${expr.getText}'", isWarning))
+    }
   }
 }

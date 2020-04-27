@@ -191,6 +191,15 @@ class FhirConfig(version:String) {
   }
 
   /**
+   * Find target resource/data type of a profile
+   * @param profileUrl
+   * @return
+   */
+  def findResourceType(profileUrl: String):Option[String] = {
+    findProfileChain(profileUrl).reverse.find(!_.isAbstract).map(_.url.split('/').last)
+  }
+
+  /**
    * Supplementary method for profile chain finding
    *
    * @param restrictions

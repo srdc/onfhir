@@ -5,7 +5,8 @@ import io.onfhir.api._
 import io.onfhir.exception._
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
 import io.onfhir.api.model.Parameter
-import org.slf4j.{LoggerFactory, Logger}
+import io.onfhir.config.OnfhirConfig
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.util.Try
 import scala.util.parsing.combinator.RegexParsers
@@ -22,17 +23,21 @@ object FHIRSearchParameterValueParser {
     def endOfString:Parser[String] = """($|\$)""".r ^^ (eos => if (eos == "\\$") "$" else "")
     def delimiter:Parser[String] = """\|""".r ^^ {_.toString}
     def string:Parser[String] = """[\p{N}|\p{L}_\-\.|\s| ]+""".r ^^ {_.toString}
-    def integer:Parser[String] = """[0-9]+""".r ^^ {_.toString}
+    //def integer:Parser[String] = """[0-9]+""".r ^^ {_.toString}
+    def integer:Parser[String] = """[0]|[-+]?[1-9][0-9]*""".r ^^ {_.toString}
     def boolean:Parser[String] = """(true|false)""".r ^^ {_.toString}
-    def decimal:Parser[String] = """[0-9]+\.[0-9]+""".r ^^ {_.toString}
+    //def decimal:Parser[String] = """[0-9]+\.[0-9]+""".r ^^ {_.toString}
+    def decimal:Parser[String] = """-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?""".r ^^ {_.toString}
     def code:Parser[String] = """[^\s\|,]+([\s]+[^\s\|,]+)*""".r ^^ {_.toString}
     def dateTime:Parser[String] = """-?[1-2]{1}[0|1|8|9][0-9]{2}(-(0[1-9]|1[0-2])(-(0[0-9]|[1-2][0-9]|3[0-1])(T([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?(\.[0-9]+)?(Z|(\+|-|\s)((0[0-9]|1[0-3]):[0-5][0-9]|14:00))?)?)?)?""".r ^^ {_.toString}
-    def uri:Parser[String] = """((?<=\()[A-Za-z][A-Za-z0-9\+\.\-]*:([A-Za-z0-9\.\-_~:/\?#\[\]@!\$&'\(\)\*\+,;=]|%[A-Fa-f0-9]{2})+(?=\)))|([A-Za-z][A-Za-z0-9\+\.\-]*:([A-Za-z0-9\.\-_~:/\?#\[\]@!\$&'\(\)\*\+,;=]|%[A-Fa-f0-9]{2})+)""".r ^^ {_.toString}
+    def uri:Parser[String] = """((?<=\()[A-Za-z][A-Za-z0-9\+\.\-]*:([A-Za-z0-9\.\-_~:/\?#\[\]@!\$&'\(\)\*\+,;=]|%[A-Fa-f0-9]{2})+(?=\)))|([A-Za-z][A-Za-z0-9\+\.\-]*:([A-Za-z0-9\.\-_~:/\?#\[\]@!\$&'\(\)\*\+,;=]|%[A-Fa-f0-9]{2})+)(\|[0-9]+(\.[0-9]+)*)?""".r ^^ {_.toString}
     def identifier:Parser[String] = """[A-Za-z0-9\-\.]{1,64}""".r ^^ {_.toString}
 
+    def refVersionPart = """(\|[0-9]+(\.[0-9]+)*)?"""
+
     /* Token Type Parser Definitions */
-    def tokenType:Parser[String] = uri.? ~ delimiter.? ~ code.? ^^ {
-      case someUri ~ someDel ~ code => someUri.getOrElse("") + someDel.getOrElse("") + code.getOrElse("")
+    def tokenType:Parser[String] = uri.? ~ delimiter.? ~ code.? ~ delimiter.? ~ string.? ^^ {
+      case someUri ~ someDel ~ code ~ othDel ~ value => someUri.getOrElse("") + someDel.getOrElse("") + code.getOrElse("") + othDel.getOrElse("") + value.getOrElse("")
     }
 
     /* Base Prefix and Suffix Definitions */
@@ -42,7 +47,9 @@ object FHIRSearchParameterValueParser {
     /* Return Types */
     def dataType:Parser[String] = endOfString
     def parseName:Parser[(String, String)] = string ~ suffixes ~ endOfString ^^ {case id ~ suf ~ eos => (id, suf)}
-    def parseValue:Parser[(String, String)] = prefixes ~ dataType ~ (""",""".r ~ dataType).* ~ endOfString ^^ {case pref ~ num ~ someNum ~ eos => (pref, num + someNum.mkString("").replaceAll("(~|\\(|\\))", ""))}
+    def parseValue:Parser[(String, String)] = prefixes ~ dataType ~ (""",""".r ~ dataType).* ~ endOfString ^^ {case pref ~ num ~ someNum ~ eos =>
+      (pref, num + someNum.mkString("").replaceAll("(~|\\(|\\))", ""))
+    }
   }
 
   /* Type Specific Parsers */
@@ -96,7 +103,7 @@ object FHIRSearchParameterValueParser {
     override def dataType:Parser[String] = tokenType | boolean
 
     /* Suffix Definitions for Token */
-    override def suffixes:Parser[String] = """(:(missing|text|in|below|above|not-in|not|sw))|$""".r ^^ {_.toString}
+    override def suffixes:Parser[String] = """(:(missing|text|in|below|above|not-in|not|of-type|sw))|$""".r ^^ {_.toString}
     override def prefixes:Parser[String] = """""".r
 
     def parseTokenName:Parser[(String, String)]  = parseName
@@ -483,7 +490,7 @@ object FHIRSearchParameterValueParser {
         } catch {
           case invalidParameterException: InvalidParameterException => throw  invalidParameterException
           case unsupportedParameterException: UnsupportedParameterException =>
-            if(preferHeader.contains(FHIR_HTTP_OPTIONS.FHIR_SEARCH_STRICT))
+            if(preferHeader.getOrElse(OnfhirConfig.fhirSearchHandling)  == FHIR_HTTP_OPTIONS.FHIR_SEARCH_STRICT)
               throw unsupportedParameterException
             else {
               //Just log warning and continue

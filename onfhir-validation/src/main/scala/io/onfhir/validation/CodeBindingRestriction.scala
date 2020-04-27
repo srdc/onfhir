@@ -19,7 +19,7 @@ case class CodeBindingRestriction(valueSetUrl:String, version:Option[String], is
    * @return
    */
   override def evaluate(value: JValue, fhirContentValidator: AbstractFhirContentValidator): Seq[ConstraintFailure] = {
-    val terminologyValidator = FhirTerminologyValidator(fhirContentValidator.fhirConfig)
+    val terminologyValidator =  FhirTerminologyValidator(fhirContentValidator.fhirConfig)
     if(terminologyValidator.isValueSetSupported(valueSetUrl, version)) {
       value match {
         //FHIR code

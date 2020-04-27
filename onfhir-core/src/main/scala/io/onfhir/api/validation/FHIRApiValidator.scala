@@ -3,6 +3,7 @@ package io.onfhir.api.validation
 import java.net.{URI, URL}
 
 import akka.http.scaladsl.model.DateTime
+import akka.http.scaladsl.model.StatusCodes.ClientError
 import akka.http.scaladsl.model.headers.{EntityTag, `If-Modified-Since`, `If-None-Match`}
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRResponse, OutcomeIssue}
@@ -10,7 +11,7 @@ import io.onfhir.api.util.FHIRUtil
 import io.onfhir.exception._
 import io.onfhir.util.JsonFormatter._
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
-import org.json4s.{JString, JDouble, JInt}
+import org.json4s.{JDouble, JInt, JString}
 import org.json4s.JsonAST._
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -196,7 +197,7 @@ object FHIRApiValidator {
   def validateVersionedUpdate(rtype:String, ifmatch:Option[String]):Unit = {
     //If versioned update is forced and ifMatch header is empty
     if(fhirConfig.resourceConfigurations.apply(rtype).versioning == FHIR_VERSIONING_OPTIONS.VERSIONED_UPDATE && ifmatch.isEmpty)
-      throw new NotFoundException(Seq(
+      throw new BadRequestException(Seq(
         OutcomeIssue(
           FHIRResponse.SEVERITY_CODES.ERROR, //fatal
           FHIRResponse.OUTCOME_CODES.INVALID, //not supported

@@ -63,7 +63,7 @@ class FHIRResourceValidator(fhirConfig:FhirConfig) extends IFhirResourceValidato
           val profileChainsToValidate = profileChains.filter(pc => !allInnerProfiles.contains(pc._1)).map(_._2)
 
           val issues = profileChainsToValidate.flatMap(pc => {
-            val contentValidator = new FhirContentValidator(fhirConfig, pc.head.url, Some(new ReferenceResolver(fhirConfig, resource, None)))
+            val contentValidator = FhirContentValidator.apply(fhirConfig, pc.head.url, new ReferenceResolver(fhirConfig, resource, None))
             contentValidator.validateComplexContentAgainstProfile(pc, resource, None)
               .map(oi => oi.copy(diagnostics = Some(s"[Validating against '${pc.head.url}'] => " + oi.diagnostics.getOrElse(""))))
           })

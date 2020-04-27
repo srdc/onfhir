@@ -1,5 +1,6 @@
 package io.onfhir.api.util
 
+import java.time.Instant
 import java.util.UUID
 
 import akka.http.scaladsl.model._
@@ -11,6 +12,7 @@ import io.onfhir.api.parsers.FHIRResultParameterResolver
 import io.onfhir.util.JsonFormatter.formats
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
 import io.onfhir.exception.InvalidParameterException
+import io.onfhir.util.DateTimeUtil
 import org.json4s.JsonAST.{JNothing, JObject, JValue}
 import org.json4s.JsonDSL._
 import org.json4s.{JsonAST, _}
@@ -221,17 +223,21 @@ object FHIRUtil {
     * @param lastModified last modified information of the resource
     * @return
     */
-  def populateResourceWithMeta(resource: Resource, id: Option[String], versionId: Long, lastModified: DateTime): Resource = {
+  def populateResourceWithMeta(resource: Resource, id: Option[String], versionId: Long, lastModified: Instant): Resource = {
     val resourceTypeField = resource.findField(_._1 == FHIR_COMMON_FIELDS.RESOURCE_TYPE).get
+
+    val meta:Resource = (resource \ FHIR_COMMON_FIELDS.META) match {
+      case meta:JObject =>
+        FHIR_COMMON_FIELDS.META -> (meta merge ((FHIR_COMMON_FIELDS.VERSION_ID -> versionId.toString) ~ (FHIR_COMMON_FIELDS.LAST_UPDATED -> DateTimeUtil.serializeInstant(lastModified))))
+      case JNull | JNothing =>
+        (FHIR_COMMON_FIELDS.META ->
+          (FHIR_COMMON_FIELDS.VERSION_ID -> versionId.toString) ~
+            (FHIR_COMMON_FIELDS.LAST_UPDATED -> DateTimeUtil.serializeInstant(lastModified))
+          )
+    }
 
     var result:Resource = resource.obj.filterNot(f => f._1 == FHIR_COMMON_FIELDS.ID || f._1 == FHIR_COMMON_FIELDS.META || f._1 == FHIR_COMMON_FIELDS.RESOURCE_TYPE)
 
-    //Generate meta if not exist
-    val meta:Resource =
-      (FHIR_COMMON_FIELDS.META ->
-        (FHIR_COMMON_FIELDS.VERSION_ID -> versionId.toString) ~
-        (FHIR_COMMON_FIELDS.LAST_UPDATED -> (lastModified.toIsoDateTimeString + "Z"))
-      )
     //Merge it
     result = meta merge result
 
@@ -296,13 +302,13 @@ object FHIRUtil {
     * @param prefer   value of the prefer header
     * @return a string in json format
     */
-  def getResourceContentByPreference(resource: Resource, prefer: Option[String]): Resource = {
+  def getResourceContentByPreference(resource: Resource, prefer: Option[String]): Option[Resource] = {
     prefer.getOrElse(OnfhirConfig.fhirDefaultReturnPreference) match {
-      case preferHeader if preferHeader.contains(FHIR_HTTP_OPTIONS.FHIR_RETURN_MINIMAL) =>  JObject() //if return=minimal send empty string
-      case preferHeader if preferHeader.contains(FHIR_HTTP_OPTIONS.FHIR_RETURN_REPRESENTATION) => resource//resource.clone() //if return=representation send whole resource back
-      case preferHeader if preferHeader.contains(FHIR_HTTP_OPTIONS.FHIR_RETURN_OPERATION_OUTCOME)=> FHIRResponse.createOperationOutcomeWithSuccess()
+      case preferHeader if preferHeader.contains(FHIR_HTTP_OPTIONS.FHIR_RETURN_MINIMAL) =>  None //if return=minimal send empty string
+      case preferHeader if preferHeader.contains(FHIR_HTTP_OPTIONS.FHIR_RETURN_REPRESENTATION) => Some(resource)//resource.clone() //if return=representation send whole resource back
+      case preferHeader if preferHeader.contains(FHIR_HTTP_OPTIONS.FHIR_RETURN_OPERATION_OUTCOME)=> Some(FHIRResponse.createOperationOutcomeWithSuccess())
       case _ =>
-        resource//resource.clone() // Default representation
+        Some(resource)//resource.clone() // Default representation
     }
   }
 
@@ -403,7 +409,10 @@ object FHIRUtil {
         entry = entry ~
           (FHIR_BUNDLE_FIELDS.REQUEST ->
               (FHIR_COMMON_FIELDS.METHOD -> method.get) ~
-              (FHIR_COMMON_FIELDS.URL -> resourceUrl)
+              (FHIR_COMMON_FIELDS.URL ->  (method.get match {
+                case FHIR_METHOD_NAMES.METHOD_POST => resourceType
+                case FHIR_METHOD_NAMES.METHOD_PUT | FHIR_METHOD_NAMES.METHOD_DELETE => resourceType + "/" +  resourceId
+              }))
           )
       }
 
@@ -484,7 +493,7 @@ object FHIRUtil {
     */
   def extractLastUpdatedFromResource(resource: Resource): DateTime = {
     val lastUpdatedString = (resource \ FHIR_COMMON_FIELDS.META \ FHIR_COMMON_FIELDS.LAST_UPDATED).extract[String]
-    DateTime.fromIsoDateTimeString(lastUpdatedString.dropRight(1)).get
+    DateTimeUtil.parseInstant(lastUpdatedString).get
   }
 
   /***

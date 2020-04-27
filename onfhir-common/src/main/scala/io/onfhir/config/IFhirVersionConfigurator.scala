@@ -2,7 +2,7 @@ package io.onfhir.config
 
 import akka.http.scaladsl.model.{MediaType, MediaTypes}
 import io.onfhir.api.{FHIR_SEARCH_RESULT_PARAMETERS, FHIR_SEARCH_SPECIAL_PARAMETERS, Resource}
-import io.onfhir.api.validation.{IFhirResourceValidator, ProfileRestrictions, ValueSetRestrictions}
+import io.onfhir.api.validation.{IFhirResourceValidator, IFhirTerminologyValidator, ProfileRestrictions, ValueSetRestrictions}
 import io.onfhir.audit.IFhirAuditCreator
 
 /**
@@ -160,6 +160,13 @@ trait IFhirVersionConfigurator {
    * @return
    */
   def getResourceValidator(fhirConfig: FhirConfig):IFhirResourceValidator
+
+  /**
+   * Get a terminology validator for this FHIR version
+   * @param fhirConfig
+   * @return
+   */
+  def getTerminologyValidator(fhirConfig: FhirConfig):IFhirTerminologyValidator
 
   /**
    * Return a class that implements the interface to create AuditEvents conformant to the given base specification

@@ -96,7 +96,7 @@ case class ReferenceRestrictions(targetProfiles:Seq[String], versioning:Option[B
 
                 //If reference policy is local, all references should be local
                 if(resourceConf.referencePolicies.contains("local") && parsedFhirReference.flatMap(_._1).exists(! _.startsWith(OnfhirConfig.fhirRootUrl)))
-                  allIssues = allIssues :+ ConstraintFailure(s"Element uses literal referencing (with Reference.reference) while it is not allowed for resource  '$resourceType'! ")
+                  allIssues = allIssues :+ ConstraintFailure(s"Element uses referencing to a resource in a remote repository (with Reference.reference) while it is not allowed for resource  '$resourceType'! ")
 
                 if(resourceConf.referencePolicies.contains("enforced")){
                   if(parsedFhirReference.isDefined) {

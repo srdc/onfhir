@@ -43,6 +43,193 @@
       },
       "resource": [
         {
+          "type" : "ActivityDefinition",
+          "profile" : "http://hl7.org/fhir/StructureDefinition/ActivityDefinition",
+          "interaction" : [{
+            "code" : "read",
+            "documentation" : "Implemented per the specification (or Insert other doco here)"
+          },
+            {
+              "code" : "vread",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "update",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "delete",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "history-instance",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "history-type",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "create",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "search-type",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            }],
+          "conditionalCreate" : true,
+          "conditionalUpdate" : true,
+          "conditionalDelete" : "multiple",
+          "referencePolicy" : ["literal",
+            "logical"],
+          "searchInclude" : ["ActivityDefinition.successor",
+            "ActivityDefinition.derived-from",
+            "ActivityDefinition.predecessor",
+            "ActivityDefinition.composed-of",
+            "ActivityDefinition.depends-on"],
+          "searchRevInclude" : ["CarePlan.instantiates-canonical",
+            "Communication.instantiates-canonical",
+            "DeviceRequest.instantiates-canonical",
+            "FamilyMemberHistory.instantiates-canonical",
+            "MessageDefinition.parent",
+            "NutritionOrder.instantiates-canonical",
+            "PlanDefinition.definition",
+            "Procedure.instantiates-canonical",
+            "ServiceRequest.instantiates-canonical"],
+          "searchParam" : [{
+            "name" : "date",
+            "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-date",
+            "type" : "date",
+            "documentation" : "The activity definition publication date"
+          },
+            {
+              "name" : "identifier",
+              "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-identifier",
+              "type" : "token",
+              "documentation" : "External identifier for the activity definition"
+            },
+            {
+              "name" : "successor",
+              "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-successor",
+              "type" : "reference",
+              "documentation" : "What resource is being referenced"
+            },
+            {
+              "name" : "context-type-value",
+              "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-context-type-value",
+              "type" : "composite",
+              "documentation" : "A use context type and value assigned to the activity definition"
+            },
+            {
+              "name" : "jurisdiction",
+              "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-jurisdiction",
+              "type" : "token",
+              "documentation" : "Intended jurisdiction for the activity definition"
+            },
+            {
+              "name" : "description",
+              "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-description",
+              "type" : "string",
+              "documentation" : "The description of the activity definition"
+            },
+            {
+              "name" : "derived-from",
+              "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-derived-from",
+              "type" : "reference",
+              "documentation" : "What resource is being referenced"
+            },
+            {
+              "name" : "context-type",
+              "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-context-type",
+              "type" : "token",
+              "documentation" : "A type of use context assigned to the activity definition"
+            },
+            {
+              "name" : "predecessor",
+              "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-predecessor",
+              "type" : "reference",
+              "documentation" : "What resource is being referenced"
+            },
+            {
+              "name" : "title",
+              "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-title",
+              "type" : "string",
+              "documentation" : "The human-friendly name of the activity definition"
+            },
+            {
+              "name" : "composed-of",
+              "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-composed-of",
+              "type" : "reference",
+              "documentation" : "What resource is being referenced"
+            },
+            {
+              "name" : "version",
+              "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-version",
+              "type" : "token",
+              "documentation" : "The business version of the activity definition"
+            },
+            {
+              "name" : "url",
+              "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-url",
+              "type" : "uri",
+              "documentation" : "The uri that identifies the activity definition"
+            },
+            {
+              "name" : "context-quantity",
+              "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-context-quantity",
+              "type" : "quantity",
+              "documentation" : "A quantity- or range-valued use context assigned to the activity definition"
+            },
+            {
+              "name" : "effective",
+              "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-effective",
+              "type" : "date",
+              "documentation" : "The time during which the activity definition is intended to be in use"
+            },
+            {
+              "name" : "depends-on",
+              "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-depends-on",
+              "type" : "reference",
+              "documentation" : "What resource is being referenced"
+            },
+            {
+              "name" : "name",
+              "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-name",
+              "type" : "string",
+              "documentation" : "Computationally friendly name of the activity definition"
+            },
+            {
+              "name" : "context",
+              "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-context",
+              "type" : "token",
+              "documentation" : "A use context assigned to the activity definition"
+            },
+            {
+              "name" : "publisher",
+              "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-publisher",
+              "type" : "string",
+              "documentation" : "Name of the publisher of the activity definition"
+            },
+            {
+              "name" : "topic",
+              "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-topic",
+              "type" : "token",
+              "documentation" : "Topics associated with the module"
+            },
+            {
+              "name" : "context-type-quantity",
+              "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-context-type-quantity",
+              "type" : "composite",
+              "documentation" : "A use context type and quantity- or range-based value assigned to the activity definition"
+            },
+            {
+              "name" : "status",
+              "definition" : "http://hl7.org/fhir/SearchParameter/ActivityDefinition-status",
+              "type" : "token",
+              "documentation" : "The current status of the activity definition"
+            }]
+        },
+        {
           "type" : "Patient",
           "profile" : "http://hl7.org/fhir/StructureDefinition/Patient",
           "interaction" : [{
@@ -380,6 +567,973 @@
               "definition" : "http://hl7.org/fhir/SearchParameter/individual-email",
               "type" : "token",
               "documentation" : "A value in an email contact"
+            }]
+        },
+        {
+          "type" : "Observation",
+          "profile" : "http://hl7.org/fhir/StructureDefinition/Observation",
+          "interaction" : [{
+            "code" : "read",
+            "documentation" : "Implemented per the specification (or Insert other doco here)"
+          },
+            {
+              "code" : "vread",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "update",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "delete",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "history-instance",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "history-type",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "create",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "search-type",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            }],
+          "conditionalCreate" : true,
+          "conditionalUpdate" : true,
+          "conditionalDelete" : "multiple",
+          "referencePolicy" : ["literal", "logical", "local"],
+          "searchInclude" : ["Observation.subject",
+            "Observation.focus",
+            "Observation.derived-from",
+            "Observation.part-of",
+            "Observation.has-member",
+            "Observation.based-on",
+            "Observation.patient",
+            "Observation.specimen",
+            "Observation.performer",
+            "Observation.encounter",
+            "Observation.device"],
+          "searchRevInclude" : ["Appointment.reason-reference",
+            "ChargeItem.service",
+            "ClinicalImpression.finding-ref",
+            "ClinicalImpression.investigation",
+            "DiagnosticReport.result",
+            "Encounter.reason-reference",
+            "Immunization.reaction",
+            "Immunization.reason-reference",
+            "MedicationStatement.part-of",
+            "Observation.derived-from",
+            "Observation.has-member",
+            "Procedure.part-of",
+            "Procedure.reason-reference",
+            "QuestionnaireResponse.part-of"],
+          "searchParam" : [{
+            "name" : "date",
+            "definition" : "http://hl7.org/fhir/SearchParameter/clinical-date",
+            "type" : "date",
+            "documentation" : "Obtained date/time. If the obtained element is a period, a date that falls in the period"
+          },
+            {
+              "name" : "combo-data-absent-reason",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-combo-data-absent-reason",
+              "type" : "token",
+              "documentation" : "The reason why the expected value in the element Observation.value[x] or Observation.component.value[x] is missing."
+            },
+            {
+              "name" : "code",
+              "definition" : "http://hl7.org/fhir/SearchParameter/clinical-code",
+              "type" : "token",
+              "documentation" : "The code of the observation type"
+            },
+            {
+              "name" : "combo-code-value-quantity",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-combo-code-value-quantity",
+              "type" : "composite",
+              "documentation" : "Code and quantity value parameter pair, including in components"
+            },
+            {
+              "name" : "subject",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-subject",
+              "type" : "reference",
+              "documentation" : "The subject that the observation is about"
+            },
+            {
+              "name" : "component-data-absent-reason",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-component-data-absent-reason",
+              "type" : "token",
+              "documentation" : "The reason why the expected value in the element Observation.component.value[x] is missing."
+            },
+            {
+              "name" : "value-concept",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-value-concept",
+              "type" : "token",
+              "documentation" : "The value of the observation, if the value is a CodeableConcept"
+            },
+            {
+              "name" : "value-date",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-value-date",
+              "type" : "date",
+              "documentation" : "The value of the observation, if the value is a date or period of time"
+            },
+            {
+              "name" : "focus",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-focus",
+              "type" : "reference",
+              "documentation" : "The focus of an observation when the focus is not the patient of record."
+            },
+            {
+              "name" : "derived-from",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-derived-from",
+              "type" : "reference",
+              "documentation" : "Related measurements the observation is made from"
+            },
+            {
+              "name" : "part-of",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-part-of",
+              "type" : "reference",
+              "documentation" : "Part of referenced event"
+            },
+            {
+              "name" : "has-member",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-has-member",
+              "type" : "reference",
+              "documentation" : "Related resource that belongs to the Observation group"
+            },
+            {
+              "name" : "code-value-string",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-code-value-string",
+              "type" : "composite",
+              "documentation" : "Code and string value parameter pair"
+            },
+            {
+              "name" : "component-code-value-quantity",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-component-code-value-quantity",
+              "type" : "composite",
+              "documentation" : "Component code and component quantity value parameter pair"
+            },
+            {
+              "name" : "based-on",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-based-on",
+              "type" : "reference",
+              "documentation" : "Reference to the service request."
+            },
+            {
+              "name" : "code-value-date",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-code-value-date",
+              "type" : "composite",
+              "documentation" : "Code and date/time value parameter pair"
+            },
+            {
+              "name" : "patient",
+              "definition" : "http://hl7.org/fhir/SearchParameter/clinical-patient",
+              "type" : "reference",
+              "documentation" : "The subject that the observation is about (if patient)"
+            },
+            {
+              "name" : "specimen",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-specimen",
+              "type" : "reference",
+              "documentation" : "Specimen used for this observation"
+            },
+            {
+              "name" : "component-code",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-component-code",
+              "type" : "token",
+              "documentation" : "The component code of the observation type"
+            },
+            {
+              "name" : "code-value-quantity",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-code-value-quantity",
+              "type" : "composite",
+              "documentation" : "Code and quantity value parameter pair"
+            },
+            {
+              "name" : "combo-code-value-concept",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-combo-code-value-concept",
+              "type" : "composite",
+              "documentation" : "Code and coded value parameter pair, including in components"
+            },
+            {
+              "name" : "value-string",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-value-string",
+              "type" : "string",
+              "documentation" : "The value of the observation, if the value is a string, and also searches in CodeableConcept.text"
+            },
+            {
+              "name" : "identifier",
+              "definition" : "http://hl7.org/fhir/SearchParameter/clinical-identifier",
+              "type" : "token",
+              "documentation" : "The unique id for a particular observation"
+            },
+            {
+              "name" : "performer",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-performer",
+              "type" : "reference",
+              "documentation" : "Who performed the observation"
+            },
+            {
+              "name" : "combo-code",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-combo-code",
+              "type" : "token",
+              "documentation" : "The code of the observation type or component type"
+            },
+            {
+              "name" : "method",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-method",
+              "type" : "token",
+              "documentation" : "The method used for the observation"
+            },
+            {
+              "name" : "value-quantity",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-value-quantity",
+              "type" : "quantity",
+              "documentation" : "The value of the observation, if the value is a Quantity, or a SampledData (just search on the bounds of the values in sampled data)"
+            },
+            {
+              "name" : "component-value-quantity",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-component-value-quantity",
+              "type" : "quantity",
+              "documentation" : "The value of the component observation, if the value is a Quantity, or a SampledData (just search on the bounds of the values in sampled data)"
+            },
+            {
+              "name" : "data-absent-reason",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-data-absent-reason",
+              "type" : "token",
+              "documentation" : "The reason why the expected value in the element Observation.value[x] is missing."
+            },
+            {
+              "name" : "combo-value-quantity",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-combo-value-quantity",
+              "type" : "quantity",
+              "documentation" : "The value or component value of the observation, if the value is a Quantity, or a SampledData (just search on the bounds of the values in sampled data)"
+            },
+            {
+              "name" : "encounter",
+              "definition" : "http://hl7.org/fhir/SearchParameter/clinical-encounter",
+              "type" : "reference",
+              "documentation" : "Encounter related to the observation"
+            },
+            {
+              "name" : "code-value-concept",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-code-value-concept",
+              "type" : "composite",
+              "documentation" : "Code and coded value parameter pair"
+            },
+            {
+              "name" : "component-code-value-concept",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-component-code-value-concept",
+              "type" : "composite",
+              "documentation" : "Component code and component coded value parameter pair"
+            },
+            {
+              "name" : "component-value-concept",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-component-value-concept",
+              "type" : "token",
+              "documentation" : "The value of the component observation, if the value is a CodeableConcept"
+            },
+            {
+              "name" : "category",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-category",
+              "type" : "token",
+              "documentation" : "The classification of the type of observation"
+            },
+            {
+              "name" : "device",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-device",
+              "type" : "reference",
+              "documentation" : "The Device that generated the observation data."
+            },
+            {
+              "name" : "combo-value-concept",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-combo-value-concept",
+              "type" : "token",
+              "documentation" : "The value or component value of the observation, if the value is a CodeableConcept"
+            },
+            {
+              "name" : "status",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-status",
+              "type" : "token",
+              "documentation" : "The status of the observation"
+            }]
+        },
+        {
+          "type" : "Practitioner",
+          "profile" : "http://hl7.org/fhir/StructureDefinition/Practitioner",
+          "interaction" : [{
+            "code" : "read",
+            "documentation" : "Implemented per the specification (or Insert other doco here)"
+          },
+            {
+              "code" : "vread",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "update",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "delete",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "history-instance",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "history-type",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "create",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "search-type",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            }],
+          "conditionalCreate" : true,
+          "conditionalUpdate" : true,
+          "conditionalDelete" : "multiple",
+          "referencePolicy" : ["literal", "logical"],
+          "versioning": "versioned-update",
+          "searchRevInclude" : ["Account.subject",
+            "Account.patient",
+            "AdverseEvent.recorder",
+            "AdverseEvent.subject",
+            "AllergyIntolerance.recorder",
+            "AllergyIntolerance.asserter",
+            "Appointment.practitioner",
+            "Appointment.actor",
+            "Appointment.patient",
+            "Appointment.location",
+            "AppointmentResponse.actor",
+            "AppointmentResponse.practitioner",
+            "AppointmentResponse.patient",
+            "AppointmentResponse.location",
+            "AuditEvent.agent",
+            "AuditEvent.source",
+            "AuditEvent.patient",
+            "Basic.author",
+            "CarePlan.performer",
+            "CareTeam.participant",
+            "ChargeItem.enterer",
+            "ChargeItem.performer-actor",
+            "Claim.care-team",
+            "Claim.payee",
+            "Claim.provider",
+            "Claim.enterer",
+            "ClaimResponse.requestor",
+            "ClinicalImpression.assessor",
+            "Communication.sender",
+            "Communication.recipient",
+            "CommunicationRequest.requester",
+            "CommunicationRequest.sender",
+            "CommunicationRequest.recipient",
+            "Composition.author",
+            "Composition.attester",
+            "Condition.asserter",
+            "Consent.actor",
+            "Consent.consentor",
+            "Contract.signer",
+            "CoverageEligibilityRequest.provider",
+            "CoverageEligibilityRequest.enterer",
+            "CoverageEligibilityResponse.requestor",
+            "DetectedIssue.author",
+            "DeviceRequest.requester",
+            "DeviceRequest.performer",
+            "DiagnosticReport.performer",
+            "DiagnosticReport.results-interpreter",
+            "DocumentManifest.subject",
+            "DocumentManifest.author",
+            "DocumentManifest.patient",
+            "DocumentManifest.recipient",
+            "DocumentReference.subject",
+            "DocumentReference.patient",
+            "DocumentReference.authenticator",
+            "DocumentReference.author",
+            "Encounter.practitioner",
+            "Encounter.participant",
+            "EpisodeOfCare.care-manager",
+            "ExplanationOfBenefit.care-team",
+            "ExplanationOfBenefit.payee",
+            "ExplanationOfBenefit.provider",
+            "ExplanationOfBenefit.enterer",
+            "Flag.subject",
+            "Flag.patient",
+            "Flag.author",
+            "Group.managing-entity",
+            "Group.member",
+            "ImagingStudy.performer",
+            "ImagingStudy.interpreter",
+            "ImagingStudy.referrer",
+            "Immunization.performer",
+            "Invoice.participant",
+            "Linkage.author",
+            "List.source",
+            "MeasureReport.patient",
+            "MeasureReport.subject",
+            "MeasureReport.reporter",
+            "Media.subject",
+            "Media.operator",
+            "Media.patient",
+            "MedicationAdministration.performer",
+            "MedicationDispense.performer",
+            "MedicationDispense.receiver",
+            "MedicationDispense.responsibleparty",
+            "MedicationRequest.requester",
+            "MedicationRequest.intended-performer",
+            "MedicationStatement.source",
+            "MessageHeader.receiver",
+            "MessageHeader.author",
+            "MessageHeader.sender",
+            "MessageHeader.responsible",
+            "MessageHeader.enterer",
+            "NutritionOrder.provider",
+            "Observation.performer",
+            "Patient.general-practitioner",
+            "PaymentNotice.provider",
+            "PaymentReconciliation.requestor",
+            "Person.practitioner",
+            "Person.link",
+            "Person.relatedperson",
+            "Person.patient",
+            "PractitionerRole.practitioner",
+            "Procedure.performer",
+            "Provenance.agent",
+            "QuestionnaireResponse.author",
+            "QuestionnaireResponse.source",
+            "RequestGroup.author",
+            "RequestGroup.participant",
+            "ResearchStudy.principalinvestigator",
+            "RiskAssessment.performer",
+            "Schedule.actor",
+            "ServiceRequest.requester",
+            "ServiceRequest.performer",
+            "Specimen.collector",
+            "SupplyDelivery.receiver",
+            "SupplyDelivery.supplier",
+            "SupplyRequest.requester",
+            "Task.owner",
+            "Task.requester",
+            "VisionPrescription.prescriber"],
+          "searchParam" : [{
+            "name" : "identifier",
+            "definition" : "http://hl7.org/fhir/SearchParameter/Practitioner-identifier",
+            "type" : "token",
+            "documentation" : "A practitioner's Identifier"
+          },
+            {
+              "name" : "given",
+              "definition" : "http://hl7.org/fhir/SearchParameter/individual-given",
+              "type" : "string",
+              "documentation" : "A portion of the given name"
+            },
+            {
+              "name" : "address",
+              "definition" : "http://hl7.org/fhir/SearchParameter/individual-address",
+              "type" : "string",
+              "documentation" : "A server defined search that may match any of the string fields in the Address, including line, city, district, state, country, postalCode, and/or text"
+            },
+            {
+              "name" : "address-state",
+              "definition" : "http://hl7.org/fhir/SearchParameter/individual-address-state",
+              "type" : "string",
+              "documentation" : "A state specified in an address"
+            },
+            {
+              "name" : "gender",
+              "definition" : "http://hl7.org/fhir/SearchParameter/individual-gender",
+              "type" : "token",
+              "documentation" : "Gender of the practitioner"
+            },
+            {
+              "name" : "active",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Practitioner-active",
+              "type" : "token",
+              "documentation" : "Whether the practitioner record is active"
+            },
+            {
+              "name" : "address-postalcode",
+              "definition" : "http://hl7.org/fhir/SearchParameter/individual-address-postalcode",
+              "type" : "string",
+              "documentation" : "A postalCode specified in an address"
+            },
+            {
+              "name" : "address-country",
+              "definition" : "http://hl7.org/fhir/SearchParameter/individual-address-country",
+              "type" : "string",
+              "documentation" : "A country specified in an address"
+            },
+            {
+              "name" : "phonetic",
+              "definition" : "http://hl7.org/fhir/SearchParameter/individual-phonetic",
+              "type" : "string",
+              "documentation" : "A portion of either family or given name using some kind of phonetic matching algorithm"
+            },
+            {
+              "name" : "phone",
+              "definition" : "http://hl7.org/fhir/SearchParameter/individual-phone",
+              "type" : "token",
+              "documentation" : "A value in a phone contact"
+            },
+            {
+              "name" : "name",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Practitioner-name",
+              "type" : "string",
+              "documentation" : "A server defined search that may match any of the string fields in the HumanName, including family, give, prefix, suffix, suffix, and/or text"
+            },
+            {
+              "name" : "address-use",
+              "definition" : "http://hl7.org/fhir/SearchParameter/individual-address-use",
+              "type" : "token",
+              "documentation" : "A use code specified in an address"
+            },
+            {
+              "name" : "telecom",
+              "definition" : "http://hl7.org/fhir/SearchParameter/individual-telecom",
+              "type" : "token",
+              "documentation" : "The value in any kind of contact"
+            },
+            {
+              "name" : "family",
+              "definition" : "http://hl7.org/fhir/SearchParameter/individual-family",
+              "type" : "string",
+              "documentation" : "A portion of the family name"
+            },
+            {
+              "name" : "address-city",
+              "definition" : "http://hl7.org/fhir/SearchParameter/individual-address-city",
+              "type" : "string",
+              "documentation" : "A city specified in an address"
+            },
+            {
+              "name" : "communication",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Practitioner-communication",
+              "type" : "token",
+              "documentation" : "One of the languages that the practitioner can communicate with"
+            },
+            {
+              "name" : "email",
+              "definition" : "http://hl7.org/fhir/SearchParameter/individual-email",
+              "type" : "token",
+              "documentation" : "A value in an email contact"
+            }]
+        },
+        {
+          "type" : "Condition",
+          "profile" : "http://hl7.org/fhir/StructureDefinition/Condition",
+          "interaction" : [{
+            "code" : "read",
+            "documentation" : "Implemented per the specification (or Insert other doco here)"
+          },
+            {
+              "code" : "vread",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "update",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "delete",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "history-instance",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "history-type",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "create",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "search-type",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            }],
+          "conditionalCreate" : true,
+          "conditionalUpdate" : true,
+          "conditionalDelete" : "multiple",
+          "referencePolicy" : ["literal", "enforced"],
+          "searchInclude" : ["Condition.evidence-detail",
+            "Condition.subject",
+            "Condition.encounter",
+            "Condition.asserter",
+            "Condition.patient"],
+          "searchRevInclude" : ["AdverseEvent.resultingcondition",
+            "Appointment.reason-reference",
+            "CarePlan.condition",
+            "ClinicalImpression.finding-ref",
+            "ClinicalImpression.problem",
+            "Encounter.diagnosis",
+            "Encounter.reason-reference",
+            "EpisodeOfCare.condition",
+            "Immunization.reason-reference",
+            "Procedure.reason-reference",
+            "RiskAssessment.condition"],
+          "searchParam" : [{
+            "name" : "severity",
+            "definition" : "http://hl7.org/fhir/SearchParameter/Condition-severity",
+            "type" : "token",
+            "documentation" : "The severity of the condition"
+          },
+            {
+              "name" : "evidence-detail",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Condition-evidence-detail",
+              "type" : "reference",
+              "documentation" : "Supporting information found elsewhere"
+            },
+            {
+              "name" : "identifier",
+              "definition" : "http://hl7.org/fhir/SearchParameter/clinical-identifier",
+              "type" : "token",
+              "documentation" : "A unique identifier of the condition record"
+            },
+            {
+              "name" : "onset-info",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Condition-onset-info",
+              "type" : "string",
+              "documentation" : "Onsets as a string"
+            },
+            {
+              "name" : "recorded-date",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Condition-recorded-date",
+              "type" : "date",
+              "documentation" : "Date record was first recorded"
+            },
+            {
+              "name" : "code",
+              "definition" : "http://hl7.org/fhir/SearchParameter/clinical-code",
+              "type" : "token",
+              "documentation" : "Code for the condition"
+            },
+            {
+              "name" : "evidence",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Condition-evidence",
+              "type" : "token",
+              "documentation" : "Manifestation/symptom"
+            },
+            {
+              "name" : "subject",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Condition-subject",
+              "type" : "reference",
+              "documentation" : "Who has the condition?"
+            },
+            {
+              "name" : "verification-status",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Condition-verification-status",
+              "type" : "token",
+              "documentation" : "unconfirmed | provisional | differential | confirmed | refuted | entered-in-error"
+            },
+            {
+              "name" : "clinical-status",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Condition-clinical-status",
+              "type" : "token",
+              "documentation" : "The clinical status of the condition"
+            },
+            {
+              "name" : "encounter",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Condition-encounter",
+              "type" : "reference",
+              "documentation" : "Encounter created as part of"
+            },
+            {
+              "name" : "onset-date",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Condition-onset-date",
+              "type" : "date",
+              "documentation" : "Date related onsets (dateTime and Period)"
+            },
+            {
+              "name" : "abatement-date",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Condition-abatement-date",
+              "type" : "date",
+              "documentation" : "Date-related abatements (dateTime and period)"
+            },
+            {
+              "name" : "asserter",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Condition-asserter",
+              "type" : "reference",
+              "documentation" : "Person who asserts this condition"
+            },
+            {
+              "name" : "stage",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Condition-stage",
+              "type" : "token",
+              "documentation" : "Simple summary (disease specific)"
+            },
+            {
+              "name" : "abatement-string",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Condition-abatement-string",
+              "type" : "string",
+              "documentation" : "Abatement as a string"
+            },
+            {
+              "name" : "patient",
+              "definition" : "http://hl7.org/fhir/SearchParameter/clinical-patient",
+              "type" : "reference",
+              "documentation" : "Who has the condition?"
+            },
+            {
+              "name" : "onset-age",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Condition-onset-age",
+              "type" : "quantity",
+              "documentation" : "Onsets as age or age range"
+            },
+            {
+              "name" : "abatement-age",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Condition-abatement-age",
+              "type" : "quantity",
+              "documentation" : "Abatement as age or age range"
+            },
+            {
+              "name" : "category",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Condition-category",
+              "type" : "token",
+              "documentation" : "The category of the condition"
+            },
+            {
+              "name" : "body-site",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Condition-body-site",
+              "type" : "token",
+              "documentation" : "Anatomical location, if relevant"
+            }]
+        },
+        {
+          "type" : "RiskAssessment",
+          "profile" : "http://hl7.org/fhir/StructureDefinition/RiskAssessment",
+          "interaction" : [{
+            "code" : "read",
+            "documentation" : "Implemented per the specification (or Insert other doco here)"
+          },
+            {
+              "code" : "vread",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "update",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "delete",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "history-instance",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "history-type",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "create",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "search-type",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            }],
+          "conditionalCreate" : true,
+          "conditionalUpdate" : true,
+          "conditionalDelete" : "multiple",
+          "referencePolicy" : ["literal",
+            "logical"],
+          "searchInclude" : ["RiskAssessment.condition",
+            "RiskAssessment.performer",
+            "RiskAssessment.subject",
+            "RiskAssessment.patient",
+            "RiskAssessment.encounter"],
+          "searchRevInclude" : ["ClinicalImpression.investigation"],
+          "searchParam" : [{
+            "name" : "date",
+            "definition" : "http://hl7.org/fhir/SearchParameter/clinical-date",
+            "type" : "date",
+            "documentation" : "When was assessment made?"
+          },
+            {
+              "name" : "identifier",
+              "definition" : "http://hl7.org/fhir/SearchParameter/clinical-identifier",
+              "type" : "token",
+              "documentation" : "Unique identifier for the assessment"
+            },
+            {
+              "name" : "condition",
+              "definition" : "http://hl7.org/fhir/SearchParameter/RiskAssessment-condition",
+              "type" : "reference",
+              "documentation" : "Condition assessed"
+            },
+            {
+              "name" : "performer",
+              "definition" : "http://hl7.org/fhir/SearchParameter/RiskAssessment-performer",
+              "type" : "reference",
+              "documentation" : "Who did assessment?"
+            },
+            {
+              "name" : "method",
+              "definition" : "http://hl7.org/fhir/SearchParameter/RiskAssessment-method",
+              "type" : "token",
+              "documentation" : "Evaluation mechanism"
+            },
+            {
+              "name" : "subject",
+              "definition" : "http://hl7.org/fhir/SearchParameter/RiskAssessment-subject",
+              "type" : "reference",
+              "documentation" : "Who/what does assessment apply to?"
+            },
+            {
+              "name" : "patient",
+              "definition" : "http://hl7.org/fhir/SearchParameter/clinical-patient",
+              "type" : "reference",
+              "documentation" : "Who/what does assessment apply to?"
+            },
+            {
+              "name" : "probability",
+              "definition" : "http://hl7.org/fhir/SearchParameter/RiskAssessment-probability",
+              "type" : "number",
+              "documentation" : "Likelihood of specified outcome"
+            },
+            {
+              "name" : "risk",
+              "definition" : "http://hl7.org/fhir/SearchParameter/RiskAssessment-risk",
+              "type" : "token",
+              "documentation" : "Likelihood of specified outcome as a qualitative value"
+            },
+            {
+              "name" : "encounter",
+              "definition" : "http://hl7.org/fhir/SearchParameter/clinical-encounter",
+              "type" : "reference",
+              "documentation" : "Where was assessment performed?"
+            }]
+        },
+        {
+          "type" : "MolecularSequence",
+          "profile" : "http://hl7.org/fhir/StructureDefinition/MolecularSequence",
+          "interaction" : [{
+            "code" : "read",
+            "documentation" : "Implemented per the specification (or Insert other doco here)"
+          },
+            {
+              "code" : "vread",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "update",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "delete",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "history-instance",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "history-type",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "create",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "search-type",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            }],
+          "conditionalCreate" : true,
+          "conditionalUpdate" : true,
+          "conditionalDelete" : "multiple",
+          "referencePolicy" : ["literal",
+            "logical"],
+          "searchInclude" : ["MolecularSequence.patient"],
+          "searchRevInclude" : ["Observation.derived-from",
+            "Observation.has-member"],
+          "searchParam" : [{
+            "name" : "identifier",
+            "definition" : "http://hl7.org/fhir/SearchParameter/MolecularSequence-identifier",
+            "type" : "token",
+            "documentation" : "The unique identity for a particular sequence"
+          },
+            {
+              "name" : "referenceseqid-variant-coordinate",
+              "definition" : "http://hl7.org/fhir/SearchParameter/MolecularSequence-referenceseqid-variant-coordinate",
+              "type" : "composite",
+              "documentation" : "Search parameter by reference sequence and variant coordinate. This will refer to part of a locus or part of a gene where search region will be represented in 1-based system. Since the coordinateSystem can either be 0-based or 1-based, this search query will include the result of both coordinateSystem that contains the equivalent segment of the gene or whole genome sequence. For example, a search for sequence can be represented as `referenceSeqId-variant-coordinate=NC_000001.11$lt345$gt123`, this means it will search for the MolecularSequence resource with variants on NC_000001.11 and with position >123 and <345, where in 1-based system resource, all strings within region NC_000001.11:124-344 will be revealed, while in 0-based system resource, all strings within region NC_000001.11:123-344 will be revealed. You may want to check detail about 0-based v.s. 1-based above."
+            },
+            {
+              "name" : "chromosome",
+              "definition" : "http://hl7.org/fhir/SearchParameter/MolecularSequence-chromosome",
+              "type" : "token",
+              "documentation" : "Chromosome number of the reference sequence"
+            },
+            {
+              "name" : "window-end",
+              "definition" : "http://hl7.org/fhir/SearchParameter/MolecularSequence-window-end",
+              "type" : "number",
+              "documentation" : "End position (0-based exclusive, which menas the acid at this position will not be included, 1-based inclusive, which means the acid at this position will be included) of the reference sequence."
+            },
+            {
+              "name" : "type",
+              "definition" : "http://hl7.org/fhir/SearchParameter/MolecularSequence-type",
+              "type" : "token",
+              "documentation" : "Amino Acid Sequence/ DNA Sequence / RNA Sequence"
+            },
+            {
+              "name" : "window-start",
+              "definition" : "http://hl7.org/fhir/SearchParameter/MolecularSequence-window-start",
+              "type" : "number",
+              "documentation" : "Start position (0-based inclusive, 1-based inclusive, that means the nucleic acid or amino acid at this position will be included) of the reference sequence."
+            },
+            {
+              "name" : "variant-end",
+              "definition" : "http://hl7.org/fhir/SearchParameter/MolecularSequence-variant-end",
+              "type" : "number",
+              "documentation" : "End position (0-based exclusive, which menas the acid at this position will not be included, 1-based inclusive, which means the acid at this position will be included) of the variant."
+            },
+            {
+              "name" : "chromosome-variant-coordinate",
+              "definition" : "http://hl7.org/fhir/SearchParameter/MolecularSequence-chromosome-variant-coordinate",
+              "type" : "composite",
+              "documentation" : "Search parameter by chromosome and variant coordinate. This will refer to part of a locus or part of a gene where search region will be represented in 1-based system. Since the coordinateSystem can either be 0-based or 1-based, this search query will include the result of both coordinateSystem that contains the equivalent segment of the gene or whole genome sequence. For example, a search for sequence can be represented as `chromosome-variant-coordinate=1$lt345$gt123`, this means it will search for the MolecularSequence resource with variants on chromosome 1 and with position >123 and <345, where in 1-based system resource, all strings within region 1:124-344 will be revealed, while in 0-based system resource, all strings within region 1:123-344 will be revealed. You may want to check detail about 0-based v.s. 1-based above."
+            },
+            {
+              "name" : "patient",
+              "definition" : "http://hl7.org/fhir/SearchParameter/MolecularSequence-patient",
+              "type" : "reference",
+              "documentation" : "The subject that the observation is about"
+            },
+            {
+              "name" : "variant-start",
+              "definition" : "http://hl7.org/fhir/SearchParameter/MolecularSequence-variant-start",
+              "type" : "number",
+              "documentation" : "Start position (0-based inclusive, 1-based inclusive, that means the nucleic acid or amino acid at this position will be included) of the variant."
+            },
+            {
+              "name" : "chromosome-window-coordinate",
+              "definition" : "http://hl7.org/fhir/SearchParameter/MolecularSequence-chromosome-window-coordinate",
+              "type" : "composite",
+              "documentation" : "Search parameter by chromosome and window. This will refer to part of a locus or part of a gene where search region will be represented in 1-based system. Since the coordinateSystem can either be 0-based or 1-based, this search query will include the result of both coordinateSystem that contains the equivalent segment of the gene or whole genome sequence. For example, a search for sequence can be represented as `chromosome-window-coordinate=1$lt345$gt123`, this means it will search for the MolecularSequence resource with a window on chromosome 1 and with position >123 and <345, where in 1-based system resource, all strings within region 1:124-344 will be revealed, while in 0-based system resource, all strings within region 1:123-344 will be revealed. You may want to check detail about 0-based v.s. 1-based above."
+            },
+            {
+              "name" : "referenceseqid-window-coordinate",
+              "definition" : "http://hl7.org/fhir/SearchParameter/MolecularSequence-referenceseqid-window-coordinate",
+              "type" : "composite",
+              "documentation" : "Search parameter by reference sequence and window. This will refer to part of a locus or part of a gene where search region will be represented in 1-based system. Since the coordinateSystem can either be 0-based or 1-based, this search query will include the result of both coordinateSystem that contains the equivalent segment of the gene or whole genome sequence. For example, a search for sequence can be represented as `referenceSeqId-window-coordinate=NC_000001.11$lt345$gt123`, this means it will search for the MolecularSequence resource with a window on NC_000001.11 and with position >123 and <345, where in 1-based system resource, all strings within region NC_000001.11:124-344 will be revealed, while in 0-based system resource, all strings within region NC_000001.11:123-344 will be revealed. You may want to check detail about 0-based v.s. 1-based above."
+            },
+            {
+              "name" : "referenceseqid",
+              "definition" : "http://hl7.org/fhir/SearchParameter/MolecularSequence-referenceseqid",
+              "type" : "token",
+              "documentation" : "Reference Sequence of the sequence"
             }]
         }
       ],
