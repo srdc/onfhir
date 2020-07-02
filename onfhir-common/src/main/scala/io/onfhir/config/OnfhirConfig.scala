@@ -63,6 +63,8 @@ object OnfhirConfig {
   /** Default value for [CapabilityStatement|Conformance].rest.resource.conditionalDelete when not present */
   lazy val fhirDefaultConditionalDelete:String = Try(config.getString("fhir.default.conditional-delete")).getOrElse("not-supported")
 
+  /** Whether to start an embedded MongoDB instance */
+  lazy val mongoEmbedded: Boolean = Try(config.getBoolean("mongodb.embedded")).getOrElse(false)
 
   /** Database host name/address and ports. */
   lazy val mongodbHosts:Seq[String] = Try(config.getStringList("mongodb.host")).map(l => l.asScala).getOrElse(Seq("localhost"))

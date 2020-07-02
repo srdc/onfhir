@@ -58,6 +58,7 @@
         <akka.version>2.5.26</akka.version>
         <!--mongodb.scala.version>1.2.0</mongodb.scala.version-->
         <mongodb.scala.version>2.7.0</mongodb.scala.version>
+        <mongo.embedded.version>2.2.0</mongo.embedded.version>
         <jackson.version>2.9.6</jackson.version>
         <json4s.version>3.6.1</json4s.version>
         <logback.version>1.2.3</logback.version>
@@ -261,6 +262,13 @@
                 <groupId>org.mongodb.scala</groupId>
                 <artifactId>mongo-scala-driver_2.12</artifactId>
                 <version>${mongodb.scala.version}</version>
+            </dependency>
+
+            <!-- Embedded MongoDB -->
+            <dependency>
+                <groupId>de.flapdoodle.embed</groupId>
+                <artifactId>de.flapdoodle.embed.mongo</artifactId>
+                <version>${mongo.embedded.version}</version>
             </dependency>
 
             <!-- JSON Utilities -->
