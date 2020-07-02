@@ -190,13 +190,16 @@ object DBInitializer {
       val job =
         ResourceManager
           .getResourcesWithIds(resourceType, resourceIdsAndVersions.keySet)
-          .flatMap(resources => {
+          .map(resources => {
             val idsAndVersionsExist:Map[String, (Long, Resource)] = resources.map(r => FHIRUtil.extractIdFromResource(r) -> (FHIRUtil.extractVersionFromResource(r) -> r)).toMap
             //Find out which resources are new
             val resourcesDoesNotExist = resourceIdsAndVersions.filterNot(r => idsAndVersionsExist.keySet.contains(r._1)).map(r => r._1 -> r._2._2)
 
             //Create the non existant infrastructure resources
             val createFuture = if(resourcesDoesNotExist.nonEmpty) ResourceManager.createResources(resourceType, resourcesDoesNotExist).map(_ => Unit) else Future(Unit)
+
+            // Wait for the creation of the resources
+            Await.result(createFuture, 5 seconds)
 
             //Filter resources that exist
             val resourcesExist =
@@ -205,25 +208,28 @@ object DBInitializer {
             //Filter resources that exist but does not have a newer version in db, replace the documents
             val resourcesToUpdate = resourcesExist.filter(r => r._2._1 >= idsAndVersionsExist.apply(r._1)._1)
 
-            //Replace those
-            val updatesFuture = resourcesToUpdate.map(r => {
-              //If versions are same, replace the document
-              if(r._2._1 == idsAndVersionsExist.apply(r._1)._1) {
-                var ur = FHIRUtil.populateResourceWithMeta(r._2._2, Some(r._1), r._2._1, DateTime.now)
-                ur = FHIRUtil.populateResourceWithExtraFields(ur, FHIR_METHOD_NAMES.METHOD_PUT, StatusCodes.OK)
-                ResourceManager.replaceResource(resourceType, r._1, ur)
-              } else { //Otherwise update, so we can keep the versions
-                ResourceManager.updateResource(resourceType, r._1, r._2._2, idsAndVersionsExist.apply(r._1)._1 -> idsAndVersionsExist.apply(r._1)._2)
-              }
-            })
+            // Group the resourcesToUpdate into chunks so that within each chunk processing occurs in parallel,
+            // but the next chunk can only start after the previous chunk joins all parallel threads and completes.
+            resourcesToUpdate.grouped(128).map { chunk =>
+              //Replace those
+              val updatesFutureChunk = chunk.map(r => {
+                //If versions are same, replace the document
+                if(r._2._1 == idsAndVersionsExist.apply(r._1)._1) {
+                  var ur = FHIRUtil.populateResourceWithMeta(r._2._2, Some(r._1), r._2._1, DateTime.now)
+                  ur = FHIRUtil.populateResourceWithExtraFields(ur, FHIR_METHOD_NAMES.METHOD_PUT, StatusCodes.OK)
+                  ResourceManager.replaceResource(resourceType, r._1, ur)
+                } else { //Otherwise update, so we can keep the versions
+                  ResourceManager.updateResource(resourceType, r._1, r._2._2, idsAndVersionsExist.apply(r._1)._1 -> idsAndVersionsExist.apply(r._1)._2)
+                }
+              })
+              val chunkJob = Future.sequence(updatesFutureChunk)
+              Await.result(chunkJob, 5 seconds) // Wait for the update operations of this chunk to be completed
+            }
 
-            Future.sequence(Seq(createFuture) ++ updatesFuture).map(_ => {
-              logger.info(s"${resourcesDoesNotExist.size} resources stored for $resourceType ...")
-              logger.info(s"${resourcesToUpdate.size} resources updated for $resourceType ...")
-              if(resourcesExist.size - resourcesToUpdate.size > 0)
-                logger.info(s"${resourcesExist.size - resourcesToUpdate.size} resources skipped for $resourceType, as newer versions exist in database ...")
-              Unit
-            })
+            logger.info(s"${resourcesDoesNotExist.size} resources stored for $resourceType ...")
+            logger.info(s"${resourcesToUpdate.size} resources updated for $resourceType ...")
+            if(resourcesExist.size - resourcesToUpdate.size > 0)
+              logger.info(s"${resourcesExist.size - resourcesToUpdate.size} resources skipped for $resourceType, as newer versions exist in database ...")
           }
         ).recoverWith {
           case e =>
@@ -231,7 +237,7 @@ object DBInitializer {
             logger.error(e.getMessage, e)
             throw new InitializationException(s"Problem in storing $resourceType !!!")
         }
-        Await.result(job, 5 seconds)
+        Await.result(job, 60 seconds)
       } else
         logger.info(s"No resources for $resourceType, skipping storage...")
   }
