@@ -11,7 +11,7 @@ import io.onfhir.api.model.FHIRRequest
 import io.onfhir.audit.AuditManager
 import io.onfhir.authz._
 import io.onfhir.config.{FhirConfigurationManager, IFhirConfigurator, OnfhirConfig, SSLConfig}
-import io.onfhir.db.DBConflictManager
+import io.onfhir.db.{DBConflictManager, EmbeddedMongo}
 import io.onfhir.db.DBConflictManager.ACTOR_NAME
 import io.onfhir.event.{FhirEvent, FhirEventBus, FhirEventSubscription}
 import io.onfhir.event.kafka.KafkaEventProducer
@@ -51,6 +51,9 @@ class Onfhir(
       */
     override def postServerShutdown(attempt: Try[Done], system: ActorSystem): Unit = {
       logger.info("Closing OnFhir server...")
+      if (OnfhirConfig.mongoEmbedded) {
+        EmbeddedMongo.stop()
+      }
       implicit val executionContext = Onfhir.actorSystem.dispatcher
       Onfhir.actorSystem.terminate().map( _ => System.exit(0))
     }
