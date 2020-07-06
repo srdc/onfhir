@@ -1,5 +1,5 @@
 package io.onfhir.validation
-
+/*
 import io.onfhir.api.util.{FHIRUtil, IOUtil}
 import io.onfhir.config.FhirConfig
 import io.onfhir.r4.config.FhirR4Configurator
@@ -50,4 +50,4 @@ class StructureDefinitionParserTest extends Specification {
     }*/
 
   }
-}
+}*/

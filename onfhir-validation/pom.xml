@@ -40,10 +40,6 @@
             <groupId>onfhir</groupId>
             <artifactId>onfhir-common</artifactId>
         </dependency>
-        <dependency>
-            <groupId>onfhir</groupId>
-            <artifactId>onfhir-validation</artifactId>
-        </dependency>
         <!-- Unit Testing -->
         <dependency>
             <groupId>org.specs2</groupId>
@@ -55,10 +51,10 @@
             <artifactId>specs2-junit_2.12</artifactId>
             <scope>provided</scope>
         </dependency>
-        <dependency>
+        <!--dependency>
             <groupId>onfhir</groupId>
             <artifactId>onfhir-server-r4</artifactId>
             <scope>test</scope>
-        </dependency>
+        </dependency-->
     </dependencies>
 </project>

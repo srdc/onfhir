@@ -109,6 +109,9 @@ abstract class AbstractStructureDefinitionParser(fhirComplexTypes:Set[String], f
           case _ => FHIRUtil.extractValue[String](constraintDef, "key") match {
             //This is a common constraint that forces elements to have childs (we already check it)
             case "ele-1" => None
+            //TODO Check these constraints (they provide FHIR paths that we cannot handle)
+            case eld if eld.startsWith("eld") => None
+            case sdf if sdf.startsWith("sdf") => None
             case ckey =>
               Some(FhirConstraint(
                 key = ckey,

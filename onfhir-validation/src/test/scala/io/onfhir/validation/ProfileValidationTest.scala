@@ -1,5 +1,5 @@
 package io.onfhir.validation
-
+/*
 import io.onfhir.api.{DEFAULT_IMPLEMENTED_FHIR_OPERATIONS, Resource}
 import io.onfhir.api.model.{FhirLiteralReference, FhirReference}
 import io.onfhir.api.util.IOUtil
@@ -390,4 +390,4 @@ class ProfileValidationTest extends Specification {
     }
 
   }
-}
+}*/
