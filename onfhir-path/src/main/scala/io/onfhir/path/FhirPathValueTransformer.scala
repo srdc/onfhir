@@ -41,4 +41,14 @@ object FhirPathValueTransformer {
           .map(t => FhirPathTime(t._1, t._2))
           .getOrElse(FhirPathString(str)))
   }
+
+
+  def serializeToJson(result:Seq[FhirPathResult]):JValue = {
+    val jsonValues = result.map(_.toJson)
+    jsonValues.length match {
+      case 0 => JNull
+      case 1 => jsonValues.head
+      case _ => JArray(jsonValues.toList)
+    }
+  }
 }

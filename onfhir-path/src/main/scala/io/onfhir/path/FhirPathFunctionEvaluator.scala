@@ -6,6 +6,7 @@ import java.time.{LocalDate, ZonedDateTime}
 import io.onfhir.api.Resource
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
+import org.json4s.JsonAST.JObject
 
 import scala.util.Try
 
@@ -185,7 +186,10 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   }
 
   def select(projection: ExpressionContext):Seq[FhirPathResult] = {
-    current.flatMap(c => new FhirPathExpressionEvaluator(context, Seq(c)).visit(projection))
+    current.flatMap(c => {
+      val r = new FhirPathExpressionEvaluator(context, Seq(c)).visit(projection)
+      r
+    })
   }
 
   def repeat(projection: ExpressionContext):Seq[FhirPathResult] = {
@@ -480,5 +484,33 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
 
   def trace(nameExpr : ExpressionContext, othExpr:ExpressionContext):Seq[FhirPathResult] = {
     current
+  }
+
+
+  /**
+   * Extra functions
+   */
+  def groupBy(groupByExpr:ExpressionContext, aggregateExpr:ExpressionContext):Seq[FhirPathResult] = {
+    if(!current.forall(_.isInstanceOf[FhirPathComplex]))
+      throw new Exception("Invalid function call 'groupBy' on current value! The data type for current value should be complex object!")
+    //Evaluate group by expression to calculate bucket keys
+    val buckets = current.map(c => {
+      val bucketKeyResults = new FhirPathExpressionEvaluator(context, Seq(c)).visit(groupByExpr)
+      val bucketKey = FhirPathValueTransformer.serializeToJson(bucketKeyResults)
+      bucketKey -> c
+    })
+
+    buckets
+      .groupBy(_._1)
+      .mapValues(_.map(_._2))
+      .map(bv => {
+        //Evaluate aggregation for each group
+        val aggValues = new FhirPathExpressionEvaluator(context, bv._2).visit(aggregateExpr)
+        if(aggValues.length != 1 || aggValues.exists(!_.isInstanceOf[FhirPathNumber]))
+          throw new Exception(s"Invalid function call 'groupBy' on current value! The aggregation expression does not return single number for bucket ${bv._1}!")
+
+        val aggValue = aggValues.head.toJson
+        FhirPathComplex(JObject("bucket" -> bv._1, "agg" -> aggValue))
+      }).toSeq
   }
 }

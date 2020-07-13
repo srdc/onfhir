@@ -6,6 +6,7 @@ import io.onfhir.api.Resource
 import io.onfhir.api.model.{FhirCanonicalReference, FhirLiteralReference, FhirReference}
 import io.onfhir.api.validation.IReferenceResolver
 import io.onfhir.util.JsonFormatter._
+import org.json4s.JsonAST.JArray
 import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
@@ -20,6 +21,11 @@ class FhirPathEvaluatorTest extends Specification {
   val questionnaire = Source.fromInputStream(getClass.getResourceAsStream("/questionnaire.json")).mkString.parseJson
   val questionnaire2 = Source.fromInputStream(getClass.getResourceAsStream("/questionnaire2.json")).mkString.parseJson
   val bundle = Source.fromInputStream(getClass.getResourceAsStream("/bundle.json")).mkString.parseJson
+  val conditions = Seq(
+      Source.fromInputStream(getClass.getResourceAsStream("/condition1.json")).mkString.parseJson,
+      Source.fromInputStream(getClass.getResourceAsStream("/condition2.json")).mkString.parseJson,
+      Source.fromInputStream(getClass.getResourceAsStream("/condition3.json")).mkString.parseJson
+    )
 
   sequential
 
@@ -546,6 +552,14 @@ class FhirPathEvaluatorTest extends Specification {
 
       FhirPathEvaluator(referenceResolver).evaluate("Questionnaire.item.extension.where(url = 'http://example.org/additional-information2').valueAttachment.title", questionnaire2)  mustEqual Seq(FhirPathString("ALİ"))
       FhirPathEvaluator(referenceResolver).evaluate("Questionnaire.item.extension('http://example.org/additional-information2').valueAttachment.title", questionnaire2) mustEqual Seq(FhirPathString("ALİ"))
+    }
+
+    "evaluate groupBy and aggregations" in {
+      val results = FhirPathEvaluator().evaluate("groupBy(Condition.subject.reference.substring(8),count())", JArray(conditions.toList))
+      results.length mustEqual(2)
+
+      val pids = FhirPathEvaluator().evaluateString("groupBy(Condition.subject.reference.substring(8),count()).where(agg >= 2).bucket", JArray(conditions.toList))
+      pids mustEqual(Seq("p1"))
     }
   }
 }
