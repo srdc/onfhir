@@ -99,16 +99,16 @@ object SearchUtil {
   }
 
   /**
-    * String parameter serves as the input for a case- and accent-insensitive search against sequences of
-    * characters, :exact modifier is used for case and accent sensitive search, :contains modifier is
-    * used for case and accent insensitive partial matching search.
-    *
-    * @param value Query value of the string parameter
-    * @param prefix Prefix to be handled
-    * @param path Path to the target element to be queried
-    * @param targetType FHIR Type of the target element
-    * @return respective BsonDocument for target query
-    */
+   * String parameter serves as the input for a case- and accent-insensitive search against sequences of
+   * characters, :exact modifier is used for case and accent sensitive search, :contains modifier is
+   * used for case and accent insensitive partial matching search.
+   * @param value             Query value of the string parameter
+   * @param modifier          Prefix to be handled
+   * @param path              Path to the target element to be queried
+   * @param targetType        FHIR Type of the target element
+   * @param targetReferences
+   * @return
+   */
   private def stringQuery(value:String, modifier:String,  path:String, targetType:String, targetReferences:Seq[String]  = Nil):Bson = {
     targetType match {
       case FHIR_DATA_TYPES.STRING =>
@@ -241,17 +241,18 @@ object SearchUtil {
   }
 
   /**
-    * A quantity parameter searches on the Quantity data type. The syntax for the
-    * value follows the form:
-    *
-    * [parameter]=[prefix][number]|[system]|[code] matches a quantity with the given unit
-    *
-    * @param quantity quantity parameter
-    * @param prefix prefix for the quantity parameter
-    * @param queryConfig Configuration for the corresponding search parameter
-    * @return equivalent BsonDocument for the target query
-    *
-    */
+   * A quantity parameter searches on the Quantity data type. The syntax for the
+   * value follows the form:
+   *
+   * [parameter]=[prefix][number]|[system]|[code] matches a quantity with the given unit
+   *
+   * @param quantity            quantity parameter
+   * @param prefix              prefix for the quantity parameter
+   * @param path                Path for the element
+   * @param targetType
+   * @param targetReferences
+   * @return
+   */
   private def quantityQuery(quantity:String, prefix:String, path:String, targetType:String, targetReferences:Seq[String] = Nil):Bson = {
     //Parse the given value
     val (value,system, code) = FHIRUtil.parseQuantityValue(quantity)
@@ -304,7 +305,6 @@ object SearchUtil {
 
   /**
     * Merge the query ont the Quantity value with system and code restrictions
-    * @param valueQuery Query on Quantity.value
     * @param system Expected system
     * @param code Expected code/unit
     * @param queryPath Main path to the FHIR quantity element
@@ -339,22 +339,24 @@ object SearchUtil {
   }
 
   /**
-    * A reference parameter refers to references between resources. The interpretation of a reference
-    * parameter is either:
-    *
-    * [parameter]=[id] the logical [id] of a resource using a local reference (i.e. a relative reference)
-    *
-    * [parameter]=[type]/[id] the logical [id] of a resource of a specified type using
-    * a local reference (i.e. a relative reference), for when the reference can point to different
-    * types of resources (e.g. Observation.subject)
-    *
-    * [parameter]=[url] where the [url] is an absolute URL - a reference to a resource by its absolute location
-    *
-    * @param reference a reference to be handled
-    * @param modifier type of the reference(e.g. :type modifier)
-    * @param queryConfig Configuration for the corresponding search parameter
-    * @return equivalent BsonDocument for the target query
-    */
+   * A reference parameter refers to references between resources. The interpretation of a reference
+   * parameter is either:
+   *
+   * [parameter]=[id] the logical [id] of a resource using a local reference (i.e. a relative reference)
+   *
+   * [parameter]=[type]/[id] the logical [id] of a resource of a specified type using
+   * a local reference (i.e. a relative reference), for when the reference can point to different
+   * types of resources (e.g. Observation.subject)
+   *
+   * [parameter]=[url] where the [url] is an absolute URL - a reference to a resource by its absolute location
+   *
+   * @param reference               a reference to be handled
+   * @param modifier                type of the reference(e.g. :type modifier)
+   * @param path                    path to the element
+   * @param targetType
+   * @param targetReferenceTypes    Target reference types
+   * @return                        equivalent BsonDocument for the target query
+   */
   private def referenceQuery(reference:String, modifier:String, path:String, targetType:String, targetReferenceTypes:Seq[String]):Bson = {
     targetType match {
       //If this is a search on a FHIR Reference type element
@@ -413,13 +415,12 @@ object SearchUtil {
             // Escape characters for to have valid regular expression
             val regularExpressionValue = FHIRUtil.escapeCharacters(canonicalUrl) + canonicalVersion.map(v => s"\\|$v(\\.[0-9]*)+").getOrElse("")
             // Match at the beginning of the uri
-            //regex(FHIRUtil.normalizeElementPath(path), "\\A" + regularExpressionValue + ".*")
             regex(FHIRUtil.normalizeElementPath(path), "\\A" + regularExpressionValue + "$")
           case _ =>
             val (canonicalUrl, canonicalVersion) = FHIRUtil.parseCanonicalValue(reference)
             canonicalVersion match{
               case None => //Otherwise should match any version
-                //regex(FHIRUtil.normalizeElementPath(path), "\\A" + canonicalUrl + ".*" )
+
                 regex(FHIRUtil.normalizeElementPath(path), "\\A" + FHIRUtil.escapeCharacters(canonicalUrl) + "(\\|[0-9]+(\\.[0-9]*)*)?$")
               case Some(_) => // Exact match if version exist
                 Filters.eq(FHIRUtil.normalizeElementPath(path), reference)

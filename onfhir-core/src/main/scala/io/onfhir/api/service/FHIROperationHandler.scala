@@ -29,7 +29,7 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
   override def validateInteraction(fhirRequest: FHIRRequest): Future[Unit] = {
     Future.apply {
       val operation = fhirRequest.interaction
-      val operationConf = fhirConfig.supportedOperations.find(_.name == "$" + operation)
+      val operationConf = fhirConfig.supportedOperations.find(_.name == operation.drop(1))
       if (operationConf.isEmpty)
         throw new BadRequestException(Seq(OutcomeIssue(
           FHIRResponse.SEVERITY_CODES.ERROR, //fatal
@@ -47,7 +47,7 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
           Nil)))
 
       if (fhirRequest.resourceType.isDefined) {
-        if (operationConf.get.resources.nonEmpty && !operationConf.get.resources.contains(fhirRequest.resourceType.get))
+        if (operationConf.get.resources.nonEmpty && !operationConf.get.resources.contains("Resource") && !operationConf.get.resources.contains(fhirRequest.resourceType.get))
           throw new BadRequestException(Seq(OutcomeIssue(
             FHIRResponse.SEVERITY_CODES.ERROR, //fatal
             FHIRResponse.OUTCOME_CODES.INVALID,
@@ -84,7 +84,7 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
   override def completeInteraction(fhirRequest: FHIRRequest, authzContext: Option[AuthzContext], isTesting: Boolean): Future[FHIRResponse] = {
     val operation = fhirRequest.interaction
     //Find operation configuration
-    val operationConf = fhirConfig.supportedOperations.find(_.name == "$"+operation).get
+    val operationConf = fhirConfig.supportedOperations.find(_.name == operation.drop(1)).get
     //Validate and complete operation
     validateAndCompleteOperation(fhirRequest, operationConf)
   }

@@ -307,7 +307,7 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
         else operand2
       //If left is false, then it is true
       case Some(FhirPathBoolean(false)) => Seq(FhirPathBoolean(true))
-      case None =>
+      case _ =>
         val operand2 = visit(ctx.expression(1))
         if (operand2.length > 1)
           throw new Exception(s"Logical operations like 'implies' should be applied on single values on right side !!!")

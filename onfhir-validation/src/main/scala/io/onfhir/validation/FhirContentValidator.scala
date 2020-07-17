@@ -458,6 +458,7 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
                 case _ =>
                   false
               }
+              case _ => false
             }
           }
       //Otherwise

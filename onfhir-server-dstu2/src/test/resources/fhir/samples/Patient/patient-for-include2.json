@@ -1,9 +1,0 @@
-{
-  "resourceType" : "Patient",
-  "id" : "1003",
-  "meta": {
-    "versionId" : "1.0"
-  },
-  "active" : true,
-  "gender" : "male"
-}

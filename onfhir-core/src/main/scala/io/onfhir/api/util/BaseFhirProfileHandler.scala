@@ -142,10 +142,11 @@ abstract class BaseFhirProfileHandler(fhirConfig: FhirConfig) {
         breakable {
           for(i <- multipleProfiles._2.indices){
             fhirConfig.findProfileChain(multipleProfiles._2.apply(i)) match {
-              case pc =>
+              case Nil =>
+                //Nothing
+              case pc:Seq[ProfileRestrictions] if pc.nonEmpty =>
                 targetTypeAndProfiles = findTargetTypeOfPathInProfileChain(pathAfterDataType,pc)
                 break()
-              case Nil =>
             }
           }
         }

@@ -234,6 +234,50 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
     DBInitializer.storeInfrastructureResources(FHIR_OPERATION_DEFINITION,  operationDefResources)
     //Store the Code systems
     DBInitializer.storeInfrastructureResources(FHIR_CODE_SYSTEM,  codeSystemResources)
+
+    //If we need to persist the base FHIR standard definitions
+    OnfhirConfig.fhirPersistBaseDefinitions.foreach {
+      case FHIR_STRUCTURE_DEFINITION =>
+        val baseStructureDefinitions =
+          //Base resource definitions
+          IOUtil.readStandardBundleFile(PROFILES_RESOURCES_BUNDLE_FILE_NAME, Set(FHIR_STRUCTURE_DEFINITION)) ++
+          //Read the base data type profiles defined in the standard
+          IOUtil.readStandardBundleFile(PROFILES_TYPES_BUNDLE_FILE_NAME, Set(FHIR_STRUCTURE_DEFINITION)) ++
+          //Read other profiles and extensions given in zip file
+          IOUtil.readStandardBundleFile(PROFILES_OTHERS_BUNDLE_FILE_NAME, Set(FHIR_STRUCTURE_DEFINITION)) ++
+          IOUtil.readStandardBundleFile(PROFILES_EXTENSIONS_BUNDLE_FILE_NAME, Set(FHIR_STRUCTURE_DEFINITION))
+        //Store the definitions
+        DBInitializer.storeInfrastructureResources(FHIR_STRUCTURE_DEFINITION, baseStructureDefinitions)
+
+      case FHIR_SEARCH_PARAMETER =>
+        //Read the base search parameters defined in the standard
+        val baseSearchParameterResources = IOUtil.readStandardBundleFile(SEARCH_PARAMETERS_BUNDLE_FILE_NAME, Set(FHIR_SEARCH_PARAMETER))
+        //Store the search parameters
+        DBInitializer.storeInfrastructureResources(FHIR_SEARCH_PARAMETER, baseSearchParameterResources)
+
+      case FHIR_OPERATION_DEFINITION =>
+        val baseOperationDefinitionResources = IOUtil.readStandardBundleFile(PROFILES_RESOURCES_BUNDLE_FILE_NAME, Set(FHIR_OPERATION_DEFINITION))
+        //Store the operation definitions
+        DBInitializer.storeInfrastructureResources(FHIR_OPERATION_DEFINITION, baseOperationDefinitionResources)
+
+      case FHIR_VALUE_SET =>
+        //Read the base ValueSet definitions defined in the standard
+        val baseValueSets = VALUESET_AND_CODESYSTEM_BUNDLE_FILES.flatMap(file => IOUtil.readStandardBundleFile(file, Set(FHIR_VALUE_SET)))
+        //Store the value sets
+        DBInitializer.storeInfrastructureResources(FHIR_VALUE_SET, baseValueSets)
+
+      case FHIR_CODE_SYSTEM =>
+        //Read the base ValueSet definitions defined in the standard
+        val baseCodeSystems = VALUESET_AND_CODESYSTEM_BUNDLE_FILES.flatMap(file => IOUtil.readStandardBundleFile(file, Set(FHIR_CODE_SYSTEM)))
+        //Store the value sets
+        DBInitializer.storeInfrastructureResources(FHIR_CODE_SYSTEM, baseCodeSystems)
+
+      case FHIR_COMPARTMENT_DEFINITION =>
+        //Read the base compartment definitions
+        val baseCompartmentDefinitionResources = IOUtil.readStandardBundleFile(PROFILES_RESOURCES_BUNDLE_FILE_NAME, Set(FHIR_COMPARTMENT_DEFINITION))
+        //Store the compartment definitions
+        DBInitializer.storeInfrastructureResources(FHIR_COMPARTMENT_DEFINITION, baseCompartmentDefinitionResources)
+    }
   }
 
   /**

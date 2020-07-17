@@ -96,6 +96,7 @@ class JsonToXmlConvertor {
       case JBool(b) => Some(Text(b.toString()))
       case JNull => None
       case JNothing => None
+      case _ => None
     }
   }
 

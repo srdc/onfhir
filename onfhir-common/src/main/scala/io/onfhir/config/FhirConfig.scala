@@ -17,6 +17,7 @@ class FhirConfig(version:String) {
   var supportedProfiles:Map[String, Set[String]] = HashMap()
   /** Rest configuration for each Resource*/
   var resourceConfigurations:Map[String, ResourceConf] = HashMap()
+
   /** Supported Query Parameters for each resource-profile pair ; resource-type -> Map(parameter-name -> parameter-configuration)
     * e.g. Observation -> Map(subject -> ..., code -> ...)
     **/

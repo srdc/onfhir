@@ -56,6 +56,12 @@
             <groupId>org.mongodb.scala</groupId>
             <artifactId>mongo-scala-driver_2.12</artifactId>
         </dependency>
+        <!-- Embedded MongoDB -->
+        <dependency>
+            <groupId>de.flapdoodle.embed</groupId>
+            <artifactId>de.flapdoodle.embed.mongo</artifactId>
+        </dependency>
+
 
         <!-- Akka HTTP Suite -->
         <dependency>

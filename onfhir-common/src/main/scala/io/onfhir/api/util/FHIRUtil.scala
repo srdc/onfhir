@@ -226,10 +226,10 @@ object FHIRUtil {
   def populateResourceWithMeta(resource: Resource, id: Option[String], versionId: Long, lastModified: Instant): Resource = {
     val resourceTypeField = resource.findField(_._1 == FHIR_COMMON_FIELDS.RESOURCE_TYPE).get
 
-    val meta:Resource = (resource \ FHIR_COMMON_FIELDS.META) match {
+    val meta:Resource = (resource \ FHIR_COMMON_FIELDS.META)  match {
       case meta:JObject =>
         FHIR_COMMON_FIELDS.META -> (meta merge ((FHIR_COMMON_FIELDS.VERSION_ID -> versionId.toString) ~ (FHIR_COMMON_FIELDS.LAST_UPDATED -> DateTimeUtil.serializeInstant(lastModified))))
-      case JNull | JNothing =>
+      case _  =>
         (FHIR_COMMON_FIELDS.META ->
           (FHIR_COMMON_FIELDS.VERSION_ID -> versionId.toString) ~
             (FHIR_COMMON_FIELDS.LAST_UPDATED -> DateTimeUtil.serializeInstant(lastModified))

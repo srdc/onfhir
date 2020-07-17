@@ -1,0 +1,33 @@
+{
+  "createIndexForCompartments": true,
+  "resources": [    
+    {
+      "resource": "Observation",
+      "shardKey": ["subject"],
+      "indexes": [
+         "code",
+         "date"
+      ]
+    },
+	{
+      "resource": "Patient",
+      "shardKey": ["_id"],
+      "indexes": []
+    },
+	{
+      "resource": "CodeSystem",
+      "shardKey": [""],
+      "indexes": ["url"]
+    },
+	{
+      "resource": "ValueSet",
+      "shardKey": [""],
+      "indexes": ["url"]
+    },
+	{
+      "resource": "StructureDefinition",
+      "shardKey": [""],
+      "indexes": ["url"]
+    }
+  ]
+}

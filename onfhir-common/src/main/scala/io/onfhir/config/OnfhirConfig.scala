@@ -66,6 +66,8 @@ object OnfhirConfig {
   /** Default value for [CapabilityStatement|Conformance].rest.resource.conditionalDelete when not present */
   lazy val fhirDefaultConditionalDelete:String = Try(config.getString("fhir.default.conditional-delete")).getOrElse("not-supported")
 
+  /** Whether to start an embedded MongoDB instance */
+  lazy val mongoEmbedded: Boolean = Try(config.getBoolean("mongodb.embedded")).getOrElse(false)
 
   /** Database host name/address and ports. */
   lazy val mongodbHosts:Seq[String] = Try(config.getStringList("mongodb.host")).map(l => l.asScala).getOrElse(Seq("localhost"))
@@ -131,6 +133,9 @@ object OnfhirConfig {
 
   /** Indicates how to handle erroneous search requests*/
   lazy val fhirSearchHandling:String = Try(config.getString("fhir.search-handling")).toOption.getOrElse(FHIR_HTTP_OPTIONS.FHIR_SEARCH_STRICT)
+
+  /** Which Foundation resource types we should persist into database from base standart */
+  lazy val fhirPersistBaseDefinitions:Set[String] = Try(config.getStringList("fhir.persisted-base-definitions")).toOption.map(_.asScala.toSet).getOrElse(Set.empty[String])
 
   /** Auditing related configurations */
   lazy val fhirAuditingRepository:String = Try(config.getString("fhir.auditing.repository")).toOption.getOrElse("local")
