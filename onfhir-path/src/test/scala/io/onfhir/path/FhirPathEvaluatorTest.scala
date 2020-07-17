@@ -550,8 +550,8 @@ class FhirPathEvaluatorTest extends Specification {
       val ld = LocalDate.of(2016,11,14)
       FhirPathEvaluator(referenceResolver).evaluate("Questionnaire.derivedFrom.resolve().date", questionnaire) mustEqual Seq(FhirPathDateTime(ld))
 
-      FhirPathEvaluator(referenceResolver).evaluate("Questionnaire.item.extension.where(url = 'http://example.org/additional-information2').valueAttachment.title", questionnaire2)  mustEqual Seq(FhirPathString("ALİ"))
-      FhirPathEvaluator(referenceResolver).evaluate("Questionnaire.item.extension('http://example.org/additional-information2').valueAttachment.title", questionnaire2) mustEqual Seq(FhirPathString("ALİ"))
+      FhirPathEvaluator(referenceResolver).evaluate("Questionnaire.item.extension.where(url = 'http://example.org/additional-information2').valueAttachment.title", questionnaire2)  mustEqual Seq(FhirPathString("Ali"))
+      FhirPathEvaluator(referenceResolver).evaluate("Questionnaire.item.extension('http://example.org/additional-information2').valueAttachment.title", questionnaire2) mustEqual Seq(FhirPathString("Ali"))
     }
 
     "evaluate groupBy and aggregations" in {
