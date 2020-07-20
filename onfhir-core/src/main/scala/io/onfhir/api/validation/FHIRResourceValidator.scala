@@ -29,7 +29,7 @@ class FHIRResourceValidator(fhirConfig:FhirConfig) extends IFhirResourceValidato
    * @return
    */
   def validateResource(resource: Resource, rtype:String, silent:Boolean = false): Future[Seq[OutcomeIssue]] = {
-    validateResourceAgainstProfile(resource, rtype, fhirConfig.resourceConfigurations(rtype).profile, silent)
+    validateResourceAgainstProfile(resource, rtype, fhirConfig.resourceConfigurations.get(rtype).flatMap(_.profile), silent)
   }
   /**
    * Validates resource based on the related FHIR profiles (StructureDefinition)
@@ -50,7 +50,7 @@ class FHIRResourceValidator(fhirConfig:FhirConfig) extends IFhirResourceValidato
           //profiles listed in Resource.meta.profile
           val profilesClaimedToConform = FHIRUtil.extractProfilesFromBson(resource)
           //Supported profiles for resource type in CapabilityStatement.rest.resource.supportedProfiles
-          val supportedProfiles = fhirConfig.resourceConfigurations(rtype).supportedProfiles
+          val supportedProfiles = fhirConfig.resourceConfigurations.get(rtype).map(_.supportedProfiles).getOrElse(Set.empty[String])
           //Unknow profiles among them
           val unknownProfiles = profilesClaimedToConform.diff(supportedProfiles ++ Set(baseProfile))
           //Known profiles among them

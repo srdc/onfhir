@@ -280,7 +280,7 @@ object FHIRUtil {
   def setProfile(resource: Resource, profile:String):Resource = {
     val meta:Resource =
       (FHIR_COMMON_FIELDS.META ->
-        (FHIR_COMMON_FIELDS.PROFILE -> profile)
+        (FHIR_COMMON_FIELDS.PROFILE -> JArray(List(JString(profile))))
         )
 
     resource merge meta

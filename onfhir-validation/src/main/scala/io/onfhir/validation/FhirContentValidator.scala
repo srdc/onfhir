@@ -74,6 +74,8 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
     val validatedFields = new mutable.HashSet[String]()
     //Find out resource or data type
     val resourceOrDataType = findResourceType(profileChain)
+    //If profile chain is all abstract
+    val isAllAbstract = profileChain.forall(_.isAbstract)
 
     //Find out elements given as extension to primitive fields (e.g. _birthDate)
     val possiblePrimitiveExtensions =  value.obj.filter(f => f._1.startsWith("_")).map(f => f._1.drop(1) -> f._2).toMap
@@ -81,7 +83,8 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
     var issues =
       value.obj.filter(!_._1.startsWith("_")).flatMap {
         case ("resourceType", resourceType) =>
-          if (!resourceType.isInstanceOf[JString] || !resourceOrDataType.contains(resourceType.extract[String]))
+          //If there is an expected resource type and it is different than given resource
+          if (!resourceType.isInstanceOf[JString] || resourceOrDataType.exists(_ != resourceType.extract[String]))
             FhirContentValidator.convertToOutcomeIssue("resourceType", Seq(ConstraintFailure(s"Resource type '${resourceType.extract[String]}' does not match with the target profile '${profileUrl}'!")))
           else
             Nil
@@ -90,7 +93,10 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
           extractFieldNameAndDataType(field, allRestrictions) match {
             //If there is no definition for the element, return error
             case None =>
-              FhirContentValidator.convertToOutcomeIssue(FHIRUtil.mergeElementPath(parentPath, field), Seq(ConstraintFailure(s"Unrecognized element '${FHIRUtil.mergeElementPath(parentPath, field)}' !")))
+              if(!isAllAbstract)
+                FhirContentValidator.convertToOutcomeIssue(FHIRUtil.mergeElementPath(parentPath, field), Seq(ConstraintFailure(s"Unrecognized element '${FHIRUtil.mergeElementPath(parentPath, field)}' !")))
+              else //If we are validating against an abstract chain just ignore unknown elements
+                Nil
             //If we found such a defined field e.g. valueQuantity -> value, Quantity
             case Some((fieldName, dataType)) =>
               //Add the field to validated fields
@@ -111,7 +117,10 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
         //Find out the field name and DataType for the given field
         extractFieldNameAndDataType(field, allRestrictions) match {
           case None =>
-            FhirContentValidator.convertToOutcomeIssue(FHIRUtil.mergeElementPath(parentPath, s"_$field"), Seq(ConstraintFailure(s"Unrecognized element '${FHIRUtil.mergeElementPath(parentPath, s"_$field")}' !")))
+            if(!isAllAbstract)
+              FhirContentValidator.convertToOutcomeIssue(FHIRUtil.mergeElementPath(parentPath, s"_$field"), Seq(ConstraintFailure(s"Unrecognized element '${FHIRUtil.mergeElementPath(parentPath, s"_$field")}' !")))
+            else
+              Nil
           case Some((fieldName, dataType)) if fhirConfig.FHIR_PRIMITIVE_TYPES.contains(dataType) =>
             validatedFields += fieldName
             //Find all restrictions chain defined for the field (in priority order)

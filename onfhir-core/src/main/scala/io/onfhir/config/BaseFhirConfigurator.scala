@@ -328,7 +328,15 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
     if(profileDefinitionsNotGiven.nonEmpty)
       throw new InitializationException(s"Missing StructureDefinition in o profile configurations for the referred profiles (${profileDefinitionsNotGiven.mkString(",")}) within the given profiles (e.g. as base profile 'StructureDefinition.baseDefinition', target profile for an element StructureDefinition.differential.element.type.profile or reference StructureDefinition.differential.element.type.targetProfile) ! All mentioned profiles should be given for validation!")
 
-    allProfilesAndExtensionsMentionedInSomewhere = allProfilesAndExtensionsMentionedInSomewhere.diff(profiles.keySet) ++ baseProfilesUrlsUsed
+    allProfilesAndExtensionsMentionedInSomewhere =
+      allProfilesAndExtensionsMentionedInSomewhere.diff(profiles.keySet) ++
+        baseProfilesUrlsUsed ++
+        //Base profiles used in FHIR interactions
+        Set(
+          s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/OperationOutcome",
+          s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/Bundle",
+          s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/Parameters",
+        )
 
     fhirConfig.supportedProfiles = conformance.restResourceConf.map(restConf => restConf.resource -> restConf.supportedProfiles).toMap
     fhirConfig.resourceConfigurations = conformance.restResourceConf.map(restConf => restConf.resource -> restConf).toMap
@@ -356,8 +364,6 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
    */
   private def findMentionedProfiles(fhirConfig: FhirConfig, profiles:Seq[ProfileRestrictions]):Set[String] = {
     profiles.flatMap(p => {
-      if (p.url == "http://hl7.org/fhir/StructureDefinition/ChargeItem")
-        ""
       p.elementRestrictions.map(_._2)
         .flatMap(e =>
           e.restrictions.get(ConstraintKeys.DATATYPE).toSeq.map(_.asInstanceOf[TypeRestriction])

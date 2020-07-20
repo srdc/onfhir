@@ -47,7 +47,7 @@ class ValidationOperationHandler extends FHIROperationHandlerService {
     val mode:String = operationRequest.extractParamValue[String](PARAMETER_MODE).getOrElse(VALIDATION_MODE_GENERAL)
     //Profile to validate against
     val profile:Option[String] = operationRequest.extractParamValue[String](PARAMETER_PROFILE)
-    val resource:Option[Resource] = operationRequest.getParam(PARAMETER_RESOURCE).map(_.asInstanceOf[JObject])
+    val resource:Option[Resource] = operationRequest.extractParamValue[Resource](PARAMETER_RESOURCE)
     //Check if resource is not empty unless validation mode is delete
     if(mode != VALIDATION_MODE_DELETE && resource.isEmpty)
       throw new BadRequestException(Seq(

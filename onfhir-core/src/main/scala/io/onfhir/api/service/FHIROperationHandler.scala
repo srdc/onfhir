@@ -487,7 +487,7 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
     */
   private def constuctFHIRResponse(operationConf: OperationConf, operationResponse:FHIROperationResponse):FHIRResponse = {
     if(operationConf.outputParams.length == 1 && operationConf.outputParams.head.name == "return" && !(fhirConfig.FHIR_COMPLEX_TYPES ++ fhirConfig.FHIR_PRIMITIVE_TYPES).contains(operationConf.outputParams.head.pType.getOrElse(""))) {
-      operationResponse.copy(responseBody = Some(operationResponse.getOutputParams.head._2.asInstanceOf[Resource]))
+      operationResponse.copy(responseBody = Some(operationResponse.getOutputParams.head._2.asInstanceOf[FHIRSimpleOperationParam].extractValue[Resource]()))
     } else if(operationConf.outputParams.isEmpty){
       operationResponse
     } else {
