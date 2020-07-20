@@ -74,10 +74,13 @@ class SearchParameterConfigurator(
       paths = finalPaths,
       targets =
         if(searchParameterDef.ptype == FHIR_PARAMETER_TYPES.REFERENCE) {
-          targetReferences.reduce((s1, s2) => s1.union(s2)).flatMap(fhirConfig.findResourceType).toSeq match {
-            case Nil => searchParameterDef.target.toSeq
-            case oth => searchParameterDef.target.toSeq.intersect(oth)
-          }
+          if(targetReferences.isEmpty) {
+            searchParameterDef.target.toSeq
+          } else
+            targetReferences.reduce((s1, s2) => s1.union(s2)).flatMap(fhirConfig.findResourceType).toSeq match {
+              case Nil => searchParameterDef.target.toSeq
+              case oth => searchParameterDef.target.toSeq.intersect(oth)
+            }
         } else
           Nil
       ,
