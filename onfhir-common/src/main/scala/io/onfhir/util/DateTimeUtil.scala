@@ -181,5 +181,12 @@ object DateTimeUtil {
     Instant.parse(value)
   }
 
-  def instantToDateTime(i:Instant):DateTime = DateTime.fromIsoDateTimeString(serializeInstant(i)).get
+  def instantToDateTime(i:Instant):DateTime = {
+    var instStr = serializeInstant(i)
+    //Akka DateTime has a bug that it cannot parse when nanosecond is 0 and ISO instant is serialized as ...T10:05:58Z
+    if(i.getNano == 0)
+      instStr = instStr.dropRight(1) + ".000Z"
+    val dt = DateTime.fromIsoDateTimeString(instStr)
+    dt.get
+  }
 }
