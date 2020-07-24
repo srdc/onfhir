@@ -5,7 +5,7 @@ import io.onfhir.api.{DEFAULT_RESOURCE_PATHS, FHIR_ROOT_URL_FOR_DEFINITIONS, Res
 import io.onfhir.db.DBInitializer
 import org.slf4j.{Logger, LoggerFactory}
 import io.onfhir.api.util.{FHIRUtil, IOUtil}
-import io.onfhir.api.validation.{ConstraintKeys, FHIRResourceValidator, IFhirResourceValidator, IFhirTerminologyValidator, ProfileRestrictions}
+import io.onfhir.api.validation.{ConstraintKeys, FHIRResourceValidator, IFhirResourceValidator, IFhirTerminologyValidator, ProfileRestrictions, ReferenceResolver}
 import io.onfhir.exception.InitializationException
 import io.onfhir.validation.{FhirContentValidator, FhirTerminologyValidator, ReferenceRestrictions, TypeRestriction}
 import org.json4s.Extraction
@@ -512,11 +512,13 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
    */
   private def validateGivenInfrastructureResources(baseFhirConfig:FhirConfig, rtype:String, resources:Seq[Resource]) = {
     import io.onfhir.util.JsonFormatter._
-    val fhirContentValidator = FhirContentValidator.apply(baseFhirConfig, s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/$rtype")
+
     val issuesForEachResource = resources.map(resource =>
       (resource \ "url").extractOpt[String] match {
         case None => throw new InitializationException(s"All infrastructure resources used for onFhir configuration shoud have a url!")
-        case Some(url) => url ->  fhirContentValidator.validateComplexContent(resource)
+        case Some(url) =>
+          val fhirContentValidator = FhirContentValidator.apply(baseFhirConfig, s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/$rtype", new ReferenceResolver(baseFhirConfig, resource))
+          url ->  fhirContentValidator.validateComplexContent(resource)
       }
     )
     val resourcesWithProblems = issuesForEachResource.filter(rIssues => rIssues._2.exists(i => i.isError))

@@ -6,6 +6,7 @@ import java.time.{LocalDate, ZonedDateTime}
 import io.onfhir.api.Resource
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
+import org.apache.commons.lang3.StringEscapeUtils
 import org.json4s.JsonAST.JObject
 
 import scala.util.Try
@@ -21,9 +22,6 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   def callFunction(fname:String, params:Seq[ExpressionContext]):Seq[FhirPathResult] = {
     try {
       val functionName = if(fname == "toString") "_toString" else fname
-
-      if(functionName == "resolve")
-        ""
 
       val method = classOf[FhirPathFunctionEvaluator].getMethod(functionName, params.map(_ => classOf[ExpressionContext]): _*)
       val result = method.invoke(this, params:_*)
@@ -374,7 +372,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
       new FhirPathExpressionEvaluator(context, current).visit(prefixExpr) match {
         case Seq(FhirPathString(ss)) =>
           Seq(FhirPathBoolean( ss == "" || c.asInstanceOf[FhirPathString].s.startsWith(ss) ))
-        case _ =>
+        case oth =>
           throw new Exception(s"Invalid function call 'startsWith', the prefixExpr expression ${prefixExpr.getText} does not return string!")
       }
     }).getOrElse(Nil)
@@ -421,8 +419,12 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     checkSingleString()
     current.headOption.map(c => {
       new FhirPathExpressionEvaluator(context, current).visit(regexExpr) match {
-        case Seq(FhirPathString(ss)) => Seq(FhirPathBoolean(c.asInstanceOf[FhirPathString].s.matches(ss)))
-        case _ => throw new Exception(s"Invalid function call 'matches', the regular expression ${regexExpr.getText} does not return string!")
+        case Seq(FhirPathString(ss)) =>
+          val unexcapedScript = StringEscapeUtils.unescapeEcmaScript(ss)
+          val isMatch = c.asInstanceOf[FhirPathString].s.matches(unexcapedScript)
+          Seq(FhirPathBoolean(isMatch))
+        case _ =>
+          throw new Exception(s"Invalid function call 'matches', the regular expression ${regexExpr.getText} does not return string!")
       }
     }).getOrElse(Nil)
   }
@@ -431,7 +433,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     checkSingleString()
     current.headOption.map(c => {
       val regex = new FhirPathExpressionEvaluator(context, current).visit(regexExpr) match {
-        case Seq(FhirPathString(ss)) => ss
+        case Seq(FhirPathString(ss)) => StringEscapeUtils.unescapeEcmaScript(ss)
         case _ => throw new Exception(s"Invalid function call 'replace', the regex expression ${regexExpr.getText} does not return string!")
       }
 

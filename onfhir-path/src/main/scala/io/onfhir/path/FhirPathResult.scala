@@ -285,7 +285,7 @@ case class FhirPathTime(lt:LocalTime, zone:Option[ZoneId] = None) extends FhirPa
   * @param b
   */
 case class FhirPathBoolean(b:Boolean) extends FhirPathResult {
-  def or (that:FhirPathBoolean) = FhirPathBoolean(b | that.b)
+  def or (that:FhirPathBoolean) = FhirPathBoolean(b || that.b)
   def and (that:FhirPathBoolean) = FhirPathBoolean(b && that.b)
   def xor (that:FhirPathBoolean) = FhirPathBoolean(b ^ that.b)
 

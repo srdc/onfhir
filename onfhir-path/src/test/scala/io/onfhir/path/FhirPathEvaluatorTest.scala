@@ -6,7 +6,7 @@ import io.onfhir.api.Resource
 import io.onfhir.api.model.{FhirCanonicalReference, FhirLiteralReference, FhirReference}
 import io.onfhir.api.validation.IReferenceResolver
 import io.onfhir.util.JsonFormatter._
-import org.json4s.JsonAST.JArray
+import org.json4s.JsonAST.{JArray, JObject, JString}
 import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
@@ -26,6 +26,8 @@ class FhirPathEvaluatorTest extends Specification {
       Source.fromInputStream(getClass.getResourceAsStream("/condition2.json")).mkString.parseJson,
       Source.fromInputStream(getClass.getResourceAsStream("/condition3.json")).mkString.parseJson
     )
+
+  val structureDefinition =  Source.fromInputStream(getClass.getResourceAsStream("/structuredefinition.json")).mkString.parseJson
 
   sequential
 
@@ -448,9 +450,9 @@ class FhirPathEvaluatorTest extends Specification {
       FhirPathEvaluator().evaluateString("Observation.component.take(6).last().code.coding.first().code", observation2).head mustEqual "32415-2"
       FhirPathEvaluator().evaluate("Observation.method.take(3)", observation2) must empty //if empty return empty
       //intersect
-      FhirPathEvaluator().evaluateString("Observation.component.take(3).code.coding.code.intersect(%resource.component.skip(2).code.coding.code)", observation2) mustEqual Seq("32414-5", "249226008")
+      FhirPathEvaluator().evaluateString("Observation.component.take(3).code.coding.code.intersect(%context.component.skip(2).code.coding.code)", observation2) mustEqual Seq("32414-5", "249226008")
       //exclude
-      FhirPathEvaluator().evaluateString("Observation.component.take(3).code.coding.code.exclude(%resource.component.take(2).code.coding.code)", observation2) mustEqual Seq("32414-5", "249226008")
+      FhirPathEvaluator().evaluateString("Observation.component.take(3).code.coding.code.exclude(%context.component.take(2).code.coding.code)", observation2) mustEqual Seq("32414-5", "249226008")
     }
     "evaluate paths with conversion functions" in {
       //iif
@@ -527,6 +529,8 @@ class FhirPathEvaluatorTest extends Specification {
 
     "evaluate special functions" in {
       var referenceResolver: IReferenceResolver = new IReferenceResolver {
+        override val resource: Resource = JObject()
+        override val bundle: Option[(String, Resource)] = None
         override def resolveReference(reference: FhirReference): Option[Resource] = {
            reference match {
              case FhirLiteralReference(url, "Patient", rid, version) =>
@@ -560,6 +564,14 @@ class FhirPathEvaluatorTest extends Specification {
 
       val pids = FhirPathEvaluator().evaluateString("groupBy(Condition.subject.reference.substring(8),count()).where(agg >= 2).bucket", JArray(conditions.toList))
       pids mustEqual(Seq("p1"))
+    }
+
+    "evaluate new constraints in FHIR 4.0.1" in {
+      var result = FhirPathEvaluator().satisfies("empty() or ($this = '*') or (toInteger() >= 0)", JString("*"))
+      result mustEqual true
+
+      result = FhirPathEvaluator().satisfies("matches('[^\\\\s\\\\.,:;\\\\\\'\"\\\\/|?!@#$%&*()\\\\[\\\\]{}]{1,64}(\\\\.[^\\\\s\\\\.,:;\\\\\\'\"\\\\/|?!@#$%&*()\\\\[\\\\]{}]{1,64}(\\\\[x\\\\])?(\\\\:[^\\\\s\\\\.]+)?)*')", JString("CodeableConcept.coding"))
+      result mustEqual true
     }
   }
 }

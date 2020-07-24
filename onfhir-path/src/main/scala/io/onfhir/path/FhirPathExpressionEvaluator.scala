@@ -244,22 +244,32 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
     *     */
   override def visitOrExpression(ctx: FhirPathExprParser.OrExpressionContext): Seq[FhirPathResult] = {
     val operand1 = visit(ctx.expression(0))
-    val operand2 = visit(ctx.expression(1))
-    if (operand1.length > 1 || operand2.length > 1)
+
+    if (operand1.length > 1)
       throw new Exception(s"Logical operations like 'or' should be applied on single values on both sides !!!")
 
     ctx.getRuleContext().getChild(1).getText match {
       case "or" =>
-        (operand1.headOption, operand2.headOption) match {
-            case (Some(b1: FhirPathBoolean), Some(b2: FhirPathBoolean) ) => Seq (b1 or b2)
-            case (None, Some (FhirPathBoolean (true) ) ) => Seq (FhirPathBoolean (true) )
-            case (Some (FhirPathBoolean (true) ), None) => Seq (FhirPathBoolean (true) )
-            case (Some (FhirPathBoolean (false) ), None) => Nil
-            case (None, Some (FhirPathBoolean (false) ) ) => Nil
-            case (None, None) => Nil
-            case (a1, a2) => throw new Exception(s"Invalid 'or' operation between $a1 and $a2 !!!")
+        operand1.headOption match {
+          //true no need to look second operand
+          case Some(FhirPathBoolean (true)) => Seq(FhirPathBoolean (true))
+          case oth =>
+            val operand2 = visit(ctx.expression(1))
+            if (operand2.length > 1)
+              throw new Exception(s"Logical operations like 'or' should be applied on single values on both sides !!!")
+            (oth, operand2.headOption) match {
+              case (None, Some (FhirPathBoolean (true) ) ) => Seq (FhirPathBoolean (true))
+              case (None,  Some(FhirPathBoolean (false))) => Nil
+              case (None, None) => Nil
+              case (Some (FhirPathBoolean (false)), Some (FhirPathBoolean (true) ) ) => Seq (FhirPathBoolean (true))
+              case (Some (FhirPathBoolean (false)), Some(FhirPathBoolean (false))) => Seq(FhirPathBoolean (false))
+              case (Some (FhirPathBoolean (false)), None) => Nil
+              case (a1, a2) => throw new Exception(s"Invalid 'or' operation between non boolean operands $a1 and $a2 !!!")
+            }
         }
+
       case "xor" =>
+        val operand2 = visit(ctx.expression(1))
         (operand1.headOption, operand2.headOption) match {
           case (None, _) => Nil
           case (_, None) => Nil
@@ -275,18 +285,26 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
     *     */
   override def visitAndExpression(ctx: FhirPathExprParser.AndExpressionContext): Seq[FhirPathResult] = {
     val operand1 = visit(ctx.expression(0))
-    val operand2 = visit(ctx.expression(1))
-    if (operand1.length > 1 || operand2.length > 1)
-      throw new Exception(s"Logical operations like 'and' should be applied on single values on both sides !!!")
 
-    (operand1.headOption, operand2.headOption) match {
-          case (Some(b1: FhirPathBoolean), Some(b2: FhirPathBoolean) ) => Seq (b1 and b2)
+    if (operand1.length > 1)
+      throw new Exception(s"Logical operations like 'and' should be applied on single values on both sides, operand 1 returns multiple values!!!")
+
+    operand1.headOption match {
+      case Some(FhirPathBoolean(false)) => Seq(FhirPathBoolean (false))
+      case oth =>
+        val operand2 = visit(ctx.expression(1))
+        if (operand2.length > 1)
+          throw new Exception(s"Logical operations like 'and' should be applied on single values on both sides, operand 2 returns multiple values!!!")
+
+        (oth, operand2.headOption) match {
           case (None, Some (FhirPathBoolean (true) ) ) => Nil
-          case (Some (FhirPathBoolean (true) ), None) => Nil
-          case (Some (FhirPathBoolean (false) ), None) => Seq(FhirPathBoolean (false))
           case (None, Some (FhirPathBoolean (false) ) ) => Seq(FhirPathBoolean (false))
           case (None, None) => Nil
-          case (a1, a2) => throw new Exception(s"Invalid 'and' operation between $a1 and $a2 !!!")
+          case (Some(FhirPathBoolean(true)), None) => Nil
+          case (Some(FhirPathBoolean(true)), Some (FhirPathBoolean (true) )) =>  Seq(FhirPathBoolean (true))
+          case (Some(FhirPathBoolean(true)), Some (FhirPathBoolean (false) )) =>  Seq(FhirPathBoolean (false))
+          case (a1, a2) => throw new Exception(s"Invalid 'and' operation between non boolean operands $a1 and $a2 !!!")
+        }
     }
   }
 

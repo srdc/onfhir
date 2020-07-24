@@ -5,6 +5,15 @@ import io.onfhir.api.model.FhirReference
 
 
 trait IReferenceResolver {
+  /**
+   * Current resource validated
+   */
+  val resource: Resource
+
+  /**
+   *  If resource is a part of a bundle (for inter bundle references), the root part of fullUrl of resource validated and the whole Bundle
+   */
+  val bundle:Option[(String, Resource)]
 
   /**
    * Resolve a FHIR reference within onFhir

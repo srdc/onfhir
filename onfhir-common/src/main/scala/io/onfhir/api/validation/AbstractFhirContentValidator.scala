@@ -7,7 +7,7 @@ import org.json4s.JsonAST.{JObject, JValue}
 
 import scala.collection.mutable
 
-abstract class AbstractFhirContentValidator(val fhirConfig:FhirConfig, profileUrl:String, referenceResolver:Option[IReferenceResolver]) {
+abstract class AbstractFhirContentValidator(val fhirConfig:FhirConfig, val profileUrl:String, val referenceResolver:Option[IReferenceResolver]) {
   //Chain of profiles for this profile, where parents are on the right in hierarchy order e.g. MyObservation2 -> MyObservation -> Observation -> DomainResource -> Resource
   val rootProfileChain = fhirConfig.findProfileChain(profileUrl)
 

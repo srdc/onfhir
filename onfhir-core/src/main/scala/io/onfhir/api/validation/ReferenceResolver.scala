@@ -16,10 +16,11 @@ import scala.concurrent.duration.Duration
 import io.onfhir.util.JsonFormatter._
 /**
  * A resolver for references within a resource
+ * @param fhirConfig  Fhir configuration of the server
  * @param resource    Resource itself
  * @param bundle      If resource is a part of a bundle (for inter bundle references), the root part of fullUrl of resource validated and the whole Bundle
  */
-class ReferenceResolver(fhirConfig:FhirConfig, resource: Resource, bundle:Option[(String, Resource)] = None) extends IReferenceResolver {
+class ReferenceResolver(fhirConfig:FhirConfig, val resource: Resource, val bundle:Option[(String, Resource)] = None) extends IReferenceResolver {
 
   /**
    * Extract bundle items

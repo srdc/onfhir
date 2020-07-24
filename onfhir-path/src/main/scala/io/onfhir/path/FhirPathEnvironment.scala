@@ -8,9 +8,17 @@ class FhirPathEnvironment(val _this:FhirPathResult, val referenceResolver: Optio
   val vsPattern:Regex = "'vs-[A-Za-z0-9\\-]+'".r
   val extPattern:Regex = "'ext-[A-Za-z0-9\\-]+'".r
 
+  //Resource that is validated
+  lazy val resolvedResource =
+    referenceResolver
+      .map(_.resource).toSeq
+      .flatMap(FhirPathValueTransformer.transform(_))
+
   def getEnvironmentContext(ename:String):Seq[FhirPathResult] = {
     ename match {
-      case "%context" | "%resource" => Seq(_this)
+      //Trying to access to the root resource validated
+      case "%resource" => resolvedResource
+      case "%context"  => Seq(_this)
       //Fixed codes
       case "%ucum" => Seq(FhirPathString("http://unitsofmeasure.org"))
       case "%sct" => Seq(FhirPathString("http://snomed.info/sct"))

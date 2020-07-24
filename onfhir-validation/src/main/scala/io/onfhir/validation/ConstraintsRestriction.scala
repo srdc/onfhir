@@ -13,7 +13,8 @@ import org.json4s.JsonAST.JValue
  */
 case class ConstraintsRestriction(fhirConstraints: Seq[FhirConstraint]) extends FhirRestriction {
   override def evaluate(value: JValue, fhirContentValidator: AbstractFhirContentValidator): Seq[ConstraintFailure] = {
-    fhirConstraints.flatMap(_.evaluate(value))
+    val fhirPathEvaluator = FhirPathEvaluator.apply(fhirContentValidator.referenceResolver)
+    fhirConstraints.flatMap(_.evaluate(value, fhirPathEvaluator))
   }
 }
 
@@ -33,9 +34,9 @@ case class FhirConstraint(key: String, desc: String, expr: FhirPathExprParser.Ex
    * @param value
    * @return
    */
-  def evaluate(value: JValue): Option[ConstraintFailure] = {
+  def evaluate(value: JValue, fhirPathEvaluator: FhirPathEvaluator): Option[ConstraintFailure] = {
     try {
-      if (!FhirPathEvaluator().satisfiesParsed(expr, value))
+      if (!fhirPathEvaluator.satisfiesParsed(expr, value))
         Some(ConstraintFailure(s"Constraint '$key' is not satisfied for the given value! Constraint Description: '$desc'. FHIR Path expression: '${expr.getText}'", isWarning))
       else
         None
