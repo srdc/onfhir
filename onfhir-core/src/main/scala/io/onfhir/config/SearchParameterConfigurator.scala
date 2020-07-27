@@ -278,7 +278,7 @@ class SearchParameterConfigurator(
         .map(rpath =>
           rpath.asInstanceOf[Seq[(String, String)]]
             .last._1 //Last one is the actual value path
-            .split(".").last //Just get the value* part
+            .split("\\.").last //Just get the value* part
             .replace("value", "") //Replace the value to get the type name
         )
         .map(ttype => if(fhirConfig.FHIR_COMPLEX_TYPES.contains(ttype)) ttype else ttype.toLowerCase) // if it is a simple type, convert to lowercase e.g. valueString -> string
