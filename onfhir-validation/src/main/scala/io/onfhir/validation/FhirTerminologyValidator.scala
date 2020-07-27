@@ -79,7 +79,7 @@ class FhirTerminologyValidator(fhirConfig:FhirConfig) extends IFhirTerminologyVa
    */
   private def getCodeList(system:Option[String], vs:ValueSetDef):Set[String] = {
     system match {
-      case None => vs.codes.values.head
+      case None => vs.codes.values.flatten.toSet
       case Some(s) => vs.codes.getOrElse(s, Set.empty)
     }
   }
