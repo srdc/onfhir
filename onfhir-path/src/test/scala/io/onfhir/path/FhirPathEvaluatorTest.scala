@@ -27,8 +27,6 @@ class FhirPathEvaluatorTest extends Specification {
       Source.fromInputStream(getClass.getResourceAsStream("/condition3.json")).mkString.parseJson
     )
 
-  val structureDefinition =  Source.fromInputStream(getClass.getResourceAsStream("/structuredefinition.json")).mkString.parseJson
-
   sequential
 
   "FHIR Path Evaluator" should {
