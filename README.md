@@ -64,7 +64,7 @@ configuration for onfhir-server-r4. It initiates a FHIR R4 server with the given
 ```
 object Boot extends App {
   //Initialize onfhir for R4
-  var onfhir = Onfhir.apply(new R4Configurator())
+  var onfhir = Onfhir.apply(new FhirR4Configurator())
   //Start it
   onfhir.start
 }
@@ -90,7 +90,7 @@ object Boot extends App {
   //Initialize onfhir for R4
   var onfhir = 
      Onfhir.apply(
-        fhirConfigurator = new R4Configurator(),
+        fhirConfigurator = new FhirR4Configurator(),
         fhirOperationImplms = myFhirOperations,
         customAuthorizer = new MyAuthorizer(),
         customAuditHandler = new MyAuditHandler(),
