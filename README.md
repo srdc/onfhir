@@ -64,7 +64,7 @@ configuration for onfhir-server-r4. It initiates a FHIR R4 server with the given
 ```
 object Boot extends App {
   //Initialize onfhir for R4
-  var onfhir = Onfhir.apply(new R4Configurator())
+  var onfhir = Onfhir.apply(new FhirR4Configurator())
   //Start it
   onfhir.start
 }
@@ -80,8 +80,9 @@ resolution methods; Signed JWT tokens and OAuth2.0 Token Introspection. You can 
 to store FHIR AuditEvent records to its own local repository, or a remote FHIR server running as a seperate audit repository. 
 If you want to create audit events/logs in different format and send them to a custom audit repository (ElasticSearch+Kibana, etc),
 you can extend this interface with your module and register it.
-* Further FHIR Operations: You can implement custom FHIR Operations by extending **io.onfhir.api.service.FHIROperationHandlerService** and preparing an OperationDefinition file for onFhir configuration while passing  
-the class path of your module to the OnFhir constructor.  
+* Further FHIR Operations: You can implement custom FHIR Operations by extending **io.onfhir.api.service.FHIROperationHandlerService** and 
+preparing an OperationDefinition file describing the input and output parameters of the operation. You then need to provide a Map[String, String]
+of the (operation URL -> the class name of the module) that you implemented by extending FHIROperationHandlerService.  
 * External Akka Routes: You can also implement non-FHIR REST services for your server and register them to onFHIR. 
 
 ```
@@ -89,7 +90,8 @@ object Boot extends App {
   //Initialize onfhir for R4
   var onfhir = 
      Onfhir.apply(
-        fhirConfigurator = new R4Configurator(),
+        fhirConfigurator = new FhirR4Configurator(),
+        fhirOperationImplms = myFhirOperations,
         customAuthorizer = new MyAuthorizer(),
         customAuditHandler = new MyAuditHandler(),
         externalRoutes = ...my non-fhir routes 

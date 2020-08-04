@@ -317,7 +317,7 @@ object ResourceManager {
     * @param queryParams  Parsed FHIR query parameter
     * @return None if the query fails (no matching resources) otherwise final Mongo query
     */
-  private def constructQuery(rtype:String, queryParams:List[Parameter] = List.empty)(implicit transactionSession: Option[TransactionSession] = None):Future[Option[Bson]] = {
+  def constructQuery(rtype:String, queryParams:List[Parameter] = List.empty)(implicit transactionSession: Option[TransactionSession] = None):Future[Option[Bson]] = {
     //Handle Special params
     val specialParamQueries:Future[Seq[Option[Bson]]] = handleSpecialParams(rtype, queryParams.filter(_.paramCategory == FHIR_PARAMETER_CATEGORIES.SPECIAL))
     //Handle Chained Params

@@ -79,7 +79,7 @@ class Onfhir(
   }
 
   /* Setup or Configure the platform and prepare it for running */
-  FhirConfigurationManager.initialize(fhirConfigurator)
+  FhirConfigurationManager.initialize(fhirConfigurator, fhirOperationImplms)
 
   /* Setup the authorization module and prepare it for running */
   AuthzConfigurationManager.initialize(customAuthorizer, customTokenResolver)
@@ -138,6 +138,7 @@ object Onfhir {
   /**
     * Initialize OnFhir
     * @param fhirConfigurator     Module that will configure the FHIR capabilities of the server based on the version
+    * @param fhirOperationImplms  Map of own FHIR Operation implementation configurations: (operation url -> operation implementation class name)
     * @param customAuthorizer     Module to handle authorization with a custom protocol, if not supplied decided based on configurations
     * @param customTokenResolver  Module to handle access token resolution with a custom way, if not supplied decided based on configurations
     * @param customAuditHandler   Module to handle auditing with a custom strategy, if not supplied decided based on configurations
