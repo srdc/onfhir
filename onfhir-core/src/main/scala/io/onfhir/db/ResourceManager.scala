@@ -9,13 +9,14 @@ import io.onfhir.api.model.Parameter
 import io.onfhir.api.parsers.FHIRResultParameterResolver
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
-import io.onfhir.config.{FhirConfigurationManager, OnfhirConfig}
+import io.onfhir.config.{FhirConfigurationManager, OnfhirConfig, SearchParameterConf}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.conversions.Bson
 import io.onfhir.db.BsonTransformer._
 import io.onfhir.event.{FhirEventBus, ResourceCreated, ResourceDeleted, ResourceUpdated}
-import io.onfhir.exception.UnsupportedParameterException
+import io.onfhir.exception.{BadRequestException, InternalServerException, UnsupportedParameterException}
 import io.onfhir.util.DateTimeUtil
+import org.json4s.JsonAST.JValue
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -152,6 +153,125 @@ object ResourceManager {
           //.searchDocumentsByAggregation(rtype, query, count, page, sortingPaths, elementsIncludedOrExcluded, excludeExtraFields)
           .map(_.map(_.fromBson))
     } yield total -> resultResources
+  }
+
+  /**
+   * Execute the given query and return last or first n resources (based on sorting params) for each group determined by groupByParams
+   * e.g. Query the last 3 observations for each observation code given in the query of a given patient
+   *
+   * @param rtype              Resource type to query
+   * @param parameters         FHIR Search parameters e.g. ?subject=Patient/...&code=1235-4,35864-7,65668-8
+   * @param sortingParams      Sorting FHIR search parameters to sort the results for last or first n selection e.g. date
+   * @param groupByParams      FHIR search parameters to indicate the group by expression e.g. code
+   * @param lastOrFirstN       Number of last/first results to return for each group;
+   *                            - negative value means last e.g -2 --> last 2
+   *                            - positive value means first e.g. 3 --> first 3
+   * @param excludeExtraFields If true, extra fields are cleared
+   * @param transactionSession Session if this is part of a transaction
+   * @return                   Bucket keys and results for each group , all included or revincluded resources
+   */
+  def searchLastOrFirstNResources(rtype:String,
+                                 parameters:List[Parameter] = List.empty,
+                                 sortingParams:List[String],
+                                 groupByParams:List[String],
+                                 lastOrFirstN:Int = -1,
+                                 excludeExtraFields:Boolean = false)(implicit transactionSession: Option[TransactionSession] = None):Future[(Seq[(Map[String, JValue], Seq[Resource])], Seq[Resource])] = {
+
+    if(sortingParams.isEmpty || groupByParams.isEmpty)
+      throw new RuntimeException(s"Parameters  sortingFields or groupByParams is empty! They are required for this method 'queryLastOrFirstNResources'")
+
+    //Extract FHIR result parameters
+    val resultParameters = parameters.filter(_.paramCategory == FHIR_PARAMETER_CATEGORIES.RESULT)
+    //Check _summary param to identify what to include or exclude
+    val summaryIncludesOrExcludes =  FHIRResultParameterResolver.resolveSummaryParameter(rtype, resultParameters)
+    //Check _elements param to include further
+    val elementsIncludes = FHIRResultParameterResolver.resolveElementsParameter(resultParameters)
+    //Decide on final includes and excludes
+    val finalIncludesOrExcludes = if(elementsIncludes.nonEmpty) Some(true -> elementsIncludes) else summaryIncludesOrExcludes
+
+    //Find out include and revinclude params
+    val includeParams = resultParameters.filter(_.name == FHIR_SEARCH_RESULT_PARAMETERS.INCLUDE)
+    val revIncludeParams = resultParameters.filter(_.name == FHIR_SEARCH_RESULT_PARAMETERS.REVINCLUDE)
+
+    //other result parameters are ignored as they are not relevant
+
+
+    //Now others are query parameters
+    val queryParams = parameters.filter(_.paramCategory !=  FHIR_PARAMETER_CATEGORIES.RESULT)
+
+    //Run the search
+    constructQuery(rtype, queryParams).flatMap {
+      //If there is no query, although there are parameters
+      case None if queryParams.nonEmpty => Future.apply(Nil-> Nil)
+      //Otherwise process groupBy and sorting parameters and execute the query
+      case finalQuery =>
+        //Find out paths for each sorting parameter
+        val finalSortingPaths:Seq[(String, Seq[String])] =
+          sortingParams
+            .map(sp => fhirConfig.findSupportedSearchParameter(rtype, sp) match {
+              case None =>
+                throw new UnsupportedParameterException(s"Search parameter ${sp} is not supported for resource type $rtype, or you can not use it for sorting! Check conformance statement of server!")
+              case Some(spConf) =>
+                spConf.pname ->
+                  spConf
+                    .extractElementPathsAndTargetTypes()
+                    .flatMap { case (path, ttype) =>
+                      SORTING_SUBPATHS
+                        .getOrElse(ttype, Seq("")) //Get the subpaths for sorting for the target element type
+                        .map(subpath => path + subpath)
+                    }.toSeq
+            })
+
+        //Construct expressions for groupBy params
+        val groupByParamConfs =
+          groupByParams
+          .map(gbyp =>
+            fhirConfig.findSupportedSearchParameter(rtype, gbyp) match {
+              case None =>
+                throw new UnsupportedParameterException(s"Search parameter ${gbyp} is not supported for resource type $rtype, or you can not use it for grouping! Check conformance statement of server!")
+              case Some(gbypConf) => gbypConf
+            }
+          )
+
+      val groupByExpressions = AggregationHandler.constructGroupByExpression(groupByParamConfs, parameters)
+
+      //Execute the query and find the matched results
+      val fResults =
+        DocumentManager
+        .searchLastOrFirstNByAggregation(rtype, finalQuery, lastOrFirstN,finalSortingPaths, groupByExpressions)
+        .map(results =>
+          results.map(r => {
+            val keys =
+              groupByParams.map(p =>
+                p -> r._1.get(p).get.fromBson
+              ).toMap
+            keys -> r._2.map(_.fromBson)
+          })
+        )
+
+       fResults.flatMap(matchedResources =>
+       //Handle _include and _revinclude params
+        (includeParams, revIncludeParams) match {
+          //No _include or _revinclude
+          case (Nil, Nil) => Future.apply(matchedResources, Seq.empty)
+          //Only _revinclude
+          case (Nil, _) =>
+            handleRevIncludes(rtype, matchedResources.flatMap(_._2), revIncludeParams)
+              .map(revIncludedResources => (matchedResources, revIncludedResources))
+          //Only _include
+          case (_, Nil) =>
+            handleIncludes(rtype, matchedResources.flatMap(_._2), includeParams)
+              .map(includedResources => (matchedResources, includedResources))
+          //Both
+          case (_, _) =>
+            val allMatchedResources = matchedResources.flatMap(_._2)
+            for {
+              includedResources <- handleIncludes(rtype, allMatchedResources, includeParams)
+              revIncludedResources <- handleRevIncludes(rtype, allMatchedResources, revIncludeParams)
+            } yield (matchedResources, includedResources ++ revIncludedResources)
+        }
+       )
+    }
   }
 
   /**
@@ -349,17 +469,8 @@ object ResourceManager {
         //Find the path to the FHIR Reference elements
         val refPath:Option[String] =
           refParamConf.flatMap(pconf => {
-            //If on extension actual path is the last one
-            if(pconf.onExtension)
-              if (targetResourceType.forall(t => pconf.targets.contains(t) || pconf.targets.contains(FHIR_DATA_TYPES.RESOURCE)))
-                Some(pconf.paths.last.asInstanceOf[(String, String)]._1)
-              else
-                None
-             else if(pconf.paths.length == 1 && pconf.paths.head.isInstanceOf[String])
-              if(targetResourceType.forall(t => pconf.targets.contains(t) || pconf.targets.contains(FHIR_DATA_TYPES.RESOURCE)))
-                Some(pconf.extractElementPaths().head)
-              else
-                None
+            if (targetResourceType.forall(t => pconf.targets.contains(t) || pconf.targets.contains(FHIR_DATA_TYPES.RESOURCE)))
+              Some(pconf.extractElementPaths().head)
             else
               None
           })

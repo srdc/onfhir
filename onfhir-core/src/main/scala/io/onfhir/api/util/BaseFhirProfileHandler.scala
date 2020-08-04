@@ -9,15 +9,17 @@ abstract class BaseFhirProfileHandler(fhirConfig: FhirConfig) {
   protected val logger:Logger
   /**
    * Check if a search path match with element definition path
-   * @param searchPath
-   * @param elementPath
+   * @param searchPath    Path given in the search parameter definition (via xpath or expression)
+   * @param elementPath   Actual element path given in StructureDefinition of the resource type (profile)
    * @return
    */
   private def checkPathsMatch(searchPath:String, elementPath:String):Boolean = {
-    elementPath == searchPath || //If we have a path that is equal to search path e.g. Element path:  Observation.code --> Search Path: Observation.code
-      (elementPath.endsWith("[x]") && searchPath.startsWith(elementPath.replace("[x]", "")) && //Or the path has multiple values and path starts with given element path e.g. Element path: Observation.value[x] -> Search path Observation.valueQuantity
-        (fhirConfig.FHIR_COMPLEX_TYPES.contains(searchPath.replace(elementPath.replace("[x]", ""), "")) || //If complex type, type name starts with a capital e.g. CodeableConcept
-          fhirConfig.FHIR_PRIMITIVE_TYPES.contains(FHIRUtil.decapitilize(searchPath.replace(elementPath.replace("[x]", ""), "")))) //If simple type, type name is lowercase
+    val normalizedElementPath = elementPath.replace("[x]", "")
+
+    elementPath == searchPath || elementPath == (searchPath + "[x]") || //If we have a path that is equal to search path e.g. Element path:  Observation.code --> Search Path: Observation.code
+      (elementPath.endsWith("[x]") && searchPath.startsWith(normalizedElementPath) && //Or the path has multiple values and path starts with given element path e.g. Element path: Observation.value[x] -> Search path Observation.valueQuantity
+        (fhirConfig.FHIR_COMPLEX_TYPES.contains(searchPath.replace(normalizedElementPath, "")) || //If complex type, type name starts with a capital e.g. CodeableConcept
+          fhirConfig.FHIR_PRIMITIVE_TYPES.contains(FHIRUtil.decapitilize(searchPath.replace(normalizedElementPath, "")))) //If simple type, type name is lowercase
         )
   }
 
@@ -49,13 +51,13 @@ abstract class BaseFhirProfileHandler(fhirConfig: FhirConfig) {
   }
 
   /**
-   * Find a target FHIR type of path in a profile chain if direct definition exists
-   * @param path
-   * @param profileChain
-   * @return (Target data type for FHIR path, profiles for this path, if reference target resource profiles otherwise empty)
+   * Find target FHIR types of path in a profile chain if direct definition exists
+   * @param path            Path defined in SearchParameter definition
+   * @param profileChain    Profile chain for the resource type as configured for this onFhir instance
+   * @return (Path itself, Target data type for FHIR path, profiles for this path, if reference target resource profiles otherwise empty)
    */
-  private def findTargetTypeOfPathInProfileChain(path:String, profileChain:Seq[ProfileRestrictions]):Option[(String, Seq[String], Set[String])] = {
-    var targetTypeAndProfiles:Option[(String, Seq[String])] = None
+  private def findTargetTypeOfPathInProfileChain(path:String, profileChain:Seq[ProfileRestrictions]):Seq[(String, String, Seq[String], Set[String])] = {
+    var targetTypeAndProfiles:Seq[(String, String, Seq[String])] = Nil
     var targetResourceProfilesForReference:Set[String] = Set.empty[String]
     import scala.util.control.Breaks._
     breakable
@@ -63,41 +65,51 @@ abstract class BaseFhirProfileHandler(fhirConfig: FhirConfig) {
       //Search in the profile chain starting from the lower
       for(i <- profileChain.indices)
       {
-        findElementRestrictionForPath(path, profileChain.apply(i).elementRestrictions)
-        match {
+        findElementRestrictionForPath(path, profileChain.apply(i).elementRestrictions) match {
           case Some(er) =>
-            //Possible data type e.g. valueCodeableConcept -> CodeableConcept
-            val possibleDataType =
-              if(!er._1.contains("[x]") || path == er._1)
-                None
-              else {
-                val temp = path.replace(er._1.replace("[x]", ""), "")
-                if(fhirConfig.FHIR_COMPLEX_TYPES.contains(temp)) Some(temp) else Some(FHIRUtil.decapitilize(temp))
-              }
 
+            //Try to find data type restriction (type definition)
             er._2.restrictions.get(ConstraintKeys.DATATYPE) match {
               case Some(dtr) =>
-                possibleDataType match {
-                  case None =>
-                    targetTypeAndProfiles = dtr.asInstanceOf[TypeRestriction].dataTypesAndProfiles.headOption
-                    if(targetTypeAndProfiles.exists(_._1 == FHIR_DATA_TYPES.REFERENCE))
-                      targetResourceProfilesForReference = er._2.restrictions.get(ConstraintKeys.REFERENCE_TARGET).map(_.asInstanceOf[ReferenceRestrictions]).map(_.targetProfiles).getOrElse(Nil).toSet
+                //If this element is not a multi type element or search path is equal to the element path
+                if(!er._1.contains("[x]") || path == er._1) {
+                  targetTypeAndProfiles = dtr.asInstanceOf[TypeRestriction].dataTypesAndProfiles.map(t => (path, t._1, t._2))
+                  if(targetTypeAndProfiles.exists(_._2 == FHIR_DATA_TYPES.REFERENCE))
+                    targetResourceProfilesForReference = er._2.restrictions.get(ConstraintKeys.REFERENCE_TARGET).map(_.asInstanceOf[ReferenceRestrictions]).map(_.targetProfiles).getOrElse(Nil).toSet
+                  break()
+                } else {
+                  //Otherwise it is a multi type element
+                  val temp = path.replace(er._1.replace("[x]", ""), "")
+                  // If path indicates all possible data types e.g. Observation.effective
+                  if(temp == ""){
+                    //Then return all possible target types while updating the path e.g. effectiveDateTime -> DateTime, effectiveInstant -> Instant, etc
+                    targetTypeAndProfiles = dtr.asInstanceOf[TypeRestriction].dataTypesAndProfiles.map(t => (path + t._1.capitalize, t._1, t._2))
                     break()
-                  case Some(pdt) =>  dtr.asInstanceOf[TypeRestriction].dataTypesAndProfiles.find(_._1 == pdt) match {
-                    case Some(dtp) =>
-                      targetTypeAndProfiles = Some(dtp)
-                      targetResourceProfilesForReference = er._2.restrictions.get(ConstraintKeys.REFERENCE_TARGET).map(_.asInstanceOf[ReferenceRestrictions]).map(_.targetProfiles).getOrElse(Nil).toSet
+                  } else {
+                    //Otherwise find out possible date type
+                    val possibleDataType = if(fhirConfig.FHIR_COMPLEX_TYPES.contains(temp)) temp else FHIRUtil.decapitilize(temp)
+                    dtr.asInstanceOf[TypeRestriction]
+                      .dataTypesAndProfiles.find(_._1 == possibleDataType) match {
+                      case Some(dtp) =>
+                        targetTypeAndProfiles = Seq((path, dtp._1, dtp._2))
+                        targetResourceProfilesForReference = er._2.restrictions.get(ConstraintKeys.REFERENCE_TARGET).map(_.asInstanceOf[ReferenceRestrictions]).map(_.targetProfiles).getOrElse(Nil).toSet
                         break()
-                    case None =>
+                      //If this data type not exist in the list, just return nil list
+                      case None =>
+                        break()
+                    }
                   }
                 }
+
+              //If no type definition skip it, try parent profile in next iteration
               case None =>
             }
+          //If no restriction in this profile, go try parent profile in next iteration
           case None =>
         }
       }
     }
-    targetTypeAndProfiles.map(t=> (t._1, t._2, targetResourceProfilesForReference))
+    targetTypeAndProfiles.map(t=> (t._1, t._2, t._3, targetResourceProfilesForReference))
   }
 
   /**
@@ -105,8 +117,8 @@ abstract class BaseFhirProfileHandler(fhirConfig: FhirConfig) {
    * @param path Search path
    * @return
    */
-  def findTargetTypeOfPath(path:String, profiles:Seq[ProfileRestrictions]):Option[(String, Seq[String], Set[String])] = {
-    var targetTypeAndProfiles:Option[(String, Seq[String], Set[String])] = findTargetTypeOfPathInProfileChain(path, profiles)
+  def findTargetTypeOfPath(path:String, profiles:Seq[ProfileRestrictions]):Seq[(String, String, Seq[String], Set[String])] = {
+    var targetTypeAndProfiles:Seq[(String, String, Seq[String], Set[String])] = findTargetTypeOfPathInProfileChain(path, profiles)
 
     //If still it is empty, path may be referring to an inner element of a FHIR Complex DataType so does not exist in Resource e.g. Patient.name.given (name refers to HumanName)
     if(targetTypeAndProfiles.isEmpty && path.contains('.')){
@@ -125,34 +137,44 @@ abstract class BaseFhirProfileHandler(fhirConfig: FhirConfig) {
    * @param i
    * @return
    */
-  private def findTargetTypeInSubPaths(pathParts:Seq[String],profiles:Seq[ProfileRestrictions],  i:Int = 1):Option[(String, Seq[String], Set[String])] = {
-    var targetTypeAndProfiles:Option[(String, Seq[String], Set[String])] = None
+  private def findTargetTypeInSubPaths(pathParts:Seq[String],profiles:Seq[ProfileRestrictions],  i:Int = 1):Seq[(String, String, Seq[String], Set[String])] = {
+    var targetTypeAndProfiles:Seq[(String, String, Seq[String], Set[String])] = Nil
 
     //Split the path accordingly
     val pathToDataType = pathParts.slice(0, pathParts.length-i).mkString(".")
     val pathAfterDataType = pathParts.slice(pathParts.length-i, pathParts.length).mkString(".")
     //Try to find in this setup
     findTargetTypeOfPathInProfileChain(pathToDataType, profiles) match {
-      //If we found it and it is base a DataType, then load the base DataType and find within it
-      case Some(onlyDataType) if onlyDataType._2.isEmpty =>
-        targetTypeAndProfiles = findTargetTypeOfPath(pathAfterDataType, Seq(fhirConfig.getBaseProfile(onlyDataType._1)))
-      //If there are multiple profiles
-      case Some(multipleProfiles) =>
-        import scala.util.control.Breaks._
-        breakable {
-          for(i <- multipleProfiles._2.indices){
-            fhirConfig.findProfileChain(multipleProfiles._2.apply(i)) match {
-              case Nil =>
-                //Nothing
-              case pc:Seq[ProfileRestrictions] if pc.nonEmpty =>
-                targetTypeAndProfiles = findTargetTypeOfPathInProfileChain(pathAfterDataType,pc)
-                break()
-            }
-          }
-        }
-      case None =>
+      //If there is no matching, try sub paths
+      case Nil =>
         if(i < pathParts.length - 1)
-          targetTypeAndProfiles =  findTargetTypeInSubPaths(pathParts, profiles, i+1)
+          targetTypeAndProfiles =
+            findTargetTypeInSubPaths(pathParts, profiles, i+1)
+
+      case possibleTypes =>
+        possibleTypes.foreach(possibleType => possibleType match {
+          //If we found it and it is base a DataType, then load the base DataType and find within it
+          case onlyDataType if onlyDataType._3.isEmpty =>
+            targetTypeAndProfiles = targetTypeAndProfiles ++
+              findTargetTypeOfPath(pathAfterDataType, Seq(fhirConfig.getBaseProfile(onlyDataType._2)))
+                .map(r => (s"$pathToDataType.${r._1}", r._2, r._3, r._4))
+          //If there are multiple profiles
+          case multipleProfiles =>
+            import scala.util.control.Breaks._
+            breakable {
+              for (i <- multipleProfiles._3.indices) {
+                fhirConfig.findProfileChain(multipleProfiles._3.apply(i)) match {
+                  case Nil =>
+                  //Nothing
+                  case pc: Seq[ProfileRestrictions] if pc.nonEmpty =>
+                    targetTypeAndProfiles = targetTypeAndProfiles ++
+                      findTargetTypeOfPathInProfileChain(pathAfterDataType, pc)
+                        .map(r => (s"$pathToDataType.${r._1}", r._2, r._3, r._4))
+                    break()
+                }
+              }
+            }
+        })
     }
 
     targetTypeAndProfiles
@@ -192,14 +214,15 @@ abstract class BaseFhirProfileHandler(fhirConfig: FhirConfig) {
     val pathToDataType = pathParts.slice(0, pathParts.length-i).mkString(".")
     val pathAfterDataType = pathParts.slice(pathParts.length-i, pathParts.length).mkString(".")
 
-    findTargetTypeOfPath(pathToDataType, profiles).map(_._1) match {
-      case None if i < pathParts.length - 1 => findPathCardinalityInSubpaths(pathParts, profiles, i+1)
-      case Some(foundType) =>
-        val baseProfileChainForDataType = fhirConfig.getBaseProfileChain(foundType)
-        findPathCardinality(pathAfterDataType, baseProfileChainForDataType)
-      case _ =>
-        logger.warn(s"Problem while identifying cardinality of path ${pathParts.mkString(".")} in profiles ${profiles.map(_.url).mkString(", ")}!")
-        false
+    findTargetTypeOfPath(pathToDataType, profiles)
+      .map(_._2) match {
+        case Nil if i < pathParts.length - 1 => findPathCardinalityInSubpaths(pathParts, profiles, i+1)
+        case foundTypes if foundTypes.nonEmpty=>
+          val baseProfileChainForDataType = fhirConfig.getBaseProfileChain(foundTypes.head)
+          findPathCardinality(pathAfterDataType, baseProfileChainForDataType)
+        case _ =>
+          logger.warn(s"Problem while identifying cardinality of path ${pathParts.mkString(".")} in profiles ${profiles.map(_.url).mkString(", ")}!")
+          false
     }
   }
 }

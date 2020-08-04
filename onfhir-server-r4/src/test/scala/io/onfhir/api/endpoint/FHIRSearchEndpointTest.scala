@@ -1215,5 +1215,49 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(actdefId)
       }
     }
+
+    "handle composite type search parameters" in {
+      //No common path between parameters
+      var query = "?code-value-quantity=http://loinc.org|718-7$gt7.3|http://unitsofmeasure.org|g/dL"
+      Get("/" + OnfhirConfig.baseUri + "/" + "Observation" + query) ~> routes ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, "Observation", 1, Some(query))
+        (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsHemoglobin2Id)
+      }
+      //multiple paths
+      query = "?combo-code-value-quantity=http://loinc.org|8480-6$gt108"
+      Get("/" + OnfhirConfig.baseUri + "/" + "Observation" + query) ~> routes ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, "Observation", 1, Some(query))
+        (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsBp2Id)
+      }
+      //common paths
+      query = "?component-code-value-quantity=http://loinc.org|8480-6$gt108|http://unitsofmeasure.org|mm[Hg]"
+      Get("/" + OnfhirConfig.baseUri + "/" + "Observation" + query) ~> routes ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, "Observation", 1, Some(query))
+        (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsBp2Id)
+      }
+    }
+
+    "handle a parameter which has restrictions on path" in {
+      //depends-on also checks type of relation
+      var query = s"?depends-on=https://www.cdc.gov/zika/hc-providers/pregnant-woman.html"
+      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> routes ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, "ActivityDefinition", 0, Some(query))
+      }
+
+      query = s"?depends-on=Questionnaire/zika-virus-exposure-assessment"
+      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> routes ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, "ActivityDefinition", 2, Some(query))
+      }
+    }
   }
 }

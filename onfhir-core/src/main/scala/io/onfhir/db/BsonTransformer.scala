@@ -90,6 +90,22 @@ object BsonTransformer{
     def fromBson: JObject = transformDocument(document)
   }
 
+  class BsonConvertable2(bsonValue: BsonValue) {
+    def fromBson: JValue = bsonValue match {
+      case d:BsonDocument => new BsonConvertable(d).fromBson
+      case s:BsonString => JString(s.getValue)
+      case b: BsonBoolean => JBool(b.getValue)
+      case i: BsonInt32 => JInt(i.getValue)
+      case l: BsonInt64 => JLong(l.getValue)
+      case d: BsonDouble =>   JDouble(d.getValue)
+      case s: BsonString =>   JString(s.getValue)
+      case t: BsonDateTime => JString(BsonDateTimeToString(t)) //this should not be called, as we handle it before within handleDocument
+      case x: BsonArray => transformArray(x)
+      case boi: BsonObjectId => JString(boi.getValue.toString)
+      case _ => JNull
+    }
+  }
+
   /**
     * Implicit conversion that ties the new BsonTransformable class to the Scala immutable Map class
     */
@@ -99,6 +115,8 @@ object BsonTransformer{
     * Implicit conversion that ties the new BsonConvertable class to the Bson Documents
     */
   implicit def transformFromBson(document:Document):BsonConvertable = new BsonConvertable(document)
+
+  implicit  def transformFromBsonValue(bsonValue:BsonValue):BsonConvertable2 = new BsonConvertable2(bsonValue)
 
   /**
     * A helper method to transform any scala type to corresponding BsonValue's

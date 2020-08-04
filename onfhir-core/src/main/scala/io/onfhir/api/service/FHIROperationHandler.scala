@@ -4,6 +4,7 @@ import org.json4s.JsonAST._
 import org.json4s.JsonDSL._
 import io.onfhir.api._
 import io.onfhir.api.model._
+import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
@@ -455,9 +456,24 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
             val parameterValues = results.filter(_._2.isLeft).map(p => p._1 -> p._2.left.get)
             //Load the Operation Service
             val operationService = getOperationServiceImpl(operationConf)
+
+            //If there are query parameters apart from operation parameters, we should parse them and pass to the operation
+            val operationParamSet = parameterValues.map(_._1).toSet
+            val queryParams = fhirRequest.operationParameters.filterNot(op => operationParamSet.contains(op._1))
+            val parsedQueryParams =
+              if(fhirRequest.resourceType.isDefined && queryParams.nonEmpty)
+                FHIRSearchParameterValueParser.parseSearchParameters(fhirRequest.resourceType.get, queryParams, fhirRequest.prefer)
+              else
+                List.empty[Parameter]
+            //Construct operation request
+            val operationRequest =
+              new FHIROperationRequest(
+                operationParams = parameterValues.flatMap(p => p._2.map(pv => p._1 -> pv)),
+                queryParams = parsedQueryParams
+              )
             //Execute the operation
             operationService
-              .executeOperation(operationConf.name, new FHIROperationRequest(parameterValues.flatMap(p => p._2.map(pv => p._1 -> pv))), fhirRequest.resourceType, fhirRequest.resourceId)
+              .executeOperation(operationConf.name, operationRequest, fhirRequest.resourceType, fhirRequest.resourceId)
               .flatMap(operationResponse => {
                 //Validate output
                 val foutputIssues = Future.sequence(operationConf.outputParams.map(opParamDef => {

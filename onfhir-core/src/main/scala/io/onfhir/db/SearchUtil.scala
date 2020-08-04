@@ -1,12 +1,14 @@
 package io.onfhir.db
 
 import io.onfhir.api._
-import com.mongodb.client.model.Filters
+import org.mongodb.scala.model.Filters
+import org.mongodb.scala.model.Filters._
+
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.OnfhirConfig
 import io.onfhir.exception.{InternalServerException, InvalidParameterException}
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.model.Filters.{exists, regex, _}
+
 
 import scala.collection.immutable.HashMap
 
@@ -274,6 +276,14 @@ object SearchUtil {
           //Also merge it with query on system and code
           val sysCodeQuery = unitSystemCodeQuery(system, code, queryPath, FHIR_COMMON_FIELDS.SYSTEM, FHIR_COMMON_FIELDS.CODE, FHIR_COMMON_FIELDS.UNIT)
           sysCodeQuery.map(sq => and(valueQuery, sq)).getOrElse(valueQuery)
+
+        case FHIR_DATA_TYPES.MONEY =>
+          //Query on the quatity
+          val valueQuery = PrefixModifierHandler.decimalPrefixHandler(FHIRUtil.mergeElementPath(queryPath, FHIR_COMMON_FIELDS.VALUE), value, prefix)
+          //Also merge it with query on currency code
+          val sysCodeQuery = code.map(c => Filters.eq(FHIRUtil.mergeElementPath(queryPath, FHIR_COMMON_FIELDS.CURRENCY), c))
+          sysCodeQuery.map(sq => and(valueQuery, sq)).getOrElse(valueQuery)
+
         //Handle range
         case FHIR_DATA_TYPES.RANGE =>
           //Query on range values
@@ -427,6 +437,57 @@ object SearchUtil {
             }
 
         }
+    }
+  }
+
+  /**
+   *
+   * @param pathParts
+   * @param restrictionsWithIndexes
+   * @param value
+   * @param paramType
+   * @param targetType
+   * @param modifierOrPrefix
+   * @param targetReferences
+   * @return
+   */
+  def queryWithRestrictions(pathParts:Seq[String], restrictionsWithIndexes:Seq[(Int, Seq[(String,String)])], value:String,  paramType:String, targetType:String, modifierOrPrefix:String, targetReferences:Seq[String]):Bson = {
+    val restriction = restrictionsWithIndexes.head
+    val parentPath = pathParts.slice(0, restriction._1 + 1).mkString(".")
+    //Find childpaths
+    val childPaths = pathParts.drop(restriction._1 + 1)
+    //Split the parent path
+    val (elemMatchPath,  queryPath) = FHIRUtil.splitElementPathIntoElemMatchAndQueryPaths(parentPath)
+
+    if(restrictionsWithIndexes.tail.isEmpty){
+      val childPath = childPaths.mkString(".")
+      val mainQuery =
+        and(
+            (
+              //Restriction queries
+              restriction._2.map(r => Filters.eq(FHIRUtil.mergeElementPath(queryPath, r._1), r._2)) :+
+              //Actual query
+              SearchUtil
+                .typeHandlerFunction(paramType)(value, modifierOrPrefix, FHIRUtil.mergeElementPath(queryPath, childPath), targetType, targetReferences),
+            ):_*
+        )
+      //Apply elem match
+      elemMatchPath match {
+        case None => mainQuery
+        case Some(emp) => elemMatch(emp, mainQuery)
+      }
+    }
+    //If there are still restrictions on child paths
+    else {
+      val mainQuery =
+        and(
+          (
+            //Restriction queries
+            restriction._2.map(r => Filters.eq(FHIRUtil.mergeElementPath(queryPath, r._1), r._2)) :+
+            queryWithRestrictions(childPaths,restrictionsWithIndexes.tail, value, paramType, targetType, modifierOrPrefix, targetReferences)
+            ):_*
+        )
+      elemMatch(elemMatchPath.get, mainQuery)
     }
   }
 

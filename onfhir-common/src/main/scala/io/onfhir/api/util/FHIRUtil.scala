@@ -1,10 +1,13 @@
 package io.onfhir.api.util
 
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.time.Instant
 import java.util.UUID
 
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.`Content-Type`
+import com.nimbusds.jose.util.Base64URL
 import io.onfhir.config.{OnfhirConfig, OperationParamDef}
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRMultiOperationParam, FHIROperationParam, FHIRResponse, FHIRSimpleOperationParam, FhirCanonicalReference, FhirInternalReference, FhirLiteralReference, FhirLogicalReference, FhirReference, Parameter}
@@ -87,31 +90,33 @@ object FHIRUtil {
     location = if(otherParametersExceptPage.isEmpty) location + "?" else location + "&"
 
     //If we don't calculate the total count in search, then does not return last link
-    if (totalCount == -1) {
-      val previousPage = page - 1
-      List(
-        Some(FHIR_BUNDLE_FIELDS.SELF_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=$page"),
-        Some(FHIR_BUNDLE_FIELDS.FIRST_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=1"),
-        Some(FHIR_BUNDLE_FIELDS.NEXT_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=${page + 1}"),
-        if (previousPage > 0) Some(FHIR_BUNDLE_FIELDS.PREVIOUS_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=$previousPage") else None
-      ).filter(_.isDefined).map(_.get)
-    }
-    else if (totalCount < count) {
-      List(FHIR_BUNDLE_FIELDS.SELF_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=$page") //Only return self link if there is no previous or next
-    } else {
-      //Find next, last and previous pages in FHIR paging
-      val lastPage = if (totalCount % count == 0) totalCount / count else totalCount / count + 1
-      val nextPage = page.toInt + 1
-      val previousPage = page.toInt - 1
+    val links =
+      if (totalCount == -1) {
+        val previousPage = page - 1
+        List(
+          Some(FHIR_BUNDLE_FIELDS.SELF_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=$page"),
+          Some(FHIR_BUNDLE_FIELDS.FIRST_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=1"),
+          Some(FHIR_BUNDLE_FIELDS.NEXT_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=${page + 1}"),
+          if (previousPage > 0) Some(FHIR_BUNDLE_FIELDS.PREVIOUS_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=$previousPage") else None
+        ).filter(_.isDefined).map(_.get)
+      }
+      else if (totalCount < count) {
+        List(FHIR_BUNDLE_FIELDS.SELF_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=$page") //Only return self link if there is no previous or next
+      } else {
+        //Find next, last and previous pages in FHIR paging
+        val lastPage = if (totalCount % count == 0) totalCount / count else totalCount / count + 1
+        val nextPage = page.toInt + 1
+        val previousPage = page.toInt - 1
 
-      List(
-        Some(FHIR_BUNDLE_FIELDS.SELF_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=$page"),
-        Some(FHIR_BUNDLE_FIELDS.FIRST_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=1"), //First is always page 1
-        if (nextPage <= lastPage) Some(FHIR_BUNDLE_FIELDS.NEXT_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=$nextPage") else None, //Put next page if this is not last page
-        if (previousPage > 0) Some(FHIR_BUNDLE_FIELDS.PREVIOUS_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=$previousPage") else None, //Put previous page if this is not first page
-        Some(FHIR_BUNDLE_FIELDS.LAST_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=$lastPage") //Set the last page
-      ).filter(_.isDefined).map(_.get)
-    }
+        List(
+          Some(FHIR_BUNDLE_FIELDS.SELF_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=$page"),
+          Some(FHIR_BUNDLE_FIELDS.FIRST_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=1"), //First is always page 1
+          if (nextPage <= lastPage) Some(FHIR_BUNDLE_FIELDS.NEXT_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=$nextPage") else None, //Put next page if this is not last page
+          if (previousPage > 0) Some(FHIR_BUNDLE_FIELDS.PREVIOUS_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=$previousPage") else None, //Put previous page if this is not first page
+          Some(FHIR_BUNDLE_FIELDS.LAST_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=$lastPage") //Set the last page
+        ).filter(_.isDefined).map(_.get)
+      }
+    links
   }
 
   /**
@@ -170,7 +175,7 @@ object FHIRUtil {
               p.valuePrefixList.map(vp => vp._1 + vp._2).mkString(",")
 
           //Return name and value part
-          namePart + "=" + valuePart
+          namePart + "=" + URLEncoder.encode(valuePart, StandardCharsets.UTF_8.toString)
         }).mkString("&")
       else
         ""//No parameter

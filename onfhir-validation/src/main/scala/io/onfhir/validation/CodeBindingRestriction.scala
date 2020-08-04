@@ -2,8 +2,8 @@ package io.onfhir.validation
 
 import io.onfhir.api.FHIR_COMMON_FIELDS
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.api.validation.{ConstraintFailure, FhirRestriction, AbstractFhirContentValidator}
-import org.json4s.JsonAST.{JObject, JString, JValue}
+import io.onfhir.api.validation.{AbstractFhirContentValidator, ConstraintFailure, FhirRestriction}
+import org.json4s.JsonAST.{JArray, JObject, JString, JValue}
 
 /**
  * Value Set binding if strength is given as 'required', 'extensible', 'preferred'
@@ -32,12 +32,12 @@ case class CodeBindingRestriction(valueSetUrl:String, version:Option[String], is
         //FHIR CodeableConcept
         case obj: JObject if (obj.obj.exists(_._1 == FHIR_COMMON_FIELDS.CODING)) =>
           val systemAndCodes =
-            FHIRUtil.extractValue[Seq[JObject]](obj, FHIR_COMMON_FIELDS.CODING)
-              .map(coding =>
+            FHIRUtil.extractValueOption[Seq[JObject]](obj, FHIR_COMMON_FIELDS.CODING)
+            .map(_.map(coding =>
                 FHIRUtil.extractValueOption[String](coding, FHIR_COMMON_FIELDS.SYSTEM) ->
-                  FHIRUtil.extractValueOption[String](coding, FHIR_COMMON_FIELDS.CODE))
+                  FHIRUtil.extractValueOption[String](coding, FHIR_COMMON_FIELDS.CODE))).getOrElse(Nil)
           //One of the codes should be bounded to given
-          if(!systemAndCodes.exists(sc => sc._1.isDefined && sc._2.isDefined && terminologyValidator.validateCodeAgainstValueSet(valueSetUrl, version, sc._1, sc._2.get)))
+          if(systemAndCodes.nonEmpty && !systemAndCodes.exists(sc => sc._1.isDefined && sc._2.isDefined && terminologyValidator.validateCodeAgainstValueSet(valueSetUrl, version, sc._1, sc._2.get)))
             Seq(ConstraintFailure(s"Code binding failure, none of the system-code pairing '${printSystemCodes(systemAndCodes)}' is defined in the ValueSet '$valueSetUrl' or is active and selectable!", !isRequired))
           else
             Nil

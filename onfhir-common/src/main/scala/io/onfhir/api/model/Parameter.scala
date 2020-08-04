@@ -13,4 +13,6 @@ case class Parameter(paramCategory:String,
                      name:String,
                      valuePrefixList:Seq[(String, String)],
                      suffix:String = "",
-                     chain:Seq[(String, String)] = Nil )
+                     chain:Seq[(String, String)] = Nil ) {
+
+}

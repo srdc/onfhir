@@ -80,8 +80,8 @@ resolution methods; Signed JWT tokens and OAuth2.0 Token Introspection. You can 
 to store FHIR AuditEvent records to its own local repository, or a remote FHIR server running as a seperate audit repository. 
 If you want to create audit events/logs in different format and send them to a custom audit repository (ElasticSearch+Kibana, etc),
 you can extend this interface with your module and register it.
-* Further FHIR Operations: You can implement custom FHIR Operations by extending **io.onfhir.api.service.FHIROperationHandlerService** and preparing an OperationDefinition file for onFhir configuration while setting  
-the class path of your module to the **OperationDefinition.name** parameter.  
+* Further FHIR Operations: You can implement custom FHIR Operations by extending **io.onfhir.api.service.FHIROperationHandlerService** and preparing an OperationDefinition file for onFhir configuration while passing  
+the class path of your module to the OnFhir constructor.  
 * External Akka Routes: You can also implement non-FHIR REST services for your server and register them to onFHIR. 
 
 ```

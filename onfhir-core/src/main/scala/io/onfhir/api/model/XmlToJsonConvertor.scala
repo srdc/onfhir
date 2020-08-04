@@ -86,10 +86,13 @@ class XmlToJsonConvertor(fhirConfig: FhirConfig) extends BaseFhirProfileHandler(
             //Find the target type
             findTargetTypeOfPath(path, profileChain) match {
               //if not found, convert it to JString
-              case None => JString(v.text)
+              case Nil => JString(v.text)
               //Otherwise convert accordingly
-              case Some((dt, _, _)) =>
+              case Seq((_, dt, _, _)) =>
                 convertPrimitive(dt, v.text)
+              case oth =>
+                //TODO
+                JNull
             }
           //If there is no attribute, it should be a complex
           case None =>

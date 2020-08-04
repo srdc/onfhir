@@ -26,9 +26,9 @@ object ResourceQueryBuilder {
     */
   def constructQueryForSimpleParameter(parameter:Parameter, searchParameterConf:SearchParameterConf):Bson = {
     //If parameter is on a extension, we should handle it differently
-    if(searchParameterConf.onExtension) {
+    /*if(searchParameterConf.onExtension) {
       constructQueryForExtensionParameter(parameter, searchParameterConf)
-    } else {
+    } else {*/
       //This part handles search with simple query parameters
       val queries =
         parameter
@@ -56,7 +56,7 @@ object ResourceQueryBuilder {
           })
 
       if (queries.length > 1) or(queries: _*) else queries.head
-    }
+   // }
   }
 
   /**
@@ -70,32 +70,24 @@ object ResourceQueryBuilder {
   private def constructQueryForSimple(value:String, paramType:String, modifierOrPrefix:String, searchParameterConf:SearchParameterConf) = {
     //For each possible path, construct queries
     val queries = (searchParameterConf.extractElementPaths(withArrayIndicators = true), searchParameterConf.targetTypes, searchParameterConf.restrictions).zipped.toSeq map {
-      case (path, targetType, None) =>
+      case (path, targetType, Nil) =>
         SearchUtil
           .typeHandlerFunction(paramType)(value, modifierOrPrefix, path, targetType, searchParameterConf.targets)
       //If there is a restriction on the search we assume it is a direct field match e.g phone parameter on Patient
       //e.g. f:PlanDefinition/f:relatedArtifact[f:type/@value='depends-on']/f:resource -->  path = relatedArtifact[i].resource, restriction = @.type -->  (relatedArtifact[i], resource, type)
       //e.g. f:OrganizationAffiliation/f:telecom[system/@value='email']  --> path => telecom[i] , restriction = system --> (telecom[i], "", system)
-      case (path, targetType, Some(restriction)) =>
-        //If restriction is on parent, find the parent path
-        val (parentPath, childPath, restrictionPath) =
-          if(restriction._1.startsWith("@."))
-            ( path.split('.').dropRight(1).mkString("."), path.split('.').last,restriction._1.replace("@.", "") )
-          else
-            ( path, "", restriction._1 )
+      case (path, targetType, restrictions) =>
+        val pathParts = path.split('.')
+        val indexOfRestrictions  =
+          restrictions
+            .map(r => (pathParts.length - r._1.count(_ == '@') - 1) -> r)
+            .groupBy(_._1)
+            .map(g => g._1 ->
+              g._2.map(_._2)
+                .map(i => i._1.replace("@.", "") -> i._2) //remove paths
+            ).toSeq.sortBy(_._1)
 
-        //Split the parent path
-        //e.g relatedArtifact[i] --> Some(relatedArtifact), None
-        val (elemMatchPath,  queryPath) = FHIRUtil.splitElementPathIntoElemMatchAndQueryPaths(parentPath)
-        val mainQuery = and(
-          SearchUtil
-            .typeHandlerFunction(paramType)(value, modifierOrPrefix, FHIRUtil.mergeElementPath(queryPath, childPath), targetType, searchParameterConf.targets),
-          Filters.eq(FHIRUtil.mergeElementPath(queryPath, restrictionPath), restriction._2)
-        )
-        elemMatchPath match {
-          case None => mainQuery
-          case Some(emp) => elemMatch(emp, mainQuery)
-        }
+        SearchUtil.queryWithRestrictions(pathParts, indexOfRestrictions, value, paramType, targetType, modifierOrPrefix, searchParameterConf.targets)
     }
     //OR the queries for multiple paths
     if(queries.size > 1) or(queries:_*) else queries.head
@@ -243,19 +235,10 @@ object ResourceQueryBuilder {
     */
   def constructQueryForRevInclude(revIncludeReferences:Seq[String], parameterConf: SearchParameterConf):Bson = {
     val queries = parameterConf.paths.map {
-      //If the path is normal elements
       case normalPath: String =>
         val queries = revIncludeReferences.map(revIncludeRef =>
           SearchUtil.typeHandlerFunction(FHIR_PARAMETER_TYPES.REFERENCE)(revIncludeRef, "", normalPath, FHIR_DATA_TYPES.REFERENCE, Nil)
         )
-        if(queries.length > 1) or(queries:_*) else queries.head
-      //If the path is on extension elements
-      case extensionPath: Seq[(String, String)]@unchecked =>
-        val queries = revIncludeReferences.map(revIncludeRef =>
-           SearchUtil.extensionQuery(revIncludeRef, extensionPath, FHIR_PARAMETER_TYPES.REFERENCE, "", Nil)
-        )
-
-        //OR the queries for multiple values and multiple common paths
         if(queries.length > 1) or(queries:_*) else queries.head
     }
 

@@ -100,7 +100,7 @@
         ]
       },
       "valueQuantity": {
-        "value": 107,
+        "value": 109,
         "unit": "mmHg",
         "system": "http://unitsofmeasure.org",
         "code": "mm[Hg]"

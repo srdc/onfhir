@@ -17925,6 +17925,11 @@
     {
       "name" : "expand",
       "definition" : "http://hl7.org/fhir/OperationDefinition/ValueSet-expand"
-    }]
+    },
+    {
+        "name" : "lastn",
+        "definition" : "http://hl7.org/fhir/OperationDefinition/Observation-lastn"
+    }
+    ]
   }]
 }

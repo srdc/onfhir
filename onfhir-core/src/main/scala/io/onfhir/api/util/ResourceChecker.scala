@@ -97,9 +97,9 @@ object ResourceChecker {
             case FHIR_PARAMETER_TYPES.COMPOSITE =>
               handleCompositeParameter(rtype, parameter, searchParamConf.get, validQueryParameters, resource)
             case _ =>
-              if(searchParamConf.get.onExtension)
-                handleExtensionParameter(parameter, searchParamConf.get, resource)
-              else
+              //if(searchParamConf.get.onExtension)
+                //handleExtensionParameter(parameter, searchParamConf.get, resource)
+              //else
                 handleSimpleParameter(parameter, searchParamConf.get, resource)
           }
       }

@@ -222,33 +222,32 @@ class FhirConfig(version:String) {
 
 /**
   * onFHIR configuration for a Search Parameter
-  * @param pname Name of the parameter
-  * @param ptype FHIR search parameter type (number, date, string, token, etc)
-  * @param paths Extracted element pats for the parameters
-  *              - Seq[String] for normal and composite parameters --> e.g. subject, compose.include.concept.code
-  *              - Seq[ Seq[ (String, String) ] ] for parameters on extension; last one actual path, others defining urls of extensions
-  *              e.g. Seq(Seq( extension.url -> http://hl7.org/fhir/StructureDefinition/goal-target,
-  *                            extension.extension.url -> measure,
-  *                            extension.extension.valueCodeableConcept -> ""))
-  * @param targets
-  *                For reference parameter types, the possible target Resource types
-  *                For composite parameter types, the names of the parameters to combine in the same order of query usage
+  * @param pname          Name of the parameter
+  * @param ptype          FHIR search parameter type (number, date, string, token, etc)
+  * @param paths          Extracted element paths for the parameters  e.g. subject, compose.include.concept.code
+  * @param targets        Target types or composite parameter names;
+  *                         - For reference parameter types, the possible target Resource types
+  *                         - For composite parameter types, the names of the parameters to combine in the same order of query usage
   * @param modifiers      Supported modifiers of the parameter
   * @param targetTypes    Seq of target type for each path (indices are inline with paths)
-  * @param onExtension    If this is defined on an extension path
-  * @param restrictions   Further restriction on the search for each path e.g. For "f:OrganizationAffiliation/f:telecom[system/@value=&#39;email&#39;]" --> system -> email
+  * @param restrictions   Further restriction on the search for each path; (indices are inline with paths)
+  *                          First element provides the sub path to the property with 0 or more prefixes '@.' indicating the position of restriction from right. 0 prefix means the restriction is on the final path element.
+  *                          Second element provides the expected value for the property
+  *                          e.g. For "f:OrganizationAffiliation/f:telecom[system/@value=&#39;email&#39;]" --> Seq(system -> email)
+  *                          e.g. /Goal/extension[@url='http://hl7.org/fhir/StructureDefinition/goal-target']/extension[@url='measure']/valueCodeableConcept --> Seq(@.@.url -> http://hl7.org/fhir/StructureDefinition/goal-target, @.url -> measure)
+ *
   * @param multipleOr     If or on parameter is supported
   * @param multipleAnd    If and on parameter is supported
   * @param comparators    Supported comparators for parameter
   */
 case class SearchParameterConf(pname:String,
                                ptype:String,
-                               paths:Seq[Any],
+                               paths:Seq[String],
                                targets:Seq[String],
                                modifiers:Set[String],
                                targetTypes:Seq[String] = Nil,
-                               onExtension:Boolean = false,
-                               restrictions:Seq[Option[(String, String)]] = Nil,
+                               //onExtension:Boolean = false,
+                               restrictions:Seq[Seq[(String, String)]] = Nil,
                                multipleOr:Boolean = true,
                                multipleAnd:Boolean = true,
                                comparators:Set[String] = Set.empty[String]
@@ -262,14 +261,18 @@ case class SearchParameterConf(pname:String,
   def extractElementPaths(withArrayIndicators:Boolean = false):Set[String] ={
     //if it is on extension, return the last extension element (to get both URL and value) e.g. extension.extension
     val resultPaths =
-      if(onExtension)
+      /*if(onExtension)
         paths
           .asInstanceOf[Seq[Seq[(String, String)]]]
           .map(_.last._1.split('.').dropRight(1).mkString(".")).toSet //Return the last extension
-      else
-        paths.asInstanceOf[Seq[String]].toSet
+      else*/
+        paths/*.asInstanceOf[Seq[String]]*/.toSet
 
     if(withArrayIndicators) resultPaths else resultPaths.map(_.replace("[i]", ""))
+  }
+
+  def extractElementPathsAndTargetTypes(withArrayIndicators:Boolean = false):Set[(String, String)] = {
+    extractElementPaths(withArrayIndicators).zip(targetTypes)
   }
 }
 

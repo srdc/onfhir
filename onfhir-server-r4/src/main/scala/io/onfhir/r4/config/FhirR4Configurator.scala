@@ -1,6 +1,6 @@
 package io.onfhir.r4.config
 
-import io.onfhir.api.Resource
+import io.onfhir.api.{FHIR_PARAMETER_CATEGORIES, Resource}
 import io.onfhir.api.validation.{ProfileRestrictions, ValueSetRestrictions}
 import io.onfhir.audit.IFhirAuditCreator
 import io.onfhir.config._
@@ -85,11 +85,12 @@ class FhirR4Configurator extends BaseFhirConfigurator {
    * @return
    */
   override def parseSearchParameter(searchParameter: Resource): FHIRSearchParameter = {
+    val searchParamName = (searchParameter \ "code").extract[String]
     FHIRSearchParameter(
-      name = (searchParameter \ "code").extract[String],
+      name = searchParamName,
       url = (searchParameter \ "url").extract[String],
       base = (searchParameter \ "base").extract[Seq[String]].toSet,
-      ptype = (searchParameter \ "type").extract[String],
+      ptype = if(searchParamName == "_text") FHIR_PARAMETER_CATEGORIES.SPECIAL else (searchParameter \ "type").extract[String], //_text is not given as special in FHIR R4 conf
       expression = (searchParameter \ "expression").extractOpt[String],
       xpath = (searchParameter \ "xpath").extractOpt[String],
       target = (searchParameter \ "target").extractOrElse[Seq[String]](Nil).toSet,
