@@ -96,19 +96,18 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
     //Execute the path and return
     current
       .filter(_.isInstanceOf[FhirPathComplex]) //Only get the complex objects
-      .flatMap(r =>
-        FhirPathValueTransformer
-          .transform(r.asInstanceOf[FhirPathComplex].json \ pathName  ) match { //Execute JSON path for each element
+      .flatMap(r => {
+        FhirPathValueTransformer.transform(r.asInstanceOf[FhirPathComplex].json \ pathName) match { //Execute JSON path for each element
           //The field can be a multi valued so we should check if there is a field starting with the path
           case Nil if targetType.isEmpty =>
             r.asInstanceOf[FhirPathComplex].json.obj
-              .find(f => f._1.startsWith(pathName) && f._1.drop(pathName.length).head.isUpper)
+              .find(f => f._1.startsWith(pathName) && f._1.length > pathName.length && f._1.drop(pathName.length).head.isUpper)
               .map(f => FhirPathValueTransformer.transform(f._2))
               .getOrElse(Nil) //If not found still return nil
           //Oth
           case oth => oth
         }
-      )
+      })
   }
 
   /**
