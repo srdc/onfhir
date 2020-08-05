@@ -4,6 +4,7 @@ import org.slf4j.{Logger, LoggerFactory}
 import io.onfhir.api._
 import io.onfhir.api.util.{BaseFhirProfileHandler, FHIRUtil}
 
+import scala.util.parsing.combinator.RegexParsers
 import scala.util.{Success, Try}
 /**
   * Created by ozan before
@@ -65,7 +66,7 @@ class SearchParameterConfigurator(
         if(pathAndRestrictions.isEmpty){
           pathAndRestrictions = searchParameterDef.xpath
             .map(xpath =>
-              SearchParameterConfigurator.parseXPathMultiple(rtype, xpath)
+              SearchParameterConfigurator.parseXpath(rtype, xpath)
             )
         }
 
@@ -302,7 +303,35 @@ class SearchParameterConfigurator(
   }*/
 }
 
-object SearchParameterConfigurator {
+object SearchParameterConfigurator extends RegexParsers {
+  val quote = "'"  ^^ {case x => x}
+  val quotedValue:Parser[String] = quote ~  """[^\']*""".r ~ quote ^^ {case _ ~ v ~ _ => v}
+
+  val elemName:Parser[String] = """\w+""".r ^^ {case e => e}
+  val prefix:Parser[String] = """\w+:""".r ^^ {case p => p}
+  val xpathElementName:Parser[String] = prefix.? ~ elemName ^^ { case _ ~ n => n}
+
+  //a condion check e.g. f:type/@value='composed-of'
+  val xpathConditionItem:Parser[(String, String)] = xpathElementName ~ ("/"~ xpathElementName ).* ~ "/@value=" ~ quotedValue ^^ {
+    case e ~ te ~ _ ~ v =>
+      (e +: te.map(_._2)).mkString(".") -> v
+  }
+
+  val xpathCondition:Parser[Seq[(String, String)]] = "[" ~  xpathConditionItem ~ ("and" ~ xpathConditionItem).* ~ "]" ^^ {
+    case _ ~ c ~ mc ~ _ =>
+      c +: mc.map(_._2)
+  }
+
+  val xpathExtensionItem:Parser[(String, Seq[(String, String)])] = prefix.? ~ "extension[@url=" ~ quotedValue ~ "]" ^^ {case  _ ~ _ ~ url ~ _ => "extension[i]" -> Seq("url" -> url)}
+
+  val xpathOtherItem:Parser[(String, Seq[(String, String)])] = xpathElementName ~ xpathCondition.? ^^ { case e ~ c => e -> c.getOrElse(Nil)}
+
+  val xpathItem:Parser[(String, Seq[(String, String)])] = xpathExtensionItem | xpathOtherItem
+
+  val xpathPath:Parser[Seq[(String, Seq[(String, String)])]] = xpathItem ~ ("/" ~ xpathItem).* ^^ {case p ~ op => p +: op.map(_._2)}
+
+  val xpathMultiplePath:Parser[Seq[Seq[(String, Seq[(String, String)])]]] = xpathPath ~ ("|" ~ xpathPath).*  ^^ {case p ~ op => p +: op.map(_._2)}
+
   /**
    * Parse a path with array index
    * @param path
@@ -438,8 +467,44 @@ object SearchParameterConfigurator {
     path -> restrictions
   }
 
+  private def constructRestrictionPrefix(pathLength:Int, i:Int):String = {
+    val numOfStepsToFindRestrictionElem = pathLength - (i + 1)
+      if(numOfStepsToFindRestrictionElem > 0)
+        (0 until numOfStepsToFindRestrictionElem).map(_ => "@.").mkString("") //prepare a prefix to indicate the position of restriction from right e.g @.type means restriction is on path element one before from the end
+      else ""
+  }
 
+  /**
+   * Parses the XPath expression given in the search parameter definitions
+   * @param resourceType    Resource type to filter the expressions
+   * @param xpath           Xpath expression given in SearchParameter.xpath
+   * @return
+   */
+  def parseXpath(resourceType:String, xpath:String):Seq[(String, Seq[(String, String)])] = {
+    parseAll(xpathMultiplePath, xpath.replace("&#39;","'")) match {
+      case Success(result, _) =>
+        result
+          .filter(r => r.head._1 == resourceType) //Only xpaths related to this resource type
+          .map(r => {
+            val paths =  r.drop(1) //drop the resource type part
+            val finalPath = paths.map(_._1).mkString(".")
 
+            val finalRestrictions = paths.zipWithIndex.flatMap {
+              case (p,i) =>
+                if(p._2.nonEmpty) {
+                  val prefix = constructRestrictionPrefix(paths.length, i)
+                  p._2
+                    .map(r => (prefix + r._1) -> r._2)
+                } else
+                  Nil
+            }
+            finalPath -> finalRestrictions
+          })
+      //Problem in parsing
+      case failure : NoSuccess => Nil
+    }
+  }
+/*
   /**
    * Parse the XPath and returns a JSON query string; elem1-name.elem2.name
    * e.g. xpath: "f:Immunization/f:reaction/f:detail" => "reaction.detail"
@@ -536,7 +601,7 @@ object SearchParameterConfigurator {
       .filter(_.contains(resourceType+"/"))
       .map(parseXPathBasic)
   }
-
+*/
 
 }
 
