@@ -236,7 +236,7 @@ class ExpandOperationHandler extends FHIROperationHandlerService {
           ("total" -> matchingList.size) ~
           ("contains" -> matchingList)
 
-      resultValueSet ~ (VALUESET_EXPANSION -> expansion)
+      resultValueSet = resultValueSet ~ (VALUESET_EXPANSION -> expansion)
 
       /*val expansion = mutable.LinkedHashMap[String, Any]()
       expansion.put("identifier", UUID.randomUUID().toString)
@@ -255,8 +255,8 @@ class ExpandOperationHandler extends FHIROperationHandlerService {
   def containsAll(input:JValue, keys:Seq[String]): Boolean = {
 
     keys foreach (key =>
-      if(!((input \ "display").extractOpt[String].map(_.toLowerCase).contains(key.toLowerCase) ||
-        (input \ "code").extractOpt[String].map(_.toLowerCase).contains(key.toLowerCase)))
+      if(!((input \ "display").extractOpt[String].getOrElse("").toLowerCase.contains(key.toLowerCase) ||
+        (input \ "code").extractOpt[String].getOrElse("").toLowerCase.contains(key.toLowerCase)))
         return false
     )
     true
