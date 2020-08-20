@@ -6,6 +6,12 @@ import scala.util.hashing.MurmurHash3
 
 object SubscriptionUtil {
 
+  /**
+   * Get the hash of a search query to match the same queries
+   * @param rtype
+   * @param criteria
+   * @return
+   */
   def getCriteriaHash(rtype:String, criteria:Seq[Parameter]):String = {
     val serializedQuery =
       criteria
@@ -18,5 +24,8 @@ object SubscriptionUtil {
     val serializedWholeQuery = s"$rtype?$serializedQuery"
     MurmurHash3.stringHash(serializedWholeQuery).toString
   }
+
+
+
 
 }

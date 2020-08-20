@@ -5,9 +5,8 @@ import akka.actor.typed.scaladsl.Behaviors
 import akka.cluster.ddata.typed.scaladsl.{DistributedData, Replicator}
 import akka.cluster.ddata.{ORMap, ORMapKey, SelfUniqueAddress}
 import akka.cluster.ddata.typed.scaladsl.Replicator._
-
 import io.onfhir.subscription.config.SubscriptionConfig
-import io.onfhir.subscription.model.{CriteriaSubscriptions, FhirSubscription}
+import io.onfhir.subscription.model.{ChannelTypes, CriteriaSubscriptions, FhirSubscription}
 
 import scala.collection.mutable
 
@@ -18,25 +17,23 @@ object AkkaBasedSubscriptionCache {
    */
   private sealed trait InternalCommand extends Command
   //Internal responses handled
-  private case class InternalUpdateResponseForCriteriaSubscriptions(rsp: Replicator.UpdateResponse[ORMap[String, ORMap[String,CriteriaSubscriptions]]], replyTo:ActorRef[Boolean]) extends InternalCommand
-  private case class InternalUpdateResponseForFhirSubscription(internalCommand:Option[InternalCommand], rsp:Replicator.UpdateResponse[ORMap[String, FhirSubscription]], replyTo:ActorRef[Boolean]) extends InternalCommand
-  private case class InternalGetResponseForCriteriaSubscriptions(key:String, rsp: Replicator.GetResponse[ORMap[String, ORMap[String,CriteriaSubscriptions]]], replyTo: ActorRef[Seq[CriteriaSubscriptions]]) extends InternalCommand
-  private case class InternalGetResponseForSubscription(sid:String, rsp:Replicator.GetResponse[ORMap[String, FhirSubscription]], replyTo:ActorRef[Option[FhirSubscription]]) extends InternalCommand
-  private case class InternalOpResponse(result:Boolean, replyTo:ActorRef[Boolean]) extends InternalCommand
+  private case class InternalUpdateResponseForCriteriaSubscriptions(rsp: Replicator.UpdateResponse[ORMap[String, ORMap[String,CriteriaSubscriptions]]], replyTo:ActorRef[Response]) extends InternalCommand
+  private case class InternalUpdateResponseForFhirSubscription(internalCommand:Option[InternalCommand], rsp:Replicator.UpdateResponse[ORMap[String, FhirSubscription]], replyTo:ActorRef[Response]) extends InternalCommand
+  private case class InternalGetResponseForCriteriaSubscriptions(key:String, rsp: Replicator.GetResponse[ORMap[String, ORMap[String,CriteriaSubscriptions]]], replyTo: ActorRef[Response]) extends InternalCommand
+  private case class InternalGetResponseForSubscription(sid:String, rsp:Replicator.GetResponse[ORMap[String, FhirSubscription]], replyTo:ActorRef[Response]) extends InternalCommand
+  private case class InternalOpResponse(result:Boolean, replyTo:ActorRef[Response]) extends InternalCommand
   //Internal commands
-  private case class InternalAddCriteriaSubscription(fhirSubscription: FhirSubscription, replyTo:ActorRef[Boolean]) extends InternalCommand
-  private case class InternalRemoveCriteriaSubscription(fhirSubscription: FhirSubscription, replyTo:ActorRef[Boolean]) extends InternalCommand
-  private case class InternalRemoveSubscription(fhirSubscription: FhirSubscription, replyTo:ActorRef[Boolean]) extends InternalCommand
+  private case class InternalAddCriteriaSubscription(fhirSubscription: FhirSubscription, replyTo:ActorRef[Response]) extends InternalCommand
+  private case class InternalRemoveCriteriaSubscription(fhirSubscription: FhirSubscription, replyTo:ActorRef[Response]) extends InternalCommand
+  private case class InternalRemoveSubscription(fhirSubscription: FhirSubscription, replyTo:ActorRef[Response]) extends InternalCommand
+
 
   /**
    * Actor Behavior
    * @param subscriptionConfig
-   * @param fhirSearchParameterCache
    * @return
    */
-  def apply(subscriptionConfig: SubscriptionConfig,
-            fhirSearchParameterCache: FhirSearchParameterCache
-           ): Behavior[Command] = {
+  def apply(subscriptionConfig: SubscriptionConfig): Behavior[Command] = {
     Behaviors.setup { ctx =>
       implicit val node: SelfUniqueAddress = DistributedData(ctx.system).selfUniqueAddress
 
@@ -45,10 +42,6 @@ object AkkaBasedSubscriptionCache {
         DistributedData.withReplicatorMessageAdapter[Command, ORMap[String, FhirSubscription]] { replicatorAdapterForFhirSubscriptions =>
 
           Behaviors.receiveMessage[Command] {
-            //case GetSubscriptionDimensions(rtype, replyTo) =>
-            //  replyTo.tell(getSubscriptionDimensions(subscriptionConfig, fhirSearchParameterCache, rtype))
-            //  Behaviors.same
-
             /**
              * Retrieving subscriptions (criteria and subscription ids) for a resource type
              */
@@ -99,8 +92,8 @@ object AkkaBasedSubscriptionCache {
                 {
                   case rsp@GetSuccess(_) =>
                     rsp.dataValue.get(key.id) match {
-                      case None => InternalOpResponse(false, replyTo)
-                      case Some(fs) => InternalAddCriteriaSubscription(fs, replyTo)
+                      case Some(fs) if(fs.channel.channelType == ChannelTypes.WebSocket) => InternalAddCriteriaSubscription(fs, replyTo)
+                      case _ => InternalOpResponse(false, replyTo)
                     }
                   case _ => InternalOpResponse(false, replyTo)
                 }
@@ -125,6 +118,19 @@ object AkkaBasedSubscriptionCache {
               )
               Behaviors.same
 
+            case SetSubscriptionStatus(id, status, replyTo) =>
+              val key = getSubscriptionKey(id)
+              replicatorAdapterForFhirSubscriptions.askUpdate(
+                askReplyTo => Replicator.Update(key, ORMap.empty[String, FhirSubscription], WriteLocal, askReplyTo)(s => {
+                  s.get(id).foreach(_.status = status)
+                  s
+                }),
+                {
+                  case rsp@UpdateSuccess(_) =>InternalOpResponse(true, replyTo)
+                  case _ => InternalOpResponse(false, replyTo)
+                }
+              )
+              Behaviors.same
             /**
              * Completely delete the subscrription
               */
@@ -154,10 +160,10 @@ object AkkaBasedSubscriptionCache {
                 //Update of criteria list
                 case InternalUpdateResponseForCriteriaSubscriptions(rsp, replyTo) =>
                   rsp match {
-                    case Replicator.UpdateSuccess(_) => replyTo.tell(true)
+                    case Replicator.UpdateSuccess(_) => replyTo.tell(UpdateSubscriptionResponse(true))
                     case Replicator.UpdateFailure(_) =>
                       ctx.log.warn("Problem while updating criteria subscriptions !")
-                      replyTo.tell(false)
+                      replyTo.tell(UpdateSubscriptionResponse(false))
                   }
 
                   Behaviors.same // ok
@@ -167,7 +173,7 @@ object AkkaBasedSubscriptionCache {
                   rsp match {
                     case  Replicator.UpdateSuccess(_) =>
                       internalCommand match {
-                        case None => replyTo.tell(true)
+                        case None => replyTo.tell(UpdateSubscriptionResponse(true))
                         case Some(c) => ctx.self.tell(c)
                       }
                   }
@@ -178,11 +184,11 @@ object AkkaBasedSubscriptionCache {
                   rsp match {
                     case s @ Replicator.GetSuccess(d) =>
                       val value = s.dataValue.get(key).map(_.entries.values).getOrElse(Nil).toSeq
-                      replyTo ! value
+                      replyTo ! GetCriteriaSubscriptionsResponse(value)
                     case _ =>
                       ctx.log.warn("Problem while retrieving data from Akka Distributed data for key {}", key)
                       //We don't care errors for now
-                      replyTo ! Nil
+                      replyTo ! GetCriteriaSubscriptionsResponse(Nil)
                   }
 
                   Behaviors.same
@@ -192,16 +198,16 @@ object AkkaBasedSubscriptionCache {
                   rsp match {
                     case s @ Replicator.GetSuccess(_) =>
                       val value = s.dataValue.get(key)
-                      replyTo ! value
+                      replyTo ! GetSubscriptionResponse(value)
                     case _ =>
                       ctx.log.warn("Problem while retrieving data from Akka Distributed data for key {}", key)
-                      replyTo ! None
+                      replyTo ! GetSubscriptionResponse(None)
                   }
                   Behaviors.same
 
                 //Generic boolean response
                 case InternalOpResponse(r, replyTo) =>
-                  replyTo ! r
+                  replyTo ! UpdateSubscriptionResponse(r)
                   Behaviors.same
 
                 //Internal request to add the subscription to criteria list

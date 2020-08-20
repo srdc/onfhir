@@ -189,7 +189,7 @@ object ResourceChecker {
     * @param validQueryParameters
     * @return
     */
-  private def handleExtensionParameter(parameter:Parameter, searchParameterConf: SearchParameterConf,  resource: Resource):Boolean = {
+  /*private def handleExtensionParameter(parameter:Parameter, searchParameterConf: SearchParameterConf,  resource: Resource):Boolean = {
    //Get the paths
     val paths = searchParameterConf.paths.asInstanceOf[Seq[Seq[(String, String)]]]
     paths.exists(eachPath => {
@@ -217,6 +217,6 @@ object ResourceChecker {
       //Query on the extension element
       handleSimpleParameter(extParameter, extSearchParameterConf, lastExtension.asInstanceOf[JObject])
     })
-  }
+  }*/
 
 }

@@ -2,17 +2,23 @@ package io.onfhir.subscription.cache
 
 import akka.actor.typed.{ActorRef, Behavior}
 import io.onfhir.config.SearchParameterConf
+import io.onfhir.subscription.config.SubscriptionConfig
 import io.onfhir.subscription.model.{CriteriaSubscriptions, FhirSubscription}
 
+trait ISubscriptionCache {
+  // Return cache behavior
+  def apply(subscriptionConfig: SubscriptionConfig, fhirSearchParameterCache: FhirSearchParameterCache): Behavior[Command]
+}
 
 trait Command
+
 /**
- * Return all subscription dimensions in priority order for the resource type
- * e.g. for Observation we can keep patient specific subscriptions separately (dimensions can only be defined on reference type search parameters)
- * @param rtype Resource type
- * @return
+ * Response
  */
-case class GetSubscriptionDimensions(rtype:String, replyTo:ActorRef[Seq[SearchParameterConf]]) extends Command
+trait Response
+case class GetCriteriaSubscriptionsResponse(criteriaSubscriptions: Seq[CriteriaSubscriptions]) extends Response
+case class GetSubscriptionResponse(subscription:Option[FhirSubscription]) extends Response
+case class UpdateSubscriptionResponse(result:Boolean) extends Response
 
 /**
  * Return all criteria subscriptions for a resource type that is not specific to a dimension or given dimension e.g. subscriptions to Observation for a specific patient
@@ -20,7 +26,7 @@ case class GetSubscriptionDimensions(rtype:String, replyTo:ActorRef[Seq[SearchPa
  * @param dimensionParamAndValue  Parameter name for dimension e.g. patient - Value of the reference that indicates the dimension e.g. patient identifier Patient/45413
  * @return
  */
-case class GetCriteriaSubscriptions(rtype:String, dimensionParamAndValue:Option[(String, String)] = None, replyTo:ActorRef[Seq[CriteriaSubscriptions]]) extends Command
+case class GetCriteriaSubscriptions(rtype:String, dimensionParamAndValue:Option[(String, String)] = None, replyTo:ActorRef[Response]) extends Command
 
 /**
  * Add or update the subscription details in cache based on incoming FHIR Subscription resource
@@ -28,35 +34,43 @@ case class GetCriteriaSubscriptions(rtype:String, dimensionParamAndValue:Option[
  * @param fhirSubscription parsed FHIR Subscription resource
  * @return
  */
-case class AddOrUpdateSubscription(fhirSubscription: FhirSubscription, replyTo:ActorRef[Boolean]) extends Command
+case class AddOrUpdateSubscription(fhirSubscription: FhirSubscription, replyTo:ActorRef[Response]) extends Command
 
 /**
  * Return subscription details by id
  * @param id  Subscription id
  * @return
  */
-case class GetSubscription(id:String, replyTo:ActorRef[Option[FhirSubscription]]) extends Command
+case class GetSubscription(id:String, replyTo:ActorRef[Response]) extends Command
 
 /**
  * Activate the subscription in cache
  * @param id  Subscription id
  * @return
  */
-case class ActivateSubscription(id:String, replyTo:ActorRef[Boolean]) extends Command
+case class ActivateSubscription(id:String, replyTo:ActorRef[Response]) extends Command
 
 /**
  * Deactivate the subscription in cache (remove from criteria subscriptions, and set status = 0)
  * @param id Subscription id
  * @return
  */
-case class DeactivateSubscription(id:String, replyTo:ActorRef[Boolean]) extends Command
+case class DeactivateSubscription(id:String, replyTo:ActorRef[Response]) extends Command
+
+/**
+ * Set the status of subscription
+ * @param id
+ * @param status
+ * @param replyTo
+ */
+case class SetSubscriptionStatus(id:String, status:Int, replyTo:ActorRef[Response]) extends Command
 
 /**
  * Delete all the subscription details
  * @param id Subscription id
  * @return
  */
-case class RemoveSubscription(id:String, replyTo:ActorRef[Boolean]) extends Command
+case class RemoveSubscription(id:String, replyTo:ActorRef[Response]) extends Command
 
 /**
  * Subscription cache behaviour

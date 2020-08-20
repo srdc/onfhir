@@ -15,6 +15,7 @@
     <properties>
         <akka.version>2.6.8</akka.version>
         <alpakka-kafka.version>2.0.4</alpakka-kafka.version>
+        <akka-http.version>10.2.0</akka-http.version>
     </properties>
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
@@ -82,7 +83,17 @@
             <artifactId>akka-stream_${scala.binary.version}</artifactId>
             <version>${akka.version}</version>
         </dependency>
-
+        <!-- Akka Http for Web Socket -->
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-http_${scala.binary.version}</artifactId>
+            <version>${akka-http.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-http-spray-json_${scala.binary.version}</artifactId>
+            <version>${akka-http.version}</version>
+        </dependency>
     </dependencies>
 
 </project>

@@ -5,8 +5,9 @@ import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.cluster.sharding.external.ExternalShardAllocationStrategy
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityTypeKey}
 import akka.kafka.cluster.sharding.KafkaClusterSharding
-import io.onfhir.api.Resource
+import io.onfhir.subscription.cache.FhirSearchParameterCache
 import io.onfhir.subscription.config.SubscriptionConfig
+import io.onfhir.subscription.model.ConsumerGroupIds
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -38,32 +39,33 @@ object SubscriptionEvaluator {
    * @param subscriptionConfig    Configuration
    * @return
    */
-  def init(system: ActorSystem[_], subscriptionConfig: SubscriptionConfig): Future[ActorRef[Command]] = {
+  def init(system: ActorSystem[_], fhirSearchParameterCache: FhirSearchParameterCache, subscriptionConfig: SubscriptionConfig): Future[ActorRef[Command]] = {
     import system.executionContext
     KafkaClusterSharding(subscriptionConfig.system).messageExtractorNoEnvelope(
       timeout = 10.seconds,
       topic = subscriptionConfig.kafkaFhirTopic,
       entityIdExtractor = (msg: Command) => msg.getEntityId,
-      settings = subscriptionConfig.kafkaConsumerSettings
+      settings = subscriptionConfig.kafkaConsumerSettings(ConsumerGroupIds.kafkaConsumerGroupIdForResources)
     ).map(messageExtractor => {
-      system.log.info("Message extractor created. Initializing sharding for group {}", subscriptionConfig.kafkaConsumerGroupId)
+      system.log.info("Message extractor created. Initializing sharding for group {}", ConsumerGroupIds.kafkaConsumerGroupIdForResources)
       ClusterSharding(system).init(
-        Entity(subscriptionConfig.entityTypeKey)(createBehavior = _ => SubscriptionEvaluator())
-          .withAllocationStrategy(new ExternalShardAllocationStrategy(system, subscriptionConfig.entityTypeKey.name))
+        Entity(subscriptionConfig.entityTypeKeyForResources)(createBehavior = _ => SubscriptionEvaluator(fhirSearchParameterCache))
+          .withAllocationStrategy(new ExternalShardAllocationStrategy(system, subscriptionConfig.entityTypeKeyForResources.name))
           .withMessageExtractor(messageExtractor))
     })
   }
 
-  def apply(): Behavior[Command] = running()
+  def apply(fhirSearchParameterCache: FhirSearchParameterCache): Behavior[Command] = running(fhirSearchParameterCache)
 
-  private def running(): Behavior[Command] = {
+  private def running(fhirSearchParameterCache: FhirSearchParameterCache): Behavior[Command] = {
     Behaviors.setup { ctx =>
       Behaviors.receiveMessage[Command] {
         case GetSatisfiedSubscriptionsForResource(rtype, rid, resource, ack) =>
           ctx.log.info("Processing subscriptions for resource type {} with id {}...", rtype,rid)
           val sids = getSatisfiedSubscriptions(rtype, rid, resource)
+
           ack.tell(sids)
-          running()
+          Behaviors.same
       }
     }
   }

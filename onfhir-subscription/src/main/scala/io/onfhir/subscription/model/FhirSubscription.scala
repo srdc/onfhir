@@ -22,7 +22,8 @@ case class FhirSubscriptionChannel(channelType:String, endpoint: Option[String],
  *                  0: Not active (Used for web sockets to indicate web socket connection is not established yet)
  *                  1: Active
  *                  negative integers: Number of successive connection failures for the channel
+ * @param expiration If exists expiration time of subscription
  */
-case class FhirSubscription(id:String, rtype:String, channel:FhirSubscriptionChannel, criteria:Seq[Parameter] = Nil, status:Int) {
+case class FhirSubscription(id:String, rtype:String, channel:FhirSubscriptionChannel, criteria:Seq[Parameter] = Nil, var status:Int, expiration:Option[String]) {
   def getCriteriaHash = SubscriptionUtil.getCriteriaHash(rtype, criteria)
 }
