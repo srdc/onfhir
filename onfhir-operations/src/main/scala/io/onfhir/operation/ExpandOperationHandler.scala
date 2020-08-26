@@ -187,12 +187,9 @@ class ExpandOperationHandler extends FHIROperationHandlerService {
                var matching = JObject()
                (include \ "system").extractOpt[String].foreach(s => {matching = matching ~ ("system" -> s)})
                (include \ "version").extractOpt[String].foreach(v => {matching = matching ~ ("version" -> v)})
-               (include \ "extension") match {
-                  case JNothing => None
-                  case other =>  matching = matching ~ ("extension" -> other)
-               }
-               (concept \ "display").extractOpt[String].foreach(d => {matching = matching ~ ("display" -> d)})
                (concept \ "code").extractOpt[String].foreach(c => {matching = matching ~ ("code" -> c)})
+               (concept \ "display").extractOpt[String].foreach(d => {matching = matching ~ ("display" -> d)})
+               (concept \ "extension").extractOpt[JArray].foreach(arr => {matching = matching ~ ("extension" -> arr)})
                Some(matching)
              } else None
           })
