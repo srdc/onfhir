@@ -150,4 +150,17 @@ object OnfhirConfig {
     * Authorization configurations
     */
   lazy val authzConfig:AuthzConfig = new AuthzConfig(OnfhirConfig.config.getConfig("fhir.authorization"))
+
+  /**
+   * FHIR Subscription related configuration
+   */
+  //Enables sending FHIR subscription events to kafka so onfhir-subscription module can work
+  lazy val fhirSubscriptionActive = Try(config.getBoolean("fhir.subscription.active")).toOption.getOrElse(false)
+  lazy val fhirSubscriptionAllowedResources = Try(config.getStringList("fhir.subscription.allowed-resources")).toOption.map(_.asScala.toSeq)
+  /**
+   * Internal API configurations
+   */
+  lazy val internalApiActive:Boolean = Try(config.getBoolean("server.internal.active")).toOption.getOrElse(false)
+  lazy val internalApiPort:Int = Try(config.getInt("server.internal.port")).toOption.getOrElse(8081)
+  lazy val internalApiAuthenticate:Boolean = Try(config.getBoolean("server.internal.authenticate")).toOption.getOrElse(false)
 }

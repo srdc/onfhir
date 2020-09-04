@@ -587,10 +587,10 @@ object FHIRUtil {
       case FHIR_PARAMETER_CATEGORIES.COMPARTMENT =>
         val compartmentRelatedParams = parameter.chain.map(_._2)
         compartmentRelatedParams.map(p =>
-          fhirConfig.findSupportedSearchParameter(_type, p).map(_.extractElementPaths()).getOrElse(Set.empty)
-        ).reduce((s1,s2)=> s1++s2)
+          fhirConfig.findSupportedSearchParameter(_type, p).map(_.extractElementPaths()).getOrElse(Nil)
+        ).reduce((s1,s2)=> s1++s2).toSet
       case FHIR_PARAMETER_CATEGORIES.NORMAL =>
-        fhirConfig.findSupportedSearchParameter(_type, parameter.name).map(_.extractElementPaths()).getOrElse(Set.empty)
+        fhirConfig.findSupportedSearchParameter(_type, parameter.name).map(_.extractElementPaths()).getOrElse(Nil).toSet
       //Other parameters are not important
       case _ => Set.empty
     }
@@ -935,4 +935,21 @@ object FHIRUtil {
     s.charAt(0).toLower + s.substring(1)
   }
 
+  /**
+   * FHIR index of query restrictions on the path
+   * @param pathParts     Splitted path
+   * @param restrictions  Restrictions on path e.g. @.type = email
+   **/
+  def findIndexOfRestrictionsOnPath(pathParts:Seq[String], restrictions:Seq[(String, String)]):Seq[(Int, Seq[(String, String)])]= {
+    val indexOfRestrictions  =
+      restrictions
+        .map(r => (pathParts.length - r._1.count(_ == '@') - 1) -> r)
+        .groupBy(_._1)
+        .map(g => g._1 ->
+          g._2.map(_._2)
+            .map(i => i._1.replace("@.", "") -> i._2) //remove paths
+        ).toSeq.sortBy(_._1)
+
+    indexOfRestrictions
+  }
 }

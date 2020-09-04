@@ -16,6 +16,7 @@
         <akka.version>2.6.8</akka.version>
         <alpakka-kafka.version>2.0.4</alpakka-kafka.version>
         <akka-http.version>10.2.0</akka-http.version>
+        <scala-test.version>3.2.2</scala-test.version>
     </properties>
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
@@ -50,6 +51,22 @@
             <artifactId>akka-cluster-typed_${scala.binary.version}</artifactId>
             <version>${akka.version}</version>
         </dependency>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-cluster-sharding-typed_${scala.binary.version}</artifactId>
+            <version>${akka.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-cluster-sharding_${scala.binary.version}</artifactId>
+            <version>${akka.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-persistence_${scala.binary.version}</artifactId>
+            <version>${akka.version}</version>
+        </dependency>
+
         <!--Akka actor and stream-->
         <dependency>
             <groupId>com.typesafe.akka</groupId>
@@ -93,6 +110,25 @@
             <groupId>com.typesafe.akka</groupId>
             <artifactId>akka-http-spray-json_${scala.binary.version}</artifactId>
             <version>${akka-http.version}</version>
+        </dependency>
+        <!--Serialization-->
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.13.0</version>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe.akka</groupId>
+            <artifactId>akka-serialization-jackson_${scala.binary.version}</artifactId>
+            <version>${akka.version}</version>
+        </dependency>
+
+        <!--Testing -->
+        <dependency>
+            <groupId>org.scalatest</groupId>
+            <artifactId>scalatest_${scala.binary.version}</artifactId>
+            <version>${scala-test.version}</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

@@ -1,11 +1,10 @@
 package io.onfhir.api.util
 
 import java.time.Instant
-
-import io.onfhir.api._
-import io.onfhir.exception._
-import io.onfhir.util.DateTimeUtil
 import io.onfhir.util.JsonFormatter._
+import io.onfhir.api._
+import io.onfhir.exception.{InitializationException, InternalServerException, InvalidParameterException, UnsupportedParameterException}
+import io.onfhir.util.DateTimeUtil
 import org.json4s.JsonAST.{JObject, JValue}
 
 import scala.math.pow
@@ -20,27 +19,43 @@ object InMemoryPrefixModifierHandler {
     * @return
     */
   def missingHandler(paths: Seq[String], bool: String, resource: Resource): Boolean = {
+    val values = paths.map(p => FHIRUtil.applySearchParameterPath(p, resource))
+    misssingHandler(bool, values)
+  }
+
+  def misssingHandler(bool:String, values:Seq[Seq[JValue]]):Boolean = {
     bool match {
       case MISSING_MODIFIER_VALUES.STRING_TRUE =>
-        //It should be missing in all the paths
-        paths.forall(p => FHIRUtil.applySearchParameterPath(p, resource).isEmpty)
+        values.forall(_.isEmpty)//all paths should be empty
       case MISSING_MODIFIER_VALUES.STRING_FALSE =>
-        paths.exists(p => FHIRUtil.applySearchParameterPath(p, resource).nonEmpty)
+        values.exists(_.nonEmpty)
       case _ =>
         throw new InvalidParameterException("Correct Boolean Value Should be Provided")
     }
   }
 
-
   /**
-    * Handle text search
-    * @param path
-    * @param value
-    * @param targetType
-    * @param resource
-    * @return
-    */
-  def handleTokenTextModifier(path: String, value: String, targetType:String, resource:JValue): Boolean = {
+   * Handle text search on tokens
+   * @param value         Expected value
+   * @param targetType    Target type of actual value
+   * @param actualValue   Extracted value from resource
+   * @return
+   */
+  def handleTokenTextModifier(value: String, targetType:String, actualValue:JValue): Boolean = {
+    // Get the token :text field for target type
+    val textFields = TOKEN_TYPE_SEARCH_DISPLAY_PATHS.get(targetType)
+    if(textFields.isEmpty)
+      throw new InitializationException(s"The modifier :text cannot be used for elements with type $targetType !!!")
+
+    textFields.get.exists(textField => {
+      val actualValues = FHIRUtil.applySearchParameterPath(textField, actualValue)
+      //TODO Better handle case insensivity and furher insensitivity for FHIR specified characters
+      actualValues.exists(avalue => avalue.extract[String].toLowerCase.startsWith(value.toLowerCase))
+    })
+  }
+
+
+  /*def handleTokenTextModifier(path: String, value: String, targetType:String, resource:JValue): Boolean = {
     // Get the token :text field for target type
     val textFields = TOKEN_TYPE_SEARCH_DISPLAY_PATHS.get(targetType)
     if(textFields.isEmpty)
@@ -51,7 +66,7 @@ object InMemoryPrefixModifierHandler {
       //TODO Better handle case insensivity and furher insensitivity for FHIR specified characters
       actualValues.exists(avalue => avalue.extract[String].toLowerCase.startsWith(value.toLowerCase))
     })
-  }
+  }*/
 
   /**
     *
@@ -319,6 +334,45 @@ object InMemoryPrefixModifierHandler {
         dateTimeQueryBuilder(valueRange, FHIR_PREFIXES_MODIFIERS.NOT_EQUAL, actualTime) || dateTimeQueryBuilder(valueRange, FHIR_PREFIXES_MODIFIERS.LESS_THAN, actualTime)
       case FHIR_PREFIXES_MODIFIERS.ENDS_BEFORE =>
         dateTimeQueryBuilder(valueRange, FHIR_PREFIXES_MODIFIERS.NOT_EQUAL, actualTime) || dateTimeQueryBuilder(valueRange, FHIR_PREFIXES_MODIFIERS.GREATER_THAN, actualTime)
+    }
+  }
+
+  /**
+   * FHIR string query handling
+   * @param actualValue
+   * @param modifier
+   * @param expectedValue
+   * @return
+   */
+  def stringQueryHandler(actualValue:JValue, modifier:String,  expectedValue:String):Boolean = {
+    modifier match {
+      case FHIR_PREFIXES_MODIFIERS.EXACT =>
+        // Exact match provided with $eq mongo operator
+        actualValue.extract[String].equalsIgnoreCase(expectedValue)
+      case FHIR_PREFIXES_MODIFIERS.CONTAINS =>
+        actualValue.extract[String].toLowerCase.contains(expectedValue.toLowerCase())
+      case _ =>
+        // Case insensitive, partial matches at the end of string
+        actualValue.extract[String].toLowerCase.startsWith(expectedValue.toLowerCase())
+    }
+  }
+
+  /**
+   * FHIR Uri Query Handling
+   * @param actualValue
+   * @param modifier
+   * @param expectedUri
+   * @return
+   */
+  def uriQueryHandler(actualValue:JValue, modifier:String, expectedUri:String):Boolean = {
+    modifier match {
+      case FHIR_PREFIXES_MODIFIERS.ABOVE =>
+        val parentUri = expectedUri.split('/').dropRight(2).mkString("/")
+        actualValue.extract[String].startsWith(parentUri)
+      case FHIR_PREFIXES_MODIFIERS.BELOW =>
+        actualValue.extract[String].startsWith(expectedUri)
+      case "" =>
+        actualValue.extract[String].equals(expectedUri)
     }
   }
 

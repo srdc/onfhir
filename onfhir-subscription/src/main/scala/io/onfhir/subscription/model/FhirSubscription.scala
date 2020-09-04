@@ -1,29 +1,32 @@
 package io.onfhir.subscription.model
 
-import io.onfhir.api.model.Parameter
+import akka.cluster.ddata.{DeltaReplicatedData, PNCounter, ReplicatedData}
+import io.onfhir.api.model.{FhirSubscriptionChannel, Parameter}
 import io.onfhir.subscription.util.SubscriptionUtil
 
 /**
- * FHIR Subscription channel details
- *
- * @param channelType   Channel type see model.ChannelTypes
- * @param endpoint      Endpoint for channel
- * @param payload       Mime type for notification to return if not exits comminicate with empty content
- * @param headers       Headers to append to the channel
+ * Replicated data object to keep FHIR Subscription data in Akka Distributed data
+ * @param id
+ * @param rtype
+ * @param channel
+ * @param criteria
+ * @param status
+ * @param expiration
  */
-case class FhirSubscriptionChannel(channelType:String, endpoint: Option[String], payload:Option[String], headers:Seq[String] = Nil)
+case class DDFhirSubscription(id:String, rtype:String, channel:FhirSubscriptionChannel, criteria:Seq[Parameter] = Nil, status:PNCounter, expiration:Option[String]) extends DeltaReplicatedData with ProtoSerializable {
+  override type T = DDFhirSubscription
 
-/**
- * FHIR Subscription
- * @param id        Id of subscription in OnFhir
- * @param channel   Channel details
- * @param criteria  Criteria for the subscription
- * @param status    Status of the subscription
- *                  0: Not active (Used for web sockets to indicate web socket connection is not established yet)
- *                  1: Active
- *                  negative integers: Number of successive connection failures for the channel
- * @param expiration If exists expiration time of subscription
- */
-case class FhirSubscription(id:String, rtype:String, channel:FhirSubscriptionChannel, criteria:Seq[Parameter] = Nil, var status:Int, expiration:Option[String]) {
+  override def merge(that: DDFhirSubscription): DDFhirSubscription = {
+    copy(status = status.merge(that.status))
+  }
+
+  override type D = PNCounter
+
+  override def delta: Option[PNCounter] = status.delta
+
+  override def mergeDelta(thatDelta: PNCounter):DDFhirSubscription = this.copy(status = status.mergeDelta(thatDelta))
+
+  override def resetDelta: DDFhirSubscription = this.copy(status= status.resetDelta)
+
   def getCriteriaHash = SubscriptionUtil.getCriteriaHash(rtype, criteria)
 }

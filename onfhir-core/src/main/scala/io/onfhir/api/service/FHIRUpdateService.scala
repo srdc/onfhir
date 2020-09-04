@@ -20,14 +20,16 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
     * @param fhirRequest FHIR Request
     */
   override def validateInteraction(fhirRequest: FHIRRequest): Future[Unit] = {
-      if(fhirRequest.resourceId.isDefined)
+     val validations =
+       if(fhirRequest.resourceId.isDefined)
         validateUpdateInteraction(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.resourceId.get, fhirRequest.ifMatch)
-      else {
-        validateConditionalUpdateInteraction(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.queryParams, fhirRequest.prefer)/*.map( validQueryParams =>
-          //Set valid Query params to request
-          fhirRequest.queryParams = validQueryParams
-        )*/
-      }
+       else
+         validateConditionalUpdateInteraction(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.queryParams, fhirRequest.prefer)
+
+    validations.map(_ =>
+      //Extra business rules validations if exist
+      FHIRApiValidator.validateExtraRules(fhirRequest)
+    )
   }
 
   /**
@@ -211,6 +213,8 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
     * @return
     */
   def performUpdate(resourceIn:Resource, rtype:String, rid:Option[String], prefer:Option[String], testUpdate:Boolean = false, oldVersion:Option[(Long, Resource)] = None, wasDeleted:Boolean = false):Future[FHIRResponse] = {
+    oldVersion.foreach(ov => FHIRApiValidator.validateContentChanges(rtype, ov._2, resourceIn))
+
     if (!testUpdate) {
       oldVersion match {
         case None =>

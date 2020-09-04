@@ -2,9 +2,9 @@ package io.onfhir.subscription.channel
 
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import io.onfhir.subscription.FhirNotificationHandler
-import io.onfhir.subscription.model.FhirNotification
+import io.onfhir.subscription.model.{CborSerializable, FhirNotification}
 
-trait Command
+trait Command extends CborSerializable
 
 /**
  * Command to send the notification

@@ -613,6 +613,26 @@ package object api {
   }
 
   /**
+   * FHIR Subscription channel type
+   */
+  object SubscriptionChannelTypes {
+    val WebSocket = "websocket"
+    val RestHook = "rest-hook"
+    val Email = "email"
+    val Sms = "sms"
+    val Message = "message"
+  }
+
+  val SUPPORTED_SUBSCRIPTION_CHANNELS = Set(SubscriptionChannelTypes.WebSocket, SubscriptionChannelTypes.RestHook)
+
+  object SubscriptionStatusCodes {
+    val error = "error"
+    val active = "active"
+    val requested = "requested"
+    val off = "off"
+  }
+
+  /**
     * FHIR Operations that are defined by FHIR and implemented in default within onFhir
     */
   val DEFAULT_IMPLEMENTED_FHIR_OPERATIONS:Map[String, String] =

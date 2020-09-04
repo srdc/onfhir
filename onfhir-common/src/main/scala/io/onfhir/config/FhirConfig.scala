@@ -1,8 +1,9 @@
 package io.onfhir.config
 
-import scala.collection.immutable.{HashMap}
+import scala.collection.immutable.HashMap
 import akka.http.scaladsl.model._
-import io.onfhir.api.{FHIR_VERSIONING_OPTIONS, FHIR_ROOT_URL_FOR_DEFINITIONS}
+import io.onfhir.api.model.InternalEntity
+import io.onfhir.api.{FHIR_ROOT_URL_FOR_DEFINITIONS, FHIR_VERSIONING_OPTIONS}
 import io.onfhir.api.validation.{ProfileRestrictions, ValueSetRestrictions}
 
 /**
@@ -251,28 +252,24 @@ case class SearchParameterConf(pname:String,
                                multipleOr:Boolean = true,
                                multipleAnd:Boolean = true,
                                comparators:Set[String] = Set.empty[String]
-                              ) {
+                              ) extends InternalEntity {
 
   /**
     * Extract the possible element paths for the search parameter
     * @param withArrayIndicators If true, it returns the path with array indicators ([i]); e.g. component[i].code
     * @return
     */
-  def extractElementPaths(withArrayIndicators:Boolean = false):Set[String] ={
-    //if it is on extension, return the last extension element (to get both URL and value) e.g. extension.extension
-    val resultPaths =
-      /*if(onExtension)
-        paths
-          .asInstanceOf[Seq[Seq[(String, String)]]]
-          .map(_.last._1.split('.').dropRight(1).mkString(".")).toSet //Return the last extension
-      else*/
-        paths/*.asInstanceOf[Seq[String]]*/.toSet
-
-    if(withArrayIndicators) resultPaths else resultPaths.map(_.replace("[i]", ""))
+  def extractElementPaths(withArrayIndicators:Boolean = false):Seq[String] ={
+    if(withArrayIndicators) paths else paths.map(_.replace("[i]", ""))
   }
 
-  def extractElementPathsAndTargetTypes(withArrayIndicators:Boolean = false):Set[(String, String)] = {
-    extractElementPaths(withArrayIndicators).zip(targetTypes)
+  def extractElementPathsAndTargetTypes(withArrayIndicators:Boolean = false):Seq[(String, String)] = {
+    extractElementPaths(withArrayIndicators)
+      .zip(targetTypes)
+  }
+
+  def extractElementPathsTargetTypesAndRestrictions(withArrayIndicators:Boolean = false):Seq[(String, String, Seq[(String,String)])] = {
+    (extractElementPaths(withArrayIndicators = true), targetTypes, restrictions).zipped.toSeq
   }
 }
 
@@ -310,7 +307,7 @@ case class ResourceConf(resource:String,
                         searchInclude:Set[String],
                         searchRevInclude:Set[String],
                         referencePolicies:Set[String] = Set.empty[String]
-                       )
+                       ) extends InternalEntity
 
 /**
   * Onfhir configuration for a supported Operation parameter
@@ -354,7 +351,7 @@ case class OperationConf(url:String,
                          outputParams:Seq[OperationParamDef],
                          inputParamsProfile:Option[String] = None,
                          affectsState:Boolean = false
-                        ) {
+                        ) extends InternalEntity {
   //If HTTP Get is allowed for operation; if it does not affect state of resources and all input parameters are primitive
   def isHttpGetAllowed() = !affectsState && inputParams.forall(ip => ip.pType.isDefined &&  ip.pType.get.head.isLower)
 

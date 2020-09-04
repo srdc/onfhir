@@ -42,7 +42,7 @@ object ResourceQueryBuilder {
               case FHIR_PREFIXES_MODIFIERS.MISSING =>
                 if(searchParameterConf.ptype == FHIR_PARAMETER_TYPES.COMPOSITE)
                   throw new InvalidParameterException(s"Missing modifier cannot be used with composite parameters!")
-                val paths = searchParameterConf.extractElementPaths(withArrayIndicators = true).toSeq
+                val paths = searchParameterConf.extractElementPaths(withArrayIndicators = true)
                 PrefixModifierHandler.missingHandler(paths.map(FHIRUtil.normalizeElementPath), parameter.valuePrefixList.head._2)
 
               //Not modifier is common
@@ -69,26 +69,21 @@ object ResourceQueryBuilder {
     */
   private def constructQueryForSimple(value:String, paramType:String, modifierOrPrefix:String, searchParameterConf:SearchParameterConf) = {
     //For each possible path, construct queries
-    val queries = (searchParameterConf.extractElementPaths(withArrayIndicators = true), searchParameterConf.targetTypes, searchParameterConf.restrictions).zipped.toSeq map {
-      case (path, targetType, Nil) =>
-        SearchUtil
-          .typeHandlerFunction(paramType)(value, modifierOrPrefix, path, targetType, searchParameterConf.targets)
-      //If there is a restriction on the search we assume it is a direct field match e.g phone parameter on Patient
-      //e.g. f:PlanDefinition/f:relatedArtifact[f:type/@value='depends-on']/f:resource -->  path = relatedArtifact[i].resource, restriction = @.type -->  (relatedArtifact[i], resource, type)
-      //e.g. f:OrganizationAffiliation/f:telecom[system/@value='email']  --> path => telecom[i] , restriction = system --> (telecom[i], "", system)
-      case (path, targetType, restrictions) =>
-        val pathParts = path.split('.')
-        val indexOfRestrictions  =
-          restrictions
-            .map(r => (pathParts.length - r._1.count(_ == '@') - 1) -> r)
-            .groupBy(_._1)
-            .map(g => g._1 ->
-              g._2.map(_._2)
-                .map(i => i._1.replace("@.", "") -> i._2) //remove paths
-            ).toSeq.sortBy(_._1)
-
-        SearchUtil.queryWithRestrictions(pathParts, indexOfRestrictions, value, paramType, targetType, modifierOrPrefix, searchParameterConf.targets)
-    }
+    val queries =
+      searchParameterConf
+        .extractElementPathsTargetTypesAndRestrictions(withArrayIndicators = true)
+        .map {
+          case (path, targetType, Nil) =>
+            SearchUtil
+              .typeHandlerFunction(paramType)(value, modifierOrPrefix, path, targetType, searchParameterConf.targets)
+          //If there is a restriction on the search we assume it is a direct field match e.g phone parameter on Patient
+          //e.g. f:PlanDefinition/f:relatedArtifact[f:type/@value='depends-on']/f:resource -->  path = relatedArtifact[i].resource, restriction = @.type -->  (relatedArtifact[i], resource, type)
+          //e.g. f:OrganizationAffiliation/f:telecom[system/@value='email']  --> path => telecom[i] , restriction = system --> (telecom[i], "", system)
+          case (path, targetType, restrictions) =>
+            val pathParts = path.split('.')
+            val indexOfRestrictions  = FHIRUtil.findIndexOfRestrictionsOnPath(pathParts, restrictions)
+            SearchUtil.queryWithRestrictions(pathParts, indexOfRestrictions, value, paramType, targetType, modifierOrPrefix, searchParameterConf.targets)
+        }
     //OR the queries for multiple paths
     if(queries.size > 1) or(queries:_*) else queries.head
   }
@@ -133,12 +128,12 @@ object ResourceQueryBuilder {
       throw new InvalidParameterException(s"Invalid query value supplied for composite parameter ${parameter.name}, it needs ${compositeParams.size} values to query seperated by dollar sign!")
 
     //Root paths for them to search on
-    val commonPaths = searchParamConf.extractElementPaths(withArrayIndicators = true)
-    val normalCommonPaths = commonPaths.filter(_ != "")
+    val commonPathsAndTargetTypes = searchParamConf.extractElementPathsAndTargetTypes(withArrayIndicators = true)
+    val normalCommonPaths = commonPathsAndTargetTypes.filter(_._1 != "").map(_._1)
 
     val queries = valuesArr.flatMap(value =>
       //For each common alternative path
-      commonPaths.zip(searchParamConf.targetTypes).map { case (commonPath, targetType) =>
+      commonPathsAndTargetTypes.map { case (commonPath, targetType) =>
         //Construct query for each composite
         val queriesForEachCombParam =
           compositeParams.zipWithIndex.map { case (compParamName, i) =>
@@ -152,12 +147,12 @@ object ResourceQueryBuilder {
               //If the search is on root Resource, find the paths that does not belong to any common path listed
               case "" if targetType == "Resource" =>
                 compParamConf
-                  .extractElementPaths(withArrayIndicators = true).zip(compParamConf.targetTypes)
+                  .extractElementPathsAndTargetTypes(withArrayIndicators = true)
                   .filter(p => !normalCommonPaths.exists(p._1.startsWith))
               //Otherwise, find the paths that has this commonPath as prefix
               case _ =>
                 compParamConf
-                  .extractElementPaths(withArrayIndicators = true).zip(compParamConf.targetTypes)
+                  .extractElementPathsAndTargetTypes(withArrayIndicators = true)
                   .filter(p => p._1.startsWith(commonPath))
                   .map(p => p._1.replace(commonPath +".", "") -> p._2)
             }

@@ -1,5 +1,6 @@
 package io.onfhir.api.validation
 
+import io.onfhir.api.model.InternalEntity
 import org.json4s.JsonAST.JValue
 
 //Type of FHIR constraints
@@ -39,7 +40,7 @@ case class ProfileRestrictions(
                                 elementRestrictions:Seq[(String, ElementRestrictions)],
                                 summaryElements:Set[String],
                                 constraints:Option[FhirRestriction] = None,
-                                isAbstract:Boolean = false)
+                                isAbstract:Boolean = false) extends InternalEntity
 
 /**
   * Restrictions defined on a element
@@ -87,7 +88,7 @@ trait FhirRestriction {
  * @param includes  Included codes
  * @param excludes  Excluded codes
  */
-case class ValueSetRestrictions(includes:ValueSetDef, excludes:Option[ValueSetDef] = None)
+case class ValueSetRestrictions(includes:ValueSetDef, excludes:Option[ValueSetDef] = None) extends InternalEntity
 
 /**
  * Defines the contents of a value set inclusion or exclusion

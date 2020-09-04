@@ -67,7 +67,7 @@ object AggregationHandler {
    * @return
    */
   private def constructGroupByExpressionForTupleTokens(tokenValues:Seq[String], tokenValueFormat:(Option[String], Option[String]), path:String, subPaths:Seq[String]):BsonValue = {
-    tokenValueFormat match {
+    (tokenValueFormat:  @unchecked) match {
       //[code] query pattern or |[code] query pattern
       case (None, Some(_)) | (Some(""), Some(_)) =>
         //e.g. {code: {
@@ -204,7 +204,6 @@ object AggregationHandler {
           val pathsAndTargetTypes =
             gbypConf
             .extractElementPathsAndTargetTypes(withArrayIndicators = true)
-            .toSeq
 
           val expressionForEachPath =
             pathsAndTargetTypes.to

@@ -219,7 +219,7 @@ object ResourceManager {
                       SORTING_SUBPATHS
                         .getOrElse(ttype, Seq("")) //Get the subpaths for sorting for the target element type
                         .map(subpath => path + subpath)
-                    }.toSeq
+                    }
             })
 
         //Construct expressions for groupBy params
@@ -565,7 +565,7 @@ object ResourceManager {
       throw new UnsupportedParameterException(s"Parameter ${parameter.chain.last._2} is not supported on $rtypeToQuery within '_has' query!")
 
     //Find the paths of reference element to return
-    val referencePaths = chainParameterConf.get.extractElementPaths()
+    val referencePaths = chainParameterConf.get.extractElementPaths().toSet
     //Run query but only return the references on chain parameter
     var fresourceReferences = DocumentManager
       .searchDocuments(rtypeToQuery, Some(query), includingOrExcludingFields = Some(true -> referencePaths))
@@ -619,7 +619,7 @@ object ResourceManager {
         throw new UnsupportedParameterException(s"Parameter ${rtypeAndChainParamName._2} is not supported on ${rtypeAndChainParamName._1} within '_has' query!")
 
       //Find the paths of reference element to return
-      val referencePaths = chainParameterConf.get.extractElementPaths()
+      val referencePaths = chainParameterConf.get.extractElementPaths().toSet
       //Go and get the references inside the given resources
       getResourcesWithIds(rtypeAndChainParamName._1, rids, Some(true -> referencePaths), excludeExtraFields = true)
         .map(
@@ -914,10 +914,11 @@ object ResourceManager {
     * @param resource Updated resource
     * @param previousVersion Previous version of the document together with version id
     * @param wasDeleted If previously, this was deleted resource
+    * @param silentEvent  If true, ResourceUpdate event is not triggered (used internally)
     * @param transactionSession
     * @return
     */
-  def updateResource(rtype:String, rid:String, resource:Resource, previousVersion:(Long, Resource), wasDeleted :Boolean = false)(implicit transactionSession: Option[TransactionSession] = None):Future[(Long, DateTime, Resource)] = {
+  def updateResource(rtype:String, rid:String, resource:Resource, previousVersion:(Long, Resource), wasDeleted :Boolean = false, silentEvent:Boolean = false)(implicit transactionSession: Option[TransactionSession] = None):Future[(Long, DateTime, Resource)] = {
     //1) Update the resource version and last update time
     val newVersion   = previousVersion._1 + 1L   //new version always be 1 incremented of current version
     val lastModified = Instant.now()             //last modified will be "now"
@@ -943,13 +944,17 @@ object ResourceManager {
         DocumentManager
           .replaceCurrent(rtype, rid, Document(populatedResource.toBson), shardQueryOpt)
 
-    fop
-      .map( c => resourceUpdated(rtype, rid, resource)) //trigger the event
-      .map( _ =>
+    if(silentEvent)
+      fop.map(_ =>
         (newVersion, DateTimeUtil.instantToDateTime(lastModified), resourceWithMeta)
       )
+    else
+      fop
+        .map( c => resourceUpdated(rtype, rid, resource)) //trigger the event
+        .map( _ =>
+          (newVersion, DateTimeUtil.instantToDateTime(lastModified), resourceWithMeta)
+        )
   }
-
 
 
   /*/***

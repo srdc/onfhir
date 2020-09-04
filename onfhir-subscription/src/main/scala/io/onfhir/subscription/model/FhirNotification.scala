@@ -8,4 +8,4 @@ package io.onfhir.subscription.model
  * @param headers       Headers to append
  * @param latestStatus  Latest notification status; successfull or not
  */
-case class FhirNotification(sid:String, endpoint: Option[String]=None, payload:Option[String] = None, headers:Seq[String] = Nil, latestStatus:Int = 1)
+case class FhirNotification(sid:String, endpoint: Option[String]=None, payload:Option[String] = None, headers:Seq[String] = Nil, latestStatus:Int = 1) extends CborSerializable

@@ -6,14 +6,16 @@ import scala.util.Try
 import scala.collection.JavaConverters._
 
 class KafkaConfig(config:Config) {
-  /** Kafka host name or ip  */
-  lazy val kafkaHost:String = Try(config.getString("kafka.host")).getOrElse("localhost")
+  /**
+   * List of Kafka brokers
+   */
+  lazy val kafkaBootstrapServers = Try(config.getStringList("kafka.bootstrap-servers")).toOption.map(_.asScala).getOrElse(Seq("localhost:9092"))
 
-  /** Kafka port  */
-  lazy val kafkaPort:Int = Try(config.getInt("kafka.port")).getOrElse(9092)
+  /** Kafka topic for FHIR CUD events for resources  */
+  lazy val kafkaTopic:String = Try(config.getString("kafka.fhir-topic")).getOrElse("fhir")
 
-  /** Kafka topic   */
-  lazy val kafkaTopic:String = Try(config.getString("kafka.topic")).getOrElse("raw.fhir")
+  /**Special FHIR topic for FHIR Subscription events **/
+  lazy val kafkaSubscriptionTopic:String = Try(config.getString("kafka.fhir-subscription-topic")).getOrElse("onfhir.subscription")
 
   /** Kafka Client Id  */
   lazy val kafkaClientId:String = Try(config.getString("kafka.client.id")).getOrElse("onfhir")

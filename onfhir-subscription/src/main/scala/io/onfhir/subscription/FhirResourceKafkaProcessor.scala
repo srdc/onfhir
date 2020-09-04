@@ -18,6 +18,7 @@ import io.onfhir.subscription.config.SubscriptionConfig
 import io.onfhir.event.FhirEventUtil
 import org.apache.kafka.clients.producer.ProducerRecord
 import io.onfhir.subscription.model.{ConsumerGroupIds, InternalKafkaTopics}
+import org.slf4j.LoggerFactory
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.Try
@@ -31,6 +32,8 @@ object FhirResourceKafkaProcessor {
   sealed trait Command
 
   private case class KafkaConsumerStopped(reason: Try[Any]) extends Command
+
+  val log = LoggerFactory.getLogger("FhirResourceKafkaProcessor")
 
   /**
    * Actor behaviour
@@ -58,7 +61,7 @@ object FhirResourceKafkaProcessor {
             .committableSource(subscriptionConfig.kafkaConsumerSettings(ConsumerGroupIds.kafkaConsumerGroupIdForResources), subscription)
           // MapAsync and Retries can be replaced by reliable delivery
             .mapAsync(20) { msg =>
-              ctx.log.debug(s"Consumed kafka partition ${msg.record.key()}->${msg.committableOffset.partitionOffset} for FHIR resources")
+              log.debug(s"Consumed kafka partition ${msg.record.key()}->${msg.committableOffset.partitionOffset} for FHIR resources")
               //Extract resource type and id from Kafka record key
               val (rtype, rid) = FhirEventUtil.parseTopicKey(msg.record.key())
               //Get the resource content

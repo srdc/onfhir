@@ -6,7 +6,8 @@ import akka.http.scaladsl.model.DateTime
 import akka.http.scaladsl.model.StatusCodes.ClientError
 import akka.http.scaladsl.model.headers.{EntityTag, `If-Modified-Since`, `If-None-Match`}
 import io.onfhir.api._
-import io.onfhir.api.model.{FHIRResponse, OutcomeIssue}
+import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue}
+import io.onfhir.api.service.FHIRSubscriptionBusinessValidator
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.exception._
 import io.onfhir.util.JsonFormatter._
@@ -33,6 +34,10 @@ object FHIRApiValidator {
   private val OID_REGEX :Regex= """\Aurn:oid:[0-2](\.[1-9]\d*)+$""".r
   private val UUID_REGEX:Regex = """\Aurn:uuid:[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$""".r
   private val VERSION_REGEX:Regex = """\A[0-9]+(\.[0-9]+)*$""".r
+
+  //Extra business rule validator for some resources
+  //TODO make this dynamic and extendible (via configuration or modules)
+  val extraRulesForResources = Map("Subscription" -> new FHIRSubscriptionBusinessValidator)
   /**
     * Validates FHIR identifiers against FHIR specifications
     * @param id id to be validated
@@ -565,5 +570,24 @@ def validateSearchParameters(_type:String, parameters:Set[String], preferHeader:
     //TODO Validate the schema
     value.isInstanceOf[JObject]
   }
+
+  /**
+   * Validate extra business rules for FHIR create, update, patch and delete interactions on resource type
+   * @param fhirRequest
+   */
+  def validateExtraRules(fhirRequest: FHIRRequest):Unit = {
+    extraRulesForResources.get(fhirRequest.resourceType.get).foreach(_.validateRequest(fhirRequest))
+  }
+
+  /**
+   * Validate rules on content change if exist, if they are allowed (FHIR update, patch)
+   * @param rtype       Resource type
+   * @param oldContent  Old resource content
+   * @param newContent  New resource content to update
+   */
+  def validateContentChanges(rtype:String, oldContent:Resource, newContent:Resource):Unit = {
+    extraRulesForResources.get(rtype).foreach(_.validateChanges(oldContent, newContent))
+  }
+
 
 }

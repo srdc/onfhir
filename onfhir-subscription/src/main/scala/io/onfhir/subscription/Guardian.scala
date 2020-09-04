@@ -3,13 +3,12 @@ package io.onfhir.subscription
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior, Terminated}
 import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.cluster.typed.{Cluster, SelfUp, Subscribe}
-import akka.http.scaladsl.Http
 import akka.http.scaladsl.Http.ServerBinding
 import com.typesafe.config.ConfigFactory
-import io.onfhir.subscription.cache.{AkkaBasedSubscriptionCache, FhirSearchParameterCache}
+import io.onfhir.api.SubscriptionChannelTypes
+import io.onfhir.subscription.cache.{AkkaBasedSubscriptionCache, DistributedSearchParameterConfCache, FhirSearchParameterCache}
 import io.onfhir.subscription.channel.{RestChannelManager, WebSocketChannelManager, WebSocketHttpServer}
 import io.onfhir.subscription.config.SubscriptionConfig
-import io.onfhir.subscription.model.ChannelTypes
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -31,16 +30,19 @@ object Guardian {
   final case class InitializationFailed(msg:String, reason:Throwable) extends Command
 
   final case class BindingFailed(reason: Throwable) extends Command
+  final case class BindingSuccess(binding:ServerBinding) extends Command
 
   /**
    * Initialization of the onfhir-subscription system
    */
-  def apply():ActorSystem[Command] = {
+  def apply(webSocketPort:Option[Int] = None):ActorSystem[Command] = {
     ActorSystem(
       Behaviors.setup[Command] { ctx =>
         implicit val system = ctx.system
         //Read configuration
         val subscriptionConfig = new SubscriptionConfig(ctx.system)
+        //Set port if given outside
+        webSocketPort.foreach(p => subscriptionConfig.webSocketPort = p)
         //Setup akka cluster
         val cluster = Cluster(ctx.system)
         //Setup to the node up event
@@ -52,14 +54,14 @@ object Guardian {
 
         //Initialize the push based channel manager actors (only Rest for now)
         val restChannelHandler = ctx.spawn[io.onfhir.subscription.channel.Command](RestChannelManager.apply, "rest-channel-handler")
-        val pushBasedChannelHandlers = Map(ChannelTypes.RestHook -> restChannelHandler)
+        val pushBasedChannelHandlers = Map(SubscriptionChannelTypes.RestHook -> restChannelHandler)
 
         //Initiate classes to interact with onFhir repo
         val onFhirClient = new OnFhirClient(subscriptionConfig)
-        val searchParameterCache = new FhirSearchParameterCache(onFhirClient)
-        val subscriptionManager = new SubscriptionManager(onFhirClient, subscriptionConfig)
+        val searchParameterCache = ctx.spawn[DistributedSearchParameterConfCache.Command](DistributedSearchParameterConfCache.apply(onFhirClient), "search-parameter-cache")
+        val subscriptionManager = new SubscriptionManager(onFhirClient, searchParameterCache, subscriptionConfig)
 
-        val isCoordinator = cluster.selfMember.roles.contains("coordinators")
+        val isCoordinator = cluster.selfMember.roles.contains("coordinator")
 
         //If this is the coordinator node
         if(isCoordinator)
@@ -69,13 +71,13 @@ object Guardian {
           }
 
         //Initiate notification handler actors (sharding)
-        ctx.pipeToSelf(FhirNotificationHandler.init(system, subscriptionConfig, subscriptionCache, pushBasedChannelHandlers)) {
+        ctx.pipeToSelf(FhirNotificationHandler.init(system, subscriptionConfig, subscriptionCache, subscriptionManager, pushBasedChannelHandlers)) {
           case Success(notificationHandler) => NotificationShardingStarted(notificationHandler)
           case Failure(ex) => InitializationFailed("Problem while initializing akka cluster sharding for notifications!", ex)
         }
 
         //Initiate subscription evaluation actors (sharding)
-        ctx.pipeToSelf(SubscriptionEvaluator.init(system,searchParameterCache, subscriptionConfig)) {
+        ctx.pipeToSelf(SubscriptionEvaluator.init(system,searchParameterCache,subscriptionCache, subscriptionConfig)) {
           case Success(subscriptionEvaluator) => FhirResourceShardingStarted(subscriptionEvaluator)
           case Failure(ex) => InitializationFailed("Problem while initializing akka cluster sharding for resource evaluation!", ex)
         }
@@ -101,7 +103,7 @@ object Guardian {
                subscriptionsSynchronized:Boolean,
                subscriptionConfig: SubscriptionConfig,
                subscriptionCache:ActorRef[io.onfhir.subscription.cache.Command],
-               searchParameterCache:FhirSearchParameterCache,
+               searchParameterCache:ActorRef[DistributedSearchParameterConfCache.Command],
                subscriptionManager:SubscriptionManager
               ): Behavior[Command] =
     Behaviors
@@ -152,7 +154,7 @@ object Guardian {
             notificationSharding: ActorRef[FhirNotificationHandler.Command],
             subscriptionConfig: SubscriptionConfig,
             subscriptionCache:ActorRef[io.onfhir.subscription.cache.Command],
-            searchParameterCache:FhirSearchParameterCache,
+            searchParameterCache:ActorRef[DistributedSearchParameterConfCache.Command],
             subscriptionManager:SubscriptionManager
             ): Behavior[Command] = {
     import ctx.executionContext
@@ -169,10 +171,8 @@ object Guardian {
     val serverBinding = WebSocketHttpServer.start(webSocketChannelManager.websocketRoute, subscriptionConfig.webSocketPort, system)
 
     serverBinding.onComplete {
-      case Failure(ex) =>
-        ctx.log.error("Failed to bind HTTP endpoint for web socket endpoint, terminating system", ex)
-        ctx.self ! BindingFailed(ex)
-      case Success(_) =>
+      case Failure(ex) => ctx.self ! BindingFailed(ex)
+      case Success(binding) => ctx.self ! BindingSuccess(binding)
     }
 
     running(ctx, subscriptionKafkaProcessor, resourceKafkaProcessor, notificationKafkaProcessor, serverBinding)
@@ -195,8 +195,16 @@ object Guardian {
              ):Behavior[Command] = {
       Behaviors.receiveMessagePartial[Command] {
         case BindingFailed(ex) =>
-          ctx.log.error("Failed to bind HTTP endpoint, terminating system", ex)
+          ctx.log.error("Failed to bind HTTP endpoint for web socket endpoint, terminating system", ex)
           Behaviors.stopped
+        case BindingSuccess(binding) =>
+          val address = binding.localAddress
+          ctx.log.info(
+            "OnFhir Subscription Web Socket Server is online at http://{}:{}/",
+            address.getHostString,
+            address.getPort
+          )
+          Behaviors.same
       }.receiveSignal {
         case (ctx, Terminated(`subscriptionKafkaProcessor`)) =>
           ctx.log.warn("Subscription kafka processor stopped. Shutting down...")

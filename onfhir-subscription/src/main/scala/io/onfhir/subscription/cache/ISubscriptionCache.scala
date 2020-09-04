@@ -1,23 +1,23 @@
 package io.onfhir.subscription.cache
 
 import akka.actor.typed.{ActorRef, Behavior}
-import io.onfhir.config.SearchParameterConf
+import io.onfhir.api.model.FhirSubscription
 import io.onfhir.subscription.config.SubscriptionConfig
-import io.onfhir.subscription.model.{CriteriaSubscriptions, FhirSubscription}
+import io.onfhir.subscription.model.{CborSerializable, CriteriaSubscriptions, DDFhirSubscription}
 
 trait ISubscriptionCache {
   // Return cache behavior
   def apply(subscriptionConfig: SubscriptionConfig, fhirSearchParameterCache: FhirSearchParameterCache): Behavior[Command]
 }
 
-trait Command
+trait Command extends CborSerializable
 
 /**
  * Response
  */
 trait Response
 case class GetCriteriaSubscriptionsResponse(criteriaSubscriptions: Seq[CriteriaSubscriptions]) extends Response
-case class GetSubscriptionResponse(subscription:Option[FhirSubscription]) extends Response
+case class GetSubscriptionResponse(subscription:Option[DDFhirSubscription]) extends Response
 case class UpdateSubscriptionResponse(result:Boolean) extends Response
 
 /**

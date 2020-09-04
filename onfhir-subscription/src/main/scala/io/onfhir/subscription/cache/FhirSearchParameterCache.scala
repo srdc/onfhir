@@ -7,18 +7,15 @@ import akka.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse, StatusC
 import collection.JavaConverters._
 import io.onfhir.config.SearchParameterConf
 import io.onfhir.subscription.OnFhirClient
-import akka.http.scaladsl.common.EntityStreamingSupport
-import akka.http.scaladsl.common.JsonEntityStreamingSupport
 import akka.http.scaladsl.unmarshalling.Unmarshal
-import io.onfhir.subscription.util.JsonSupport
+import io.onfhir.api.model.InternalEntity
+import io.onfhir.util.InternalJsonMarshallers._
 
 import scala.concurrent.Future
 import scala.util.Try
 
 class FhirSearchParameterCache(onFhirClient: OnFhirClient)(implicit actorSystem:ActorSystem[_]) {
   implicit val executionContext = actorSystem.executionContext
-
-  implicit val jsonStreamingSupport: JsonEntityStreamingSupport = EntityStreamingSupport.json()
 
   val searchParamsUsed:ConcurrentHashMap[String, ConcurrentHashMap[String, SearchParameterConf]] = new ConcurrentHashMap[String, ConcurrentHashMap[String, SearchParameterConf]]()
 
@@ -63,15 +60,15 @@ class FhirSearchParameterCache(onFhirClient: OnFhirClient)(implicit actorSystem:
    * @return
    */
   private def retrieveSearchParameterConfs(rtype:String, sps:Set[String]):Future[Seq[SearchParameterConf]] = {
-    actorSystem.log.debug("Synchronizing search parameter configurations for resource type {} and parameters {} ...", rtype, sps.mkString(","))
+    actorSystem.log.debug(s"Synchronizing search parameter configurations for resource type $rtype and parameters ${sps.mkString(",")} ...")
     val request =
-      HttpRequest(HttpMethods.GET).withUri(s"/onfhir/internal/conf/searchparameters/$rtype?pname=${sps.mkString(",")}")
+      HttpRequest(HttpMethods.GET).withUri(s"/onfhir/internal/searchparameters/$rtype?pname=${sps.mkString(",")}")
 
     onFhirClient
       .sendRequest(request)
       .flatMap {
         case resp @ HttpResponse(StatusCodes.OK, _, _ , _ ) =>
-          Unmarshal(resp).to[Seq[SearchParameterConf]]
+          Unmarshal(resp.entity.httpEntity).to[Seq[InternalEntity]].map(_.map(_.asInstanceOf[SearchParameterConf]))
         case resp @ HttpResponse(code, _, _, _) =>
           actorSystem.log.error("OnFhir retrieve search parameter configuration for resource type {} and parameters {} request failed, response code: {} ", rtype, sps.mkString(","), code)
           resp.discardEntityBytes()

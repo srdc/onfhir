@@ -433,13 +433,13 @@ object DBInitializer {
     * @return IndexType, Path for the index, Index  object, IsSparse
     */
   private def createIndexesForComplexType(rtype:String, searchParameterConf: SearchParameterConf):Set[(String, String, Bson, Boolean)] = {
-    val paths = searchParameterConf.extractElementPaths()
+    val pathsAndTargetTypes = searchParameterConf.extractElementPathsAndTargetTypes()
     //if there are alternative paths, index should be sparse
     var isSparse = searchParameterConf.paths.size > 1
     // if it is on date, create
     val isDescending = searchParameterConf.ptype == FHIR_PARAMETER_TYPES.DATE
 
-    paths.zip(searchParameterConf.targetTypes).flatMap { case (path, ttype) =>
+    pathsAndTargetTypes.flatMap { case (path, ttype) =>
       val subPaths =
         INDEX_SUBPATHS
           .getOrElse(ttype, Seq("")) //Get the possible subpaths
@@ -467,7 +467,7 @@ object DBInitializer {
             isSparse
           )
       }
-    }
+    }.toSet
   }
 /*
   /**

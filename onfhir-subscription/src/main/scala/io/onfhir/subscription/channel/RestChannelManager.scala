@@ -2,6 +2,7 @@ package io.onfhir.subscription.channel
 
 import java.nio.charset.StandardCharsets
 
+import akka.NotUsed
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.http.scaladsl.Http
@@ -24,7 +25,7 @@ object RestChannelManager extends IPushBasedChannelManager {
 
   case class RestNotificationResult(result:Boolean, notificationCommand:SendNotification) extends Command
 
-  def constructActorSink(actor:ActorRef[Command]):Sink[(Try[HttpResponse],SendNotification), _] = {
+  def constructActorSink(actor:ActorRef[Command]):Sink[(Try[HttpResponse],SendNotification), NotUsed] = {
     val httpResponseToNotificationResult =
       Flow[(Try[HttpResponse], SendNotification)]
       .map(r => r._1 match {
@@ -41,7 +42,7 @@ object RestChannelManager extends IPushBasedChannelManager {
     httpResponseToNotificationResult.to(actorSink)
   }
 
-  def constructActorSource():Source[(HttpRequest, SendNotification), _] = {
+  def constructActorSource():Source[(HttpRequest, SendNotification), ActorRef[Command]] = {
     ActorSource
       .actorRef[Command](
         completionMatcher = {
@@ -84,16 +85,18 @@ object RestChannelManager extends IPushBasedChannelManager {
       val restChannelSink = constructActorSink(ctx.self)
       val restChannelSource = constructActorSource()
       //Run it with actor sink and source
-      val (mat1, mat2) = restConnectionFlow.runWith(restChannelSource, restChannelSink)
+      val (sourceActorRef, _) = restConnectionFlow.runWith(restChannelSource, restChannelSink)
 
-      running(ctx.log)
+      running(ctx.log, sourceActorRef)
     }
   }
 
-  def running(log:Logger):Behavior[Command] = {
+  def running(log:Logger, sourceActorRef:ActorRef[Command]):Behavior[Command] = {
       Behaviors.receiveMessage[Command] {
         //Nothing to do automatically goes to stream
-        case SendNotification(_, _) => Behaviors.same
+        case s:SendNotification =>
+          sourceActorRef.tell(s)
+          Behaviors.same
         //Delegate result handling back to notification handler
         case RestNotificationResult(result, sn) =>
           sn.replyTo.tell(NotificationResult(sn.fhirNotification.sid, result, sn.fhirNotification.latestStatus))
@@ -101,14 +104,12 @@ object RestChannelManager extends IPushBasedChannelManager {
 
         case StreamCompleted =>
           log.warn("HTTP super pool stream completed!")
+          sourceActorRef.tell(ActorClosed)
           Behaviors.same
 
         case StreamFailure(t) =>
           log.error("HTTP super pool stream failure", t)
-          Behaviors.same
-        case ActorClosed =>
-          Behaviors.same
-        case ActorFailure(ex) =>
+          sourceActorRef.tell(ActorClosed)
           Behaviors.same
       }
   }

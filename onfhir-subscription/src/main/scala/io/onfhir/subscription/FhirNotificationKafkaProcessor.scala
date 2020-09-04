@@ -15,6 +15,7 @@ import akka.actor.typed.scaladsl.AskPattern._
 import akka.kafka.scaladsl.Consumer.DrainingControl
 import akka.pattern.retry
 import io.onfhir.subscription.FhirNotificationHandler.SendFhirNotification
+import org.slf4j.LoggerFactory
 
 import scala.concurrent.ExecutionContextExecutor
 import scala.util.Try
@@ -25,6 +26,7 @@ object FhirNotificationKafkaProcessor {
 
   private case class KafkaConsumerStopped(reason: Try[Any]) extends Command
 
+  val log = LoggerFactory.getLogger("FhirNotificationKafkaProcessor")
   /**
    * Actor behaviour
    * @param shardRegion           Sharded SubscriptionEvaluator actor
@@ -49,7 +51,7 @@ object FhirNotificationKafkaProcessor {
         Consumer
           .committableSource(subscriptionConfig.kafkaConsumerSettings(ConsumerGroupIds.kafkaConsumerGroupIdForNotifications), subscription)
           .mapAsync(20)(cr => {
-            ctx.log.debug(s"Consumed kafka partition ${cr.record.key()}->${cr.record.partition()} for FHIR notification")
+            log.debug(s"Consumed kafka partition ${cr.record.key()}->${cr.record.partition()} for FHIR notification")
             val sid = cr.record.key()
             val content = cr.record.value()
             //Send notification

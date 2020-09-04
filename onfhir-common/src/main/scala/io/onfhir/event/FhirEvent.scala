@@ -4,7 +4,7 @@ import io.onfhir.api.Resource
 
 object FhirEventUtil {
 
-  def getTopicKey(rtype:String, rid:String):String = rtype.toLowerCase + ":" + rid
+  def getTopicKey(rtype:String, rid:String):String = rtype + ":" + rid
 
   def parseTopicKey(topic:String):(String, String) = {
     val parts = topic.split(':')

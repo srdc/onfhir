@@ -1,14 +1,15 @@
 package io.onfhir.authz
 
+import akka.Done
 import akka.http.caching.LfuCache
 import akka.http.caching.scaladsl.{Cache, CachingSettings}
 import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
 import akka.http.scaladsl.server.Directive1
-import akka.http.scaladsl.server.directives.{BasicDirectives, HeaderDirectives, MiscDirectives}
+import akka.http.scaladsl.server.directives.{BasicDirectives, Credentials, HeaderDirectives, MiscDirectives}
 import io.onfhir.Onfhir
 import io.onfhir.api.AUTHZ_METHOD_NONE
+import io.onfhir.config.OnfhirConfig
 import io.onfhir.config.OnfhirConfig.authzConfig
-
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.duration._
@@ -41,6 +42,23 @@ object AuthManager {
     */
   val authzContextCache:Cache[String, AuthzContext] = LfuCache[String, AuthzContext](cachingSettings)
 
+
+  /**
+   * Authenticate the requests for internal api
+    * @param credentials
+   * @return
+   */
+ def authenticateForInternalApi(credentials: Credentials):Option[Done] = {
+   if(OnfhirConfig.internalApiAuthenticate) {
+     credentials match {
+       case p@Credentials.Provided(token) =>
+         None //TODO implement
+       case _ =>
+         None
+     }
+   } else
+     Some(Done)
+ }
 
   /**
     * Return the Authentication and Authorization Context

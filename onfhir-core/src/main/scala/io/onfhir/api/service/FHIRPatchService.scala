@@ -53,12 +53,16 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
     */
   override def validateInteraction(fhirRequest: FHIRRequest): Future[Unit] = {
     Future.apply {
-      if (fhirRequest.resourceId.isDefined)
-        validatePatchInteraction(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.ifNoneExist)
-      else {
-        validateConditionalPatchInteraction(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.queryParams, fhirRequest.prefer)
+      val validations =
+        if (fhirRequest.resourceId.isDefined)
+          validatePatchInteraction(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.ifNoneExist)
+        else
+          validateConditionalPatchInteraction(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.queryParams, fhirRequest.prefer)
 
-      }
+      validations.map(_ =>
+        //Extra business rules validations if exist
+        FHIRApiValidator.validateExtraRules(fhirRequest)
+      )
     }
   }
 

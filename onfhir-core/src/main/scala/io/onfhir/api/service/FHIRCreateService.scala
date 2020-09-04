@@ -29,7 +29,11 @@ class FHIRCreateService(transactionSession: Option[TransactionSession] = None) e
     //1.2) Check if resource type in the content match with the given type in URL
     FHIRApiValidator.validateResourceType(fhirRequest.resource.get, fhirRequest.resourceType.get)
     //1.3) Validate the conformance of resource
-    fhirValidator.validateResource(fhirRequest.resource.get, fhirRequest.resourceType.get).map(_ => Unit)
+    fhirValidator.validateResource(fhirRequest.resource.get, fhirRequest.resourceType.get)
+      .map(_ =>
+        //1.4) Extra business rules if exist
+        FHIRApiValidator.validateExtraRules(fhirRequest)
+      )
   }
 
   /**
