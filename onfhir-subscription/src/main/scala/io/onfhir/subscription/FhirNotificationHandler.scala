@@ -130,6 +130,7 @@ object FhirNotificationHandler {
 
         //Return the notification stream for specific subscription
         case GetFhirNotificationStream(sid, replyTo) =>
+          ctx.log.debug(s"Going to handle web socket notifications for subscription $sid")
           val streamRef =
             notificationPublisher
             //Source

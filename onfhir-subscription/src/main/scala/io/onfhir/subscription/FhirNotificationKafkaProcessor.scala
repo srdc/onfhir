@@ -3,7 +3,7 @@ package io.onfhir.subscription
 
 import akka.Done
 import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ActorRef, Behavior}
+import akka.actor.typed.{ActorRef, Behavior, SupervisorStrategy}
 import akka.actor.{ActorSystem, Scheduler}
 import akka.actor.typed.scaladsl.adapter._
 import akka.kafka.{CommitterSettings, Subscriptions}
@@ -14,6 +14,8 @@ import io.onfhir.subscription.model.{ConsumerGroupIds, InternalKafkaTopics}
 import akka.actor.typed.scaladsl.AskPattern._
 import akka.kafka.scaladsl.Consumer.DrainingControl
 import akka.pattern.retry
+import akka.stream.ActorAttributes.SupervisionStrategy
+import akka.stream.scaladsl.RestartSource
 import io.onfhir.subscription.FhirNotificationHandler.SendFhirNotification
 import org.slf4j.LoggerFactory
 
@@ -34,6 +36,13 @@ object FhirNotificationKafkaProcessor {
    * @return
    */
   def apply(shardRegion: ActorRef[FhirNotificationHandler.Command], subscriptionConfig: SubscriptionConfig): Behavior[Command] = {
+    processNotifications(shardRegion, subscriptionConfig)
+    /*Behaviors
+      .supervise(processNotifications(shardRegion, subscriptionConfig))
+      .onFailure(SupervisorStrategy.restartWithBackoff(1 seconds, 20 seconds, 0.2))*/
+  }
+
+  def processNotifications(shardRegion: ActorRef[FhirNotificationHandler.Command], subscriptionConfig: SubscriptionConfig): Behavior[Command] = {
     Behaviors
       .setup[Command] { ctx =>
         implicit val classic: ActorSystem = ctx.system.toClassic
@@ -58,8 +67,8 @@ object FhirNotificationKafkaProcessor {
             retry(() =>
               shardRegion
                 .ask[Done](replyTo => SendFhirNotification(sid, content, replyTo))(subscriptionConfig.processorAskTimeout, ctx.system.scheduler),
-                attempts = 3,
-                delay = 1.second
+              attempts = 3,
+              delay = 1.second
             ).
               map(_ => cr.committableOffset)
           })

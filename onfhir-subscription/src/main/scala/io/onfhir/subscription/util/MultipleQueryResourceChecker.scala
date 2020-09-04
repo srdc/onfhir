@@ -48,8 +48,6 @@ class MultipleQueryResourceChecker(rtype:String, searchParameters:Map[String, Se
    * @return
    */
   def checkIfResourceSatisfiesCriteria(criteria:Seq[Parameter], parameterValues:Map[String, (SearchParameterConf, Seq[(Seq[JValue], String)])]):Boolean = {
-    log.debug(s"Criteria: $criteria ...")
-
     val result = criteria.forall(parameter => {
       val paramValue = parameterValues(parameter.name)
       parameter.paramType match {

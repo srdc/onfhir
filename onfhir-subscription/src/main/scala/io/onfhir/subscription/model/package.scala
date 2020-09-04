@@ -2,6 +2,12 @@ package io.onfhir.subscription
 
 package object model {
 
+  object ClusterRoles {
+    /**
+     * When starting the cluster from scratch, role that should be assigned to the first node to initialize with existing active subscriptions in onFHIR.io repository database
+     */
+    val Initializer = "initializer"
+  }
 
 
   object InternalKafkaTopics {

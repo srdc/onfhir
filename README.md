@@ -42,18 +42,18 @@ to the above command to skip the test execution but it is **not recommended**:
 $ mvn package -DskipTests=true
 ```
 
-Executable standalone jars **target/fhir-repository-standalone.jar**  will be created under each onfhir-server for 
+Executable standalone jars **target/onfhir-server-standalone.jar**  will be created under each onfhir-server for 
 different FHIR version. Executing the following command will run the onRHI server for that version with nearly whole FHIR 
 capabilities.
 ```
-$ java -jar target/fhir-repository-standalone.jar
+$ java -jar target/onfhir-server-standalone.jar
 ```
 
 You can override in-app configurations by supplying an external application.conf file or JAVA arguments
 using the following commands:
 ```
-$ java -Dconfig.file={path-to-application.conf} -jar target/fhir-repository-standalone.jar
-$ java -Dserver.port=9999 -Dserver.host=172.17.0.1 -jar target/fhir-repository-standalone.jar
+$ java -Dconfig.file={path-to-application.conf} -jar target/onfhir-server-standalone.jar
+$ java -Dserver.port=9999 -Dserver.host=172.17.0.1 -jar target/onfhir-server-standalone.jar
 ```
 
 ### Extensibility

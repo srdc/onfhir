@@ -98,7 +98,6 @@ object BsonTransformer{
       case i: BsonInt32 => JInt(i.getValue)
       case l: BsonInt64 => JLong(l.getValue)
       case d: BsonDouble =>   JDouble(d.getValue)
-      case s: BsonString =>   JString(s.getValue)
       case t: BsonDateTime => JString(BsonDateTimeToString(t)) //this should not be called, as we handle it before within handleDocument
       case x: BsonArray => transformArray(x)
       case boi: BsonObjectId => JString(boi.getValue.toString)

@@ -9,6 +9,7 @@ import io.onfhir.api.SubscriptionChannelTypes
 import io.onfhir.subscription.cache.{AkkaBasedSubscriptionCache, DistributedSearchParameterConfCache, FhirSearchParameterCache}
 import io.onfhir.subscription.channel.{RestChannelManager, WebSocketChannelManager, WebSocketHttpServer}
 import io.onfhir.subscription.config.SubscriptionConfig
+import io.onfhir.subscription.model.ClusterRoles
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success}
@@ -61,10 +62,10 @@ object Guardian {
         val searchParameterCache = ctx.spawn[DistributedSearchParameterConfCache.Command](DistributedSearchParameterConfCache.apply(onFhirClient), "search-parameter-cache")
         val subscriptionManager = new SubscriptionManager(onFhirClient, searchParameterCache, subscriptionConfig)
 
-        val isCoordinator = cluster.selfMember.roles.contains("coordinator")
+        val isInitializer = cluster.selfMember.roles.contains(ClusterRoles.Initializer)
 
         //If this is the coordinator node
-        if(isCoordinator)
+        if(isInitializer)
           ctx.pipeToSelf(subscriptionManager.initializeSubscriptions(subscriptionCache)){
             case Success(_) => FhirSubscriptionSynchronizationCompleted
             case Failure(ex) => InitializationFailed("Problem while retrieving existing FHIR Subscriptions!" ,ex)
@@ -82,7 +83,7 @@ object Guardian {
           case Failure(ex) => InitializationFailed("Problem while initializing akka cluster sharding for resource evaluation!", ex)
         }
 
-        starting(ctx, None, None, false, !isCoordinator,  subscriptionConfig, subscriptionCache, searchParameterCache, subscriptionManager)
+        starting(ctx, None, None, false, !isInitializer,  subscriptionConfig, subscriptionCache, searchParameterCache, subscriptionManager)
       },
       "onfhir-subscription", ConfigFactory.load())
   }
@@ -164,6 +165,10 @@ object Guardian {
     val subscriptionKafkaProcessor = ctx.spawn[FhirSubscriptionKafkaProcessor.Command](FhirSubscriptionKafkaProcessor.apply(subscriptionCache, subscriptionManager, searchParameterCache, subscriptionConfig), "subscription-kafka-processor")
     val resourceKafkaProcessor = ctx.spawn[FhirResourceKafkaProcessor.Command](FhirResourceKafkaProcessor.apply(resourceSharding, subscriptionConfig), "resource-kafka-processor")
     val notificationKafkaProcessor = ctx.spawn[FhirNotificationKafkaProcessor.Command](FhirNotificationKafkaProcessor.apply(notificationSharding, subscriptionConfig), "notification-kafka-processor")
+
+    ctx.watch(subscriptionKafkaProcessor)
+    ctx.watch(resourceKafkaProcessor)
+    ctx.watch(notificationKafkaProcessor)
 
     //Initialize web socket server and channel manager
     val webSocketChannelManager= new WebSocketChannelManager(subscriptionConfig, subscriptionCache, notificationSharding)
