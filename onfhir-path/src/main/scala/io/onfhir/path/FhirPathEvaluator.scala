@@ -66,7 +66,7 @@ class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None) {
   def satisfies(expr:String, on:JValue):Boolean = {
     val result = evaluate(expr, on)
     if(result.length != 1 || !result.head.isInstanceOf[FhirPathBoolean])
-      throw new Exception(s"Expression $expr does not evaluate to a boolean for the given resource!")
+      throw new FhirPathException(s"Expression $expr does not evaluate to a boolean for the given resource!")
     result.head.asInstanceOf[FhirPathBoolean].b
   }
 
@@ -83,28 +83,28 @@ class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None) {
       case Nil => true
       //Otherwise we are expecting a single boolean result
       case Seq(FhirPathBoolean(b)) => b
-      case _ => throw new Exception(s"Expression $expr does not evaluate to a single boolean for the given resource!")
+      case _ => throw new FhirPathException(s"Expression $expr does not evaluate to a single boolean for the given resource!")
     }
   }
 
   def evaluateNumerical(expr:String, on:JValue):BigDecimal = {
     val result = evaluate(expr, on)
     if(result.length != 1 || !result.head.isInstanceOf[FhirPathNumber])
-      throw new Exception(s"Expression $expr does not evaluate to a number for the given resource!")
+      throw new FhirPathException(s"Expression $expr does not evaluate to a number for the given resource!")
     result.head.asInstanceOf[FhirPathNumber].v
   }
 
   def evaluateDateTime(expr:String, on:JValue):Temporal = {
     val result = evaluate(expr, on)
     if(result.length != 1 || !result.head.isInstanceOf[FhirPathDateTime])
-      throw new Exception(s"Expression $expr does not evaluate to a datetime for the given resource!")
+      throw new FhirPathException(s"Expression $expr does not evaluate to a datetime for the given resource!")
     result.head.asInstanceOf[FhirPathDateTime].dt
   }
 
   def evaluateTime(expr:String, on:JValue):(LocalTime, Option[ZoneId]) = {
     val result = evaluate(expr, on)
     if(result.length != 1 || !result.head.isInstanceOf[FhirPathTime])
-      throw new Exception(s"Expression $expr does not evaluate to a time for the given resource!")
+      throw new FhirPathException(s"Expression $expr does not evaluate to a time for the given resource!")
     val t = result.head.asInstanceOf[FhirPathTime]
     t.lt -> t.zone
   }
@@ -112,7 +112,7 @@ class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None) {
   def evaluateString(expr:String, on:JValue):Seq[String] = {
     val result = evaluate(expr, on)
     if(result.exists(!_.isInstanceOf[FhirPathString]))
-      throw new Exception(s"Expression $expr does not evaluate to a string for the given resource!")
+      throw new FhirPathException(s"Expression $expr does not evaluate to a string for the given resource!")
     result.map(_.asInstanceOf[FhirPathString].s)
   }
 }

@@ -129,7 +129,7 @@ case class FhirPathDateTime(dt:Temporal) extends FhirPathResult with Ordered[Fhi
             case (o2, dt2:LocalDateTime) => dt2.getYear == o2.get(ChronoField.YEAR) && dt2.getMonthValue == o2.get(ChronoField.MONTH_OF_YEAR) && dt2.getDayOfMonth == o2.get(ChronoField.DAY_OF_MONTH) &&
               dt2.getHour == o2.get(ChronoField.HOUR_OF_DAY) && dt2.getMinute == o2.get(ChronoField.MINUTE_OF_HOUR) && dt2.getSecond == o2.get(ChronoField.SECOND_OF_MINUTE)
             case (zdt1:ZonedDateTime, zdt2:ZonedDateTime) => zdt1.isEqual(zdt2)
-            case (oth1, oth2) => throw new Exception(s"Invalid datetime comparison between $oth1 and $oth2 ...")
+            case (oth1, oth2) => throw new FhirPathException(s"Invalid datetime comparison between $oth1 and $oth2 ...")
           }
        )
   }
@@ -166,7 +166,7 @@ case class FhirPathDateTime(dt:Temporal) extends FhirPathResult with Ordered[Fhi
       case (zdt1:ZonedDateTime, d2:LocalDate) => zdt1.compareTo(d2.atTime(0, 0).atZone(ZoneId.of("Z")))
       case (zdt1:ZonedDateTime, dt2:LocalDateTime) => zdt1.compareTo(dt2.atZone(ZoneId.of("Z")))
       case (zdt1:ZonedDateTime, zdt2:ZonedDateTime) => zdt1.compareTo(zdt2)
-      case (oth1, oth2) => throw new Exception(s"Invalid datetime comparison between $oth1 and $oth2 ...")
+      case (oth1, oth2) => throw new FhirPathException(s"Invalid datetime comparison between $oth1 and $oth2 ...")
     }
   }
 
@@ -216,7 +216,7 @@ case class FhirPathDateTime(dt:Temporal) extends FhirPathResult with Ordered[Fhi
         case zdt:ZonedDateTime => zdt.plus(duration)
       }
     } catch {
-      case e:Exception => throw new Exception(s"Invalid datetime arithmetic on $dt for quantity $amountToAdd and unit $unit !")
+      case e:Exception => throw new FhirPathException(s"Invalid datetime arithmetic on $dt for quantity $amountToAdd and unit $unit !")
     }
   }
 
@@ -247,7 +247,7 @@ case class FhirPathTime(lt:LocalTime, zone:Option[ZoneId] = None) extends FhirPa
         case "'ms'" => lt.plus(amountToAdd, ChronoUnit.MILLIS)
       }
     } catch {
-      case e:Exception => throw new Exception(s"Invalid datetime arithmetic on $lt with zone $zone for quantity $amountToAdd and unit $unit !")
+      case e:Exception => throw new FhirPathException(s"Invalid datetime arithmetic on $lt with zone $zone for quantity $amountToAdd and unit $unit !")
     }
   }
 
