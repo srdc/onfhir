@@ -21,6 +21,7 @@ class FhirPathEvaluatorTest extends Specification {
   val questionnaire = Source.fromInputStream(getClass.getResourceAsStream("/questionnaire.json")).mkString.parseJson
   val questionnaire2 = Source.fromInputStream(getClass.getResourceAsStream("/questionnaire2.json")).mkString.parseJson
   val bundle = Source.fromInputStream(getClass.getResourceAsStream("/bundle.json")).mkString.parseJson
+  val bundleOp = Source.fromInputStream(getClass.getResourceAsStream("/bundle-op.json")).mkString.parseJson
   val conditions = Seq(
       Source.fromInputStream(getClass.getResourceAsStream("/condition1.json")).mkString.parseJson,
       Source.fromInputStream(getClass.getResourceAsStream("/condition2.json")).mkString.parseJson,
@@ -32,7 +33,7 @@ class FhirPathEvaluatorTest extends Specification {
   sequential
 
   "FHIR Path Evaluator" should {
-/*
+
     "evaluate simple path expression not starting with resource type" in {
       var result = FhirPathEvaluator().evaluate("subject", observation)
       result.length mustEqual 1
@@ -572,7 +573,7 @@ class FhirPathEvaluatorTest extends Specification {
 
       result = FhirPathEvaluator().satisfies("matches('[^\\\\s\\\\.,:;\\\\\\'\"\\\\/|?!@#$%&*()\\\\[\\\\]{}]{1,64}(\\\\.[^\\\\s\\\\.,:;\\\\\\'\"\\\\/|?!@#$%&*()\\\\[\\\\]{}]{1,64}(\\\\[x\\\\])?(\\\\:[^\\\\s\\\\.]+)?)*')", JString("CodeableConcept.coding"))
       result mustEqual true
-    }*/
+    }
 
     "evaluate empty array cases" in {
       var result = FhirPathEvaluator().satisfies("entry.search.empty() or (type = 'searchset')", emptyBundle)
@@ -585,6 +586,28 @@ class FhirPathEvaluatorTest extends Specification {
       result mustEqual true
 
       result = FhirPathEvaluator().satisfies("(type = 'history') or entry.where(fullUrl.exists()).select(fullUrl&resource.meta.versionId).isDistinct()", emptyBundle)
+      result mustEqual true
+    }
+
+    "evaluate onfhir added time functions" in {
+      var result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.start.getPeriod(@2020-09-07T10:00:00Z, 'years')", observation).toLong
+      result mustEqual 7
+
+      result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.start.getPeriod(now(), 'years')", observation).toLong
+      result mustEqual 7
+
+      result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.start.getPeriod(@2013-08-07T10:00:00Z, 'months')", observation).toLong
+      result mustEqual 4
+
+      result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.start.getPeriod(@2013-04-07T09:30:10+01:00, 'days')", observation).toLong
+      result mustEqual 5
+
+      //Due to given zoned date time in resource
+      FhirPathEvaluator().evaluateNumerical("effectivePeriod.start.getPeriod(@2020-09-07, 'years')", observation) must throwA[FhirPathException]
+    }
+
+    "evaluate fixed bugs" in {
+      var result = FhirPathEvaluator().satisfies("(type='history') or entry.where(fullUrl.exists()).select(fullUrl&resource.meta.versionId).isDistinct()", bundleOp)
       result mustEqual true
     }
 
