@@ -86,16 +86,95 @@ This section describes a simple integration test setup for onFHIR.io Subscriptio
 
 Run a kafka cluster on your local setup. You can use a docker setup (like https://hub.docker.com/r/wurstmeister/kafka/) that you can interact from outside for this.
 
-Then run a onFHIR.io repository in local setting.
+Then run a onFHIR.io repository in local setting which will open the internal api port on default 8081. 
 ```
+$ cd onfhir
 $ java -Dkafka.enabled=true -Dkafka.bootstrap-servers.0=<kafka-address> -jar target/onfhir-server-standalone.jar
 ```
-
-
-
+Run the first node of onFHIR.io Subscription engine which will open a web socket port on default 8082;
 ```
-java -Dakka.cluster.roles.0=initializer -Donfhir.subscription.kafka.bootstrap-servers.0=localhost:9092 -jar target/onfhir-subscription-standalone.jar 
+$ cd ../onfhir-subscription
+java -Dakka.cluster.roles.0=initializer -Donfhir.subscription.kafka.bootstrap-servers.0=<kafka-address> -jar target/onfhir-subscription-standalone.jar 
 ```
+
+Run the second node of  onFHIR.io Subscription engine open a web socket port on given 8083;
+```
+java -Dakka.cluster.roles.0=initializer -Donfhir.subscription.kafka.bootstrap-servers.0=<kafka-address> -Dakka.remote.artery.canonical.port=2552 -Donfhir.subscription.websocket.port=8083 -jar target/onfhir-subscription-standalone.jar 
+```
+
+Create a subscription via the onFHIR.io repository FHIR API, see the example below
+```
+POST http://localhost:8080/fhir/Subscription
+{
+    "resourceType": "Subscription",
+    "contact": [
+        {
+            "system": "phone",
+            "value": "ext 4123"
+        }
+    ],
+    "end": "2021-01-01T00:00:00Z",
+    "reason": "Monitor new neonatal function",
+    "criteria": "Observation?code=http://loinc.org|1975-3",
+    "channel": {
+        "type": "websocket"     
+    },
+    "status": "requested"
+}
+```
+Click on **web-socket-test-1.html** to open the test client in browser. 
+When opened, enter the if of the subscription you have created and click bind.
+It will print 'bound <subscription-id>'.
+
+Then create an FHIR resource that satisfies the criteria given in the FHIR Subscription, see the example below
+```
+{
+  "resourceType": "Observation",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p><b>Generated Narrative with Details</b></p><p><b>id</b>: f001</p><p><b>identifier</b>: 6323 (OFFICIAL)</p><p><b>status</b>: final</p><p><b>code</b>: Glucose [Moles/volume] in Blood <span>(Details : {LOINC code '15074-8' = 'Glucose [Moles/volume] in Blood', given as 'Glucose [Moles/volume] in Blood'})</span></p><p><b>subject</b>: <a>P. van de Heuvel</a></p><p><b>effective</b>: 02/04/2013 9:30:10 AM --&gt; (ongoing)</p><p><b>issued</b>: 03/04/2013 3:30:10 PM</p><p><b>performer</b>: <a>A. Langeveld</a></p><p><b>value</b>: 6.3 mmol/l<span> (Details: UCUM code mmol/L = 'mmol/L')</span></p><p><b>interpretation</b>: High <span>(Details : {http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation code 'H' = 'High', given as 'High'})</span></p><h3>ReferenceRanges</h3><table><tr><td>-</td><td><b>Low</b></td><td><b>High</b></td></tr><tr><td>*</td><td>3.1 mmol/l<span> (Details: UCUM code mmol/L = 'mmol/L')</span></td><td>6.2 mmol/l<span> (Details: UCUM code mmol/L = 'mmol/L')</span></td></tr></table></div>"
+  },
+  "identifier": [
+    {
+      "use": "official",
+      "system": "http://www.bmc.nl/zorgportal/identifiers/observations",
+      "value": "6323"
+    }
+  ],
+  "status": "final",
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "1975-3",
+        "display": "Glucose [Moles/volume] in Blood"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/f001",
+    "display": "P. van de Heuvel"
+  },
+  "effectivePeriod": {
+    "start": "2013-04-02T09:30:10+01:00"
+  },
+  "issued": "2013-04-03T15:30:10+01:00",
+  "performer": [
+    {
+      "reference": "Practitioner/f005",
+      "display": "A. Langeveld"
+    }
+  ],
+  "valueQuantity": {
+    "value": 6.3,
+    "unit": "mmol/l",
+    "system": "http://unitsofmeasure.org",
+    "code": "mmol/L"
+  }
+}
+```
+  
+You should see a 'ping <subscription-id>' message in  opened web-socket-test-1.html page.   
  
 
 
