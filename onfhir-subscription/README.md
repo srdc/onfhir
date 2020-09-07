@@ -1,7 +1,7 @@
 # onFHIR.io Subscription Engine
-This is a module that handles FHIR Subscription mechanism as defined in the standard (See https://www.hl7.org/fhir/subscription.html).
-When subscription mechanism is enabled in onFHIR.io repository, it streams created and updated FHIR resources to a configured Kafka cluster.
-Furthermore, it handles the FHIR Subscription resource management, and publishes new and updated subscription events over a special internal topic to the same Kafka cluster.
+onFHIR.io Subscription Engine is a module of onFHIR.io that handles FHIR Subscription mechanism as defined in the standard (See https://www.hl7.org/fhir/subscription.html).
+When subscription mechanism is enabled in onFHIR.io repository, it streams the created and updated FHIR resources to a configured Kafka cluster.
+Furthermore, onFHIR.io repository also handles the FHIR Subscription resource management, and publishes new and updated subscription events over a special internal topic to the same Kafka cluster.
 
 This module works on these data and subscription streams and send notifications to the given endpoints in the FHIR Subscription resources, if a new or updated resource satisfies the criteria again given in the FHIR Subscription resource.
 Currently only 'rest-hook' (sending notification to a RESTfull endpoint) and 'websocket' (sending notification over web socket connections) channels are supported for notifications.
@@ -23,6 +23,14 @@ If you are running the module as cluster (multiple nodes), then you should also 
 * **akka.cluster.seed-nodes** List of Akka Cluster seed nodes which should be the addresses of the initial nodes that you will start in your cluster. So they should be same for all nodes.
 * **akka.cluster.roles** If you are starting the onFHIR.io Subscription Engine cluster from scratch and if there are already created FHIR subscriptions in onFHIR.io repository that you also want to process, 'initializer' role should be given to the first node that you will start. 
 For all other nodes, do not use any role. For a running cluster,  if the oldest node is stopped and want to be restarted, the role should not be given in the configuration. 
+
+## Enabling subscription mechanism in onFHIR.io Repository
+
+The following configuration parameters should be set within onFHIR.io repository (via application.conf or passing JAVA properties) to enable FHIR subscription handling;
+* **fhir.subscription.active** should be set to true
+* **fhir.subscriotion.allowed-resources** provide the list of resource types that you want to restrict the subscription mechanism for. If you want to enable subscription mechanism for all resources that you support within the onFHIR repository instance, comment the line
+* **kafka.enabled** should be set to true
+* **kafka.bootstrap-servers** should be set to the list of Kafka brokers addresses 
       
 ## Prerequisites
 * onFHIR.io repository (single or cluster) should be running and configured to enable subscription. 
@@ -73,8 +81,21 @@ If bind is successful, for each notification (when the criteria of the bound sub
 ping <subscriptionid>
 ```
 
+## Simple Integration Test Setup
+This section describes a simple integration test setup for onFHIR.io Subscription Engine for local environment.
 
- 
+Run a kafka cluster on your local setup. You can use a docker setup (like https://hub.docker.com/r/wurstmeister/kafka/) that you can interact from outside for this.
+
+Then run a onFHIR.io repository in local setting.
+```
+$ java -Dkafka.enabled=true -Dkafka.bootstrap-servers.0=<kafka-address> -jar target/onfhir-server-standalone.jar
+```
+
+
+
+```
+java -Dakka.cluster.roles.0=initializer -Donfhir.subscription.kafka.bootstrap-servers.0=localhost:9092 -jar target/onfhir-subscription-standalone.jar 
+```
  
 
 
