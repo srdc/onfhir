@@ -339,7 +339,7 @@ object FHIRSearchParameterValueParser {
             case (FHIR_SEARCH_RESULT_PARAMETERS.INCLUDE, "*") =>
               fhirConfig.resourceConfigurations(rtype)
                 .searchInclude.toSeq //Get all supported includes
-                .map(p => joinedResourceType -> p)
+                .map(p => joinedResourceType -> p.split("\\.").last) // Parse and get the last e.g. CarePlan.goal -> goal
             case (FHIR_SEARCH_RESULT_PARAMETERS.REVINCLUDE, "*") =>
               fhirConfig.resourceConfigurations(rtype)
                 .searchRevInclude.toSeq //Get all supported reverse includes
