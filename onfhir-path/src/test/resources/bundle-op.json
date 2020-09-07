@@ -1,0 +1,360 @@
+{
+  "resourceType": "Bundle",
+  "id": "e888726a-aec2-45f6-b970-1f0ca3d1c10a",
+  "type": "searchset",
+  "total": 1,
+  "entry": [
+    {
+      "fullUrl": "http://127.0.0.1:8080/fhir/CarePlan/ba717c6f-120b-478d-ac42-7c0e9f543ae0",
+      "resource": {
+        "resourceType": "CarePlan",
+        "id": "ba717c6f-120b-478d-ac42-7c0e9f543ae0",
+        "meta": {
+          "tag": [
+            {
+              "system": "http://www.c3-cloud.eu/fhir/ValueSet/data-origin",
+              "code": "C3DP"
+            }
+          ],
+          "versionId": "24",
+          "lastUpdated": "2020-09-04T12:36:16.203Z"
+        },
+        "status": "active",
+        "intent": "order",
+        "category": [
+          {
+            "coding": [
+              {
+                "system": "urn:oid:2.16.840.1.113883.2.1.3.2.4.15",
+                "code": "325671000000104",
+                "display": "Integrated care plan"
+              }
+            ]
+          }
+        ],
+        "subject": {
+          "reference": "Patient/pa01",
+          "display": "Ahmet Kılıç"
+        },
+        "goal": [
+          {
+            "reference": "Goal/056a237d-91b3-45e2-a11e-6f05fb11d138",
+            "display": "Lipid Management"
+          },
+          {
+            "reference": "Goal/07227486-0c61-45da-86f4-7191a2c09a33",
+            "display": "Diet & Lifestyle"
+          },
+          {
+            "reference": "Goal/3fa1187f-6df6-4c5d-8ca0-f63d05931abc",
+            "display": "Complication Management"
+          },
+          {
+            "reference": "Goal/9b931dd7-82f1-4ee4-8c28-249274827aa0",
+            "display": "Glucose Management"
+          },
+          {
+            "reference": "Goal/1ce0d81d-8e85-47bb-acab-d45853a60ac8",
+            "display": "HF Management"
+          },
+          {
+            "reference": "Goal/6d25a0c4-43eb-4229-be53-88e321ed33a5",
+            "display": "BP Management"
+          },
+          {
+            "reference": "Goal/18b6105a-6345-4745-bef8-87f99042336d",
+            "display": "HbA1c target is supposed to be 46 mmol/mol (<= 6.4%)"
+          },
+          {
+            "reference": "Goal/ff47083b-38b5-4e20-be46-fe039a4e213f",
+            "display": "Renal Management"
+          },
+          {
+            "reference": "Goal/446a6504-94f7-4925-84e5-f53b5748be59",
+            "display": "Depression Management"
+          }
+        ],
+        "extension": [
+          {
+            "url": "http://www.c3-cloud.eu/fhir/StructureDefinition/majorDisease",
+            "valueCoding": {
+              "system": "http://www.c3-cloud.eu/fhir/clinical-concept-code",
+              "code": "hf",
+              "display": "Heart failure"
+            }
+          },
+          {
+            "url": "http://www.c3-cloud.eu/fhir/StructureDefinition/majorDisease",
+            "valueCoding": {
+              "system": "http://www.c3-cloud.eu/fhir/clinical-concept-code",
+              "code": "ckd",
+              "display": "Chronic kidney disease"
+            }
+          },
+          {
+            "url": "http://www.c3-cloud.eu/fhir/StructureDefinition/majorDisease",
+            "valueCoding": {
+              "system": "http://www.c3-cloud.eu/fhir/clinical-concept-code",
+              "code": "t2d",
+              "display": "Type 2 diabetes"
+            }
+          },
+          {
+            "url": "http://www.c3-cloud.eu/fhir/StructureDefinition/majorDisease",
+            "valueCoding": {
+              "system": "http://www.c3-cloud.eu/fhir/clinical-concept-code",
+              "code": "dp",
+              "display": "Depression"
+            }
+          }
+        ],
+        "title": "Ahmet's care plan",
+        "activity": [
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/careplan-activity-title",
+                "valueString": "Type 2 Diabetes"
+              }
+            ],
+            "reference": {
+              "reference": "CommunicationRequest/b6c8d536-ea8e-4023-a88b-764630bc05ad",
+              "display": "Type 2 Diabetes"
+            }
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/careplan-activity-title",
+                "valueString": "Acetylsalicylic acid"
+              }
+            ],
+            "reference": {
+              "reference": "MedicationRequest/19450049-0ca7-43fc-a1fb-2214cc1f8505",
+              "display": "Acetylsalicylic acid"
+            }
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/careplan-activity-title",
+                "valueString": "Lansoprazole"
+              }
+            ],
+            "reference": {
+              "reference": "MedicationRequest/9bf4c05d-726a-4af8-a4e0-f06395601312",
+              "display": "Lansoprazole"
+            }
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/careplan-activity-title",
+                "valueString": "Timolol"
+              }
+            ],
+            "reference": {
+              "reference": "MedicationRequest/94c3202f-a195-4175-a44c-f052e5e4fc54",
+              "display": "Timolol"
+            }
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/careplan-activity-title",
+                "valueString": "Atorvastatin"
+              }
+            ],
+            "reference": {
+              "reference": "MedicationRequest/065c9f20-30a7-4c7a-90e1-d7426aa31d99",
+              "display": "Atorvastatin"
+            }
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/careplan-activity-title",
+                "valueString": "Self-measurement of blood pressure"
+              }
+            ],
+            "reference": {
+              "reference": "ServiceRequest/37dc687b-0da4-4c62-b8e1-8332efdd9b3f"
+            }
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/careplan-activity-title",
+                "valueString": "Submit photo for dietary intake assessment"
+              }
+            ],
+            "reference": {
+              "reference": "ServiceRequest/b6a05c7c-6815-4000-893e-110a9065e2b5"
+            }
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/careplan-activity-title",
+                "valueString": "Follow-up"
+              }
+            ],
+            "reference": {
+              "reference": "Appointment/9ed0d3ff-faf5-4b61-a321-ac31760db46d",
+              "display": "Follow-up"
+            }
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/careplan-activity-title",
+                "valueString": "Dietician"
+              }
+            ],
+            "reference": {
+              "reference": "ServiceRequest/2795c474-cd3f-482c-8c53-a7810ac53cb4"
+            }
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/careplan-activity-title",
+                "valueString": "Routine"
+              }
+            ],
+            "reference": {
+              "reference": "Appointment/3755262c-a751-4dd2-b235-48e339108224",
+              "display": "Routine"
+            }
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/careplan-activity-title",
+                "valueString": "Follow-up to check the results of the treatment"
+              }
+            ],
+            "reference": {
+              "reference": "Appointment/a4b14f61-bf52-43c3-89ca-2af8d9083810",
+              "display": "FOLLOWUP"
+            }
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/careplan-activity-title",
+                "valueString": "Walk-in"
+              }
+            ],
+            "reference": {
+              "reference": "Appointment/60ddaefe-1f2a-4037-af7e-2df2e2ac9d36",
+              "display": "Walk-in"
+            }
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/careplan-activity-title",
+                "valueString": "HbA1c Test"
+              }
+            ],
+            "reference": {
+              "reference": "ServiceRequest/50444d9a-a5ce-4a65-ab26-87975ecf5c6b"
+            }
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/careplan-activity-title",
+                "valueString": "eGFR Test"
+              }
+            ],
+            "reference": {
+              "reference": "ServiceRequest/abad3368-8499-4b0f-aaa3-61c346b47681"
+            }
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/careplan-activity-title",
+                "valueString": "Referral to specialist services"
+              }
+            ],
+            "reference": {
+              "reference": "ServiceRequest/155f318a-242b-490d-8260-30fa1a41bd09"
+            }
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/careplan-activity-title",
+                "valueString": "Self-monitoring of Blood Glucose"
+              }
+            ],
+            "reference": {
+              "reference": "ServiceRequest/afede552-8995-4d52-9e69-04d9148ce752"
+            }
+          },
+          {
+            "extension": [
+              {
+                "url": "http://hl7.org/fhir/StructureDefinition/careplan-activity-title",
+                "valueString": "ACE inhibitor Prescription"
+              }
+            ],
+            "reference": {
+              "reference": "MedicationRequest/75bb0320-89bb-4931-8c2c-a479c25bceeb",
+              "display": "ACE INHIBITORS, PLAIN"
+            }
+          }
+        ],
+        "careTeam": [
+          {
+            "reference": "CareTeam/43de9be2-28e9-4055-b36b-de0f0fb30f0d",
+            "display": "Care Team of Ahmet Kılıç"
+          }
+        ],
+        "period": {
+          "start": "2020-09-02T10:28:19.171Z"
+        },
+        "author": {
+          "reference": "Practitioner/f45d8c18-d8b8-40f6-85c4-bf94893588ec",
+          "display": "Bahar Yılmaz"
+        },
+        "note": [
+          {
+            "authorReference": {
+              "reference": "Practitioner/f45d8c18-d8b8-40f6-85c4-bf94893588ec",
+              "display": "Bahar Yılmaz"
+            },
+            "time": "2020-09-02T11:05:53.708Z",
+            "text": "updated the care plan.",
+            "extension": [
+              {
+                "url": "http://www.c3-cloud.eu/fhir/StructureDefinition/action-type",
+                "valueCode": "update"
+              }
+            ]
+          },
+          {
+            "authorReference": {
+              "reference": "Practitioner/f45d8c18-d8b8-40f6-85c4-bf94893588ec",
+              "display": "Bahar Yılmaz"
+            },
+            "time": "2020-09-02T10:28:19.709Z",
+            "text": "created the care plan.",
+            "extension": [
+              {
+                "url": "http://www.c3-cloud.eu/fhir/StructureDefinition/action-type",
+                "valueCode": "create"
+              }
+            ]
+          }
+        ]
+      },
+      "search": {
+        "mode": "match"
+      }
+    }
+  ]
+}

@@ -37,9 +37,14 @@ object FhirPathValueTransformer {
     Try(FhirPathLiteralEvaluator.parseFhirDateTimeBest(str)).toOption
       .map(FhirPathDateTime)
       .getOrElse(
-        Try(FhirPathLiteralEvaluator.parseFhirTime("T"+str)).toOption
-          .map(t => FhirPathTime(t._1, t._2))
-          .getOrElse(FhirPathString(str)))
+        //If it seems to be a FHIR time, try to parse it
+        if(str.count(_ == ':') == 3)
+          Try(FhirPathLiteralEvaluator.parseFhirTime("T"+str)).toOption
+            .map(t => FhirPathTime(t._1, t._2))
+            .getOrElse(FhirPathString(str))
+        else
+          FhirPathString(str)
+       )
   }
 
 
