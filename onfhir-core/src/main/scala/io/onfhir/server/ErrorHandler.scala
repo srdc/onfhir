@@ -9,8 +9,9 @@ import io.onfhir.exception._
 import io.onfhir.api.model.FHIRMarshallers._
 
 import scala.language.implicitConversions
-
+import org.slf4j.{Logger, LoggerFactory}
 object ErrorHandler {
+  val logger: Logger = LoggerFactory.getLogger(this.getClass.getName)
   /**
     * Exception Handler object
     * @return
@@ -133,6 +134,7 @@ object ErrorHandler {
         )
       //Any exception
       case ex:Exception =>
+        logger.error("Unexpected exception!", ex)
         FHIRResponse.errorResponse(
           StatusCodes.InternalServerError,
           Seq(

@@ -187,12 +187,9 @@ class ExpandOperationHandler extends FHIROperationHandlerService {
                var matching = JObject()
                (include \ "system").extractOpt[String].foreach(s => {matching = matching ~ ("system" -> s)})
                (include \ "version").extractOpt[String].foreach(v => {matching = matching ~ ("version" -> v)})
-               (include \ "extension") match {
-                  case JNothing => None
-                  case other =>  matching = matching ~ ("extension" -> other)
-               }
-               (concept \ "display").extractOpt[String].foreach(d => {matching = matching ~ ("display" -> d)})
                (concept \ "code").extractOpt[String].foreach(c => {matching = matching ~ ("code" -> c)})
+               (concept \ "display").extractOpt[String].foreach(d => {matching = matching ~ ("display" -> d)})
+               (concept \ "extension").extractOpt[JArray].foreach(arr => {matching = matching ~ ("extension" -> arr)})
                Some(matching)
              } else None
           })
@@ -236,7 +233,7 @@ class ExpandOperationHandler extends FHIROperationHandlerService {
           ("total" -> matchingList.size) ~
           ("contains" -> matchingList)
 
-      resultValueSet ~ (VALUESET_EXPANSION -> expansion)
+      resultValueSet = resultValueSet ~ (VALUESET_EXPANSION -> expansion)
 
       /*val expansion = mutable.LinkedHashMap[String, Any]()
       expansion.put("identifier", UUID.randomUUID().toString)
@@ -255,8 +252,8 @@ class ExpandOperationHandler extends FHIROperationHandlerService {
   def containsAll(input:JValue, keys:Seq[String]): Boolean = {
 
     keys foreach (key =>
-      if(!((input \ "display").extractOpt[String].map(_.toLowerCase).contains(key.toLowerCase) ||
-        (input \ "code").extractOpt[String].map(_.toLowerCase).contains(key.toLowerCase)))
+      if(!((input \ "display").extractOpt[String].getOrElse("").toLowerCase.contains(key.toLowerCase) ||
+        (input \ "code").extractOpt[String].getOrElse("").toLowerCase.contains(key.toLowerCase)))
         return false
     )
     true

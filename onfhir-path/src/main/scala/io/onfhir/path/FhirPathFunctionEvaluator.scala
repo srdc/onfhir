@@ -1,7 +1,8 @@
 package io.onfhir.path
 
 import java.lang.reflect.InvocationTargetException
-import java.time.{LocalDate, ZonedDateTime}
+import java.time.temporal.{ChronoUnit, Temporal}
+import java.time.{LocalDate, Period, ZonedDateTime}
 
 import io.onfhir.api.Resource
 import io.onfhir.api.util.FHIRUtil
@@ -29,9 +30,12 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
       fhirPathResult
     } catch {
       case n:NoSuchMethodException =>
-        throw new Exception(s"Invalid function call, function $fname does not exist or take ${params.length} arguments !!!")
+        throw new FhirPathException(s"Invalid function call, function $fname does not exist or take ${params.length} arguments !!!")
       case ite:InvocationTargetException =>
-        throw new Exception(s"Invalid function call, function $fname does not exist or take ${params.length} arguments !!!")
+        ite.getTargetException match {
+          case fpe:FhirPathException => throw fpe
+          case e:Throwable => throw FhirPathException.apply("Invalid function call $fname!", e)
+        }
     }
   }
 
@@ -43,7 +47,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     var fhirReferences = current.map {
       case FhirPathString(uri) => FHIRUtil.parseCanonicalReference(uri)
       case FhirPathComplex(o) => FHIRUtil.parseReference(o)
-      case _ => throw new Exception("Invalid function call 'resolve', it should be called on a canonical value or FHIR reference!")
+      case _ => throw new FhirPathException("Invalid function call 'resolve', it should be called on a canonical value or FHIR reference!")
     }
 
     fhirReferences
@@ -59,7 +63,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   def extension(urlExp:ExpressionContext):Seq[FhirPathResult] = {
     val url = new FhirPathExpressionEvaluator(context, current).visit(urlExp)
     if(url.length != 1 || !url.head.isInstanceOf[FhirPathString])
-      throw new Exception(s"Invalid function call 'extension', expression ${urlExp.getText} does not return a url!")
+      throw new FhirPathException(s"Invalid function call 'extension', expression ${urlExp.getText} does not return a url!")
 
     val expr = FhirPathEvaluator().parse(s"extension.where(url = '${url.head.asInstanceOf[FhirPathString].s}')")
 
@@ -77,7 +81,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     current.length match {
       case 0 => Seq(FhirPathBoolean(false))
       case 1 =>  Seq(FhirPathBoolean(true))
-      case _ =>  throw new Exception("Invalid function call 'is', it should be called on single item!")
+      case _ =>  throw new FhirPathException("Invalid function call 'is', it should be called on single item!")
     }
   }
 
@@ -91,7 +95,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   def not():Seq[FhirPathResult] = current match {
     case Nil => Nil
     case Seq(FhirPathBoolean(b)) => Seq(FhirPathBoolean(!b))
-    case _ => throw  new Exception("Function 'not' should run on FHIR path boolean!!!")
+    case _ => throw  new FhirPathException("Function 'not' should run on FHIR path boolean!!!")
   }
 
   def exists(expr:Option[ExpressionContext]):Seq[FhirPathResult] = {
@@ -117,28 +121,28 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
 
   def allTrue():Seq[FhirPathResult] = {
     if(current.exists(!_.isInstanceOf[FhirPathBoolean]))
-      throw new Exception("Function 'allTrue' should run on collection of FHIR Path boolean values!!!")
+      throw new FhirPathException("Function 'allTrue' should run on collection of FHIR Path boolean values!!!")
     val result = current.forall(c => c.asInstanceOf[FhirPathBoolean].b)
     Seq(FhirPathBoolean(result))
   }
 
   def anyTrue():Seq[FhirPathResult] = {
     if(current.exists(!_.isInstanceOf[FhirPathBoolean]))
-      throw new Exception("Function 'anyTrue' should run on collection of FHIR Path boolean values!!!")
+      throw new FhirPathException("Function 'anyTrue' should run on collection of FHIR Path boolean values!!!")
     val result = current.exists(c => c.asInstanceOf[FhirPathBoolean].b)
     Seq(FhirPathBoolean(result))
   }
 
   def allFalse():Seq[FhirPathResult] = {
     if(current.exists(!_.isInstanceOf[FhirPathBoolean]))
-      throw new Exception("Function 'allFalse' should run on collection of FHIR Path boolean values!!!")
+      throw new FhirPathException("Function 'allFalse' should run on collection of FHIR Path boolean values!!!")
     val result = current.forall(c => !c.asInstanceOf[FhirPathBoolean].b)
     Seq(FhirPathBoolean(result))
   }
 
   def anyFalse():Seq[FhirPathResult] = {
     if(current.exists(!_.isInstanceOf[FhirPathBoolean]))
-      throw new Exception("Function 'anyFalse' should run on collection of FHIR Path boolean values!!!")
+      throw new FhirPathException("Function 'anyFalse' should run on collection of FHIR Path boolean values!!!")
     val result = current.exists(c => !c.asInstanceOf[FhirPathBoolean].b)
     Seq(FhirPathBoolean(result))
   }
@@ -179,7 +183,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
       case Seq(FhirPathBoolean(true)) => true
       case Seq(FhirPathBoolean(false)) => false
       case Nil => false
-      case _ => throw new Exception(s"Invalid criteria ${criteria.getText} function call 'where', it does not evaluate to boolean!!!")
+      case _ => throw new FhirPathException(s"Invalid criteria ${criteria.getText} function call 'where', it does not evaluate to boolean!!!")
     })
   }
 
@@ -205,7 +209,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     current match {
       case Nil => Nil
       case Seq(s) => Seq(s)
-      case _ => throw new Exception(s"Function 'single' is called on a multi item collection $current!!!")
+      case _ => throw new FhirPathException(s"Function 'single' is called on a multi item collection $current!!!")
     }
   }
 
@@ -215,10 +219,10 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   def skip(numExpr:ExpressionContext):Seq[FhirPathResult] = {
     val numValue = new FhirPathExpressionEvaluator(context, current).visit(numExpr)
     if(numValue.length != 1 || !numValue.head.isInstanceOf[FhirPathNumber])
-      throw new Exception(s"Invalid function call 'skip', num expression ${numExpr.getText} does not return a single number!")
+      throw new FhirPathException(s"Invalid function call 'skip', num expression ${numExpr.getText} does not return a single number!")
     val inum = numValue.head.asInstanceOf[FhirPathNumber]
     if(!inum.isInteger())
-      throw new Exception(s"Invalid function call 'skip', num expression ${numExpr.getText} does not return a integer")
+      throw new FhirPathException(s"Invalid function call 'skip', num expression ${numExpr.getText} does not return a integer")
 
     val i = inum.v.toInt
     if(i< 0)
@@ -231,10 +235,10 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   def take(numExpr:ExpressionContext):Seq[FhirPathResult] = {
     val numValue = new FhirPathExpressionEvaluator(context, current).visit(numExpr)
     if(numValue.length != 1 || !numValue.head.isInstanceOf[FhirPathNumber])
-      throw new Exception(s"Invalid function call 'take', num expression ${numExpr.getText} does not return a single number!")
+      throw new FhirPathException(s"Invalid function call 'take', num expression ${numExpr.getText} does not return a single number!")
     val inum = numValue.head.asInstanceOf[FhirPathNumber]
     if(!inum.isInteger())
-      throw new Exception(s"Invalid function call 'take', num expression ${numExpr.getText} does not return a integer")
+      throw new FhirPathException(s"Invalid function call 'take', num expression ${numExpr.getText} does not return a integer")
     val i = inum.v.toInt
     if(i<=0) Nil
     else
@@ -282,13 +286,13 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   def toInteger():Seq[FhirPathResult] = {
     current match {
       case Seq(n:FhirPathNumber) if n.isInteger() => Seq(n)
-      case Seq(n:FhirPathNumber) if !n.isInteger() =>  throw new Exception(s"Invalid function call 'toInteger' on value $n !!!")
+      case Seq(n:FhirPathNumber) if !n.isInteger() =>  throw new FhirPathException(s"Invalid function call 'toInteger' on value $n !!!")
       case Seq(FhirPathString(s)) => Try(s.toInt).toOption match {
         case Some(i) => Seq(FhirPathNumber(i))
-        case None => throw new Exception(s"Invalid function call 'toInteger' on value $s of string type cannot be converted to integer!!")
+        case None => throw new FhirPathException(s"Invalid function call 'toInteger' on value $s of string type cannot be converted to integer!!")
       }
       case Seq(FhirPathBoolean(b)) => if(b) Seq(FhirPathNumber(1)) else Seq(FhirPathNumber(0))
-      case Seq(oth) => throw new Exception(s"Invalid function call 'toInteger' on value $oth !!!")
+      case Seq(oth) => throw new FhirPathException(s"Invalid function call 'toInteger' on value $oth !!!")
       case _ => Nil
     }
   }
@@ -298,10 +302,10 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
       case Seq(n:FhirPathNumber)  => Seq(n)
       case Seq(FhirPathString(s)) => Try(s.toDouble).toOption match {
         case Some(d) => Seq(FhirPathNumber(d))
-        case None => throw new Exception(s"Invalid function call 'toDecimal' on value $s of string type cannot be converted to decimal!!")
+        case None => throw new FhirPathException(s"Invalid function call 'toDecimal' on value $s of string type cannot be converted to decimal!!")
       }
       case Seq(FhirPathBoolean(b)) => if(b) Seq(FhirPathNumber(1.0)) else Seq(FhirPathNumber(0.0))
-      case Seq(oth) => throw new Exception(s"Invalid function call 'toDecimal' on value $oth !!!")
+      case Seq(oth) => throw new FhirPathException(s"Invalid function call 'toDecimal' on value $oth !!!")
       case _ => Nil
     }
   }
@@ -314,7 +318,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
       case Seq(t:FhirPathTime) =>  Seq(FhirPathString(FhirPathLiteralEvaluator.format(t)))
       case Seq(q:FhirPathQuantity) => Seq(FhirPathString(q.q.v.toString + " " + q.unit))
       case Seq(FhirPathBoolean(b)) => if(b) Seq(FhirPathString("'true'")) else Seq(FhirPathString("'false'"))
-      case Seq(oth) => throw new Exception(s"Invalid function call 'toDecimal' on value $oth !!!")
+      case Seq(oth) => throw new FhirPathException(s"Invalid function call 'toDecimal' on value $oth !!!")
       case _ => Nil
     }
   }
@@ -327,14 +331,14 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     */
   private def checkSingleString() =
     if(current.length > 1 || current.headOption.exists(!_.isInstanceOf[FhirPathString]))
-      throw new Exception("Invalid function call 'indexOf' on multi item collection or non-string value!")
+      throw new FhirPathException("Invalid function call 'indexOf' on multi item collection or non-string value!")
 
   def indexOf(substringExpr : ExpressionContext):Seq[FhirPathResult] = {
     checkSingleString()
     current.headOption.map(c => {
       new FhirPathExpressionEvaluator(context, current).visit(substringExpr) match {
         case Seq(FhirPathString(ss)) => if(ss == "") Seq(FhirPathNumber((0))) else Seq(FhirPathNumber(c.asInstanceOf[FhirPathString].s.indexOf(ss)))
-        case _ => throw new Exception(s"Invalid function call 'indexOf', the substring expression ${substringExpr.getText} does not return string!")
+        case _ => throw new FhirPathException(s"Invalid function call 'indexOf', the substring expression ${substringExpr.getText} does not return string!")
       }
     }).getOrElse(Nil)
   }
@@ -344,11 +348,11 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     current.headOption.map(c => {
       val start = new FhirPathExpressionEvaluator(context, current).visit(startExpr) match {
         case Seq(n:FhirPathNumber) if n.isInteger() => n.v.toInt
-        case _ => throw new Exception(s"Invalid function call 'substring', the start expression ${startExpr.getText} does not return integer!")
+        case _ => throw new FhirPathException(s"Invalid function call 'substring', the start expression ${startExpr.getText} does not return integer!")
       }
       val length = lengthExpr.map(lexpr => new FhirPathExpressionEvaluator(context, current).visit(lexpr) match {
         case Seq(n:FhirPathNumber) if n.isInteger() => n.v.toInt
-        case _ => throw new Exception(s"Invalid function call 'substring', the length expression ${startExpr.getText} does not return integer!")
+        case _ => throw new FhirPathException(s"Invalid function call 'substring', the length expression ${startExpr.getText} does not return integer!")
       })
       val str = c.asInstanceOf[FhirPathString].s
       if(start > str.length || start < 0)
@@ -373,7 +377,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
         case Seq(FhirPathString(ss)) =>
           Seq(FhirPathBoolean( ss == "" || c.asInstanceOf[FhirPathString].s.startsWith(ss) ))
         case oth =>
-          throw new Exception(s"Invalid function call 'startsWith', the prefixExpr expression ${prefixExpr.getText} does not return string!")
+          throw new FhirPathException(s"Invalid function call 'startsWith', the prefixExpr expression ${prefixExpr.getText} does not return string!")
       }
     }).getOrElse(Nil)
   }
@@ -383,7 +387,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     current.headOption.map(c => {
       new FhirPathExpressionEvaluator(context, current).visit(suffixExpr) match {
         case Seq(FhirPathString(ss)) => Seq(FhirPathBoolean( ss == "" || c.asInstanceOf[FhirPathString].s.endsWith(ss) ))
-        case _ => throw new Exception(s"Invalid function call 'endsWith', the suffixExpr expression ${suffixExpr.getText} does not return string!")
+        case _ => throw new FhirPathException(s"Invalid function call 'endsWith', the suffixExpr expression ${suffixExpr.getText} does not return string!")
       }
     }).getOrElse(Nil)
   }
@@ -393,7 +397,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     current.headOption.map(c => {
       new FhirPathExpressionEvaluator(context, current).visit(substringExpr) match {
         case Seq(FhirPathString(ss)) => Seq(FhirPathBoolean( ss == "" || c.asInstanceOf[FhirPathString].s.contains(ss) ))
-        case _ => throw new Exception(s"Invalid function call 'contains', the substring expression ${substringExpr.getText} does not return string!")
+        case _ => throw new FhirPathException(s"Invalid function call 'contains', the substring expression ${substringExpr.getText} does not return string!")
       }
     }).getOrElse(Nil)
   }
@@ -403,12 +407,12 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     current.headOption.map(c => {
       val pattern = new FhirPathExpressionEvaluator(context, current).visit(patternExpr) match {
         case Seq(FhirPathString(ss)) => ss
-        case _ => throw new Exception(s"Invalid function call 'replace', the pattern expression ${patternExpr.getText} does not return string!")
+        case _ => throw new FhirPathException(s"Invalid function call 'replace', the pattern expression ${patternExpr.getText} does not return string!")
       }
 
       val substitution = new FhirPathExpressionEvaluator(context, current).visit(substitutionExpr) match {
         case Seq(FhirPathString(ss)) => ss
-        case _ => throw new Exception(s"Invalid function call 'replace', the substitiution expression ${substitutionExpr.getText} does not return string!")
+        case _ => throw new FhirPathException(s"Invalid function call 'replace', the substitiution expression ${substitutionExpr.getText} does not return string!")
       }
 
       Seq(FhirPathString(c.asInstanceOf[FhirPathString].s.replace(pattern, substitution)))
@@ -424,7 +428,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
           val isMatch = c.asInstanceOf[FhirPathString].s.matches(unexcapedScript)
           Seq(FhirPathBoolean(isMatch))
         case _ =>
-          throw new Exception(s"Invalid function call 'matches', the regular expression ${regexExpr.getText} does not return string!")
+          throw new FhirPathException(s"Invalid function call 'matches', the regular expression ${regexExpr.getText} does not return string!")
       }
     }).getOrElse(Nil)
   }
@@ -434,12 +438,12 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     current.headOption.map(c => {
       val regex = new FhirPathExpressionEvaluator(context, current).visit(regexExpr) match {
         case Seq(FhirPathString(ss)) => StringEscapeUtils.unescapeEcmaScript(ss)
-        case _ => throw new Exception(s"Invalid function call 'replace', the regex expression ${regexExpr.getText} does not return string!")
+        case _ => throw new FhirPathException(s"Invalid function call 'replace', the regex expression ${regexExpr.getText} does not return string!")
       }
 
       val substitution = new FhirPathExpressionEvaluator(context, current).visit(substitutionExpr) match {
         case Seq(FhirPathString(ss)) => ss
-        case _ => throw new Exception(s"Invalid function call 'replace', the substitiution expression ${substitutionExpr.getText} does not return string!")
+        case _ => throw new FhirPathException(s"Invalid function call 'replace', the substitiution expression ${substitutionExpr.getText} does not return string!")
       }
 
       Seq(FhirPathString(c.asInstanceOf[FhirPathString].s.replaceAll(regex, substitution)))
@@ -494,7 +498,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    */
   def groupBy(groupByExpr:ExpressionContext, aggregateExpr:ExpressionContext):Seq[FhirPathResult] = {
     if(!current.forall(_.isInstanceOf[FhirPathComplex]))
-      throw new Exception("Invalid function call 'groupBy' on current value! The data type for current value should be complex object!")
+      throw new FhirPathException("Invalid function call 'groupBy' on current value! The data type for current value should be complex object!")
     //Evaluate group by expression to calculate bucket keys
     val buckets = current.map(c => {
       val bucketKeyResults = new FhirPathExpressionEvaluator(context, Seq(c)).visit(groupByExpr)
@@ -509,10 +513,53 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
         //Evaluate aggregation for each group
         val aggValues = new FhirPathExpressionEvaluator(context, bv._2).visit(aggregateExpr)
         if(aggValues.length != 1 || aggValues.exists(!_.isInstanceOf[FhirPathNumber]))
-          throw new Exception(s"Invalid function call 'groupBy' on current value! The aggregation expression does not return single number for bucket ${bv._1}!")
+          throw new FhirPathException(s"Invalid function call 'groupBy' on current value! The aggregation expression does not return single number for bucket ${bv._1}!")
 
         val aggValue = aggValues.head.toJson
         FhirPathComplex(JObject("bucket" -> bv._1, "agg" -> aggValue))
       }).toSeq
   }
+
+  /**
+   * Get a period between the FHIR date time given in current and  FHIR date time given in first expression
+   * @param toDate Given date expression
+   * @param period Period requested to calculate; either 'years','months','weeks','days'
+   * @return
+   */
+  def getPeriod(toDate:ExpressionContext, period:ExpressionContext):Seq[FhirPathResult] = {
+    if(!current.forall(p => p.isInstanceOf[FhirPathDateTime]))
+      throw new FhirPathException(s"Invalid function call 'getPeriod' on a non datetime value!")
+
+
+    val tdate:Temporal = new FhirPathExpressionEvaluator(context, current).visit(toDate) match {
+      case Seq(FhirPathDateTime(dt)) => dt
+      case _ => throw new FhirPathException(s"Invalid function call 'getPeriod', second expression ${toDate.getText} does not evaluate to a single FHIR date time!")
+    }
+
+    val chronoPeriod =
+      new FhirPathExpressionEvaluator(context, current).visit(period) match {
+        case Seq(FhirPathString(p)) =>
+          p match {
+            case "year" | "years" => ChronoUnit.YEARS
+            case "month" | "months" => ChronoUnit.MONTHS
+            case "week" | "weeks" => ChronoUnit.WEEKS
+            case "day" | "days" => ChronoUnit.DAYS
+            case _ => throw new FhirPathException(s"Invalid function call 'getPeriod', the period expression ${period.getText} does not evaluate to a valid (valid values: 'years', 'months', 'weeks', 'days') time-valued quantity !")
+          }
+        case _ =>
+          throw new FhirPathException(s"Invalid function call 'getPeriod', the period expression ${period.getText} does not evaluate to a valid (valid values:  'years', 'months', 'weeks', 'days') time-valued quantity !")
+      }
+
+    current
+      .map(_.asInstanceOf[FhirPathDateTime])
+      .map(fdate => {
+        try {
+          FhirPathNumber(fdate.dt.until(tdate, chronoPeriod))
+        } catch {
+          case e:Throwable =>
+            throw FhirPathException.apply("Invalid function call 'getPeriod', both date time instances should be either with zone or not!", e)
+        }
+      })
+  }
+
 }
