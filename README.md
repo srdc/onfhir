@@ -1,6 +1,6 @@
 # onFHIR FHIR Repository
 [onFHIR](http://onfhir.io) is a FHIR compliant secure health data repository that you can use as a central data service for your FHIR compliant healthcare applications. 
-You can use it as a standalone server, or you can extend it with your further custom FHIR Operations to build your own application layer in addition to having standart FHIR repository capabilities. 
+You can use it as a standalone server, or you can extend it with your further custom FHIR Operations to build your own application layer in addition to having standard FHIR repository capabilities. 
 onFhir.io is using FHIR Infrastructure Resource definitions (CapabilityStatement, StructureDefinition, SearchParameter, etc) to tailor 
 the FHIR server to your specific FHIR capabilities you required; resource profiles, search parameters, FHIR interactions you wanted to support.     
 It is implemented with Scala, based on Akka and MongoDB. 
@@ -58,7 +58,7 @@ $ java -Dserver.port=9999 -Dserver.host=172.17.0.1 -jar target/onfhir-server-sta
 
 ### Extensibility
 You can develop your own FHIR compliant backend application based on onFHIR. In order to do this you can import the 
-corresponding server module as dependency to your project and write a scala App (Boot) that initiates onFHIR with a 
+corresponding server module as a dependency to your project and write a scala App (Boot) that initiates onFHIR with a 
 custom configuration. **Onfhir.scala** is the main entrypoint to the project. The following is the default server Boot 
 configuration for onfhir-server-r4. It initiates a FHIR R4 server with the given configurations. 
 ```
