@@ -9,11 +9,12 @@
   function init()
   {
     output = document.getElementById("output");
-    testWebSocket();
+    //testWebSocket();
   }
 
   function testWebSocket()
   {
+    wsUri = document.getElementById("wsendpoint").value;
     websocket = new WebSocket(wsUri);
     websocket.onopen = function(evt) { onOpen(evt) };
     websocket.onclose = function(evt) { onClose(evt) };
@@ -72,12 +73,16 @@
 
   </script>
 
-  <h2>WebSocket Test</h2>
+  <h2>onFHIR.io FHIR Subscription WebSocket Test</h2>
 
-  FHIR Subscription Id: <input type="text" id="sid"> <button onclick="bind()">Bind</button>	
+ <div>
+  Web Socket Endpoint: <input type="text" id="wsendpoint" value="ws://127.0.0.1:8082/fhir-wss">  <button onclick="testWebSocket()">Connect</button>
+ </div>
 
-  <div id="output"></div>
-  
- 
-  <button onclick="disconnect()">Disconnect</button>
-  
+ <div>
+  FHIR Subscription Id: <input type="text" id="sid"> <button onclick="bind()">Bind</button>
+ </div>
+
+ <div id="output"></div>
+
+ <button onclick="disconnect()">Disconnect</button>

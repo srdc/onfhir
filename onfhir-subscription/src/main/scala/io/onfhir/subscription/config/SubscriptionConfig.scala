@@ -38,6 +38,9 @@ class SubscriptionConfig(val system: ActorSystem[_]) {
   //Timeout for subscription evaluators
   val processorAskTimeout = Timeout.create(onFhirConf.getDuration("subscription.ask-timeout"))
 
+  //Number of maximum subscription bindings at a node at a time instant
+  val maxNumberOfWebSocketBindingsPerNode = onFhirConf.getInt("subscription.websocket.num-of-bindings")
+
   //Dimension parameter names for each resource type (if requested)
   /*val dimensionsForResourceTypes:Map[String, Seq[String]] =
     onFhirConf

@@ -123,7 +123,8 @@ POST http://localhost:8080/fhir/Subscription
 }
 ```
 Click on **web-socket-test-1.html** to open the test client in browser. 
-When opened, enter the if of the subscription you have created and click bind.
+When opened, click connect to establish web socket connection with the first node. 
+Then, enter the id of the subscription you have created and click bind.
 It will print 'bound <subscription-id>'.
 
 Then create an FHIR resource that satisfies the criteria given in the FHIR Subscription, see the example below
@@ -174,7 +175,8 @@ Then create an FHIR resource that satisfies the criteria given in the FHIR Subsc
 }
 ```
   
-You should see a 'ping <subscription-id>' message in  opened web-socket-test-1.html page.   
+You should see a 'ping <subscription-id>' message in  opened web-socket-test-1.html page. 
+You can open another page, and change the web socket address to the second node, and try it again.   
  
 
 

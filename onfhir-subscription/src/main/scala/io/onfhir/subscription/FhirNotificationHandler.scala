@@ -2,20 +2,22 @@ package io.onfhir.subscription
 
 
 import akka.{Done, NotUsed}
-import akka.actor.typed.scaladsl.Behaviors
+import akka.actor.typed.scaladsl.{ActorContext, Behaviors}
 import akka.actor.typed.{ActorRef, ActorSystem, Behavior}
 import akka.cluster.sharding.external.ExternalShardAllocationStrategy
 import akka.cluster.sharding.typed.scaladsl.{ClusterSharding, Entity, EntityTypeKey}
 import akka.kafka.cluster.sharding.KafkaClusterSharding
+import akka.stream.StreamRefMessages.SinkRef
 import io.onfhir.subscription.config.SubscriptionConfig
 import io.onfhir.subscription.model.{FhirNotification, InternalKafkaTopics}
-import akka.stream.{ActorMaterializer, Materializer, OverflowStrategy, SourceRef}
+import akka.stream.{ActorMaterializer, Materializer, OverflowStrategy, SourceRef, StreamRefAttributes}
 import akka.stream.scaladsl.{BroadcastHub, Keep, Sink, Source, SourceQueueWithComplete, StreamRefs}
 import io.onfhir.api.{SubscriptionChannelTypes, SubscriptionStatusCodes}
 import io.onfhir.subscription.cache.{GetSubscription, GetSubscriptionResponse, RemoveSubscription, Response, SetSubscriptionStatus, UpdateSubscriptionResponse}
 import io.onfhir.subscription.model._
 import org.reactivestreams.Publisher
 import io.onfhir.subscription.channel.{Command, IPushBasedChannelManager, SendNotification}
+import org.slf4j.LoggerFactory
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.concurrent.duration._
@@ -28,9 +30,13 @@ object FhirNotificationHandler {
     def getEntityId:String = sid
   }
 
+  sealed trait Response extends CborSerializable
+
   case class SendFhirNotification(sid:String, resourceContent:String, replyTo:ActorRef[Done]) extends Command
 
-  case class GetFhirNotificationStream(sid:String, replyTo:ActorRef[SourceRef[FhirNotification]]) extends Command
+  case class GetFhirNotificationStream(sid:String, replyTo:ActorRef[GetFhirNotificationStreamResponse]) extends Command
+  case class GetFhirNotificationStreamResponse(notificationStream:SourceRef[FhirNotification]) extends Response
+
   /**
    * Result of notification sending
    * @param sid           Subscription id
@@ -49,6 +55,9 @@ object FhirNotificationHandler {
   case class AdaptedCacheUpdateResponse(sid:String, result:Boolean, f:Option[Throwable] = None) extends Command
   case class StatusUpdateResponse(sid:String, result:Boolean, e:Option[Throwable] = None) extends Command
 
+  case class InternalNotificationQueueCompleted(sid:String, ex:Option[Throwable]) extends Command
+
+  val log = LoggerFactory.getLogger("NotificationHandler")
   /**
    * Initialization of this actor with sharding
    * @param system                Typed actor system
@@ -61,7 +70,9 @@ object FhirNotificationHandler {
            SubscriptionConfig,
            subscriptionCache:ActorRef[io.onfhir.subscription.cache.Command],
            subscriptionManager: SubscriptionManager,
-           pushBasedNotificationChannelActors:Map[String, ActorRef[io.onfhir.subscription.channel.Command]]): Future[ActorRef[Command]] = {
+           pushBasedNotificationChannelActors:Map[String, ActorRef[io.onfhir.subscription.channel.Command]],
+           pullBasedNotificationHandler: PullBasedNotificationHandler
+          ): Future[ActorRef[Command]] = {
     import system.executionContext
 
     KafkaClusterSharding(subscriptionConfig.system)
@@ -73,7 +84,7 @@ object FhirNotificationHandler {
       ).map(messageExtractor => {
         system.log.info("Message extractor created. Initializing sharding for group {}", ConsumerGroupIds.kafkaConsumerGroupIdForNotifications)
         ClusterSharding(system).init(
-          Entity(subscriptionConfig.entityTypeKeyForNotification)(createBehavior = _ => FhirNotificationHandler(subscriptionConfig, subscriptionCache, subscriptionManager, pushBasedNotificationChannelActors, system))
+          Entity(subscriptionConfig.entityTypeKeyForNotification)(createBehavior = _ => FhirNotificationHandler(subscriptionConfig, subscriptionCache, subscriptionManager, pushBasedNotificationChannelActors, pullBasedNotificationHandler))
           .withAllocationStrategy(new ExternalShardAllocationStrategy(system, subscriptionConfig.entityTypeKeyForNotification.name))
           .withMessageExtractor(messageExtractor))
       })
@@ -83,39 +94,53 @@ object FhirNotificationHandler {
   def apply(subscriptionConfig: SubscriptionConfig,
             subscriptionCache:ActorRef[io.onfhir.subscription.cache.Command],
             subscriptionManager: SubscriptionManager,
-            pushBasedNotificationChannelActors:Map[String, ActorRef[io.onfhir.subscription.channel.Command]], system: ActorSystem[_]): Behavior[Command] = {
-    //Create pull based notification queue and publisher for channels like web socket
-    implicit val materializer = Materializer.matFromSystem(system)
-    val (pullBasedNotificationQueue, notificationPublisher) = Source
-      .queue[FhirNotification](100, OverflowStrategy.dropHead)
-      .toMat(BroadcastHub.sink /*Sink.asPublisher(true)*/)(Keep.both)
-      .run()
+            pushBasedNotificationChannelActors:Map[String, ActorRef[io.onfhir.subscription.channel.Command]],
+            pullBasedNotificationHandler: PullBasedNotificationHandler): Behavior[Command] = {
+    Behaviors.setup { ctx =>
+      implicit val materializer: Materializer = Materializer.matFromSystem(ctx.system)
+      implicit val executionContext: ExecutionContextExecutor = ctx.executionContext
+/*
+      val (pullBasedNotificationQueue, notificationPublisher) =
+        Source
+          .queue[FhirNotification](256, OverflowStrategy.dropHead)
+          .toMat(BroadcastHub.sink(bufferSize = 256))(Keep.both)
+          .run()
 
+      //Consume the events when there is no subscriber
+      //notificationPublisher.runWith(Sink.ignore)
 
+      notificationPublisher.runWith(Sink.foreach(n => println(s"Subscription: ${n.sid}!!!")))
+      notificationPublisher.filter(_.sid == "0a011a9e-d9b9-4813-b9ef-7a871f1acb21").runWith(Sink.foreach(n => println(s"Subscription Local: ${n.sid}!!!")))
 
-    running(subscriptionConfig, subscriptionCache, subscriptionManager, pullBasedNotificationQueue, notificationPublisher, pushBasedNotificationChannelActors)
+      ctx.pipeToSelf(pullBasedNotificationQueue.watchCompletion()) {
+        case Success(_) => InternalNotificationQueueCompleted("queue", None)
+        case Failure(ex) => InternalNotificationQueueCompleted("queue",Some(ex))
+      }
+
+      notificationPublisher.watchTermination() ((_, done) => ctx.pipeToSelf(done) {
+        case Success(_) =>  InternalNotificationQueueCompleted("publisher", None)
+        case Failure(ex) => InternalNotificationQueueCompleted("publisher",Some(ex))
+      })*/
+
+      running(ctx, subscriptionConfig, subscriptionCache, subscriptionManager,  pushBasedNotificationChannelActors, pullBasedNotificationHandler)
+    }
   }
 
   /**
    * Actor behaviour
    * @param subscriptionConfig                  Subscription configuration
    * @param subscriptionCache                   Subscription cache
-   * @param pullBasedNotificationQueue          Queue for pull based notification handlers (e.g. web socket)
-   * @param notificationPublisher               Publisher for pull based notification handlers (e.g. web socket)
+   * @param pullBasedNotificationHandler        Pull based notification handler (e.g. web socket)
    * @param pushBasedNotificationChannelActors  Push based notification handlers by channel type
    * @return
    */
-  private def running(
+  private def running( ctx:ActorContext[Command],
                        subscriptionConfig: SubscriptionConfig,
                        subscriptionCache:ActorRef[io.onfhir.subscription.cache.Command],
                        subscriptionManager: SubscriptionManager,
-                       pullBasedNotificationQueue:SourceQueueWithComplete[FhirNotification],
-                       notificationPublisher:Source[FhirNotification, NotUsed],
-                       pushBasedNotificationChannelActors:Map[String, ActorRef[io.onfhir.subscription.channel.Command]]
-                     ): Behavior[Command] = {
-    Behaviors.setup { ctx =>
-      implicit val materializer: Materializer = Materializer.matFromSystem(ctx.system)
-      implicit val executionContext: ExecutionContextExecutor = ctx.executionContext
+                       pushBasedNotificationChannelActors:Map[String, ActorRef[io.onfhir.subscription.channel.Command]],
+                       pullBasedNotificationHandler: PullBasedNotificationHandler
+                     )(implicit mat:Materializer): Behavior[Command] = {
 
       implicit val responseTimeout = subscriptionConfig.processorAskTimeout
       Behaviors.receiveMessage[Command] {
@@ -131,14 +156,33 @@ object FhirNotificationHandler {
         //Return the notification stream for specific subscription
         case GetFhirNotificationStream(sid, replyTo) =>
           ctx.log.debug(s"Going to handle web socket notifications for subscription $sid")
-          val streamRef =
+          val streamRef = pullBasedNotificationHandler.getNotificationSourceRefForSubscription(sid)
+/*
+          ctx.pipeToSelf(notificationPublisher
+            .filter(_.sid == sid).runWith(Sink.foreach(n => println(s"Local: ${n.sid}!!!")))) {
+            case Success(_) => InternalNotificationQueueCompleted(sid, None)
+            case Failure(ex) => InternalNotificationQueueCompleted(sid, Some(ex))
+          }
+
+          val dedicatedSource =
             notificationPublisher
-            //Source
-            //.fromPublisher(notificationPublisher)
-            .filter(_.sid == sid) //Get the stream for the specific subscription
+              .filter(_.sid == sid) //Get the stream for the specific subscription
+              .preMaterialize()._2
+
+          val streamRef:SourceRef[FhirNotification] =
+            dedicatedSource
             .runWith(StreamRefs.sourceRef())
 
-          replyTo.tell(streamRef) //return the stream ref
+          ctx.pipeToSelf(
+            notificationPublisher
+            .runWith(StreamRefs.sourceRef())
+            .runWith(Sink.foreach(n => println(s"Local ${n.sid}")))
+          )  {
+            case Success(_) => InternalNotificationQueueCompleted(sid, None)
+            case Failure(exception) =>  InternalNotificationQueueCompleted(sid, Some(exception))
+          }*/
+
+          replyTo.tell(GetFhirNotificationStreamResponse(streamRef)) //return the stream ref
           Behaviors.same
 
 
@@ -146,7 +190,8 @@ object FhirNotificationHandler {
           fs.channel.channelType match {
             //Web socket is pull based, so we add to our queue
             case SubscriptionChannelTypes.WebSocket =>
-              pullBasedNotificationQueue.offer(FhirNotification(fs.id)) //For web sockets we only send a ping message to subscription id
+              //pullBasedNotificationQueue.offer(FhirNotification(fs.id))
+              pullBasedNotificationHandler.newNotification(FhirNotification(fs.id))  //For web sockets we only send a ping message to subscription id
             case _ =>
               pushBasedNotificationChannelActors
                 .get(fs.channel.channelType) match {
@@ -232,8 +277,14 @@ object FhirNotificationHandler {
             case Some(e) => ctx.log.warn(s"Subscription status is not updated for the subscription $sid!", e)
           }
           Behaviors.same
+
+        case InternalNotificationQueueCompleted(qp, ex) =>
+          if(ex.isEmpty)
+            ctx.log.debug(s"Pull based notification $qp completed..")
+          else
+            ctx.log.debug(s"Pull based notification $qp completed with error..", ex)
+          Behaviors.same
       }
     }
-  }
 
 }

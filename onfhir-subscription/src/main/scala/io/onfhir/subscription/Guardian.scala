@@ -7,7 +7,8 @@ import akka.http.scaladsl.Http.ServerBinding
 import com.typesafe.config.ConfigFactory
 import io.onfhir.api.SubscriptionChannelTypes
 import io.onfhir.subscription.cache.{AkkaBasedSubscriptionCache, DistributedSearchParameterConfCache, FhirSearchParameterCache}
-import io.onfhir.subscription.channel.{RestChannelManager, WebSocketChannelManager, WebSocketHttpServer}
+import io.onfhir.subscription.channel.WebSocketHandler.GetWebSocketHandler
+import io.onfhir.subscription.channel.{RestChannelManager, WebSocketChannelManager, WebSocketHandler, WebSocketHttpServer}
 import io.onfhir.subscription.config.SubscriptionConfig
 import io.onfhir.subscription.model.ClusterRoles
 
@@ -57,6 +58,8 @@ object Guardian {
         val restChannelHandler = ctx.spawn[io.onfhir.subscription.channel.Command](RestChannelManager.apply, "rest-channel-handler")
         val pushBasedChannelHandlers = Map(SubscriptionChannelTypes.RestHook -> restChannelHandler)
 
+        val pullBasedNotificationHandler = new PullBasedNotificationHandler()
+
         //Initiate classes to interact with onFhir repo
         val onFhirClient = new OnFhirClient(subscriptionConfig)
         val searchParameterCache = ctx.spawn[DistributedSearchParameterConfCache.Command](DistributedSearchParameterConfCache.apply(onFhirClient), "search-parameter-cache")
@@ -72,7 +75,7 @@ object Guardian {
           }
 
         //Initiate notification handler actors (sharding)
-        ctx.pipeToSelf(FhirNotificationHandler.init(system, subscriptionConfig, subscriptionCache, subscriptionManager, pushBasedChannelHandlers)) {
+        ctx.pipeToSelf(FhirNotificationHandler.init(system, subscriptionConfig, subscriptionCache, subscriptionManager, pushBasedChannelHandlers, pullBasedNotificationHandler)) {
           case Success(notificationHandler) => NotificationShardingStarted(notificationHandler)
           case Failure(ex) => InitializationFailed("Problem while initializing akka cluster sharding for notifications!", ex)
         }
@@ -170,9 +173,9 @@ object Guardian {
     ctx.watch(resourceKafkaProcessor)
     ctx.watch(notificationKafkaProcessor)
 
-    //Initialize web socket server and channel manager
-    val webSocketChannelManager= new WebSocketChannelManager(subscriptionConfig, subscriptionCache, notificationSharding)
-
+    //Initialize web socket server and channel manager and handler
+    val webSocketHandler = ctx.spawn[WebSocketHandler.Command](WebSocketHandler.apply(subscriptionConfig, notificationSharding), "websocket-handler")
+    val webSocketChannelManager= new WebSocketChannelManager(subscriptionConfig, subscriptionCache, webSocketHandler)
     val serverBinding = WebSocketHttpServer.start(webSocketChannelManager.websocketRoute, subscriptionConfig.webSocketPort, system)
 
     serverBinding.onComplete {

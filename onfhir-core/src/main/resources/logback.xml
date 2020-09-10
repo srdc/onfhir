@@ -38,6 +38,7 @@
     </root>
     
     <!-- Suppress the repeating and annoying DEBUG level logs by these classes -->
+    <logger name="org.apache.kafka" level="WARN"/>
     <logger name="org.mongodb" level="WARN"/>
     <logger name="ca.uhn.fhir" level="WARN"/>
     <logger name="akka" level="WARN"/>
