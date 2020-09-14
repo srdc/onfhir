@@ -1,6 +1,7 @@
 package io.onfhir.db
 
 import java.net.URL
+import java.util.regex.Pattern
 
 import io.onfhir.api._
 import com.mongodb.client.model.Filters
@@ -327,12 +328,48 @@ object PrefixModifierHandler {
       //Without modifier
       case "" =>
         handleTokenCodeSystemQuery(systemPath, codePath, system, code)
+      case FHIR_PREFIXES_MODIFIERS.STARTS_WITH =>
+        handleTokenStartsWithModifier(systemPath, codePath, system, code)
       case FHIR_PREFIXES_MODIFIERS.IN | FHIR_PREFIXES_MODIFIERS.NOT_IN =>
         handleTokenInModifier(systemPath, codePath, code.get, modifier)
       case FHIR_PREFIXES_MODIFIERS.BELOW | FHIR_PREFIXES_MODIFIERS.ABOVE =>
         throw new UnsupportedParameterException("Modifier is not supported by onFhir.io system yet!")
       case other =>
         throw new InvalidParameterException(s"Modifier $other is not supported for FHIR token queries!")
+    }
+  }
+
+  /**
+   * onFHIR specific starts with modifier
+   * @param systemPath
+   * @param codePath
+   * @param system
+   * @param code
+   * @return
+   */
+  private def handleTokenStartsWithModifier(systemPath:String, codePath:String, system:Option[String], code:Option[String]):Bson = {
+    if(code.isEmpty)
+      throw new InvalidParameterException(s"Code value should be given when modifier ':sw' is used!")
+    val pattern = Pattern.compile("^"+code.get+"")
+    val codeStartsWithQuery = Filters.regex(codePath,  pattern )
+
+    system match {
+      // Query like [code] -> the value of [code] matches a Coding.code or Identifier.value irrespective of the value of the system property
+      case None =>
+        codeStartsWithQuery
+      // Query like |[code] -> the value of [code] matches a Coding.code or Identifier.value, and the Coding/Identifier has no system property
+      case Some("") =>
+        and(exists(systemPath, exists = false), codeStartsWithQuery)
+      // Query like [system][code] -> the value of [code] matches a Coding.code or Identifier.value, and the value of [system] matches the system property of the Identifier or Coding
+      case Some(sys) =>
+        code match {
+          //[system]| --> should macth only systen
+          case None =>
+            Filters.eq(systemPath, sys)
+          // Query like [system][code]
+          case Some(cd) =>
+            and(Filters.eq(systemPath, sys), codeStartsWithQuery)
+        }
     }
   }
 
