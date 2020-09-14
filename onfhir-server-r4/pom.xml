@@ -3,8 +3,8 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
+        <groupId>io.onfhir</groupId>
         <artifactId>fhir-repository</artifactId>
-        <groupId>onfhir</groupId>
         <version>3.0</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -75,19 +75,19 @@
             <artifactId>scala-library</artifactId>
         </dependency>
         <dependency>
-            <groupId>onfhir</groupId>
+            <groupId>io.onfhir</groupId>
             <artifactId>onfhir-common</artifactId>
         </dependency>
         <dependency>
-            <groupId>onfhir</groupId>
+            <groupId>io.onfhir</groupId>
             <artifactId>onfhir-core</artifactId>
         </dependency>
         <dependency>
-            <groupId>onfhir</groupId>
+            <groupId>io.onfhir</groupId>
             <artifactId>onfhir-validation</artifactId>
         </dependency>
         <dependency>
-            <groupId>onfhir</groupId>
+            <groupId>io.onfhir</groupId>
             <artifactId>onfhir-operations</artifactId>
         </dependency>
         <!--Testing toolkits for Akka-->

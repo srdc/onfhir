@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>onfhir</groupId>
+    <groupId>io.onfhir</groupId>
     <artifactId>fhir-repository</artifactId>
     <packaging>pom</packaging>
     <version>3.0</version>
@@ -173,47 +173,42 @@
             </dependency>
 
             <dependency>
-                <groupId>onfhir</groupId>
+                <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-common</artifactId>
                 <version>3.0</version>
             </dependency>
             <dependency>
-                <groupId>onfhir</groupId>
+                <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-core</artifactId>
                 <version>3.0</version>
             </dependency>
             <dependency>
-                <groupId>onfhir</groupId>
+                <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-operations</artifactId>
                 <version>3.0</version>
             </dependency>
             <dependency>
-                <groupId>onfhir</groupId>
+                <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-kafka</artifactId>
                 <version>3.0</version>
             </dependency>
             <dependency>
-                <groupId>onfhir</groupId>
+                <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-server-r4</artifactId>
                 <version>3.0</version>
             </dependency>
             <dependency>
-                <groupId>onfhir</groupId>
+                <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-server-stu3</artifactId>
                 <version>3.0</version>
             </dependency>
             <dependency>
-                <groupId>onfhir</groupId>
-                <artifactId>onfhir-server-dstu2</artifactId>
-                <version>3.0</version>
-            </dependency>
-            <dependency>
-                <groupId>onfhir</groupId>
+                <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-path</artifactId>
                 <version>3.0</version>
             </dependency>
             <dependency>
-                <groupId>onfhir</groupId>
+                <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-validation</artifactId>
                 <version>3.0</version>
             </dependency>

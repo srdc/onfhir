@@ -20,7 +20,6 @@ For configuration of the FHIR API to be provided, you need to provide the follow
 
 You can also provide the zip file for FHIR base definitions (Validation package - 'validation-min.xml.zip') that you want to support specifically. 
 Currently all versions are supported and we created a module for each version that have specific standard definitions and special configurators. 
-* DSTU2 >> onfhir-server-dstu2
 * STU3  >> onfhir-server-stu3
 * R4    >> onfhir-server-r4
 
@@ -42,7 +41,7 @@ to the above command to skip the test execution but it is **not recommended**:
 $ mvn package -DskipTests=true
 ```
 
-Executable standalone jars **target/onfhir-server-standalone.jar**  will be created under each onfhir-server for 
+Executable standalone jars **target/onfhir-server-standalone.jar** will be created under each onfhir-server for 
 different FHIR version. Executing the following command will run the onRHI server for that version with nearly whole FHIR 
 capabilities.
 ```
