@@ -565,6 +565,15 @@ class FhirPathEvaluatorTest extends Specification {
 
       val pids = FhirPathEvaluator().evaluateString("groupBy(Condition.subject.reference.substring(8),count()).where(agg >= 2).bucket", JArray(conditions.toList))
       pids mustEqual(Seq("p1"))
+
+      var results2 = FhirPathEvaluator().evaluateNumerical("groupBy($this.notexist, sum($this.valueQuantity.value))[0].agg", JArray(Seq(observation, observation2).toList))
+      results2 mustEqual 16.3
+
+      results2 = FhirPathEvaluator().evaluateNumerical("groupBy($this.notexist, min($this.valueQuantity.value))[0].agg", JArray(Seq(observation, observation2).toList))
+      results2 mustEqual 6.3
+
+      results2 = FhirPathEvaluator().evaluateNumerical("groupBy($this.notexist, max($this.valueQuantity.value))[0].agg", JArray(Seq(observation, observation2).toList))
+      results2 mustEqual 10
     }
 
     "evaluate new constraints in FHIR 4.0.1" in {

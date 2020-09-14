@@ -493,9 +493,60 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   }
 
 
+
+
   /**
-   * Extra functions
+   * Extra aggregation functions
    */
+
+  def sum(expr:ExpressionContext):Seq[FhirPathResult] = {
+    val results = current.map(c => {
+      val result = new FhirPathExpressionEvaluator(context, Seq(c)).visit(expr)
+      if(result.length > 1 || result.headOption.exists(!_.isInstanceOf[FhirPathNumber]))
+        throw new FhirPathException(s"Invalid function call 'sum', the expression ${expr.getText} does not return a single FhirPathNumber or Nil!")
+      result.headOption.map(_.asInstanceOf[FhirPathNumber]).getOrElse(FhirPathNumber(0))
+    })
+
+    Seq(results.reduce((r1, r2) => r1 + r2))
+  }
+
+  def avg(expr:ExpressionContext):Seq[FhirPathResult] = {
+    if(current.isEmpty)
+      throw new FhirPathException(s"Invalid function call 'avg' on Nil!")
+
+     Seq(sum(expr).head.asInstanceOf[FhirPathNumber] / FhirPathNumber(current.length))
+  }
+
+  def min(expr:ExpressionContext):Seq[FhirPathResult] = {
+    val results = current
+      .flatMap(c => {
+        val result = new FhirPathExpressionEvaluator(context, Seq(c)).visit(expr)
+        if (result.length > 1)
+          throw new FhirPathException(s"Invalid function call 'min', the expression ${expr.getText} does not return a single FhirPathNumber or Nil!")
+        result.headOption.map(_.asInstanceOf[FhirPathNumber])
+      })
+
+    if(results.isEmpty)
+      Nil
+    else
+      Seq(results.reduce((r1,r2) => if(r1<r2) r1 else r2))
+  }
+
+  def max(expr:ExpressionContext):Seq[FhirPathResult] = {
+    val results = current
+      .flatMap(c => {
+        val result = new FhirPathExpressionEvaluator(context, Seq(c)).visit(expr)
+        if (result.length > 1)
+          throw new FhirPathException(s"Invalid function call 'min', the expression ${expr.getText} does not return a single FhirPathNumber or Nil!")
+        result.headOption.map(_.asInstanceOf[FhirPathNumber])
+      })
+
+    if(results.isEmpty)
+      Nil
+    else
+      Seq(results.reduce((r1,r2) => if(r1>r2) r1 else r2))
+  }
+
   def groupBy(groupByExpr:ExpressionContext, aggregateExpr:ExpressionContext):Seq[FhirPathResult] = {
     if(!current.forall(_.isInstanceOf[FhirPathComplex]))
       throw new FhirPathException("Invalid function call 'groupBy' on current value! The data type for current value should be complex object!")
