@@ -45,7 +45,7 @@ package object api {
   val FHIR_URL_FOR_EXTERNAL_FHIR_CODE_SYSTEMS = "http://terminology.hl7.org"
 
   /**
-    * Default id of the Conformance [DSTU2] or CapabilityStatement [STU3] resource held in the db, and returned for "metadata" queries
+    * Default id of the Conformance [DSTU2] or CapabilityStatement [STU3 or above] resource held in the db, and returned for "metadata" queries
     */
   val SERVER_CONFORMANCE_STATEMENT_ID = "server-conf-statement"
 
