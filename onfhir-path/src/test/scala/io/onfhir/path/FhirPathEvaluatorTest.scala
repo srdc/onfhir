@@ -28,6 +28,8 @@ class FhirPathEvaluatorTest extends Specification {
       Source.fromInputStream(getClass.getResourceAsStream("/condition3.json")).mkString.parseJson
     )
 
+  val encounter = Source.fromInputStream(getClass.getResourceAsStream("/encounter.json")).mkString.parseJson
+
   val emptyBundle = Source.fromInputStream(getClass.getResourceAsStream("/emptybundle.json")).mkString.parseJson
 
   sequential
@@ -599,20 +601,23 @@ class FhirPathEvaluatorTest extends Specification {
     }
 
     "evaluate onfhir added time functions" in {
-      var result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.start.getPeriod(@2020-09-07T10:00:00Z, 'years')", observation).toLong
+      var result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.getPeriod(start, @2020-09-07T10:00:00Z, 'years')", observation).toLong
       result mustEqual 7
 
-      result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.start.getPeriod(now(), 'years')", observation).toLong
+      result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.getPeriod(start, now(), 'years')", observation).toLong
       result mustEqual 7
 
-      result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.start.getPeriod(@2013-08-07T10:00:00Z, 'months')", observation).toLong
+      result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.getPeriod(start, @2013-08-07T10:00:00Z, 'months')", observation).toLong
       result mustEqual 4
 
-      result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.start.getPeriod(@2013-04-07T09:30:10+01:00, 'days')", observation).toLong
+      result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.getPeriod(start, @2013-04-07T09:30:10+01:00, 'days')", observation).toLong
       result mustEqual 5
 
       //Due to given zoned date time in resource
-      FhirPathEvaluator().evaluateNumerical("effectivePeriod.start.getPeriod(@2020-09-07, 'years')", observation) must throwA[FhirPathException]
+      FhirPathEvaluator().evaluateNumerical("effectivePeriod.getPeriod(start, @2020-09-07, 'years')", observation) must throwA[FhirPathException]
+
+      result = FhirPathEvaluator().evaluateNumerical("period.getPeriod(start, end, 'days')", encounter).toLong
+      result mustEqual 9
     }
 
     "evaluate fixed bugs" in {

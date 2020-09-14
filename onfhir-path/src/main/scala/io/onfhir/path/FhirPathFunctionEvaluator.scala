@@ -577,10 +577,11 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @param period Period requested to calculate; either 'years','months','weeks','days'
    * @return
    */
-  def getPeriod(toDate:ExpressionContext, period:ExpressionContext):Seq[FhirPathResult] = {
-    if(!current.forall(p => p.isInstanceOf[FhirPathDateTime]))
-      throw new FhirPathException(s"Invalid function call 'getPeriod' on a non datetime value!")
-
+  def getPeriod(fromDate:ExpressionContext, toDate:ExpressionContext, period:ExpressionContext):Seq[FhirPathResult] = {
+    val fdate:Temporal = new FhirPathExpressionEvaluator(context, current).visit(fromDate) match {
+      case Seq(FhirPathDateTime(dt)) => dt
+      case _ => throw new FhirPathException(s"Invalid function call 'getPeriod', second expression ${fromDate.getText} does not evaluate to a single FHIR date time!")
+    }
 
     val tdate:Temporal = new FhirPathExpressionEvaluator(context, current).visit(toDate) match {
       case Seq(FhirPathDateTime(dt)) => dt
@@ -601,16 +602,12 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
           throw new FhirPathException(s"Invalid function call 'getPeriod', the period expression ${period.getText} does not evaluate to a valid (valid values:  'years', 'months', 'weeks', 'days') time-valued quantity !")
       }
 
-    current
-      .map(_.asInstanceOf[FhirPathDateTime])
-      .map(fdate => {
-        try {
-          FhirPathNumber(fdate.dt.until(tdate, chronoPeriod))
-        } catch {
-          case e:Throwable =>
-            throw FhirPathException.apply("Invalid function call 'getPeriod', both date time instances should be either with zone or not!", e)
-        }
-      })
+     try {
+          Seq(FhirPathNumber(fdate.until(tdate, chronoPeriod)))
+     } catch {
+       case e:Throwable => throw FhirPathException.apply("Invalid function call 'getPeriod', both date time instances should be either with zone or not!", e)
+     }
+
   }
 
 }
