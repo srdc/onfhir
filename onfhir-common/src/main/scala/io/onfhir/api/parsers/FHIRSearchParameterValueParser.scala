@@ -103,7 +103,7 @@ object FHIRSearchParameterValueParser {
     override def dataType:Parser[String] = tokenType | boolean
 
     /* Suffix Definitions for Token */
-    override def suffixes:Parser[String] = """(:(missing|text|in|below|above|not-in|not|of-type|sw))|$""".r ^^ {_.toString}
+    override def suffixes:Parser[String] = """(:(missing|text|in|below|above|not-in|not|of-type|sw|nsw))|$""".r ^^ {_.toString}
     override def prefixes:Parser[String] = """""".r
 
     def parseTokenName:Parser[(String, String)]  = parseName

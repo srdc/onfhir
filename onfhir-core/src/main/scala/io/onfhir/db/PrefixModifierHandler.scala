@@ -328,8 +328,8 @@ object PrefixModifierHandler {
       //Without modifier
       case "" =>
         handleTokenCodeSystemQuery(systemPath, codePath, system, code)
-      case FHIR_PREFIXES_MODIFIERS.STARTS_WITH =>
-        handleTokenStartsWithModifier(systemPath, codePath, system, code)
+      case FHIR_PREFIXES_MODIFIERS.STARTS_WITH | FHIR_PREFIXES_MODIFIERS.NOT_STARTS_WITH =>
+        handleTokenStartsWithModifier(systemPath, codePath, system, code, modifier == FHIR_PREFIXES_MODIFIERS.NOT_STARTS_WITH)
       case FHIR_PREFIXES_MODIFIERS.IN | FHIR_PREFIXES_MODIFIERS.NOT_IN =>
         handleTokenInModifier(systemPath, codePath, code.get, modifier)
       case FHIR_PREFIXES_MODIFIERS.BELOW | FHIR_PREFIXES_MODIFIERS.ABOVE =>
@@ -347,11 +347,13 @@ object PrefixModifierHandler {
    * @param code
    * @return
    */
-  private def handleTokenStartsWithModifier(systemPath:String, codePath:String, system:Option[String], code:Option[String]):Bson = {
+  private def handleTokenStartsWithModifier(systemPath:String, codePath:String, system:Option[String], code:Option[String], isNot:Boolean):Bson = {
     if(code.isEmpty)
       throw new InvalidParameterException(s"Code value should be given when modifier ':sw' is used!")
     val pattern = Pattern.compile("^"+code.get+"")
-    val codeStartsWithQuery = Filters.regex(codePath,  pattern )
+    var codeStartsWithQuery = Filters.regex(codePath,  pattern )
+    if(isNot)
+      codeStartsWithQuery = Filters.not(codeStartsWithQuery)
 
     system match {
       // Query like [code] -> the value of [code] matches a Coding.code or Identifier.value irrespective of the value of the system property

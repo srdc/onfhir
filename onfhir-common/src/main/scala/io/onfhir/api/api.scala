@@ -386,7 +386,9 @@ package object api {
     val IN = ":in"
     val NOT_IN = ":not-in"
     val OF_TYPE = ":of-type"
-    val STARTS_WITH = ":sw" // onFHIR specific extension for handling starts-with queries in coded fields
+    // onFHIR specific extension for handling starts-with queries in coded fields
+    val STARTS_WITH = ":sw"
+    val NOT_STARTS_WITH=":nsw"
 
     // Prefixes
     val DESCENDING="-"
