@@ -7,7 +7,7 @@
     <groupId>io.onfhir</groupId>
     <artifactId>fhir-repository</artifactId>
     <packaging>pom</packaging>
-    <version>3.0</version>
+    <version>3.1-SNAPSHOT</version>
 
     <name>OnFHIR Secure FHIR Repository</name>
     <description>onFHIR is an HL7 FHIR compliant secure, high-performance and scalable health data repository that can be used as the central data service for HL7 FHIR compliant healthcare applications.</description>
@@ -323,42 +323,42 @@
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-common</artifactId>
-                <version>3.0</version>
+                <version>3.1-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-core</artifactId>
-                <version>3.0</version>
+                <version>3.1-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-operations</artifactId>
-                <version>3.0</version>
+                <version>3.1-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-kafka</artifactId>
-                <version>3.0</version>
+                <version>3.1-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-server-r4</artifactId>
-                <version>3.0</version>
+                <version>3.1-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-server-stu3</artifactId>
-                <version>3.0</version>
+                <version>3.1-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-path</artifactId>
-                <version>3.0</version>
+                <version>3.1-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-validation</artifactId>
-                <version>3.0</version>
+                <version>3.1-SNAPSHOT</version>
             </dependency>
             <!-- Akka HTTP Suite -->
             <dependency>
