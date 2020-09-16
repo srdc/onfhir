@@ -26,9 +26,10 @@ For configuration of the FHIR API to be provided, you need to provide the follow
 * A folder including all your **Operation definitions** (FHIR OperationDefinition - http://hl7.org/fhir/operationdefinition.html) that you define and refer from capability statement in operations part (For your OperationDefinitions write the full class path of your implementation of operation in OperationDefinition.name)
 
 You can also provide the zip file for FHIR base definitions (Validation package - 'validation-min.xml.zip') that you want to support specifically. 
-Currently all versions are supported and we created a module for each version that have specific standard definitions and special configurators. 
-* STU3  >> onfhir-server-stu3
+onFHIR supports all stable and build versions of HL7 FHIR. In this project, we provide modules for the last 3 main versions that are configured automatically with standard definitions and special configurators: 
+* R5    >> onfhir-server-r5
 * R4    >> onfhir-server-r4
+* STU3  >> onfhir-server-stu3
 
 ## Prerequisites
 onFHIR requires a MongoDB database up and running. If you do not use the given docker containers, the MongoDB configuration parameters (host, port, dbname etc.)
@@ -43,7 +44,7 @@ $ mvn package
 ```
 
 Unit tests may take some time, so you can add **-DskipTests=true** command line parameter 
-to the above command to skip the test execution but it is **not recommended**:
+to the above command to skip the test execution, but it is **not recommended**:
 ```
 $ mvn package -DskipTests=true
 ```
