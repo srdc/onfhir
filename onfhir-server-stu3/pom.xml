@@ -40,7 +40,7 @@
                         <configuration>
                             <filename>onfhir-server-standalone.jar</filename>
                             <mainClass>io.onfhir.stu3.Boot</mainClass>
-                            <attachToBuild>true</attachToBuild>
+                            <attachToBuild>false</attachToBuild>
                         </configuration>
                         <goals>
                             <goal>one-jar</goal>
