@@ -71,6 +71,7 @@
         <module>onfhir-server-stu3</module>
         <module>onfhir-path</module>
         <module>onfhir-validation</module>
+        <module>onfhir-server-r5</module>
     </modules>
 
     <repositories>

@@ -18,17 +18,17 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
   protected val logger:Logger = LoggerFactory.getLogger(this.getClass)
 
   //Name of the files that includes the Bundle for search parameter definitions in base FHIR specification
-  final val SEARCH_PARAMETERS_BUNDLE_FILE_NAME = s"search-parameters$FOUNDATION_RESOURCES_FILE_SUFFIX"
+  protected  val SEARCH_PARAMETERS_BUNDLE_FILE_NAME = s"search-parameters$FOUNDATION_RESOURCES_FILE_SUFFIX"
   //Name of the file that includes the Bundle for Structure Definitions for Resources in base FHIR specification
-  final val PROFILES_RESOURCES_BUNDLE_FILE_NAME = s"profiles-resources$FOUNDATION_RESOURCES_FILE_SUFFIX"
+  protected  val PROFILES_RESOURCES_BUNDLE_FILE_NAME = s"profiles-resources$FOUNDATION_RESOURCES_FILE_SUFFIX"
   //Name of the file that includes the Bundle for Structure Definitions for Types in base FHIR specification
-  final val PROFILES_TYPES_BUNDLE_FILE_NAME = s"profiles-types$FOUNDATION_RESOURCES_FILE_SUFFIX"
+  protected  val PROFILES_TYPES_BUNDLE_FILE_NAME = s"profiles-types$FOUNDATION_RESOURCES_FILE_SUFFIX"
   //Name of the file that includes the Bundle for Structure Definitions for other FHIR profiles given in base
-  final val PROFILES_OTHERS_BUNDLE_FILE_NAME = s"profiles-others$FOUNDATION_RESOURCES_FILE_SUFFIX"
+  protected  val PROFILES_OTHERS_BUNDLE_FILE_NAME = s"profiles-others$FOUNDATION_RESOURCES_FILE_SUFFIX"
   //Name of the file that includes the Bundle for Structure Definitions for extensions given in base
-  final val PROFILES_EXTENSIONS_BUNDLE_FILE_NAME = s"extension-definitions$FOUNDATION_RESOURCES_FILE_SUFFIX"
+  protected  val PROFILES_EXTENSIONS_BUNDLE_FILE_NAME = s"extension-definitions$FOUNDATION_RESOURCES_FILE_SUFFIX"
   //Name of the files that includes the Bundle for ValueSets and CodeSystems in base FHIR specification
-  final val VALUESET_AND_CODESYSTEM_BUNDLE_FILES = Seq(s"valuesets$FOUNDATION_RESOURCES_FILE_SUFFIX", s"v3-codesystems$FOUNDATION_RESOURCES_FILE_SUFFIX", s"v2-tables$FOUNDATION_RESOURCES_FILE_SUFFIX")
+  protected val VALUESET_AND_CODESYSTEM_BUNDLE_FILES = Seq(s"valuesets$FOUNDATION_RESOURCES_FILE_SUFFIX", s"v3-codesystems$FOUNDATION_RESOURCES_FILE_SUFFIX", s"v2-tables$FOUNDATION_RESOURCES_FILE_SUFFIX")
 
   // Configuration resources to configure FHIR Capabilities of the server
   var conformanceResource:Resource = _
