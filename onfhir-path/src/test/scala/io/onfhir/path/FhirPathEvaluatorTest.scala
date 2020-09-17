@@ -35,7 +35,7 @@ class FhirPathEvaluatorTest extends Specification {
   sequential
 
   "FHIR Path Evaluator" should {
-
+/*
     "evaluate simple path expression not starting with resource type" in {
       var result = FhirPathEvaluator().evaluate("subject", observation)
       result.length mustEqual 1
@@ -623,6 +623,46 @@ class FhirPathEvaluatorTest extends Specification {
     "evaluate fixed bugs" in {
       var result = FhirPathEvaluator().satisfies("(type='history') or entry.where(fullUrl.exists()).select(fullUrl&resource.meta.versionId).isDistinct()", bundleOp)
       result mustEqual true
+    }*/
+
+    "find paths indicated by FHIR Path expression" in {
+      var result = FhirPathEvaluator().evaluateToFindPaths("Observation.code", observation)
+      result.length mustEqual(1)
+      result.head.length mustEqual(1)
+      result.head.head mustEqual "code" -> None
+
+      result = FhirPathEvaluator().evaluateToFindPaths("Observation.code.coding", observation)
+      result.length mustEqual 1
+      result.head mustEqual Seq("code" -> None, "coding" -> None)
+
+      result = FhirPathEvaluator().evaluateToFindPaths("Observation.code.coding.system", observation)
+      result.length mustEqual 2
+      result.head mustEqual Seq("code" -> None, "coding" -> Some(0), "system" -> None)
+      result.last mustEqual Seq("code" -> None, "coding" -> Some(1), "system" -> None)
+
+      result = FhirPathEvaluator().evaluateToFindPaths("code.coding[0]", observation)
+      result.length mustEqual 1
+      result.head mustEqual Seq("code" -> None, "coding" -> Some(0))
+
+      result = FhirPathEvaluator().evaluateToFindPaths("code.coding.where(system = 'http://snomed.info/sct')", observation)
+      result.length mustEqual 1
+      result.head mustEqual Seq("code" -> None, "coding" -> Some(1))
+
+      result = FhirPathEvaluator().evaluateToFindPaths("code.coding.first()", observation)
+      result.length mustEqual 1
+      result.head mustEqual Seq("code" -> None, "coding" -> Some(0))
+
+      result = FhirPathEvaluator().evaluateToFindPaths("(value as Quantity).value", observation)
+      result.length mustEqual 1
+      result.head mustEqual Seq("valueQuantity" -> None, "value" -> None)
+
+      result = FhirPathEvaluator().evaluateToFindPaths("value.ofType(Quantity).value", observation)
+      result.length mustEqual 1
+      result.head mustEqual Seq("valueQuantity" -> None, "value" -> None)
+
+      result = FhirPathEvaluator().evaluateToFindPaths("value.as(Quantity).value", observation)
+      result.length mustEqual 1
+      result.head mustEqual Seq("valueQuantity" -> None, "value" -> None)
     }
 
   }
