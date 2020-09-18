@@ -1,0 +1,11 @@
+{
+  "patches": [
+    {
+      "op": "add",
+      "path": "/encounter",
+      "value": {
+        "reference": "Encounter/123"
+      }
+    }
+  ]
+}

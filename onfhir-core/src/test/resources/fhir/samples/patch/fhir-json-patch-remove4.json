@@ -1,0 +1,8 @@
+{
+  "patches": [
+    {
+      "op": "remove",
+      "path": "/component/0/code/coding/0/version"
+    }
+  ]
+}

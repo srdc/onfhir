@@ -1,0 +1,10 @@
+[
+  {
+    "op": "add",
+    "path": "/component/3/code/coding/1",
+    "value": {
+      "system": "test",
+      "code": "test"
+    }
+  }
+]

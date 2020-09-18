@@ -589,6 +589,10 @@
               "documentation" : "Implemented per the specification (or Insert other doco here)"
             },
             {
+              "code" : "patch",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
               "code" : "history-instance",
               "documentation" : "Implemented per the specification (or Insert other doco here)"
             },

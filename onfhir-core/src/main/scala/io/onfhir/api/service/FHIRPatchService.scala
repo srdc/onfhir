@@ -138,7 +138,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
           FHIRResponse.SEVERITY_CODES.ERROR,
           FHIRResponse.OUTCOME_CODES.INVALID,
           None,
-          Some(s"No matching resource fot her query!"),
+          Some(s"No matching resource for given query!"),
           Nil
         )
       ))

@@ -1,0 +1,9 @@
+{
+  "patches": [
+    {
+      "op": "copy",
+      "from": "/status",
+      "path": "/subject/reference"
+    }
+  ]
+}

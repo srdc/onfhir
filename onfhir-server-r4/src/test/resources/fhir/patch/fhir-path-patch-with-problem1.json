@@ -1,0 +1,25 @@
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    {
+      "name": "operation",
+      "part": [
+        {
+          "name": "type",
+          "valueCode": "add"
+        },
+        {
+          "name": "path",
+          "valueString": "Observation.component[0].code"
+        },
+        {
+          "name": "value",
+          "valueCoding": {
+            "system": "test3",
+            "code": "test3"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+[
+    {
+      "op": "add",
+      "path": "/component/0/code/coding/1",
+      "value": {
+        "system": "test",
+        "code": "test"
+      }
+    },
+    {
+      "op": "remove",
+      "path": "/component/0/code/coding/2"
+    },
+    {
+      "op": "replace",
+      "path": "/component/0/code/coding/2",
+      "value": {
+        "system": "test2",
+        "code": "test2"
+      }
+    },
+    {
+      "op": "move",
+      "from": "/component/0/code/coding/0",
+      "path": "/component/0/code/coding/2"
+    },
+    {
+      "op": "copy",
+      "from": "/component/0/code/coding/0",
+      "path": "/component/0/code/coding/2"
+    },
+    {
+      "op": "replace",
+      "path": "/component/0/code/coding/2/code",
+      "value": "test3"
+    },
+    {
+      "op": "replace",
+      "path": "/component/0/code/coding/2/system",
+      "value": "test3"
+    }
+]

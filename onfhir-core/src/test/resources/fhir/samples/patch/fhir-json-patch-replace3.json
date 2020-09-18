@@ -1,0 +1,9 @@
+{
+  "patches": [
+    {
+      "op": "replace",
+      "path": "/component/0/code/coding/1/version",
+      "value":  "1.0"
+    }
+  ]
+}

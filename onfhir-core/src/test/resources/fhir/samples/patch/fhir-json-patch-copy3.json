@@ -1,0 +1,9 @@
+{
+  "patches": [
+    {
+      "op": "copy",
+      "from": "/identifier",
+      "path": "/basedOn/-"
+    }
+  ]
+}

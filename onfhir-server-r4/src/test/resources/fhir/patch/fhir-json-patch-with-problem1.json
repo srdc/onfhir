@@ -1,0 +1,14 @@
+[
+    {
+      "op": "test",
+      "path": "/component/0/code/coding/0",
+      "value": {
+        "system": "test2",
+        "code": "test2"
+      }
+    },
+    {
+      "op": "remove",
+      "path": "/component/0/code/coding/2"
+    }
+]

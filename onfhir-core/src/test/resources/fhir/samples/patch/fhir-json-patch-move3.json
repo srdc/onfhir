@@ -1,0 +1,9 @@
+{
+  "patches": [
+    {
+      "op": "move",
+      "from": "/status",
+      "path": "/subject/reference"
+    }
+  ]
+}

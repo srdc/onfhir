@@ -1,0 +1,11 @@
+{
+  "patches": [
+    {
+      "op": "add",
+      "path": "/performer",
+      "value": {
+        "reference": "Practitioner/123"
+      }
+    }
+  ]
+}

@@ -11,6 +11,13 @@ import io.onfhir.api.validation.{ProfileRestrictions, ValueSetRestrictions}
   * @param version FHIR version
   */
 class FhirConfig(version:String) {
+  /**
+   * Supported Mime types for content
+   */
+  var supportedFormats :Set[String] = Set("json", "xml")
+
+  var supportedPatchFormats:Set[String] = Set()
+
   /***
     *  Dynamic configurations for this instance of FHIR repository
     */

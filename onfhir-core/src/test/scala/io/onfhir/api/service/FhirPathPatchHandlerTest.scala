@@ -70,7 +70,7 @@ class FhirPathPatchHandlerTest extends Specification {
   val multiPatch1 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/patch/fhir-path-patch-multi1.json")).mkString.parseJson
 
   "FhirPathPatchHandler" should {
-    /*"handle add operation for non-repetitive elements if it does not exist" in {
+    "handle add operation for non-repetitive elements if it does not exist" in {
       val result = fhirPatchHandler.applyPatch(addPatch1, "Observation", observation)
       val diff:Diff = observation.diff(result)
       diff.changed mustEqual JNothing
@@ -261,7 +261,7 @@ class FhirPathPatchHandlerTest extends Specification {
 
     "reject move operation when indexes are invalid" in {
       fhirPatchHandler.applyPatch(movePatch8, "Observation", observation) must throwA[BadRequestException]
-    }*/
+    }
 
     "handle a multi operation patch in correct order" in {
       var result = fhirPatchHandler.applyPatch(multiPatch1, "Observation", observation)

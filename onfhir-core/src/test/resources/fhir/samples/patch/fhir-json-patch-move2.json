@@ -1,0 +1,9 @@
+{
+  "patches": [
+    {
+      "op": "move",
+      "from": "/component/0/code/coding/1",
+      "path": "/component/1/code/coding/0"
+    }
+  ]
+}
