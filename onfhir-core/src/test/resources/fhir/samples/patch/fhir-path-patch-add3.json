@@ -1,0 +1,29 @@
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    {
+      "name": "operation",
+      "part": [
+        {
+          "name": "type",
+          "valueCode": "add"
+        },
+        {
+          "name": "path",
+          "valueString": "Observation.component.where(code.coding.exists($this.system='http://loinc.org' and $this.code='8462-4')).code"
+        },
+        {
+          "name": "name",
+          "valueString": "coding"
+        },
+        {
+          "name": "value",
+          "valueCoding": {
+            "system": "test",
+            "code": "test"
+          }
+        }
+      ]
+    }
+  ]
+}

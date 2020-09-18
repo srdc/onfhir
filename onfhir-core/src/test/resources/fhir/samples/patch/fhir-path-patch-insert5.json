@@ -1,0 +1,26 @@
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    {
+      "name": "operation",
+      "part": [
+        {
+          "name": "type",
+          "valueCode": "insert"
+        },
+        {
+          "name": "path",
+          "valueString": "Observation.status"
+        },
+        {
+          "name": "index",
+          "valueInteger": 4
+        },
+        {
+          "name": "value",
+          "valueCode": "preliminary"
+        }
+      ]
+    }
+  ]
+}

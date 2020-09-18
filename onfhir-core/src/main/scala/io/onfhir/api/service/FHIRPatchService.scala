@@ -3,12 +3,15 @@ package io.onfhir.api.service
 import akka.http.scaladsl.model.StatusCodes
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
-import io.onfhir.api.util.FHIRUtil
+import io.onfhir.api.util.{BaseFhirProfileHandler, FHIRUtil}
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
 import io.onfhir.config.FhirConfigurationManager.fhirValidator
+import io.onfhir.config.FhirConfigurationManager.fhirConfig
 import io.onfhir.db.{ResourceManager, TransactionSession}
 import io.onfhir.exception.{NotFoundException, PreconditionFailedException}
+import org.slf4j.Logger
+
 import scala.concurrent.Future
 
 /**
@@ -100,7 +103,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
         //2.1) Check if user requested a version aware update
         FHIRApiValidator.validateIfMatch(ifMatch, currentVersion)
         //apply the patch
-        val updatedResource = JsonPatchHandler.applyPatch(patch, FHIRUtil.clearExtraFields(foundResource))
+        val updatedResource = getPatchHandler(patch).applyPatch(patch, _type, FHIRUtil.clearExtraFields(foundResource))
 
         //4) Validate if new changes are valid
         fhirValidator.validateResource(updatedResource, _type) flatMap { _ =>
@@ -146,7 +149,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
         //3.2.1 Check if user requested a version aware update
         FHIRApiValidator.validateIfMatch(ifMatch, currentVersion)
         //apply the patch
-        val updatedResource = JsonPatchHandler.applyPatch(patch, FHIRUtil.clearExtraFields(foundResource))
+        val updatedResource = getPatchHandler(patch).applyPatch(patch, _type, FHIRUtil.clearExtraFields(foundResource))
 
         //4) Validate if new changes are valid
         fhirValidator.validateResource(updatedResource, _type) flatMap { _ =>
@@ -167,5 +170,22 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
           )
         ))
     }
+  }
+
+  /**
+   * Based on the patch type return the handler
+   * @param patch Patch content
+   * @return
+   */
+  private def getPatchHandler(patch: Resource):IFHIRPatchHandler = {
+    //If content is given with Parameters
+    if(FHIRUtil.extractValueOption[String](patch, "resourceType")
+      .contains("Parameters")) {
+      val profileHandler = new BaseFhirProfileHandler(fhirConfig) {
+        override protected val logger: Logger = logger
+      }
+      new FhirPathPatchHandler(profileHandler)
+    } else
+      JsonPatchHandler
   }
 }

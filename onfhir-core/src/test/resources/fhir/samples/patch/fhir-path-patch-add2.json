@@ -1,0 +1,26 @@
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    {
+      "name": "operation",
+      "part": [
+        {
+          "name": "type",
+          "valueCode": "add"
+        },
+        {
+          "name": "path",
+          "valueString": "Observation"
+        },
+        {
+          "name": "name",
+          "valueString": "status"
+        },
+        {
+          "name": "value",
+          "valueCode": "preliminary"
+        }
+      ]
+    }
+  ]
+}

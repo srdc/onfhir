@@ -9,6 +9,15 @@ import org.json4s.JsonAST.{JArray, JNothing, JObject, JValue}
 import org.json4s.JsonDSL._
 import org.json4s._
 
+/**
+ * Represent the FHIR patch item
+ * @param op     FHIR patch operation
+ * @param path   Parsed FHIR patch path
+ * @param from   Parsed FHOR patch path for copy/move
+ * @param value  Value to patch
+ */
+case class PatchItem(op:String, path:Seq[(String, Option[Int])], from:Seq[(String, Option[Int])], value:Option[JValue] = None)
+
 object JsonPatchHandler extends IFHIRPatchHandler {
   /**
    * Apply the patch to the resource and return the new updated content
@@ -17,7 +26,7 @@ object JsonPatchHandler extends IFHIRPatchHandler {
    * @param resource Resource content
    * @return New resource content
    */
-  override def applyPatch(patch: Resource, resource: Resource): Resource = {
+  override def applyPatch(patch: Resource, rtype:String, resource: Resource): Resource = {
     //Parse the patch request
     val patches = parsePatch(patch)
     // Apply the pathces
@@ -263,7 +272,7 @@ object JsonPatchHandler extends IFHIRPatchHandler {
    * @param jsonOperation Operation on the last item on the path
    * @return
    */
-  private def runJsonPatchOperation(input:Resource, path:Seq[(String, Option[Int])], jsonOperation:(JObject, (String, Option[Int])) => JObject):Resource = {
+  protected def runJsonPatchOperation(input:Resource, path:Seq[(String, Option[Int])], jsonOperation:(JObject, (String, Option[Int])) => JObject):Resource = {
     //If we are on the last JObject, apply the operation on it
     if(path.size == 1) {
       jsonOperation(input,path.head)
@@ -299,7 +308,7 @@ object JsonPatchHandler extends IFHIRPatchHandler {
    * @param value              JSON Value to add
    * @return
    */
-  private def patchAdd(originalResource:Resource, path:Seq[(String, Option[Int])], value:JValue):Resource = {
+  protected def patchAdd(originalResource:Resource, path:Seq[(String, Option[Int])], value:JValue):Resource = {
     //Operation definition
     def addOperation(resource:JObject, lpath:(String, Option[Int])):JObject = {
       lpath match {
@@ -327,7 +336,7 @@ object JsonPatchHandler extends IFHIRPatchHandler {
    * @param path               Path elements indicating the FHIR element to remove
    * @return
    */
-  private def patchRemove(originalResource:Resource, path:Seq[(String, Option[Int])]) = {
+  protected def patchRemove(originalResource:Resource, path:Seq[(String, Option[Int])]) = {
     //Operation definition
     def removeOperation(resource:JObject, lpath:(String, Option[Int])):JObject = {
       lpath match {
@@ -362,7 +371,7 @@ object JsonPatchHandler extends IFHIRPatchHandler {
    * @param value              JSON value to replace
    * @return
    */
-  private def patchReplace(originalResource:Resource, path:Seq[(String, Option[Int])], value:JValue) = {
+  protected def patchReplace(originalResource:Resource, path:Seq[(String, Option[Int])], value:JValue) = {
     patchRemove(originalResource, path)
     patchAdd(originalResource, path, value)
   }
@@ -393,7 +402,7 @@ object JsonPatchHandler extends IFHIRPatchHandler {
    * @param path             Path elements indicating the location to copy
    * @return
    */
-  private def patchCopy(originalResource:Resource, from:Seq[(String, Option[Int])], path:Seq[(String, Option[Int])]):Resource = {
+  protected def patchCopy(originalResource:Resource, from:Seq[(String, Option[Int])], path:Seq[(String, Option[Int])]):Resource = {
     getValueByPath(originalResource, from) match {
       case JNothing => originalResource
       case other => patchAdd(originalResource, path, other)
@@ -407,7 +416,7 @@ object JsonPatchHandler extends IFHIRPatchHandler {
    * @param path             Path elements indicating the location to move
    * @return
    */
-  private def patchMove(originalResource:Resource, from:Seq[(String, Option[Int])], path:Seq[(String, Option[Int])]) = {
+  protected def patchMove(originalResource:Resource, from:Seq[(String, Option[Int])], path:Seq[(String, Option[Int])]) = {
     getValueByPath(originalResource, from) match {
       case JNothing => originalResource
       case other =>
@@ -422,7 +431,7 @@ object JsonPatchHandler extends IFHIRPatchHandler {
    * @param path             Path elements indicating the FHIR element to be tested
    * @param value            Json value for equality test
    */
-  private def patchTest(originalResource:Resource, path:Seq[(String, Option[Int])], value:JValue):Boolean = {
+  protected def patchTest(originalResource:Resource, path:Seq[(String, Option[Int])], value:JValue):Boolean = {
     getValueByPath(originalResource, path).equals(value)
   }
 }

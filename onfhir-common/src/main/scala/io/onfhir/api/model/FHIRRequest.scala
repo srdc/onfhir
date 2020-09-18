@@ -2,6 +2,7 @@ package io.onfhir.api.model
 
 import java.time.Instant
 
+import akka.http.scaladsl.model.ContentType
 import akka.http.scaladsl.model.headers.{`If-Modified-Since`, `If-None-Match`}
 import io.onfhir.api.Resource
 import io.onfhir.api._

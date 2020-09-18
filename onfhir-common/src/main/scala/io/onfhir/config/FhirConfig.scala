@@ -63,7 +63,7 @@ class FhirConfig(version:String) {
   // List of Supported FHIR XML Media Types
   var FHIR_XML_MEDIA_TYPES:Seq[MediaType] = _
   // Json patch media type supported
-  var FHIR_JSON_PATCH_MEDIA_TYPE:Option[MediaType] = _
+  var FHIR_PATCH_MEDIA_TYPES:Seq[MediaType] = _
   //Map from _format param value to actual MediaType
   var FHIR_FORMAT_MIME_TYPE_MAP:Map[String, MediaType] = _
   //Default media type used when no match
@@ -73,7 +73,7 @@ class FhirConfig(version:String) {
 
   //List of all media types supported for requests
   def FHIR_SUPPORTED_REQUEST_MEDIA_TYPES =
-    FHIR_JSON_MEDIA_TYPES ++ FHIR_XML_MEDIA_TYPES ++ FHIR_JSON_PATCH_MEDIA_TYPE.toSeq ++ Seq(MediaTypes.`text/plain`)
+    FHIR_JSON_MEDIA_TYPES ++ FHIR_XML_MEDIA_TYPES ++ FHIR_PATCH_MEDIA_TYPES.toSeq ++ Seq(MediaTypes.`text/plain`)
   // List of Media Types for Returned Results (that our FHIR repository can return)
   def FHIR_SUPPORTED_RESULT_MEDIA_TYPES =
     FHIR_JSON_MEDIA_TYPES ++ FHIR_XML_MEDIA_TYPES ++ Seq(MediaTypes.`text/html`)

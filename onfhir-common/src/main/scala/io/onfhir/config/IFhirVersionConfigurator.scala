@@ -121,8 +121,8 @@ trait IFhirVersionConfigurator {
     MediaTypes.`application/xml`,
     FHIR_XML_MEDIA_TYPE
   )
-  // Json patch media type supported
-  val FHIR_JSON_PATCH_MEDIA_TYPE:Option[MediaType] = Some(MediaType.applicationWithOpenCharset("json-patch+json"))
+  // Patch media types supported by onFHIR
+  val FHIR_PATCH_MEDIA_TYPES:Seq[MediaType] = Seq(MediaType.applicationWithOpenCharset("json-patch+json"))
   //Map from _format param value to actual MediaType
   val FHIR_FORMAT_MIME_TYPE_MAP:Map[String, MediaType] = Map(
     "html" -> MediaTypes.`text/html`,

@@ -42,9 +42,9 @@ object FHIRMarshallers {
             ) {
               //XML Unmarshalling
               new XmlToJsonConvertor(FhirConfigurationManager.fhirConfig).parseFromXml(data).parseXML
-            } else if (fhirConfig.FHIR_JSON_PATCH_MEDIA_TYPE.exists(e => entity.contentType.mediaType.matches(e))
-
+            } else if (fhirConfig.FHIR_PATCH_MEDIA_TYPES.exists(e => entity.contentType.mediaType.matches(e))
             ) {
+              //Note: XML Patch is not supported
               //JSON Patch
               val patch = "{ \"patches\":" + s"$data }"
               val patchResource = convertToMapForNonFHIR(patch)

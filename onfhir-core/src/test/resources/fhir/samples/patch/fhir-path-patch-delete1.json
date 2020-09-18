@@ -1,0 +1,18 @@
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    {
+      "name": "operation",
+      "part": [
+        {
+          "name": "type",
+          "valueCode": "delete"
+        },
+        {
+          "name": "path",
+          "valueString": "Observation.basedOn"
+        }
+      ]
+    }
+  ]
+}
