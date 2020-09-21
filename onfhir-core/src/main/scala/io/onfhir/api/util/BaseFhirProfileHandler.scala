@@ -202,6 +202,16 @@ abstract class BaseFhirProfileHandler(fhirConfig: FhirConfig) {
   }
 
   /**
+   * Check if path targets an array or not for given resource type according to the base profile specified for that resoure type
+   * @param path
+   * @param rtype
+   * @return
+   */
+  def findPathCardinality(path:String, rtype:String):Boolean = {
+    findPathCardinality(path, fhirConfig.getBaseProfileChain(rtype))
+  }
+
+  /**
    * Check recursively if path targets an array or not if path goes along a profile and then continues within a FHIR data type e.g. valueQuantity.value
    * @param pathParts Parts of path splitted by '.'
    * @param profiles  Profile chain that defines the content

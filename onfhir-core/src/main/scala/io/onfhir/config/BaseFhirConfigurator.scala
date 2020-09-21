@@ -161,10 +161,28 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
     logger.info("Configuring other FHIR version specific parameters (mime types, etc)...")
     fhirConfig.FHIR_RESULT_PARAMETERS = FHIR_RESULT_PARAMETERS
     fhirConfig.FHIR_SPECIAL_PARAMETERS = FHIR_SPECIAL_PARAMETERS
-    fhirConfig.FHIR_JSON_MEDIA_TYPES = FHIR_JSON_MEDIA_TYPES
-    fhirConfig.FHIR_XML_MEDIA_TYPES = FHIR_XML_MEDIA_TYPES
+
+    val unsupportedFormats = conformance.formats.diff(FHIR_FORMATS.JSON ++ FHIR_FORMATS.XML)
+    //onFHIR.io is not supporting turtle format yet
+    if(unsupportedFormats.nonEmpty) {
+      logger.error(s"Formats $unsupportedFormats is/are not supported by onFHIR.io yet, please correct your CapabilityStatement.format part!")
+      throw new InitializationException(s"Formats $unsupportedFormats is/are not supported by onFHIR.io yet, please correct your CapabilityStatement.format part!")
+    }
+    //If supported json format
+    fhirConfig.FHIR_JSON_MEDIA_TYPES = if(conformance.formats.intersect(FHIR_FORMATS.JSON).nonEmpty) FHIR_JSON_MEDIA_TYPES else Nil
+    //If supported xml format
+    fhirConfig.FHIR_XML_MEDIA_TYPES = if(conformance.formats.intersect(FHIR_FORMATS.XML).nonEmpty) FHIR_XML_MEDIA_TYPES else Nil
+
     fhirConfig.FHIR_FORMAT_MIME_TYPE_MAP = FHIR_FORMAT_MIME_TYPE_MAP
-    fhirConfig.FHIR_JSON_PATCH_MEDIA_TYPE = FHIR_JSON_PATCH_MEDIA_TYPE
+
+    //Check patch formats
+    val unsupportedPatchFormats = conformance.patchFormats.diff(FHIR_FORMATS.JSON_PATCH ++ FHIR_FORMATS.JSON ++ FHIR_FORMATS.XML)
+    if(unsupportedPatchFormats.nonEmpty){
+      logger.error(s"Patch formats $unsupportedPatchFormats  is/are not supported by onFHIR.io yet, please correct your CapabilityStatement.patchFormat part!")
+      throw new InitializationException(s"Patch formats $unsupportedPatchFormats  is/are not supported by onFHIR.io yet, please correct your CapabilityStatement.patchFormat part!")
+    }
+    fhirConfig.FHIR_PATCH_MEDIA_TYPES = if(conformance.patchFormats.isEmpty) FHIR_PATCH_MEDIA_TYPES else if(conformance.patchFormats.intersect(FHIR_FORMATS.JSON_PATCH).nonEmpty) FHIR_PATCH_MEDIA_TYPES else Nil
+
     fhirConfig.FHIR_DEFAULT_MEDIA_TYPE = FHIR_DEFAULT_MEDIA_TYPE
 
     fhirConfig

@@ -115,6 +115,22 @@ class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None) {
       throw new FhirPathException(s"Expression $expr does not evaluate to a string for the given resource!")
     result.map(_.asInstanceOf[FhirPathString].s)
   }
+
+  /**
+   * Evaluate a FHIR Path expression that indicates single or multiple paths within a resource to find those paths e.g. Observation.code.coding.where(system ='...').code --> code.coding[2].code
+   * @param expr  FHIR Path Expression
+   * @param on    The resource that expression will be evaluated on
+   * @return      List of paths consist of element names in order and their array index if exist
+   */
+  def evaluateToFindPaths(expr:String, on:JValue):Seq[Seq[(String, Option[Int])]] = {
+    logger.debug(s"Evaluating FHIR path expression '${expr}' to find indicated paths  ...")
+    val parsedExpr = parse(expr)
+    val resource = FhirPathValueTransformer.transform(on)
+    val environment = new FhirPathEnvironment(resource.head, referenceResolver)
+    val evaluator = new FhirPathPathFinder(environment, resource)
+    evaluator.visit(parsedExpr)
+    evaluator.getFoundPaths
+  }
 }
 
 object FhirPathEvaluator {

@@ -57,7 +57,7 @@ class StructureDefinitionParser(fhirComplexTypes:Set[String], fhirPrimitiveTypes
         url = FHIRUtil.extractValueOption[String](structureDef, "url").get,
         baseUrl = FHIRUtil.extractValueOption[String](structureDef, "baseDefinition"),
         elementRestrictions = elemDefs.map(e => e._1.path -> e._1),
-        summaryElements= elemDefs.filter(_._2).map(e => e._1.path).toSet,
+        summaryElements= getSummaryElements(elemDefs), //elemDefs.filter(_._2).map(e => e._1.path).toSet,
         constraints =
           baseResourceElemDefinition
             .flatMap(e =>
@@ -69,6 +69,33 @@ class StructureDefinitionParser(fhirComplexTypes:Set[String], fhirPrimitiveTypes
         isAbstract = FHIRUtil.extractValueOption[Boolean](structureDef, "abstract").get
       )
     }
+  }
+
+  /**
+   * Get the summary elements
+   * @param elemDefs
+   * @return
+   */
+  private def getSummaryElements(elemDefs:Seq[(ElementRestrictions, Boolean)]):Set[String] = {
+    val elemsIndicatedAsSummary =
+      elemDefs
+        .filter(_._2)
+        .map(e => {
+          val parts = e._1.path.split('.')
+          parts.head -> parts.tail
+        })
+
+    //Some resource types erroneously define both parent and child elements as summary which produces problem in MongoDB See heading Path Collision: Embedded Documents and Its Fields (https://docs.mongodb.com/manual/reference/limits/)
+    elemsIndicatedAsSummary
+      .groupBy(_._1)
+      .mapValues(_.map(_._2))
+      .mapValues(_.filter(_.nonEmpty))
+      .flatMap(e =>
+        if(e._2.isEmpty)
+          Seq(e._1)
+        else
+          e._2.map(t => s"${e._1}.${t.mkString(".")}")
+      ).toSet
   }
 
   /**

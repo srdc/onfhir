@@ -1,0 +1,22 @@
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    {
+      "name": "operation",
+      "part": [
+        {
+          "name": "type",
+          "valueCode": "replace"
+        },
+        {
+          "name": "path",
+          "valueString": "Observation.status"
+        },
+        {
+          "name": "value",
+          "valueCode": "preliminary"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "patches": [
+    {
+      "op": "add",
+      "path": "/component/2/code/coding/-",
+      "value": {
+        "system": "test",
+        "value": "test"
+      }
+    }
+  ]
+}

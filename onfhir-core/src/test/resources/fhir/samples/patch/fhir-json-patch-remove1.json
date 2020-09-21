@@ -1,0 +1,8 @@
+{
+  "patches": [
+    {
+      "op": "remove",
+      "path": "/subject"
+    }
+  ]
+}

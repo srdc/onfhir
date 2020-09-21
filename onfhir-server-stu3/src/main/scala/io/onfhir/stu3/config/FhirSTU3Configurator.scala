@@ -54,7 +54,9 @@ class FhirSTU3Configurator extends FhirR4Configurator {
       searchParamDefUrls = extractCommonSearchParameterDefinitionUrls(capabilityStmt).toSet,
       operationDefUrls = extractOperationDefinitionUrls(capabilityStmt).toSet,
       systemLevelInteractions = (capabilityStmt \ "rest" \ "interaction" \ "code").extractOrElse[Seq[String]](Nil).toSet,
-      compartments = (capabilityStmt \ "rest" \ "compartment").extractOrElse[Seq[String]](Nil).toSet
+      compartments = (capabilityStmt \ "rest" \ "compartment").extractOrElse[Seq[String]](Nil).toSet,
+      formats = (capabilityStmt \ "format").extract[Seq[String]].toSet,
+      patchFormats = (capabilityStmt \ "patchFormat").extract[Seq[String]].toSet
     )
   }
 

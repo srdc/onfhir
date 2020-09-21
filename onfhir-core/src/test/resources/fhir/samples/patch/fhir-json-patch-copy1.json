@@ -1,0 +1,9 @@
+{
+  "patches": [
+    {
+      "op": "copy",
+      "from": "/component/0/code/coding/0",
+      "path": "/component/1/code/coding/-"
+    }
+  ]
+}

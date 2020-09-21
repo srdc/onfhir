@@ -12,13 +12,17 @@ import io.onfhir.audit.IFhirAuditCreator
  * @param operationDefUrls        All operation definition URLs
  * @param systemLevelInteractions System level interactions supported (e.g. transaction, batch)
  * @param compartments            Definition url of compartments supported
+ * @param formats                 Formats (mime types) supported by FHIR repository
+ * @param patchFormats            Patch formats supported by FHIR repository
  */
 case class FHIRCapabilityStatement(
                                     restResourceConf:Seq[ResourceConf],
                                     searchParamDefUrls:Set[String],
                                     operationDefUrls:Set[String],
                                     systemLevelInteractions:Set[String],
-                                    compartments:Set[String]
+                                    compartments:Set[String],
+                                    formats:Set[String],
+                                    patchFormats:Set[String]
                                   )
 
 /**
@@ -121,8 +125,8 @@ trait IFhirVersionConfigurator {
     MediaTypes.`application/xml`,
     FHIR_XML_MEDIA_TYPE
   )
-  // Json patch media type supported
-  val FHIR_JSON_PATCH_MEDIA_TYPE:Option[MediaType] = Some(MediaType.applicationWithOpenCharset("json-patch+json"))
+  // Patch media types supported by onFHIR
+  val FHIR_PATCH_MEDIA_TYPES:Seq[MediaType] = Seq(MediaType.applicationWithOpenCharset("json-patch+json"))
   //Map from _format param value to actual MediaType
   val FHIR_FORMAT_MIME_TYPE_MAP:Map[String, MediaType] = Map(
     "html" -> MediaTypes.`text/html`,

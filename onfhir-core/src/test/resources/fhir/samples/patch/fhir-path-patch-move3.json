@@ -1,0 +1,26 @@
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    {
+      "name": "operation",
+      "part": [
+        {
+          "name": "type",
+          "valueCode": "move"
+        },
+        {
+          "name": "path",
+          "valueString": "Observation.component[0].code.coding"
+        },
+        {
+          "name": "source",
+          "valueInteger": 0
+        },
+        {
+          "name": "destination",
+          "valueInteger": 2
+        }
+      ]
+    }
+  ]
+}

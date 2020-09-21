@@ -558,7 +558,7 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
   private def getOperationServiceImpl(operationConf: OperationConf):FHIROperationHandlerService = {
     val serviceImpl =
       loadOperationClass(operationConf.classPath)
-        .map(opClass => opClass.newInstance().asInstanceOf[FHIROperationHandlerService])
+        .map(opClass => opClass.getConstructor().newInstance().asInstanceOf[FHIROperationHandlerService])
 
     if(serviceImpl.isDefined)
       serviceImpl.get

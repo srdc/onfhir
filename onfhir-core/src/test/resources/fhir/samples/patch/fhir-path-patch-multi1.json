@@ -1,0 +1,107 @@
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    {
+      "name": "operation",
+      "part": [
+        {
+          "name": "type",
+          "valueCode": "add"
+        },
+        {
+          "name": "path",
+          "valueString": "Observation.component[0].code"
+        },
+        {
+          "name": "name",
+          "valueString": "coding"
+        },
+        {
+          "name": "value",
+          "valueCoding": {
+            "system": "test3",
+            "code": "test3"
+          }
+        }
+      ]
+    },
+    {
+      "name": "operation",
+      "part": [
+        {
+          "name": "type",
+          "valueCode": "insert"
+        },
+        {
+          "name": "path",
+          "valueString": "Observation.component[0].code.coding"
+        },
+        {
+          "name": "index",
+          "valueInteger": 0
+        },
+        {
+          "name": "value",
+          "valueCoding": {
+            "system": "test",
+            "code": "test"
+          }
+        }
+      ]
+    },
+    {
+      "name": "operation",
+      "part": [
+        {
+          "name": "type",
+          "valueCode": "replace"
+        },
+        {
+          "name": "path",
+          "valueString": "Observation.component[0].code.coding[1]"
+        },
+        {
+          "name": "value",
+          "valueCoding": {
+            "system": "test2",
+            "code": "test2"
+          }
+        }
+      ]
+    },
+    {
+      "name": "operation",
+      "part": [
+        {
+          "name": "type",
+          "valueCode": "delete"
+        },
+        {
+          "name": "path",
+          "valueString": "Observation.component[0].code.coding[2]"
+        }
+      ]
+    },
+    {
+      "name": "operation",
+      "part": [
+        {
+          "name": "type",
+          "valueCode": "move"
+        },
+        {
+          "name": "path",
+          "valueString": "Observation.component[0].code.coding"
+        },
+        {
+          "name": "source",
+          "valueInteger": 3
+        },
+        {
+          "name": "destination",
+          "valueInteger": 2
+        }
+      ]
+    }
+  ]
+}

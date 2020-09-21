@@ -52,7 +52,9 @@ class FhirR4Configurator extends BaseFhirConfigurator {
       searchParamDefUrls = extractCommonSearchParameterDefinitionUrls(capabilityStmt).toSet,
       operationDefUrls = extractOperationDefinitionUrls(capabilityStmt).toSet,
       systemLevelInteractions = (capabilityStmt \ "rest" \ "interaction" \ "code").extractOrElse[Seq[String]](Nil).toSet,
-      compartments = (restDef \ "compartment").extractOrElse[Seq[String]](Nil).toSet
+      compartments = (restDef \ "compartment").extractOrElse[Seq[String]](Nil).toSet,
+      formats = (capabilityStmt \ "format").extract[Seq[String]].toSet,
+      patchFormats = (capabilityStmt \ "patchFormat").extract[Seq[String]].toSet
     )
   }
 

@@ -1,0 +1,40 @@
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    {
+      "name": "operation",
+      "part": [
+        {
+          "name": "type",
+          "valueCode": "add"
+        },
+        {
+          "name": "path",
+          "valueString": "Observation"
+        },
+        {
+          "name": "name",
+          "valueString": "component"
+        },
+        {
+          "name": "value",
+          "part": [
+            {
+              "name": "code",
+              "valueCodeableConcept": {
+                "text": "test"
+              }
+            },
+            {
+              "name": "valueQuantity",
+              "valueQuantity" : {
+                "value": 10,
+                "unit": "mmHg"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
