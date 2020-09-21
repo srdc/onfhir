@@ -6,10 +6,11 @@ import java.time.format.DateTimeFormatter
 import akka.http.scaladsl.model.DateTime
 import io.onfhir.api.MONTH_DAY_MAP
 import org.apache.commons.lang3.time.FastDateFormat
+import org.slf4j.LoggerFactory
 
 object DateTimeUtil {
   private val httpDateFormat = FastDateFormat.getInstance("EEE, dd MMM yyyy HH:mm:ss zzz")
-
+  val logger = LoggerFactory.getLogger("DateTimeUtil")
   /**
     * Populates the upper limit for the date range in dateTime
     * format. Some months are have 31 days and some months are
@@ -182,11 +183,14 @@ object DateTimeUtil {
   }
 
   def instantToDateTime(i:Instant):DateTime = {
+    DateTime.apply(i.toEpochMilli)
+    /*
     var instStr = serializeInstant(i)
+    logger.debug("INSTANT: "+ instStr)
     //Akka DateTime has a bug that it cannot parse when nanosecond is 0 and ISO instant is serialized as ...T10:05:58Z
     if(i.getNano == 0)
       instStr = instStr.dropRight(1) + ".000Z"
     val dt = DateTime.fromIsoDateTimeString(instStr)
-    dt.get
+    dt.get*/
   }
 }

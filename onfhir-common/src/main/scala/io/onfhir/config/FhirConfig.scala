@@ -3,7 +3,7 @@ package io.onfhir.config
 import scala.collection.immutable.HashMap
 import akka.http.scaladsl.model._
 import io.onfhir.api.model.InternalEntity
-import io.onfhir.api.{FHIR_ROOT_URL_FOR_DEFINITIONS, FHIR_VERSIONING_OPTIONS}
+import io.onfhir.api.{FHIR_FORMATS, FHIR_ROOT_URL_FOR_DEFINITIONS, FHIR_VERSIONING_OPTIONS}
 import io.onfhir.api.validation.{ProfileRestrictions, ValueSetRestrictions}
 
 /**
@@ -11,13 +11,6 @@ import io.onfhir.api.validation.{ProfileRestrictions, ValueSetRestrictions}
   * @param version FHIR version
   */
 class FhirConfig(version:String) {
-  /**
-   * Supported Mime types for content
-   */
-  var supportedFormats :Set[String] = Set("json", "xml")
-
-  var supportedPatchFormats:Set[String] = Set()
-
   /***
     *  Dynamic configurations for this instance of FHIR repository
     */

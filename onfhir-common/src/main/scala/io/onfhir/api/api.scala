@@ -599,6 +599,19 @@ package object api {
   }
 
   /**
+   * Mime types used in FHIR
+   */
+  object FHIR_FORMATS {
+    val JSON = Set("json", "application/json", "application/fhir+json")
+    val XML = Set("xml", "application/xml", "application/fhir+xml")
+    val TURTLE = Set("ttl", "application/fhir+turtle")
+    val JSON_PATCH = Set("application/json-patch+json")
+    val XML_PATCH = Set("application/xml-patch+xml")
+  }
+
+
+
+  /**
     * FHIR Default Operation Names
     */
   object FHIR_OPERATIONS {

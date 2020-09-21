@@ -35,7 +35,7 @@ class FhirPathEvaluatorTest extends Specification {
   sequential
 
   "FHIR Path Evaluator" should {
-/*
+
     "evaluate simple path expression not starting with resource type" in {
       var result = FhirPathEvaluator().evaluate("subject", observation)
       result.length mustEqual 1
@@ -623,7 +623,7 @@ class FhirPathEvaluatorTest extends Specification {
     "evaluate fixed bugs" in {
       var result = FhirPathEvaluator().satisfies("(type='history') or entry.where(fullUrl.exists()).select(fullUrl&resource.meta.versionId).isDistinct()", bundleOp)
       result mustEqual true
-    }*/
+    }
 
     "find paths indicated by FHIR Path expression" in {
       var result = FhirPathEvaluator().evaluateToFindPaths("Observation.code", observation)

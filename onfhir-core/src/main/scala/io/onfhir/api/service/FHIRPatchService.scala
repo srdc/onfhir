@@ -10,7 +10,7 @@ import io.onfhir.config.FhirConfigurationManager.fhirValidator
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
 import io.onfhir.db.{ResourceManager, TransactionSession}
 import io.onfhir.exception.{NotFoundException, PreconditionFailedException}
-import org.slf4j.Logger
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.Future
 
@@ -182,7 +182,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
     if(FHIRUtil.extractValueOption[String](patch, "resourceType")
       .contains("Parameters")) {
       val profileHandler = new BaseFhirProfileHandler(fhirConfig) {
-        override protected val logger: Logger = logger
+        override protected val logger: Logger = LoggerFactory.getLogger(classOf[FHIRPatchService])
       }
       new FhirPathPatchHandler(profileHandler)
     } else
