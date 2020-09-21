@@ -7,7 +7,61 @@
     <groupId>io.onfhir</groupId>
     <artifactId>fhir-repository</artifactId>
     <packaging>pom</packaging>
-    <version>3.0</version>
+    <version>3.1-SNAPSHOT</version>
+
+    <name>OnFHIR Secure FHIR Repository</name>
+    <description>onFHIR is an HL7 FHIR compliant secure, high-performance and scalable health data repository that can be used as the central data service for HL7 FHIR compliant healthcare applications.</description>
+    <url>https://onfhir.io</url>
+
+    <licenses>
+        <license>
+            <name>GNU General Public License v3.0</name>
+            <url>https://www.gnu.org/licenses/gpl-3.0.en.html</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>tnamli</id>
+            <name>Tuncay Namlı</name>
+            <email>tuncay@srdc.com.tr</email>
+            <organization>SRDC Corp.</organization>
+            <organizationUrl>https://www.srdc.com.tr</organizationUrl>
+        </developer>
+        <developer>
+            <id>msfyuksel</id>
+            <name>Mustafa Yüksel</name>
+            <email>mustafa@srdc.com.tr</email>
+            <organization>SRDC Corp.</organization>
+            <organizationUrl>https://www.srdc.com.tr</organizationUrl>
+        </developer>
+        <developer>
+            <id>sinaci</id>
+            <name>Ali Anıl Sınacı</name>
+            <email>anil@srdc.com.tr</email>
+            <organization>SRDC Corp.</organization>
+            <organizationUrl>https://www.srdc.com.tr</organizationUrl>
+        </developer>
+        <developer>
+            <id>postaci</id>
+            <name>Şenan Postacı</name>
+            <email>senan@srdc.com.tr</email>
+            <organization>SRDC Corp.</organization>
+            <organizationUrl>https://www.srdc.com.tr</organizationUrl>
+        </developer>
+        <developer>
+            <id>ozankose1992</id>
+            <name>Ozan Köse</name>
+            <email>ozankose1992@gmail.com</email>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/srdc/onfhir.git</connection>
+        <developerConnection>scm:git:ssh://github.com:srdc/onfhir.git</developerConnection>
+        <url>https://github.com/srdc/onfhir/tree/master</url>
+    </scm>
+
     <modules>
         <module>onfhir-common</module>
         <module>onfhir-core</module>
@@ -17,18 +71,18 @@
         <module>onfhir-server-stu3</module>
         <module>onfhir-path</module>
         <module>onfhir-validation</module>
+        <module>onfhir-server-r5</module>
     </modules>
-    <name>Onfhir Secure FHIR Repository</name>
 
     <repositories>
-        <repository>
+        <!--repository>
             <id>maven-releases</id>
             <url>http://nexus.srdc.com.tr/repository/maven-releases/</url>
         </repository>
         <repository>
             <id>maven-snapshots</id>
             <url>http://nexus.srdc.com.tr/repository/maven-snapshots/</url>
-        </repository>
+        </repository-->
         <repository>
             <id>oss-snapshots</id>
             <snapshots>
@@ -68,6 +122,12 @@
         <nimbus-jose.version>7.9</nimbus-jose.version>
         <nimbus-oidc.version>5.22</nimbus-oidc.version>
         <apache-commons-io.version>2.6</apache-commons-io.version>
+
+        <!-- release plugin versions -->
+        <version.plugin.source>3.2.1</version.plugin.source>
+        <version.plugin.javadoc>3.2.0</version.plugin.javadoc>
+        <version.plugin.gpg>1.6</version.plugin.gpg>
+        <version.plugin.nexus-staging>1.6.8</version.plugin.nexus-staging>
     </properties>
 
     <build>
@@ -154,9 +214,88 @@
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>3.8.1</version>
                 </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>${version.plugin.source}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-gpg-plugin</artifactId>
+                    <version>${version.plugin.gpg}</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.sonatype.plugins</groupId>
+                    <artifactId>nexus-staging-maven-plugin</artifactId>
+                    <version>${version.plugin.nexus-staging}</version>
+                </plugin>
             </plugins>
         </pluginManagement>
     </build>
+
+    <profiles>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-source</id>
+                                <phase>compile</phase>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>net.alchim31.maven</groupId>
+                        <artifactId>scala-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>doc-jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <configuration>
+                                    <gpgArguments>
+                                        <arg>--pinentry-mode</arg>
+                                        <arg>loopback</arg>
+                                    </gpgArguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.plugins</groupId>
+                        <artifactId>nexus-staging-maven-plugin</artifactId>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <serverId>ossrh</serverId>
+                            <nexusUrl>https://oss.sonatype.org/</nexusUrl>
+                            <autoReleaseAfterClose>false</autoReleaseAfterClose>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
     <dependencyManagement>
         <dependencies>
@@ -175,42 +314,42 @@
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-common</artifactId>
-                <version>3.0</version>
+                <version>3.1-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-core</artifactId>
-                <version>3.0</version>
+                <version>3.1-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-operations</artifactId>
-                <version>3.0</version>
+                <version>3.1-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-kafka</artifactId>
-                <version>3.0</version>
+                <version>3.1-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-server-r4</artifactId>
-                <version>3.0</version>
+                <version>3.1-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-server-stu3</artifactId>
-                <version>3.0</version>
+                <version>3.1-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-path</artifactId>
-                <version>3.0</version>
+                <version>3.1-SNAPSHOT</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-validation</artifactId>
-                <version>3.0</version>
+                <version>3.1-SNAPSHOT</version>
             </dependency>
             <!-- Akka HTTP Suite -->
             <dependency>
@@ -371,6 +510,19 @@
 
     <distributionManagement>
         <snapshotRepository>
+            <id>ossrh</id>
+            <name>Sonatype Nexus Snapshots</name>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <name>Nexus Release Repository</name>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+        </repository>
+    </distributionManagement>
+
+    <!--distributionManagement>
+        <snapshotRepository>
             <id>maven-snapshots</id>
             <url>https://nexus.srdc.com.tr/repository/maven-snapshots/</url>
         </snapshotRepository>
@@ -378,13 +530,6 @@
             <id>maven-releases</id>
             <url>https://nexus.srdc.com.tr/repository/maven-releases/</url>
         </repository>
-    </distributionManagement>
+    </distributionManagement-->
 
-    <!--repositories>
-        <repository>
-            <id>local-repo</id>
-            <name>Local JAR Repository</name>
-            <url>file://${project.basedir}/lib</url>
-        </repository>
-    </repositories-->
 </project>

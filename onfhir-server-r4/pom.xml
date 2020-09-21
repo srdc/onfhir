@@ -5,7 +5,7 @@
     <parent>
         <groupId>io.onfhir</groupId>
         <artifactId>fhir-repository</artifactId>
-        <version>3.0</version>
+        <version>3.1-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -41,7 +41,7 @@
                         <configuration>
                             <filename>onfhir-server-standalone.jar</filename>
                             <mainClass>io.onfhir.r4.Boot</mainClass>
-                            <attachToBuild>true</attachToBuild>
+                            <attachToBuild>false</attachToBuild>
                         </configuration>
                         <goals>
                             <goal>one-jar</goal>

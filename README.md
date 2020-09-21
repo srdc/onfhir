@@ -1,9 +1,16 @@
 # onFHIR FHIR Repository
+
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.onfhir/onfhir-core/badge.svg)](https://search.maven.org/search?q=io.onfhir)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 [onFHIR](http://onfhir.io) is a FHIR compliant secure health data repository that you can use as a central data service for your FHIR compliant healthcare applications. 
 You can use it as a standalone server, or you can extend it with your further custom FHIR Operations to build your own application layer in addition to having standard FHIR repository capabilities. 
-onFhir.io is using FHIR Infrastructure Resource definitions (CapabilityStatement, StructureDefinition, SearchParameter, etc) to tailor 
+onFHIR.io is using FHIR Infrastructure Resource definitions (CapabilityStatement, StructureDefinition, SearchParameter, etc.) to tailor 
 the FHIR server to your specific FHIR capabilities you required; resource profiles, search parameters, FHIR interactions you wanted to support.     
-It is implemented with Scala, based on Akka and MongoDB. 
+
+It is implemented with Scala, based on Akka and MongoDB.
+
+Stable versions are released in [Maven Central](https://search.maven.org/search?q=io.onfhir) and snapshot versions in [Sonatype Snapshot Repository](https://oss.sonatype.org/content/repositories/snapshots/io/onfhir/).
 
 ## Basic Configuration
 You can copy and update **onfhir-core/src/main/resources/application.conf** file, which is the entrypoint configuration to configure onFHIR repository based on your needs.
@@ -13,7 +20,7 @@ For logger configurations, check **onfhir-core/src/main/resources/logback.xml**
 For configuration of the FHIR API to be provided, you need to provide the followings;
 * A file providing your **Conformance statement** (FHIR Capability Statement - See http://hl7.org/fhir/capabilitystatement.html) that describes the capabilities of the FHIR server you want to provide
 * A folder including all your **Profile definitions** (FHIR StructureDefinition - See http://hl7.org/fhir/structuredefinition.html) including resource, data type and extension definitions that will be used in the FHIR server you want to provide
-* A folder including all your **Compartment definitions** (FHIR CompartmentDefinition - See http://hl7.org/fhir/2016Sep/compartmentdefinition.html) for all compartments that you want to support for search
+* A folder including all your **Compartment definitions** (FHIR CompartmentDefinition - See http://hl7.org/fhir/compartmentdefinition.html) for all compartments that you want to support for search
 * A folder including all your **Search parameter definitions** (FHIR SearchParameter - See http://hl7.org/fhir/searchparameter.html) for all extra search parameters (apart from what is available from the base FHIR standard) that you define and support for your resources
 * A folder including all your **Value sets** (FHIR ValueSet - See http://hl7.org/fhir/valueset.html) that you define and refer in your resource profiles
 * A folder including all your **Operation definitions** (FHIR OperationDefinition - http://hl7.org/fhir/operationdefinition.html) that you define and refer from capability statement in operations part (For your OperationDefinitions write the full class path of your implementation of operation in OperationDefinition.name)
