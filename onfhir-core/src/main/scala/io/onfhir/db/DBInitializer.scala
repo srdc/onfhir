@@ -52,39 +52,41 @@ object DBInitializer {
     * @param supportedResources  list of supported resource names (e.g. Observation, Condition, etc) -> Versioning mechanism
     * @return
     */
-  def createCollections(supportedResources:Map[String, String]):Set[String] = {
+  def createCollections(supportedResources:Map[String, String]):Unit = {
     logger.info("Creating MongoDB collections for supported resources ...")
-    // Get the list of collections for FHIR resource types (for storing current versions) present at the database
-    val job = MongoDB.listCollections().flatMap{ collectionList =>
-      Future.sequence(
-        // For each resource in Supported Resources not in Mongo yet
-        supportedResources.keySet.diff(collectionList.toSet).map(eachResource => {
-          createCollection(eachResource)
-        })
-      )
-    }.recoverWith {
+    try {
+      // Get the list of collections for FHIR resource types (for storing current versions) present at the database
+      val collectionList = Await.result(MongoDB.listCollections(), 60 seconds)
+
+      // For each resource in Supported Resources not in Mongo yet
+      supportedResources.keySet.diff(collectionList.toSet)
+        .foreach(eachResource =>
+          Await.result(createCollection(eachResource), 60 seconds)
+        )
+    }
+    catch {
       case e:Exception =>  logger.error("Failure in creating collections for supported resources: "+ e.getMessage)
         throw new InitializationException(e.getMessage)
     }
-    Await.result(job, 60 seconds)
 
-    // Get the list of collections for FHIR resource types (for storing current versions) present at the database
-    val jobHistory = MongoDB.listCollections(history = true).flatMap{ collectionList =>
-      Future.sequence(
-        // For each resource in Supported Resources not in Mongo yet
-        supportedResources
-          .filterNot(_._2 == FHIR_VERSIONING_OPTIONS.NO_VERSION) //Only create history collection if we support versioning for resource type
-          .keySet
-          .diff(collectionList.toSet) //Only create if the collection is not created yet
-          .map(eachResource => {
-          createHistoryCollection(eachResource)
-        })
-      )
-    }.recoverWith {
+    try {
+      // Get the list of collections for FHIR resource types (for storing current versions) present at the database
+      val historyCollectionList = Await.result(MongoDB.listCollections(history = true), 60 seconds)
+
+      // For each resource in Supported Resources not in Mongo yet
+      supportedResources
+         .filterNot(_._2 == FHIR_VERSIONING_OPTIONS.NO_VERSION) //Only create history collection if we support versioning for resource type
+         .keySet
+         .diff(historyCollectionList.toSet) //Only create if the collection is not created yet
+         .foreach(eachResource =>
+           Await.result(createHistoryCollection(eachResource), 60 seconds)
+         )
+
+    } catch {
       case e:Exception =>  logger.error("Failure in creating history collections for supported resources: "+ e.getMessage)
         throw new InitializationException(e.getMessage)
     }
-    Await.result(jobHistory, 60 seconds)
+
   }
 
   /**
@@ -92,7 +94,7 @@ object DBInitializer {
     * @param rtype Resource type
     * @return
     */
-  private def createCollection(rtype:String) = {
+  private def createCollection(rtype:String):Future[String] = {
     //Create the collection and basic indexes
     MongoDB.getDatabase.createCollection(rtype).toFuture
       .flatMap { unit =>
