@@ -59,10 +59,14 @@ trait OnFhirTest extends Specification with Specs2RouteTest with BeforeAfterAll 
   }
 
   def checkHeaders(resource:Resource, expectedRType:String, expectedResourceId:String, expectedVersion:String):org.specs2.matcher.MatchResult[Any] = {
-    (header("Location").map(_.value()) must beSome(FHIRUtil.resourceLocationWithVersion(expectedRType, expectedResourceId, expectedVersion.toLong))) and
-      (if(resource != null) header("Last-Modified").map(_.asInstanceOf[`Last-Modified`].date) must beSome(DateTimeUtil.parseInstant(FHIRUtil.extractValueOptionByPath[String](resource, "meta.lastUpdated").get).get) else
-        header("Last-Modified").map(_.asInstanceOf[`Last-Modified`].date.toIsoDateTimeString() +"Z").map(DateTimeUtil.parseFhirDateTimeOrInstant) must beSome((i:Instant) => ChronoUnit.SECONDS.between(i, Instant.now()) < 10)) and
-        (header("ETag").map(_.value()) must beSome("W/\""+expectedVersion+"\""))
+    val isLocationOk = header("Location").map(_.value()) must beSome(FHIRUtil.resourceLocationWithVersion(expectedRType, expectedResourceId, expectedVersion.toLong))
+    val isLastModifiedOk=
+      if(resource != null) header("Last-Modified").map(_.asInstanceOf[`Last-Modified`].date) must beSome(DateTimeUtil.parseInstant(FHIRUtil.extractValueOptionByPath[String](resource, "meta.lastUpdated").get).get) else
+        header("Last-Modified").map(_.asInstanceOf[`Last-Modified`].date.toIsoDateTimeString() +"Z").map(DateTimeUtil.parseFhirDateTimeOrInstant) must beSome((i:Instant) => ChronoUnit.SECONDS.between(i, Instant.now()) < 10)
+
+    val isETagOk = header("ETag").map(_.value()) must beSome("W/\""+expectedVersion+"\"")
+
+    isLocationOk and isLastModifiedOk and isETagOk
   }
 
   def checkSearchResult(bundle:Resource, resourceType:String, expectedTotal:Long, query:Option[String], count:Option[Int] = None, page:Option[Int] = None):org.specs2.matcher.MatchResult[Any] = {

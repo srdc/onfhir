@@ -2,14 +2,21 @@ package io.onfhir.util
 
 import java.time.{Instant, ZonedDateTime}
 import java.time.format.DateTimeFormatter
+import java.util.Date
 
 import akka.http.scaladsl.model.DateTime
 import io.onfhir.api.MONTH_DAY_MAP
 import org.apache.commons.lang3.time.FastDateFormat
 import org.slf4j.LoggerFactory
 
+import scala.util.Try
+
 object DateTimeUtil {
   private val httpDateFormat = FastDateFormat.getInstance("EEE, dd MMM yyyy HH:mm:ss zzz")
+  //FHIR instant
+  private val fhirDateTimeWMiliFormat = FastDateFormat.getInstance("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+  //FHIR dateTime or instant with second precision
+  private val fhirDateTimeWSecFormat = FastDateFormat.getInstance("yyyy-MM-dd'T'HH:mm:ssXXX")
   val logger = LoggerFactory.getLogger("DateTimeUtil")
   /**
     * Populates the upper limit for the date range in dateTime
@@ -167,7 +174,8 @@ object DateTimeUtil {
     * @return
     */
   def parseInstant(value: String):Option[DateTime] = {
-    DateTime.fromIsoDateTimeString(value)
+    Try(instantToDateTime(parseFhirDateTimeOrInstant(value))).toOption
+    //DateTime.fromIsoDateTimeString(value)
   }
 
   /**
@@ -175,11 +183,18 @@ object DateTimeUtil {
     * @param instant Instant to serialize
     * @return
     */
-  def serializeInstant(instant:Instant):String = DateTimeFormatter.ISO_INSTANT.format(instant)
+  def serializeInstant(instant:Instant):String = {
+    fhirDateTimeWMiliFormat.format(Date.from(instant))
+    //DateTimeFormatter.ISO_INSTANT.format(instant)
+  }
 
 
   def parseFhirDateTimeOrInstant(value:String):Instant = {
-    Instant.parse(value)
+    if(value.contains('.'))
+      fhirDateTimeWMiliFormat.parse(value).toInstant
+    else {
+      fhirDateTimeWSecFormat.parse(value).toInstant
+    }
   }
 
   def instantToDateTime(i:Instant):DateTime = {

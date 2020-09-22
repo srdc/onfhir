@@ -110,8 +110,7 @@
         <scala.pcombinators>1.1.2</scala.pcombinators>
         <akka-http.version>10.1.10</akka-http.version>
         <akka.version>2.5.26</akka.version>
-        <!--mongodb.scala.version>1.2.0</mongodb.scala.version-->
-        <mongodb.scala.version>2.7.0</mongodb.scala.version>
+        <mongodb.scala.version>2.9.0</mongodb.scala.version>
         <mongo.embedded.version>2.2.0</mongo.embedded.version>
         <jackson.version>2.9.6</jackson.version>
         <json4s.version>3.6.1</json4s.version>
@@ -143,8 +142,8 @@
                     <configuration>
                         <scalaCompatVersion>${scala.binary.version}</scalaCompatVersion>
                         <encoding>UTF-8</encoding>
-                        <source>1.8</source>
-                        <target>1.8</target>
+                        <!--source>1.8</source>
+                        <target>1.8</target-->
                         <args>
                             <arg>-deprecation</arg>
                             <arg>-feature</arg>
