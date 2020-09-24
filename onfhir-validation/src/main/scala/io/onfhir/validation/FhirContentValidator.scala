@@ -1037,9 +1037,9 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
   private def findRequiredElements(allElementRestrictions: Seq[Seq[(String, ElementRestrictions)]]): Map[String, Seq[String]] = {
     val requiredElementPaths: Set[String] =
       allElementRestrictions
-        .map(er => er.filter(e => !e._1.contains('.') && !e._1.contains(':'))) //Only get the children not descendants and slicing elements
-        .map(er => er.filter(_._2.restrictions.isDefinedAt(ConstraintKeys.MIN))) // Get the ones that has minimum cardinality restriction (which is created if it exists and more than 0)
-        .flatMap(er => er.map(_._1)).toSet
+        .map(er => er.filter(e => !e._1.contains('.') /*&& !e._1.contains(':')*/)) //Only get the children not descendants
+        .map(er => er.filter(_._2.restrictions.get(ConstraintKeys.MIN).exists(_.asInstanceOf[CardinalityMinRestriction].n>0))) // Get the ones that has minimum cardinality restriction (which is created if it exists and more than 0)
+        .flatMap(er => er.map(_._1.split(':').head)).toSet  //Min cardinality restriction can be set on a slicing element so get the first part
 
     allElementRestrictions
       .map(er => er.filter(e => requiredElementPaths.contains(e._1) && getFhirDataTypes(e._2).nonEmpty))
