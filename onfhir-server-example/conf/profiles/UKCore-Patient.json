@@ -1,0 +1,279 @@
+{
+  "resourceType": "StructureDefinition",
+  "id": "UKCore-Patient",
+  "url": "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Patient",
+  "version": "1.0.0",
+  "name": "UKCorePatient",
+  "title": "UK Core Patient",
+  "status": "draft",
+  "date": "2019-10-18",
+  "publisher": "HL7 UK",
+  "contact": [
+    {
+      "name": "HL7 UK",
+      "telecom": [
+        {
+          "system": "email",
+          "value": "secretariat@hl7.org.uk",
+          "use": "work",
+          "rank": 1
+        }
+      ]
+    },
+    {
+      "name": "NHS Digital",
+      "telecom": [
+        {
+          "system": "email",
+          "value": "interoperabilityteam@nhs.net",
+          "use": "work",
+          "rank": 2
+        }
+      ]
+    }
+  ],
+  "description": "Defines the UK Core constraints and extensions on the Patient resource for the minimal set of data to query and retrieve an individual’s demographic information.",
+  "purpose": "This profile allows exchange of demographics and other administrative information about an individual receiving care or other health-related services.",
+  "copyright": "Copyright © 2020 HL7 UK Licensed under the Apache License, Version 2.0 (the \"License\"); you may not use this file except in compliance with the License. You may obtain a copy of the License at  http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License. HL7® FHIR® standard Copyright © 2011+ HL7 The HL7® FHIR® standard is used under the FHIR license. You may obtain a copy of the FHIR license at  https://www.hl7.org/fhir/license.html.",
+  "fhirVersion": "4.0.1",
+  "mapping": [
+    {
+      "identity": "rim",
+      "uri": "http://hl7.org/v3",
+      "name": "RIM Mapping"
+    },
+    {
+      "identity": "cda",
+      "uri": "http://hl7.org/v3/cda",
+      "name": "CDA (R2)"
+    },
+    {
+      "identity": "w5",
+      "uri": "http://hl7.org/fhir/fivews",
+      "name": "FiveWs Pattern Mapping"
+    },
+    {
+      "identity": "v2",
+      "uri": "http://hl7.org/v2",
+      "name": "HL7 v2 Mapping"
+    },
+    {
+      "identity": "loinc",
+      "uri": "http://loinc.org",
+      "name": "LOINC code for the element"
+    }
+  ],
+  "kind": "resource",
+  "abstract": false,
+  "type": "Patient",
+  "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Patient",
+  "derivation": "constraint",
+  "differential": {
+    "element": [
+      {
+        "id": "Patient.identifier",
+        "path": "Patient.identifier",
+        "slicing": {
+          "discriminator": [
+            {
+              "type": "value",
+              "path": "system"
+            }
+          ],
+          "ordered": false,
+          "rules": "open"
+        }
+      },
+      {
+        "id": "Patient.identifier:nhsNumber",
+        "path": "Patient.identifier",
+        "sliceName": "nhsNumber",
+        "short": "The patient's NHS number",
+        "max": "1"
+      },
+      {
+        "id": "Patient.identifier:nhsNumber.extension",
+        "path": "Patient.identifier.extension",
+        "slicing": {
+          "discriminator": [
+            {
+              "type": "value",
+              "path": "url"
+            }
+          ],
+          "rules": "open"
+        }
+      },
+      {
+        "id": "Patient.identifier:nhsNumber.extension:nhsNumberVerificationStatus",
+        "path": "Patient.identifier.extension",
+        "sliceName": "nhsNumberVerificationStatus",
+        "min": 1,
+        "max": "1",
+        "type": [
+          {
+            "code": "Extension",
+            "profile": [
+              "https://fhir.nhs.uk/R4/StructureDefinition/Extension-UKCore-NHSNumberVerificationStatus"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Patient.identifier:nhsNumber.system",
+        "extension": [
+          {
+            "url": "http://hl7.org/fhir/StructureDefinition/structuredefinition-standards-status",
+            "valueCode": "normative"
+          },
+          {
+            "url": "http://hl7.org/fhir/StructureDefinition/structuredefinition-normative-version",
+            "valueCode": "4.0.0"
+          }
+        ],
+        "path": "Patient.identifier.system",
+        "min": 1,
+        "fixedUri": "https://fhir.nhs.uk/Id/nhs-number"
+      },
+      {
+        "id": "Patient.identifier:nhsNumber.value",
+        "extension": [
+          {
+            "url": "http://hl7.org/fhir/StructureDefinition/structuredefinition-standards-status",
+            "valueCode": "normative"
+          },
+          {
+            "url": "http://hl7.org/fhir/StructureDefinition/structuredefinition-normative-version",
+            "valueCode": "4.0.0"
+          }
+        ],
+        "path": "Patient.identifier.value",
+        "min": 1
+      },
+      {
+        "id": "Patient.identifier:nhsNumber.assigner",
+        "path": "Patient.identifier.assigner",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Organization"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Patient.address",
+        "path": "Patient.address",
+        "definition": "An address for the individual"
+      },
+      {
+        "id": "Patient.contact.relationship",
+        "path": "Patient.contact.relationship",
+        "binding": {
+          "strength": "extensible",
+          "valueSet": "https://fhir.nhs.uk/R4/ValueSet/UKCore-PersonRelationshipType"
+        }
+      },
+      {
+        "id": "Patient.contact.organization",
+        "path": "Patient.contact.organization",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Organization"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Patient.contact.organization.identifier.assigner",
+        "path": "Patient.contact.organization.identifier.assigner",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Organization"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Patient.generalPractitioner",
+        "path": "Patient.generalPractitioner",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Practitioner",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Organization",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-PractitionerRole"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Patient.generalPractitioner.identifier.assigner",
+        "path": "Patient.generalPractitioner.identifier.assigner",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Organization"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Patient.managingOrganization",
+        "path": "Patient.managingOrganization",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Organization"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Patient.managingOrganization.identifier.assigner",
+        "path": "Patient.managingOrganization.identifier.assigner",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Organization"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Patient.link.other",
+        "path": "Patient.link.other",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Patient",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-RelatedPerson"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Patient.link.other.identifier.assigner",
+        "path": "Patient.link.other.identifier.assigner",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Organization"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

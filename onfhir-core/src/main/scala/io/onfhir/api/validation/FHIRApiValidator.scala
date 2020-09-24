@@ -176,7 +176,7 @@ object FHIRApiValidator {
     //If a base profile is defined for resource, then we expect resource contains some profile in meta (base profile or sub profiles)
     if(profile.isDefined && !profile.get.startsWith(FHIR_ROOT_URL_FOR_DEFINITIONS)){
       val resourceProfiles = FHIRUtil.extractProfilesFromBson(resource)
-      if(resourceProfiles.intersect(supportedProfiles).isEmpty)
+      if(resourceProfiles.intersect(supportedProfiles ++ Set(profile.get)).isEmpty)
         throw new BadRequestException(Seq(
           OutcomeIssue(
             FHIRResponse.SEVERITY_CODES.ERROR, //error

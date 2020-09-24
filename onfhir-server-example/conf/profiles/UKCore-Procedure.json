@@ -1,0 +1,354 @@
+{
+  "resourceType": "StructureDefinition",
+  "id": "UKCore-Procedure",
+  "url": "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Procedure",
+  "version": "1.0.0",
+  "name": "UKCoreProcedure",
+  "title": "UK Core Procedure",
+  "status": "draft",
+  "publisher": "HL7 UK",
+  "contact": [
+    {
+      "name": "HL7 UK",
+      "telecom": [
+        {
+          "system": "email",
+          "value": "secretariat@hl7.org.uk",
+          "use": "work",
+          "rank": 1
+        }
+      ]
+    },
+    {
+      "name": "NHS Digital",
+      "telecom": [
+        {
+          "system": "email",
+          "value": "interoperabilityteam@nhs.net",
+          "use": "work",
+          "rank": 2
+        }
+      ]
+    }
+  ],
+  "description": "Defines the UK Core constraints and extensions on the Procedure resource for the minimal set of data to query and retrieve the patient’s procedure information.",
+  "purpose": "This profile allows exchange of details of current and historical procedures performed on or for an individual. A procedure is an activity that is performed on, with, or for an individual as part of the provision of care. Examples include surgical procedures, diagnostic procedures, endoscopic procedures, biopsies, counselling, physiotherapy, personal support services, adult day care services, non-emergency transportation, home modification, exercise, etc. Procedures may be performed by a healthcare professional, a service provider, a friend or relative or in some cases by themselves.",
+  "copyright": "Copyright © 2020 HL7 UK Licensed under the Apache License, Version 2.0 (the \"License\"); you may not use this file except in compliance with the License. You may obtain a copy of the License at  http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an \"AS IS\" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License. HL7® FHIR® standard Copyright © 2011+ HL7 The HL7® FHIR® standard is used under the FHIR license. You may obtain a copy of the FHIR license at  https://www.hl7.org/fhir/license.html.",
+  "fhirVersion": "4.0.1",
+  "mapping": [
+    {
+      "identity": "workflow",
+      "uri": "http://hl7.org/fhir/workflow",
+      "name": "Workflow Pattern"
+    },
+    {
+      "identity": "rim",
+      "uri": "http://hl7.org/v3",
+      "name": "RIM Mapping"
+    },
+    {
+      "identity": "w5",
+      "uri": "http://hl7.org/fhir/fivews",
+      "name": "FiveWs Pattern Mapping"
+    },
+    {
+      "identity": "v2",
+      "uri": "http://hl7.org/v2",
+      "name": "HL7 v2 Mapping"
+    }
+  ],
+  "kind": "resource",
+  "abstract": false,
+  "type": "Procedure",
+  "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Procedure",
+  "derivation": "constraint",
+  "differential": {
+    "element": [
+      {
+        "id": "Procedure.identifier.assigner",
+        "path": "Procedure.identifier.assigner",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Organization"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Procedure.partOf",
+        "path": "Procedure.partOf",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "http://hl7.org/fhir/StructureDefinition/MedicationAdministration",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Procedure",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Observation"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Procedure.code.coding",
+        "path": "Procedure.code.coding",
+        "slicing": {
+          "discriminator": [
+            {
+              "type": "value",
+              "path": "system"
+            }
+          ],
+          "rules": "open"
+        }
+      },
+      {
+        "id": "Procedure.code.coding:snomedCT",
+        "path": "Procedure.code.coding",
+        "sliceName": "snomedCT",
+        "binding": {
+          "strength": "extensible",
+          "description": "A code from the SNOMED Clinical Terminology UK with the expression (<<71388002 |Procedure|<<129125009 |Procedure with explicit context|).",
+          "valueSet": "https://fhir.nhs.uk/R4/ValueSet/UKCore-ProcedureCode"
+        }
+      },
+      {
+        "id": "Procedure.code.coding:snomedCT.system",
+        "path": "Procedure.code.coding.system",
+        "min": 1,
+        "fixedUri": "http://snomed.info/sct"
+      },
+      {
+        "id": "Procedure.code.coding:snomedCT.code",
+        "path": "Procedure.code.coding.code",
+        "min": 1
+      },
+      {
+        "id": "Procedure.code.coding:snomedCT.display",
+        "path": "Procedure.code.coding.display",
+        "min": 1
+      },
+      {
+        "id": "Procedure.subject",
+        "path": "Procedure.subject",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "http://hl7.org/fhir/StructureDefinition/Group",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Patient"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Procedure.encounter",
+        "path": "Procedure.encounter",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Encounter"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Procedure.recorder",
+        "path": "Procedure.recorder",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Patient",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-RelatedPerson",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Practitioner",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-PractitionerRole"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Procedure.asserter",
+        "path": "Procedure.asserter",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Patient",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-RelatedPerson",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Practitioner",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-PractitionerRole"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Procedure.performer.actor",
+        "path": "Procedure.performer.actor",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "http://hl7.org/fhir/StructureDefinition/Device",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Practitioner",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-PractitionerRole",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Organization",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Patient",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-RelatedPerson"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Procedure.performer.onBehalfOf",
+        "path": "Procedure.performer.onBehalfOf",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Organization"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Procedure.location",
+        "path": "Procedure.location",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Location"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Procedure.reasonReference",
+        "path": "Procedure.reasonReference",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "http://hl7.org/fhir/StructureDefinition/DiagnosticReport",
+              "http://hl7.org/fhir/StructureDefinition/DocumentReference",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Condition",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Observation",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Procedure"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Procedure.bodySite.coding",
+        "path": "Procedure.bodySite.coding",
+        "slicing": {
+          "discriminator": [
+            {
+              "type": "value",
+              "path": "system"
+            }
+          ],
+          "rules": "open"
+        }
+      },
+      {
+        "id": "Procedure.bodySite.coding:snomedCT",
+        "path": "Procedure.bodySite.coding",
+        "sliceName": "snomedCT",
+        "binding": {
+          "strength": "extensible",
+          "description": "A code from the SNOMED Clinical Terminology UK with the expression (<<442083009 |anatomical or acquired body structure|).",
+          "valueSet": "https://fhir.nhs.uk/R4/ValueSet/UKCore-BodySite"
+        }
+      },
+      {
+        "id": "Procedure.bodySite.coding:snomedCT.system",
+        "path": "Procedure.bodySite.coding.system",
+        "min": 1,
+        "fixedUri": "http://snomed.info/sct"
+      },
+      {
+        "id": "Procedure.bodySite.coding:snomedCT.code",
+        "path": "Procedure.bodySite.coding.code",
+        "min": 1
+      },
+      {
+        "id": "Procedure.bodySite.coding:snomedCT.display",
+        "path": "Procedure.bodySite.coding.display",
+        "min": 1
+      },
+      {
+        "id": "Procedure.complication.coding",
+        "path": "Procedure.complication.coding",
+        "slicing": {
+          "discriminator": [
+            {
+              "type": "value",
+              "path": "system"
+            }
+          ],
+          "rules": "open"
+        }
+      },
+      {
+        "id": "Procedure.complication.coding:snomedCT",
+        "path": "Procedure.complication.coding",
+        "sliceName": "snomedCT",
+        "binding": {
+          "strength": "extensible",
+          "description": "A code from the SNOMED Clinical Terminology UK with the expression (<404684003 |Clinical finding| OR <413350009 |Finding with explicit context| OR <272379006 |Event|).",
+          "valueSet": "https://fhir.nhs.uk/R4/ValueSet/UKCore-ConditionCode"
+        }
+      },
+      {
+        "id": "Procedure.complication.coding:snomedCT.system",
+        "path": "Procedure.complication.coding.system",
+        "min": 1,
+        "fixedUri": "http://snomed.info/sct"
+      },
+      {
+        "id": "Procedure.complication.coding:snomedCT.code",
+        "path": "Procedure.complication.coding.code",
+        "min": 1
+      },
+      {
+        "id": "Procedure.complication.coding:snomedCT.display",
+        "path": "Procedure.complication.coding.display",
+        "min": 1
+      },
+      {
+        "id": "Procedure.complicationDetail",
+        "path": "Procedure.complicationDetail",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Condition"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Procedure.note.author[x]",
+        "path": "Procedure.note.author[x]",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Practitioner",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Patient",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-RelatedPerson",
+              "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Organization"
+            ]
+          },
+          {
+            "code": "string"
+          }
+        ]
+      }
+    ]
+  }
+}
