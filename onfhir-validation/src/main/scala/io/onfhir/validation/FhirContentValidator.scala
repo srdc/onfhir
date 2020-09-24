@@ -397,7 +397,21 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
         val actualPath = (path.split('.').dropRight(1) +: s"_${fieldName}").mkString(".")
         FhirContentValidator.convertToOutcomeIssue(actualPath, Seq(ConstraintFailure(s"Unrecognized element ${actualPath} !")))
       } else {
-        val profileUrls = findExpectedProfilesUrl(dataType, thisElementRestrictions)
+        var profileUrls = findExpectedProfilesUrl(dataType, thisElementRestrictions)
+        //If this is an Extension and there is no restriction mentioned in resource profile
+        if(dataType == FHIR_DATA_TYPES.EXTENSION &&
+          profileUrls.forall(_ == s"${api.FHIR_ROOT_URL_FOR_DEFINITIONS}/StructureDefinition/${FHIR_DATA_TYPES.EXTENSION}") &&
+          path.split('.').count(_.startsWith("extension")) == 1 //And this is not an inner extension
+        ){
+            //Try to retrieve the url of extension, assuming it is a valid Extension object
+            Try(FHIRUtil.extractValue[String](value.asInstanceOf[JObject], "url")).toOption
+              .foreach(extensionUrl =>
+
+                //Set the profile urls
+                profileUrls = Seq(extensionUrl)
+              )
+        }
+
         //Find profile chain for each profile
         val profileChains =
           profileUrls
@@ -544,9 +558,19 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
           case "value" | "pattern" =>
             //Handle extensions
             if(disc._2 == "url" && sliceRestriction.path.contains("extension")) {
-              val typeRestriction = sliceRestriction.restrictions.find(_._2.isInstanceOf[TypeRestriction]).map(_._2.asInstanceOf[TypeRestriction]).head
-              val extensionUrl = typeRestriction.dataTypesAndProfiles.head._2.head
-              Seq(Seq(disc._2 -> FixedOrPatternRestriction(JString(extensionUrl), isFixed = true)))
+              sliceRestriction.restrictions.get(ConstraintKeys.DATATYPE) match {
+                //If this is a restriction on resource profile that mentions an Extension profile, find the url of that extension profile
+                case Some(TypeRestriction(typs)) =>
+                  val extensionUrl = typs.head._2.head
+                  Seq(Seq(disc._2 -> FixedOrPatternRestriction(JString(extensionUrl), isFixed = true)))
+                case None =>
+                  //If there is no such type restriction, we are inside a restriction definition and there should be a element definition for url that has fixed value
+                  sliceSubElements
+                    .map(_.find(_._1 == "url")
+                    .map(_._2)
+                    .flatMap(_.restrictions.get(ConstraintKeys.PATTERN)).toSeq
+                    .map(r => "url" -> r))
+              }
             } else {
               possibleElementRestrictionsForMatchers.left.toOption
                 .map(
