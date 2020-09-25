@@ -1,33 +1,15 @@
 {
   "resourceType": "SearchParameter",
-  "id": "context-extension",
-  "url": "https://hyp.saglik.gov.tr/fhir/SearchParameter/context-extension",
-  "name": "context",
+  "id": "patient-ethnicity",
+  "url": "http://myfhir.com/fhir/SearchParameter/patient-ethnicity",
+  "name": "patient-ethnicity",
   "status": "active",
   "publisher": "SRDC A.S.",
-  "code": "context",
+  "code": "ethnicity",
   "base": [
-    "Goal",
-    "FamilyMemberHistory",
-    "CarePlan",
-    "MedicationRequest",
-    "ServiceRequest",
-    "CommunicationRequest",
-    "Condition",
-    "Observation",
-    "MedicationStatement",
-    "Procedure",
-    "RiskAssessment",
-    "DiagnosticReport",
-    "Media",
-    "Immunization",
-    "QuestionnaireResponse"
+    "Patient"
   ],
-  "type": "reference",
-  "description": "Context search parameter for related resources for EpisodeOfCare (R4 removes the context element)",
-  "xpath": "f:Resource/f:extension[@url='https://hyp.saglik.gov.tr/fhir/StructureDefinition/context']/f:valueReference",
-  "xpathUsage": "normal",
-  "target": [
-    "EpisodeOfCare"
-  ]
+  "type": "token",
+  "description": "Searching based on ethnicity of patient",
+  "expression": "Patient.extension.where(url = 'https://fhir.nhs.uk/R4/StructureDefinition/Extension-UKCore-EthnicCategory').valueCodeableConcept"
 }

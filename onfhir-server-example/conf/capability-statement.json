@@ -1,0 +1,642 @@
+{
+  "resourceType": "CapabilityStatement",
+  "url": "http://myfhir.com/fhir/CapabilityStatement/myfhir-capability-statement",
+  "version": "4.0.1",
+  "name": "Sample Capability Statement for configuration of onFHIR.io",
+  "status": "active",
+  "experimental": true,
+  "date": "2020-09-23T09:29:23+11:00",
+  "publisher": "onFHIR Project Team",
+  "contact": [
+    {
+      "telecom": [
+        {
+          "system": "url",
+          "value": "https://github.com/srdc/onfhir/"
+        }
+      ]
+    }
+  ],
+  "description": "This is a sample Capability Statement to demonstrate how you can configure onFHIR.io and setup a FHIR server that meet your requirements...",
+  "kind": "capability",
+  "software": {
+    "name": "onFHIR.io Secure FHIR Repository Sample Server"
+  },
+  "fhirVersion": "4.0.1",
+  "format": ["json"],
+  "patchFormat": ["application/json-patch+json"],
+  "rest": [
+    {
+      "mode": "server",
+      "documentation": "Capabilities required for sample server",
+      "security": {
+        "cors": true,
+        "service": [
+          {
+            "coding": [
+              {
+                "system": "http://terminology.hl7.org/CodeSystem/restful-security-service",
+                "code": "SMART-on-FHIR",
+                "display": "SMART-on-FHIR"
+              }
+            ],
+            "text": "See http://docs.smarthealthit.org/"
+          }
+        ],
+        "description": "This is the Capability Statement to declare that the server supports SMART-on-FHIR. See the SMART-on-FHIR docs for the extension that would go with such a server"
+      },
+      "resource": [
+        {
+          "type": "Patient",
+          "profile": "http://myfhir.com/fhir/StructureDefinition/MyFhirPatient",
+          "interaction": [
+            {
+              "code": "read",
+              "documentation": "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code": "update",
+              "documentation": "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code": "delete",
+              "documentation": "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code": "create",
+              "documentation": "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code": "search-type",
+              "documentation": "Implemented per the specification (or Insert other doco here)"
+            }
+          ],
+          "versioning": "no-version",
+          "conditionalCreate": true,
+          "conditionalUpdate": true,
+          "conditionalDelete": "multiple",
+          "referencePolicy": [
+            "literal",
+            "logical"
+          ],
+          "searchInclude": [
+            "Patient.general-practitioner",
+            "Patient.link",
+            "Patient.organization"
+          ],
+          "searchRevInclude": [
+            "Observation.subject",
+            "Observation.patient",
+            "Observation.performer",
+            "Patient.link"
+          ],
+          "searchParam": [
+            {
+              "name": "identifier",
+              "definition": "http://hl7.org/fhir/SearchParameter/Patient-identifier",
+              "type": "token",
+              "documentation": "A patient identifier"
+            },
+            {
+              "name": "given",
+              "definition": "http://hl7.org/fhir/SearchParameter/individual-given",
+              "type": "string",
+              "documentation": "A portion of the given name of the patient"
+            },
+            {
+              "name": "address",
+              "definition": "http://hl7.org/fhir/SearchParameter/individual-address",
+              "type": "string",
+              "documentation": "A server defined search that may match any of the string fields in the Address, including line, city, district, state, country, postalCode, and/or text"
+            },
+            {
+              "name": "birthdate",
+              "definition": "http://hl7.org/fhir/SearchParameter/individual-birthdate",
+              "type": "date",
+              "documentation": "The patient's date of birth"
+            },
+            {
+              "name": "deceased",
+              "definition": "http://hl7.org/fhir/SearchParameter/Patient-deceased",
+              "type": "token",
+              "documentation": "This patient has been marked as deceased, or as a death date entered"
+            },
+            {
+              "name": "address-state",
+              "definition": "http://hl7.org/fhir/SearchParameter/individual-address-state",
+              "type": "string",
+              "documentation": "A state specified in an address"
+            },
+            {
+              "name": "gender",
+              "definition": "http://hl7.org/fhir/SearchParameter/individual-gender",
+              "type": "token",
+              "documentation": "Gender of the patient"
+            },
+            {
+              "name": "general-practitioner",
+              "definition": "http://hl7.org/fhir/SearchParameter/Patient-general-practitioner",
+              "type": "reference",
+              "documentation": "Patient's nominated general practitioner, not the organization that manages the record"
+            },
+            {
+              "name": "link",
+              "definition": "http://hl7.org/fhir/SearchParameter/Patient-link",
+              "type": "reference",
+              "documentation": "All patients linked to the given patient"
+            },
+            {
+              "name": "active",
+              "definition": "http://hl7.org/fhir/SearchParameter/Patient-active",
+              "type": "token",
+              "documentation": "Whether the patient record is active"
+            },
+            {
+              "name": "phone",
+              "definition": "http://hl7.org/fhir/SearchParameter/individual-phone",
+              "type": "token",
+              "documentation": "A value in a phone contact"
+            },
+            {
+              "name": "organization",
+              "definition": "http://hl7.org/fhir/SearchParameter/Patient-organization",
+              "type": "reference",
+              "documentation": "The organization that is the custodian of the patient record"
+            },
+            {
+              "name": "name",
+              "definition": "http://hl7.org/fhir/SearchParameter/Patient-name",
+              "type": "string",
+              "documentation": "A server defined search that may match any of the string fields in the HumanName, including family, give, prefix, suffix, suffix, and/or text"
+            },
+            {
+              "name": "address-use",
+              "definition": "http://hl7.org/fhir/SearchParameter/individual-address-use",
+              "type": "token",
+              "documentation": "A use code specified in an address"
+            },
+            {
+              "name": "telecom",
+              "definition": "http://hl7.org/fhir/SearchParameter/individual-telecom",
+              "type": "token",
+              "documentation": "The value in any kind of telecom details of the patient"
+            },
+            {
+              "name": "family",
+              "definition": "http://hl7.org/fhir/SearchParameter/individual-family",
+              "type": "string",
+              "documentation": "A portion of the family name of the patient"
+            },
+            {
+              "name": "address-city",
+              "definition": "http://hl7.org/fhir/SearchParameter/individual-address-city",
+              "type": "string",
+              "documentation": "A city specified in an address"
+            },
+            {
+              "name": "email",
+              "definition": "http://hl7.org/fhir/SearchParameter/individual-email",
+              "type": "token",
+              "documentation": "A value in an email contact"
+            },
+            {
+              "name": "ethnicity",
+              "definition": "http://myfhir.com/fhir/SearchParameter/patient-ethnicity",
+              "type": "token",
+              "documentation": "Ethnicity of patient"
+            }
+          ]
+        },
+        {
+          "type" : "Observation",
+          "profile" : "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Observation",
+          "supportedProfile": ["http://u-szeged.hu/fhir/StructureDefinition/usz-szive-activity-observation"],
+          "interaction" : [{
+            "code" : "read",
+            "documentation" : "Implemented per the specification (or Insert other doco here)"
+          },
+            {
+              "code" : "vread",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "update",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "delete",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "patch",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "history-instance",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "create",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "search-type",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            }],
+          "versioning": "versioned",
+          "conditionalCreate" : true,
+          "conditionalUpdate" : true,
+          "conditionalDelete" : "multiple",
+          "referencePolicy" : ["literal", "enforced", "local"],
+          "searchInclude" : ["Observation.subject",
+            "Observation.focus",
+            "Observation.derived-from",
+            "Observation.part-of",
+            "Observation.has-member",
+            "Observation.based-on",
+            "Observation.patient",
+            "Observation.specimen",
+            "Observation.performer",
+            "Observation.encounter",
+            "Observation.device"],
+          "searchRevInclude" : ["Appointment.reason-reference",
+            "ChargeItem.service",
+            "ClinicalImpression.finding-ref",
+            "ClinicalImpression.investigation",
+            "DiagnosticReport.result",
+            "Encounter.reason-reference",
+            "Immunization.reaction",
+            "Immunization.reason-reference",
+            "MedicationStatement.part-of",
+            "Observation.derived-from",
+            "Observation.has-member",
+            "Procedure.part-of",
+            "Procedure.reason-reference",
+            "QuestionnaireResponse.part-of"],
+          "searchParam" : [{
+            "name" : "date",
+            "definition" : "http://hl7.org/fhir/SearchParameter/clinical-date",
+            "type" : "date",
+            "documentation" : "Obtained date/time. If the obtained element is a period, a date that falls in the period"
+          },
+            {
+              "name" : "combo-data-absent-reason",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-combo-data-absent-reason",
+              "type" : "token",
+              "documentation" : "The reason why the expected value in the element Observation.value[x] or Observation.component.value[x] is missing."
+            },
+            {
+              "name" : "code",
+              "definition" : "http://hl7.org/fhir/SearchParameter/clinical-code",
+              "type" : "token",
+              "documentation" : "The code of the observation type"
+            },
+            {
+              "name" : "combo-code-value-quantity",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-combo-code-value-quantity",
+              "type" : "composite",
+              "documentation" : "Code and quantity value parameter pair, including in components"
+            },
+            {
+              "name" : "subject",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-subject",
+              "type" : "reference",
+              "documentation" : "The subject that the observation is about"
+            },
+            {
+              "name" : "component-data-absent-reason",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-component-data-absent-reason",
+              "type" : "token",
+              "documentation" : "The reason why the expected value in the element Observation.component.value[x] is missing."
+            },
+            {
+              "name" : "value-concept",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-value-concept",
+              "type" : "token",
+              "documentation" : "The value of the observation, if the value is a CodeableConcept"
+            },
+            {
+              "name" : "value-date",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-value-date",
+              "type" : "date",
+              "documentation" : "The value of the observation, if the value is a date or period of time"
+            },
+            {
+              "name" : "focus",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-focus",
+              "type" : "reference",
+              "documentation" : "The focus of an observation when the focus is not the patient of record."
+            },
+            {
+              "name" : "derived-from",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-derived-from",
+              "type" : "reference",
+              "documentation" : "Related measurements the observation is made from"
+            },
+            {
+              "name" : "part-of",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-part-of",
+              "type" : "reference",
+              "documentation" : "Part of referenced event"
+            },
+            {
+              "name" : "has-member",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-has-member",
+              "type" : "reference",
+              "documentation" : "Related resource that belongs to the Observation group"
+            },
+            {
+              "name" : "code-value-string",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-code-value-string",
+              "type" : "composite",
+              "documentation" : "Code and string value parameter pair"
+            },
+            {
+              "name" : "component-code-value-quantity",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-component-code-value-quantity",
+              "type" : "composite",
+              "documentation" : "Component code and component quantity value parameter pair"
+            },
+            {
+              "name" : "based-on",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-based-on",
+              "type" : "reference",
+              "documentation" : "Reference to the service request."
+            },
+            {
+              "name" : "code-value-date",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-code-value-date",
+              "type" : "composite",
+              "documentation" : "Code and date/time value parameter pair"
+            },
+            {
+              "name" : "patient",
+              "definition" : "http://hl7.org/fhir/SearchParameter/clinical-patient",
+              "type" : "reference",
+              "documentation" : "The subject that the observation is about (if patient)"
+            },
+            {
+              "name" : "specimen",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-specimen",
+              "type" : "reference",
+              "documentation" : "Specimen used for this observation"
+            },
+            {
+              "name" : "component-code",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-component-code",
+              "type" : "token",
+              "documentation" : "The component code of the observation type"
+            },
+            {
+              "name" : "code-value-quantity",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-code-value-quantity",
+              "type" : "composite",
+              "documentation" : "Code and quantity value parameter pair"
+            },
+            {
+              "name" : "combo-code-value-concept",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-combo-code-value-concept",
+              "type" : "composite",
+              "documentation" : "Code and coded value parameter pair, including in components"
+            },
+            {
+              "name" : "value-string",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-value-string",
+              "type" : "string",
+              "documentation" : "The value of the observation, if the value is a string, and also searches in CodeableConcept.text"
+            },
+            {
+              "name" : "identifier",
+              "definition" : "http://hl7.org/fhir/SearchParameter/clinical-identifier",
+              "type" : "token",
+              "documentation" : "The unique id for a particular observation"
+            },
+            {
+              "name" : "performer",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-performer",
+              "type" : "reference",
+              "documentation" : "Who performed the observation"
+            },
+            {
+              "name" : "combo-code",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-combo-code",
+              "type" : "token",
+              "documentation" : "The code of the observation type or component type"
+            },
+            {
+              "name" : "method",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-method",
+              "type" : "token",
+              "documentation" : "The method used for the observation"
+            },
+            {
+              "name" : "value-quantity",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-value-quantity",
+              "type" : "quantity",
+              "documentation" : "The value of the observation, if the value is a Quantity, or a SampledData (just search on the bounds of the values in sampled data)"
+            },
+            {
+              "name" : "component-value-quantity",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-component-value-quantity",
+              "type" : "quantity",
+              "documentation" : "The value of the component observation, if the value is a Quantity, or a SampledData (just search on the bounds of the values in sampled data)"
+            },
+            {
+              "name" : "data-absent-reason",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-data-absent-reason",
+              "type" : "token",
+              "documentation" : "The reason why the expected value in the element Observation.value[x] is missing."
+            },
+            {
+              "name" : "combo-value-quantity",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-combo-value-quantity",
+              "type" : "quantity",
+              "documentation" : "The value or component value of the observation, if the value is a Quantity, or a SampledData (just search on the bounds of the values in sampled data)"
+            },
+            {
+              "name" : "encounter",
+              "definition" : "http://hl7.org/fhir/SearchParameter/clinical-encounter",
+              "type" : "reference",
+              "documentation" : "Encounter related to the observation"
+            },
+            {
+              "name" : "code-value-concept",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-code-value-concept",
+              "type" : "composite",
+              "documentation" : "Code and coded value parameter pair"
+            },
+            {
+              "name" : "component-code-value-concept",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-component-code-value-concept",
+              "type" : "composite",
+              "documentation" : "Component code and component coded value parameter pair"
+            },
+            {
+              "name" : "component-value-concept",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-component-value-concept",
+              "type" : "token",
+              "documentation" : "The value of the component observation, if the value is a CodeableConcept"
+            },
+            {
+              "name" : "category",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-category",
+              "type" : "token",
+              "documentation" : "The classification of the type of observation"
+            },
+            {
+              "name" : "device",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-device",
+              "type" : "reference",
+              "documentation" : "The Device that generated the observation data."
+            },
+            {
+              "name" : "combo-value-concept",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-combo-value-concept",
+              "type" : "token",
+              "documentation" : "The value or component value of the observation, if the value is a CodeableConcept"
+            },
+            {
+              "name" : "status",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Observation-status",
+              "type" : "token",
+              "documentation" : "The status of the observation"
+            }]
+        }
+      ],
+      "interaction": [
+        {
+          "code": "transaction",
+          "documentation": "Implemented per the specification (or Insert other doco here)"
+        },
+        {
+          "code": "batch",
+          "documentation": "Implemented per the specification (or Insert other doco here)"
+        }
+      ],
+      "searchParam": [
+        {
+          "name": "_text",
+          "definition": "http://hl7.org/fhir/SearchParameter/DomainResource-text",
+          "type": "string",
+          "documentation": "Search on the narrative of the resource"
+        },
+        {
+          "name": "_list",
+          "definition": "http://hl7.org/fhir/SearchParameter/Resource-list",
+          "type": "token",
+          "documentation": "Retrieval of resources that are referenced by a List resource"
+        },
+        {
+          "name": "_has",
+          "definition": "http://hl7.org/fhir/SearchParameter/Resource-has",
+          "type": "composite",
+          "documentation": "Provides support for reverse chaining"
+        },
+        {
+          "name": "_type",
+          "definition": "http://hl7.org/fhir/SearchParameter/Resource-type",
+          "type": "token",
+          "documentation": "Type of resource (when doing cross-resource search"
+        },
+        {
+          "name": "_sort",
+          "definition": "http://hl7.org/fhir/SearchParameter/Resource-source",
+          "type": "token",
+          "documentation": "How to sort the resources when returning"
+        },
+        {
+          "name": "_count",
+          "definition": "http://hl7.org/fhir/SearchParameter/Resource-count",
+          "type": "number",
+          "documentation": "How many resources to return"
+        },
+        {
+          "name": "_include",
+          "definition": "http://hl7.org/fhir/SearchParameter/Resource-include",
+          "type": "token",
+          "documentation": "Control over returning additional resources (see spec)"
+        },
+        {
+          "name": "_revinclude",
+          "definition": "http://hl7.org/fhir/SearchParameter/Resource-revinclude",
+          "type": "token",
+          "documentation": "Control over returning additional resources (see spec)"
+        },
+        {
+          "name": "_summary",
+          "definition": "http://hl7.org/fhir/SearchParameter/Resource-summary",
+          "type": "token",
+          "documentation": "What kind of information to return"
+        },
+        {
+          "name": "_elements",
+          "definition": "http://hl7.org/fhir/SearchParameter/Resource-elements",
+          "type": "string",
+          "documentation": "What kind of information to return"
+        },
+        {
+          "name": "_profile",
+          "definition": "http://hl7.org/fhir/SearchParameter/Resource-profile",
+          "type": "uri",
+          "documentation": "Profiles this resource claims to conform to"
+        },
+        {
+          "name": "_lastUpdated",
+          "definition": "http://hl7.org/fhir/SearchParameter/Resource-lastUpdated",
+          "type": "date",
+          "documentation": "When the resource version last changed"
+        },
+        {
+          "name": "_tag",
+          "definition": "http://hl7.org/fhir/SearchParameter/Resource-tag",
+          "type": "token",
+          "documentation": "Tags applied to this resource"
+        },
+        {
+          "name": "_security",
+          "definition": "http://hl7.org/fhir/SearchParameter/Resource-security",
+          "type": "token",
+          "documentation": "Security Labels applied to this resource"
+        },
+        {
+          "name": "_source",
+          "definition": "http://hl7.org/fhir/SearchParameter/Resource-source",
+          "type": "uri",
+          "documentation": "Identifies where the resource comes from"
+        },
+        {
+          "name": "_id",
+          "definition": "http://hl7.org/fhir/SearchParameter/Resource-id",
+          "type": "token",
+          "documentation": "Logical id of this artifact"
+        }
+      ],
+      "operation": [
+        {
+          "name": "validate",
+          "definition": "http://hl7.org/fhir/OperationDefinition/Resource-validate"
+        },
+        {
+          "name": "meta",
+          "definition": "http://hl7.org/fhir/OperationDefinition/Resource-meta"
+        },
+        {
+          "name": "meta-add",
+          "definition": "http://hl7.org/fhir/OperationDefinition/Resource-meta-add"
+        },
+        {
+          "name": "meta-delete",
+          "definition": "http://hl7.org/fhir/OperationDefinition/Resource-meta-delete"
+        },
+        {
+          "name": "document",
+          "definition": "http://hl7.org/fhir/OperationDefinition/Composition-document"
+        },
+        {
+          "name": "expand",
+          "definition": "http://hl7.org/fhir/OperationDefinition/ValueSet-expand"
+        }
+      ]
+    }
+  ]
+}

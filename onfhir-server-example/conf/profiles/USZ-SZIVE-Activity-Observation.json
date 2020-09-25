@@ -1,0 +1,934 @@
+{
+  "resourceType": "StructureDefinition",
+  "url": "http://u-szeged.hu/fhir/StructureDefinition/usz-szive-activity-observation",
+  "name": "USZSZIVEActivityObservation",
+  "status": "draft",
+  "description": "Profile to track patient exercise.",
+  "fhirVersion": "4.0.1",
+  "kind": "resource",
+  "abstract": false,
+  "type": "Observation",
+  "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Observation",
+  "derivation": "constraint",
+  "differential": {
+    "element": [
+      {
+        "id": "Observation.id",
+        "path": "Observation.id",
+        "min": 1
+      },
+      {
+        "id": "Observation.meta",
+        "path": "Observation.meta",
+        "min": 1
+      },
+      {
+        "id": "Observation.meta.id",
+        "path": "Observation.meta.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.meta.versionId",
+        "path": "Observation.meta.versionId",
+        "max": "0"
+      },
+      {
+        "id": "Observation.meta.lastUpdated",
+        "path": "Observation.meta.lastUpdated",
+        "min": 1
+      },
+      {
+        "id": "Observation.meta.source",
+        "path": "Observation.meta.source",
+        "max": "0"
+      },
+      {
+        "id": "Observation.meta.profile",
+        "path": "Observation.meta.profile",
+        "max": "0"
+      },
+      {
+        "id": "Observation.meta.security",
+        "path": "Observation.meta.security",
+        "max": "0"
+      },
+      {
+        "id": "Observation.meta.tag",
+        "path": "Observation.meta.tag",
+        "max": "0"
+      },
+      {
+        "id": "Observation.implicitRules",
+        "path": "Observation.implicitRules",
+        "max": "0"
+      },
+      {
+        "id": "Observation.language",
+        "path": "Observation.language",
+        "max": "0"
+      },
+      {
+        "id": "Observation.text",
+        "path": "Observation.text",
+        "max": "0"
+      },
+      {
+        "id": "Observation.contained",
+        "path": "Observation.contained",
+        "max": "0"
+      },
+      {
+        "id": "Observation.identifier",
+        "path": "Observation.identifier",
+        "max": "0"
+      },
+      {
+        "id": "Observation.basedOn",
+        "path": "Observation.basedOn",
+        "min": 1,
+        "max": "1"
+      },
+      {
+        "id": "Observation.basedOn.id",
+        "path": "Observation.basedOn.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.basedOn.reference",
+        "path": "Observation.basedOn.reference",
+        "min": 1
+      },
+      {
+        "id": "Observation.basedOn.type",
+        "path": "Observation.basedOn.type",
+        "max": "0"
+      },
+      {
+        "id": "Observation.basedOn.identifier",
+        "path": "Observation.basedOn.identifier",
+        "max": "0"
+      },
+      {
+        "id": "Observation.basedOn.display",
+        "path": "Observation.basedOn.display",
+        "max": "0"
+      },
+      {
+        "id": "Observation.partOf",
+        "path": "Observation.partOf",
+        "max": "0"
+      },
+      {
+        "id": "Observation.code.id",
+        "path": "Observation.code.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.code.coding",
+        "path": "Observation.code.coding",
+        "min": 1,
+        "max": "1"
+      },
+      {
+        "id": "Observation.code.coding.id",
+        "path": "Observation.code.coding.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.code.coding.system",
+        "path": "Observation.code.coding.system",
+        "min": 1,
+        "fixedUri": "http://loinc.org"
+      },
+      {
+        "id": "Observation.code.coding.version",
+        "path": "Observation.code.coding.version",
+        "max": "0"
+      },
+      {
+        "id": "Observation.code.coding.code",
+        "path": "Observation.code.coding.code",
+        "min": 1,
+        "fixedCode": "55409-7"
+      },
+      {
+        "id": "Observation.code.coding.display",
+        "path": "Observation.code.coding.display",
+        "min": 1,
+        "fixedString": "Exercise tracking panel"
+      },
+      {
+        "id": "Observation.code.coding.userSelected",
+        "path": "Observation.code.coding.userSelected",
+        "max": "0"
+      },
+      {
+        "id": "Observation.code.text",
+        "path": "Observation.code.text",
+        "min": 1,
+        "fixedString": "Aktivitás felmérés"
+      },
+      {
+        "id": "Observation.subject",
+        "path": "Observation.subject",
+        "min": 1
+      },
+      {
+        "id": "Observation.subject.id",
+        "path": "Observation.subject.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.subject.reference",
+        "path": "Observation.subject.reference",
+        "min": 1
+      },
+      {
+        "id": "Observation.subject.type",
+        "path": "Observation.subject.type",
+        "max": "0"
+      },
+      {
+        "id": "Observation.subject.identifier",
+        "path": "Observation.subject.identifier",
+        "max": "0"
+      },
+      {
+        "id": "Observation.subject.display",
+        "path": "Observation.subject.display",
+        "max": "0"
+      },
+      {
+        "id": "Observation.focus",
+        "path": "Observation.focus",
+        "max": "0"
+      },
+      {
+        "id": "Observation.encounter",
+        "path": "Observation.encounter",
+        "max": "0"
+      },
+      {
+        "id": "Observation.effective[x]",
+        "path": "Observation.effective[x]",
+        "max": "0"
+      },
+      {
+        "id": "Observation.issued",
+        "path": "Observation.issued",
+        "min": 1
+      },
+      {
+        "id": "Observation.performer",
+        "path": "Observation.performer",
+        "min": 1,
+        "max": "1"
+      },
+      {
+        "id": "Observation.performer.id",
+        "path": "Observation.performer.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.performer.reference",
+        "path": "Observation.performer.reference",
+        "min": 1
+      },
+      {
+        "id": "Observation.performer.type",
+        "path": "Observation.performer.type",
+        "max": "0"
+      },
+      {
+        "id": "Observation.performer.identifier",
+        "path": "Observation.performer.identifier",
+        "max": "0"
+      },
+      {
+        "id": "Observation.performer.display",
+        "path": "Observation.performer.display",
+        "max": "0"
+      },
+      {
+        "id": "Observation.value[x]",
+        "path": "Observation.value[x]",
+        "max": "0",
+        "type": [
+          {
+            "code": "CodeableConcept"
+          },
+          {
+            "code": "string"
+          },
+          {
+            "code": "integer"
+          },
+          {
+            "code": "Range"
+          },
+          {
+            "code": "Ratio"
+          },
+          {
+            "code": "SampledData"
+          }
+        ]
+      },
+      {
+        "id": "Observation.dataAbsentReason",
+        "path": "Observation.dataAbsentReason",
+        "max": "0"
+      },
+      {
+        "id": "Observation.interpretation",
+        "path": "Observation.interpretation",
+        "max": "0"
+      },
+      {
+        "id": "Observation.note",
+        "path": "Observation.note",
+        "max": "0"
+      },
+      {
+        "id": "Observation.bodySite",
+        "path": "Observation.bodySite",
+        "max": "0"
+      },
+      {
+        "id": "Observation.method",
+        "path": "Observation.method",
+        "max": "0"
+      },
+      {
+        "id": "Observation.specimen",
+        "path": "Observation.specimen",
+        "max": "0"
+      },
+      {
+        "id": "Observation.device",
+        "path": "Observation.device",
+        "max": "0"
+      },
+      {
+        "id": "Observation.referenceRange",
+        "path": "Observation.referenceRange",
+        "max": "0"
+      },
+      {
+        "id": "Observation.hasMember",
+        "path": "Observation.hasMember",
+        "max": "0"
+      },
+      {
+        "id": "Observation.derivedFrom",
+        "path": "Observation.derivedFrom",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component",
+        "path": "Observation.component",
+        "slicing": {
+          "discriminator": [
+            {
+              "type": "value",
+              "path": "code.coding.code"
+            }
+          ],
+          "rules": "open"
+        },
+        "min": 1
+      },
+      {
+        "id": "Observation.component.id",
+        "path": "Observation.component.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component.code.id",
+        "path": "Observation.component.code.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component.code.coding",
+        "path": "Observation.component.code.coding",
+        "min": 1,
+        "max": "1"
+      },
+      {
+        "id": "Observation.component.code.coding.id",
+        "path": "Observation.component.code.coding.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component.code.coding.system",
+        "path": "Observation.component.code.coding.system",
+        "min": 1
+      },
+      {
+        "id": "Observation.component.code.coding.version",
+        "path": "Observation.component.code.coding.version",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component.code.coding.code",
+        "path": "Observation.component.code.coding.code",
+        "min": 1
+      },
+      {
+        "id": "Observation.component.code.coding.display",
+        "path": "Observation.component.code.coding.display",
+        "min": 1
+      },
+      {
+        "id": "Observation.component.code.coding.userSelected",
+        "path": "Observation.component.code.coding.userSelected",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component.dataAbsentReason",
+        "path": "Observation.component.dataAbsentReason",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component.interpretation",
+        "path": "Observation.component.interpretation",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component.referenceRange",
+        "path": "Observation.component.referenceRange",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:activityType",
+        "path": "Observation.component",
+        "sliceName": "activityType",
+        "min": 1,
+        "max": "1"
+      },
+      {
+        "id": "Observation.component:activityType.id",
+        "path": "Observation.component.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:activityType.code.id",
+        "path": "Observation.component.code.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:activityType.code.coding",
+        "path": "Observation.component.code.coding",
+        "min": 1,
+        "max": "1"
+      },
+      {
+        "id": "Observation.component:activityType.code.coding.id",
+        "path": "Observation.component.code.coding.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:activityType.code.coding.system",
+        "path": "Observation.component.code.coding.system",
+        "min": 1,
+        "fixedUri": "http://loinc.org"
+      },
+      {
+        "id": "Observation.component:activityType.code.coding.version",
+        "path": "Observation.component.code.coding.version",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:activityType.code.coding.code",
+        "path": "Observation.component.code.coding.code",
+        "min": 1,
+        "fixedCode": "73985-4"
+      },
+      {
+        "id": "Observation.component:activityType.code.coding.display",
+        "path": "Observation.component.code.coding.display",
+        "min": 1,
+        "fixedString": "Exercise Activity"
+      },
+      {
+        "id": "Observation.component:activityType.code.coding.userSelected",
+        "path": "Observation.component.code.coding.userSelected",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:activityType.code.text",
+        "path": "Observation.component.code.text",
+        "min": 1,
+        "fixedString": "Aktivitás fajtája"
+      },
+      {
+        "id": "Observation.component:activityType.value[x]",
+        "path": "Observation.component.value[x]",
+        "slicing": {
+          "discriminator": [
+            {
+              "type": "type",
+              "path": "$this"
+            }
+          ],
+          "rules": "open"
+        }
+      },
+      {
+        "id": "Observation.component:activityType.value[x]:valueCodeableConcept",
+        "path": "Observation.component.value[x]",
+        "sliceName": "valueCodeableConcept",
+        "type": [
+          {
+            "code": "CodeableConcept"
+          }
+        ]
+      },
+      {
+        "id": "Observation.component:activityType.value[x]:valueCodeableConcept.id",
+        "path": "Observation.component.value[x].id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:activityType.value[x]:valueCodeableConcept.coding.id",
+        "path": "Observation.component.value[x].coding.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:activityType.value[x]:valueCodeableConcept.coding.system",
+        "path": "Observation.component.value[x].coding.system",
+        "min": 1
+      },
+      {
+        "id": "Observation.component:activityType.value[x]:valueCodeableConcept.coding.version",
+        "path": "Observation.component.value[x].coding.version",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:activityType.value[x]:valueCodeableConcept.coding.code",
+        "path": "Observation.component.value[x].coding.code",
+        "min": 1
+      },
+      {
+        "id": "Observation.component:activityType.value[x]:valueCodeableConcept.coding.display",
+        "path": "Observation.component.value[x].coding.display",
+        "min": 1
+      },
+      {
+        "id": "Observation.component:activityType.value[x]:valueCodeableConcept.coding.userSelected",
+        "path": "Observation.component.value[x].coding.userSelected",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:activityType.value[x]:valueCodeableConcept.text",
+        "path": "Observation.component.value[x].text",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:activityType.dataAbsentReason",
+        "path": "Observation.component.dataAbsentReason",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:activityType.interpretation",
+        "path": "Observation.component.interpretation",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:activityType.referenceRange",
+        "path": "Observation.component.referenceRange",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:maxHeartBeat",
+        "path": "Observation.component",
+        "sliceName": "maxHeartBeat",
+        "max": "1"
+      },
+      {
+        "id": "Observation.component:maxHeartBeat.id",
+        "path": "Observation.component.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:maxHeartBeat.code.id",
+        "path": "Observation.component.code.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:maxHeartBeat.code.coding",
+        "path": "Observation.component.code.coding",
+        "min": 1,
+        "max": "1"
+      },
+      {
+        "id": "Observation.component:maxHeartBeat.code.coding.id",
+        "path": "Observation.component.code.coding.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:maxHeartBeat.code.coding.system",
+        "path": "Observation.component.code.coding.system",
+        "min": 1,
+        "fixedUri": "http://loinc.org"
+      },
+      {
+        "id": "Observation.component:maxHeartBeat.code.coding.version",
+        "path": "Observation.component.code.coding.version",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:maxHeartBeat.code.coding.code",
+        "path": "Observation.component.code.coding.code",
+        "min": 1,
+        "fixedCode": "55422-0"
+      },
+      {
+        "id": "Observation.component:maxHeartBeat.code.coding.display",
+        "path": "Observation.component.code.coding.display",
+        "min": 1,
+        "fixedString": "Heart rate Encounter maximum"
+      },
+      {
+        "id": "Observation.component:maxHeartBeat.code.coding.userSelected",
+        "path": "Observation.component.code.coding.userSelected",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:maxHeartBeat.code.text",
+        "path": "Observation.component.code.text",
+        "min": 1,
+        "fixedString": "Maximum pulzusszám"
+      },
+      {
+        "id": "Observation.component:maxHeartBeat.value[x]",
+        "path": "Observation.component.value[x]",
+        "slicing": {
+          "discriminator": [
+            {
+              "type": "type",
+              "path": "$this"
+            }
+          ],
+          "rules": "open"
+        }
+      },
+      {
+        "id": "Observation.component:maxHeartBeat.value[x]:valueQuantity",
+        "path": "Observation.component.value[x]",
+        "sliceName": "valueQuantity",
+        "type": [
+          {
+            "code": "Quantity"
+          }
+        ]
+      },
+      {
+        "id": "Observation.component:maxHeartBeat.value[x]:valueQuantity.id",
+        "path": "Observation.component.value[x].id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:maxHeartBeat.value[x]:valueQuantity.value",
+        "path": "Observation.component.value[x].value",
+        "min": 1
+      },
+      {
+        "id": "Observation.component:maxHeartBeat.value[x]:valueQuantity.comparator",
+        "path": "Observation.component.value[x].comparator",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:maxHeartBeat.value[x]:valueQuantity.unit",
+        "path": "Observation.component.value[x].unit",
+        "min": 1,
+        "fixedString": "/min"
+      },
+      {
+        "id": "Observation.component:maxHeartBeat.value[x]:valueQuantity.system",
+        "path": "Observation.component.value[x].system",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:maxHeartBeat.value[x]:valueQuantity.code",
+        "path": "Observation.component.value[x].code",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:maxHeartBeat.dataAbsentReason",
+        "path": "Observation.component.dataAbsentReason",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:maxHeartBeat.interpretation",
+        "path": "Observation.component.interpretation",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:maxHeartBeat.referenceRange",
+        "path": "Observation.component.referenceRange",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:distance",
+        "path": "Observation.component",
+        "sliceName": "distance",
+        "max": "1"
+      },
+      {
+        "id": "Observation.component:distance.id",
+        "path": "Observation.component.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:distance.code.id",
+        "path": "Observation.component.code.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:distance.code.coding",
+        "path": "Observation.component.code.coding",
+        "min": 1,
+        "max": "1"
+      },
+      {
+        "id": "Observation.component:distance.code.coding.id",
+        "path": "Observation.component.code.coding.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:distance.code.coding.system",
+        "path": "Observation.component.code.coding.system",
+        "min": 1,
+        "fixedUri": "http://loinc.org"
+      },
+      {
+        "id": "Observation.component:distance.code.coding.version",
+        "path": "Observation.component.code.coding.version",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:distance.code.coding.code",
+        "path": "Observation.component.code.coding.code",
+        "min": 1,
+        "fixedCode": "55412-1"
+      },
+      {
+        "id": "Observation.component:distance.code.coding.display",
+        "path": "Observation.component.code.coding.display",
+        "min": 1,
+        "fixedString": "Exercise distance"
+      },
+      {
+        "id": "Observation.component:distance.code.coding.userSelected",
+        "path": "Observation.component.code.coding.userSelected",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:distance.code.text",
+        "path": "Observation.component.code.text",
+        "min": 1,
+        "fixedString": "Megtett távolság"
+      },
+      {
+        "id": "Observation.component:distance.value[x]",
+        "path": "Observation.component.value[x]",
+        "slicing": {
+          "discriminator": [
+            {
+              "type": "type",
+              "path": "$this"
+            }
+          ],
+          "rules": "open"
+        }
+      },
+      {
+        "id": "Observation.component:distance.value[x]:valueQuantity",
+        "path": "Observation.component.value[x]",
+        "sliceName": "valueQuantity",
+        "type": [
+          {
+            "code": "Quantity"
+          }
+        ]
+      },
+      {
+        "id": "Observation.component:distance.value[x]:valueQuantity.id",
+        "path": "Observation.component.value[x].id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:distance.value[x]:valueQuantity.value",
+        "path": "Observation.component.value[x].value",
+        "min": 1
+      },
+      {
+        "id": "Observation.component:distance.value[x]:valueQuantity.comparator",
+        "path": "Observation.component.value[x].comparator",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:distance.value[x]:valueQuantity.unit",
+        "path": "Observation.component.value[x].unit",
+        "min": 1,
+        "fixedString": "km"
+      },
+      {
+        "id": "Observation.component:distance.value[x]:valueQuantity.system",
+        "path": "Observation.component.value[x].system",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:distance.value[x]:valueQuantity.code",
+        "path": "Observation.component.value[x].code",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:distance.dataAbsentReason",
+        "path": "Observation.component.dataAbsentReason",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:distance.interpretation",
+        "path": "Observation.component.interpretation",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:distance.referenceRange",
+        "path": "Observation.component.referenceRange",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:burnedCalories",
+        "path": "Observation.component",
+        "sliceName": "burnedCalories",
+        "max": "1"
+      },
+      {
+        "id": "Observation.component:burnedCalories.id",
+        "path": "Observation.component.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:burnedCalories.code.id",
+        "path": "Observation.component.code.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:burnedCalories.code.coding",
+        "path": "Observation.component.code.coding",
+        "min": 1,
+        "max": "1"
+      },
+      {
+        "id": "Observation.component:burnedCalories.code.coding.id",
+        "path": "Observation.component.code.coding.id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:burnedCalories.code.coding.system",
+        "path": "Observation.component.code.coding.system",
+        "min": 1,
+        "fixedUri": "http://loinc.org"
+      },
+      {
+        "id": "Observation.component:burnedCalories.code.coding.version",
+        "path": "Observation.component.code.coding.version",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:burnedCalories.code.coding.code",
+        "path": "Observation.component.code.coding.code",
+        "min": 1,
+        "fixedCode": "55421-2"
+      },
+      {
+        "id": "Observation.component:burnedCalories.code.coding.display",
+        "path": "Observation.component.code.coding.display",
+        "min": 1,
+        "fixedString": "Calories burned Machine estimate"
+      },
+      {
+        "id": "Observation.component:burnedCalories.code.coding.userSelected",
+        "path": "Observation.component.code.coding.userSelected",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:burnedCalories.code.text",
+        "path": "Observation.component.code.text",
+        "min": 1,
+        "fixedString": "Égetett kalóriák száma"
+      },
+      {
+        "id": "Observation.component:burnedCalories.value[x]",
+        "path": "Observation.component.value[x]",
+        "slicing": {
+          "discriminator": [
+            {
+              "type": "type",
+              "path": "$this"
+            }
+          ],
+          "rules": "open"
+        }
+      },
+      {
+        "id": "Observation.component:burnedCalories.value[x]:valueQuantity",
+        "path": "Observation.component.value[x]",
+        "sliceName": "valueQuantity",
+        "type": [
+          {
+            "code": "Quantity"
+          }
+        ]
+      },
+      {
+        "id": "Observation.component:burnedCalories.value[x]:valueQuantity.id",
+        "path": "Observation.component.value[x].id",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:burnedCalories.value[x]:valueQuantity.value",
+        "path": "Observation.component.value[x].value",
+        "min": 1
+      },
+      {
+        "id": "Observation.component:burnedCalories.value[x]:valueQuantity.comparator",
+        "path": "Observation.component.value[x].comparator",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:burnedCalories.value[x]:valueQuantity.unit",
+        "path": "Observation.component.value[x].unit",
+        "min": 1,
+        "fixedString": "kcal"
+      },
+      {
+        "id": "Observation.component:burnedCalories.value[x]:valueQuantity.system",
+        "path": "Observation.component.value[x].system",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:burnedCalories.value[x]:valueQuantity.code",
+        "path": "Observation.component.value[x].code",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:burnedCalories.dataAbsentReason",
+        "path": "Observation.component.dataAbsentReason",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:burnedCalories.interpretation",
+        "path": "Observation.component.interpretation",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:burnedCalories.referenceRange",
+        "path": "Observation.component.referenceRange",
+        "max": "0"
+      }
+    ]
+  }
+}

@@ -7,18 +7,6 @@
   },
   "extension": [
     {
-      "url": "https://fhir.nhs.uk/R4/StructureDefinition/Extension-UKCore-EthnicCategory",
-      "valueCodeableConcept": {
-        "coding": [
-          {
-            "system": "https://fhir.nhs.uk/R4/CodeSystem/UKCore-EthnicCategory",
-            "code": "A",
-            "display": "British, Mixed British"
-          }
-        ]
-      }
-    },
-    {
       "url": "https://fhir.nhs.uk/R4/StructureDefinition/Extension-UKCore-NHSCommunication",
       "extension": [
         {
