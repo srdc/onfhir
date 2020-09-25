@@ -390,7 +390,7 @@ object SearchParameterConfigurator extends RegexParsers {
    */
   def parsePathExpression(expr:String):(String, Seq[(String, String)]) = {
     //Assume that parenthesis cover the expression
-    var nexpr =
+    val nexpr =
       if(expr.head == '(') { //If there are parenthesis around remove them
         //Assuming only one as e.g. (Observation.value as CodeableConcept).text", (ActivityDefinition.useContext.value as CodeableConcept)
         val casting = expr.drop(1).split(" as ")
@@ -405,7 +405,7 @@ object SearchParameterConfigurator extends RegexParsers {
         expr
 
     //Split the path, and drop the Resource type part
-    var paths = nexpr.split('.')
+    var paths = splitExpressionPath(nexpr) //nexpr.split('.')
     if(paths.head.head.isUpper) //this is for special cases where they don't use resource type at the beginning
       paths = paths.drop(1)
 
@@ -465,6 +465,36 @@ object SearchParameterConfigurator extends RegexParsers {
       throw new Exception(s"Cannot process SearchParameter path expression '$expr'!")
 
     path -> restrictions
+  }
+
+  private def splitExpressionPath(path:String):Seq[String] = {
+    val i = findIndexOfNextPathDivider(path)
+    if(i == -1)
+      Seq(path)
+    else
+      path.slice(0, i) +: splitExpressionPath(path.drop(i+1))
+  }
+
+  private def findIndexOfNextPathDivider(path:String):Int = {
+    val indexOfDot = path.indexOf('.')
+    if (indexOfDot == -1)
+      indexOfDot
+    else {
+      val pathItem = path.slice(0, indexOfDot)
+      if (pathItem.contains('''))
+        path
+          .dropWhile(_ != ''')
+          .drop(1)
+          .dropWhile(_!=''')
+          .drop(1)
+
+        | pathItem.contains("&#39;")) {
+
+        indexOfDot + 1 + findIndexOfNextPathDivider(path.drop(indexOfDot + 1))
+      } else {
+        indexOfDot
+      }
+    }
   }
 
   private def constructRestrictionPrefix(pathLength:Int, i:Int):String = {

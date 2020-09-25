@@ -131,6 +131,14 @@ class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None) {
     evaluator.visit(parsedExpr)
     evaluator.getFoundPaths
   }
+
+  def getPathItemsWithRestrictions(expr:String):Seq[(String, Seq[(String, String)])] = {
+    val parsedExpr = parse(expr)
+
+    val pathExtractor = new FhirPathExtractor(parsedExpr)
+    pathExtractor.extractPathItems()
+  }
+
 }
 
 object FhirPathEvaluator {

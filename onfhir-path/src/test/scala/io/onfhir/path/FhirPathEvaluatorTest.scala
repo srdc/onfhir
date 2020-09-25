@@ -35,7 +35,7 @@ class FhirPathEvaluatorTest extends Specification {
   sequential
 
   "FHIR Path Evaluator" should {
-
+/*
     "evaluate simple path expression not starting with resource type" in {
       var result = FhirPathEvaluator().evaluate("subject", observation)
       result.length mustEqual 1
@@ -664,6 +664,10 @@ class FhirPathEvaluatorTest extends Specification {
       result.length mustEqual 1
       result.head mustEqual Seq("valueQuantity" -> None, "value" -> None)
     }
-
+*/
+    "get path items and restrictions defined on them indicated by FHIR Path path expression" in {
+      var result = FhirPathEvaluator().getPathItemsWithRestrictions("ActivityDefinition.useContext.code")
+      result mustEqual Seq("ActivityDefinition" -> Nil, "useContext" -> Nil, "code" -> Nil)
+    }
   }
 }

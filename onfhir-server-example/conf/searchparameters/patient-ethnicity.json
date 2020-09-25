@@ -1,0 +1,33 @@
+{
+  "resourceType": "SearchParameter",
+  "id": "context-extension",
+  "url": "https://hyp.saglik.gov.tr/fhir/SearchParameter/context-extension",
+  "name": "context",
+  "status": "active",
+  "publisher": "SRDC A.S.",
+  "code": "context",
+  "base": [
+    "Goal",
+    "FamilyMemberHistory",
+    "CarePlan",
+    "MedicationRequest",
+    "ServiceRequest",
+    "CommunicationRequest",
+    "Condition",
+    "Observation",
+    "MedicationStatement",
+    "Procedure",
+    "RiskAssessment",
+    "DiagnosticReport",
+    "Media",
+    "Immunization",
+    "QuestionnaireResponse"
+  ],
+  "type": "reference",
+  "description": "Context search parameter for related resources for EpisodeOfCare (R4 removes the context element)",
+  "xpath": "f:Resource/f:extension[@url='https://hyp.saglik.gov.tr/fhir/StructureDefinition/context']/f:valueReference",
+  "xpathUsage": "normal",
+  "target": [
+    "EpisodeOfCare"
+  ]
+}

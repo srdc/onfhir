@@ -185,7 +185,7 @@ object FHIRApiValidator {
             if(resourceProfiles.isEmpty)
               Some(s"Profile element does not exist. Resource should conform to one of the supported profiles ($supportedProfiles) for resource type ${_rtype}!!! ")
             else
-              Some(s"Indicated profiles ($resourceProfiles) does not match with supported profiles ($supportedProfiles) for resource type ${_rtype}!!! ")
+              Some(s"Indicated profiles ($resourceProfiles) does not match with supported profiles (${supportedProfiles ++ Set(profile.get)}) for resource type ${_rtype}!!! ")
             ,
             Seq(".meta.profile")
           )
