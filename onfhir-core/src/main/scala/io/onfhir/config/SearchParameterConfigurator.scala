@@ -3,6 +3,7 @@ package io.onfhir.config
 import org.slf4j.{Logger, LoggerFactory}
 import io.onfhir.api._
 import io.onfhir.api.util.{BaseFhirProfileHandler, FHIRUtil}
+import io.onfhir.path.FhirPathEvaluator
 
 import scala.util.parsing.combinator.RegexParsers
 import scala.util.{Success, Try}
@@ -370,8 +371,14 @@ object SearchParameterConfigurator extends RegexParsers {
     expr.trim
       .split('|')
       .map(_.trim)
-      .filter(p => p.contains(resourceType + ".") || !p.contains('.'))//Either it starts
-      .map(parsePathExpression)
+      .map(e => parsePathExpression(e))
+      .filter(p => p._1.startsWith(resourceType+".") || p._1.head.isLower)
+      .map(p =>
+        if(p._1.head.isLower)
+          p
+        else
+          p._1.drop(resourceType.length+1) -> p._2
+      )
   }
 
   /**
@@ -389,6 +396,46 @@ object SearchParameterConfigurator extends RegexParsers {
    * @return
    */
   def parsePathExpression(expr:String):(String, Seq[(String, String)]) = {
+    val paths = FhirPathEvaluator().getPathItemsWithRestrictions(expr)
+
+    val finalPaths =
+      paths
+      .zipWithIndex
+      .map(p => {
+        val elPath = if (p._1._1 == "extension") "extension[i]" else p._1._1
+
+        if (p._1._2.nonEmpty) {
+            //Prepare the prefix for restriction
+            val numOfStepsToFindRestrictionElem = paths.length - (p._2 + 1)
+            val prefix =
+              if (numOfStepsToFindRestrictionElem > 0)
+                (0 until numOfStepsToFindRestrictionElem).map(_ => "@.").mkString("") //prepare a prefix to indicate the position of restriction from right e.g @.type means restriction is on path element one before from the end
+              else ""
+            elPath -> p._1._2.map(i => (prefix + i._1) -> i._2)
+        } else
+            elPath -> Nil
+      })
+
+    val finalPath = finalPaths.map(_._1).mkString(".")
+    val finalRestrictions = finalPaths.flatMap(_._2)
+    finalPath -> finalRestrictions
+  }
+
+  /**
+   * Parse a single path expression that are given in search parameter definitions
+   * @param expr  FHIR Path Expression indicating the paths of search parameter
+   *              e.g.
+   *                - Account.subject.where(resolve() is Patient)  * with a resolve
+   *                - ActivityDefinition.useContext.code           * simple example
+   *                - ActivityDefinition.relatedArtifact.where(type='composed-of').resource   * with a restriction
+   *                - Condition.abatement.as(Age)  * with as
+   *                - (ActivityDefinition.useContext.value as CodeableConcept) * with as
+   *                - Bundle.entry[0].resource   * with an index
+   *                - Patient.deceased.exists() and Patient.deceased != false * special case
+   *
+   * @return
+   */
+  /*def parsePathExpression(expr:String):(String, Seq[(String, String)]) = {
     //Assume that parenthesis cover the expression
     val nexpr =
       if(expr.head == '(') { //If there are parenthesis around remove them
@@ -405,7 +452,7 @@ object SearchParameterConfigurator extends RegexParsers {
         expr
 
     //Split the path, and drop the Resource type part
-    var paths = splitExpressionPath(nexpr) //nexpr.split('.')
+    var paths = nexpr.split('.')
     if(paths.head.head.isUpper) //this is for special cases where they don't use resource type at the beginning
       paths = paths.drop(1)
 
@@ -465,37 +512,7 @@ object SearchParameterConfigurator extends RegexParsers {
       throw new Exception(s"Cannot process SearchParameter path expression '$expr'!")
 
     path -> restrictions
-  }
-
-  private def splitExpressionPath(path:String):Seq[String] = {
-    val i = findIndexOfNextPathDivider(path)
-    if(i == -1)
-      Seq(path)
-    else
-      path.slice(0, i) +: splitExpressionPath(path.drop(i+1))
-  }
-
-  private def findIndexOfNextPathDivider(path:String):Int = {
-    val indexOfDot = path.indexOf('.')
-    if (indexOfDot == -1)
-      indexOfDot
-    else {
-      val pathItem = path.slice(0, indexOfDot)
-      if (pathItem.contains('''))
-        path
-          .dropWhile(_ != ''')
-          .drop(1)
-          .dropWhile(_!=''')
-          .drop(1)
-
-        | pathItem.contains("&#39;")) {
-
-        indexOfDot + 1 + findIndexOfNextPathDivider(path.drop(indexOfDot + 1))
-      } else {
-        indexOfDot
-      }
-    }
-  }
+  }*/
 
   private def constructRestrictionPrefix(pathLength:Int, i:Int):String = {
     val numOfStepsToFindRestrictionElem = pathLength - (i + 1)

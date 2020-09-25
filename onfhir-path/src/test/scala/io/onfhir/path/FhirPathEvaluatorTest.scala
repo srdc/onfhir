@@ -35,7 +35,7 @@ class FhirPathEvaluatorTest extends Specification {
   sequential
 
   "FHIR Path Evaluator" should {
-/*
+
     "evaluate simple path expression not starting with resource type" in {
       var result = FhirPathEvaluator().evaluate("subject", observation)
       result.length mustEqual 1
@@ -664,10 +664,47 @@ class FhirPathEvaluatorTest extends Specification {
       result.length mustEqual 1
       result.head mustEqual Seq("valueQuantity" -> None, "value" -> None)
     }
-*/
+
     "get path items and restrictions defined on them indicated by FHIR Path path expression" in {
+      //Simple expression
       var result = FhirPathEvaluator().getPathItemsWithRestrictions("ActivityDefinition.useContext.code")
       result mustEqual Seq("ActivityDefinition" -> Nil, "useContext" -> Nil, "code" -> Nil)
+
+      result = FhirPathEvaluator().getPathItemsWithRestrictions("code")
+      result mustEqual Seq("code" -> Nil)
+
+      result = FhirPathEvaluator().getPathItemsWithRestrictions("ActivityDefinition.relatedArtifact.where(type='composed-of').resource")
+      result mustEqual Seq("ActivityDefinition" -> Nil, "relatedArtifact" -> Seq("type" -> "composed-of"), "resource" -> Nil)
+
+      result = FhirPathEvaluator().getPathItemsWithRestrictions("ActivityDefinition.relatedArtifact.where(type='true').resource")
+      result mustEqual Seq("ActivityDefinition" -> Nil, "relatedArtifact" -> Seq("type" -> "true"), "resource" -> Nil)
+
+      result = FhirPathEvaluator().getPathItemsWithRestrictions("ActivityDefinition.relatedArtifact.where(type='composed-of' and x='ali').resource")
+      result mustEqual Seq("ActivityDefinition" -> Nil, "relatedArtifact" -> Seq("type" -> "composed-of", "x" -> "ali"), "resource" -> Nil)
+
+      result = FhirPathEvaluator().getPathItemsWithRestrictions("Condition.abatement.as(Age)")
+      result mustEqual Seq("Condition" -> Nil, "abatementAge" -> Nil)
+
+      result = FhirPathEvaluator().getPathItemsWithRestrictions("Observation.value.as(string)")
+      result mustEqual Seq("Observation" -> Nil, "valueString" -> Nil)
+
+      result = FhirPathEvaluator().getPathItemsWithRestrictions("(ActivityDefinition.useContext.value as CodeableConcept)")
+      result mustEqual Seq("ActivityDefinition" -> Nil, "useContext" -> Nil, "valueCodeableConcept" -> Nil)
+
+      result =  FhirPathEvaluator().getPathItemsWithRestrictions("Account.subject.where(resolve() is Patient)")
+      result mustEqual Seq("Account" -> Nil, "subject" -> Nil)
+
+      result = FhirPathEvaluator().getPathItemsWithRestrictions("Bundle.entry[0].resource")
+      result mustEqual Seq("Bundle" -> Nil, "entry[0]" -> Nil, "resource"->Nil)
+
+      result = FhirPathEvaluator().getPathItemsWithRestrictions("Observation.extension('http://a.b.com/x').extension('c').value as Quantity")
+      result mustEqual Seq("Observation" -> Nil, "extension" -> Seq("url" -> "http://a.b.com/x"), "extension" -> Seq("url" -> "c"),  "valueQuantity"->Nil)
+
+      FhirPathEvaluator().getPathItemsWithRestrictions("Observation.where(code.coding.first.code='x').valueQuantity") must throwA[FhirPathException]
+      FhirPathEvaluator().getPathItemsWithRestrictions("Observation.code or Observation.component.code") must throwA[FhirPathException]
+      //Special case "contains" is a keyword in FHIR path grammar
+      result = FhirPathEvaluator().getPathItemsWithRestrictions("ValueSet.expansion.contains.code")
+      result.length mustEqual 4
     }
   }
 }

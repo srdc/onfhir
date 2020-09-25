@@ -1,13 +1,39 @@
 package io.onfhir.path
 
-
 import io.onfhir.path.grammar.{FhirPathExprBaseVisitor, FhirPathExprParser}
-import io.onfhir.path.grammar.FhirPathExprParser.{AndExpressionContext, BooleanLiteralContext, EqualityExpressionContext, ExpressionContext, ExternalConstantTermContext, FunctionContext, FunctionInvocationContext, IdentifierContext, InvocationContext, InvocationExpressionContext, InvocationTermContext, LiteralTermContext, MemberInvocationContext, NumberLiteralContext, ParenthesizedTermContext, StringLiteralContext, TermExpressionContext, ThisInvocationContext}
+import io.onfhir.path.grammar.FhirPathExprParser.{AndExpressionContext, BooleanLiteralContext, EqualityExpressionContext, ExpressionContext, ExternalConstantTermContext, FunctionContext, FunctionInvocationContext, IdentifierContext, InvocationContext, InvocationExpressionContext, InvocationTermContext, LiteralTermContext, MemberInvocationContext, NumberLiteralContext, ParenthesizedTermContext, StringLiteralContext, TermExpressionContext, ThisInvocationContext, TypeExpressionContext}
 
 import scala.collection.JavaConverters._
 
-class FhirPathExtractor(latestPath:Seq[(String, Seq[(String, String)])]) extends FhirPathExprBaseVisitor[Seq[(String, Seq[(String, String)])]] {
+/**
+ * Go over the FHIR Path Expression tree and return the path parts for a FHIR Path path expression (SearchParameter.expression) that defines a path in FHIR content
+ * Each path part consist of element name e.g. code (or element name with index e.g coding[1]) and a set of restrictions on the path (e.g. "type" -> "email")
+ * e.g.
+ *                - Account.subject.where(resolve() is Patient)                            --> Seq(Account -> Nil, subject -> Nil)
+ *                - ActivityDefinition.useContext.code                                     --> Seq(ActivityDefinition -> Nil, useContext -> Nil, code -> Nil)
+ *                - ActivityDefinition.relatedArtifact.where(type='composed-of').resource  --> Seq(ActivityDefinition -> Nil, relatedArtifact -> Seq(type -> composed-of), resource -> Nil)
+ *                - Condition.abatement.as(Age)  * with as                                 --> Seq(Condition -> Nil, abatementAge -> Nil)
+ *                - (ActivityDefinition.useContext.value as CodeableConcept)               --> Seq(ActivityDefinition -> Nil, useContext -> Nil, valueCodeableConcept -> Nil)
+ *                - Bundle.entry[0].resource   * with an index                             --> Seq(Bundle -> Nil, entry[0] -> Nil, resource -> Nil)
 
+ * @param latestPath Latest constructed path until now
+ */
+class FhirPathExtractor(latestPath:Seq[(String, Seq[(String, String)])] = Nil) extends FhirPathExprBaseVisitor[Seq[(String, Seq[(String, String)])]] {
+
+  override def visitParenthesizedTerm(ctx: ParenthesizedTermContext): Seq[(String, Seq[(String, String)])] = {
+    visit(ctx.expression())
+  }
+
+  override def visitTypeExpression(ctx: TypeExpressionContext): Seq[(String, Seq[(String, String)])] = {
+    val op = ctx.getRuleContext().getChild(1).getText
+    if(op != "as")
+      throw new FhirPathException("Invalid FHIR Path path expression!")
+    val path = new FhirPathExtractor(latestPath).visit(ctx.expression())
+
+    val dataType = ctx.typeSpecifier().qualifiedIdentifier().getText
+    val lp = path.last
+    path.dropRight(1) :+ (lp._1 + dataType.capitalize -> lp._2)
+  }
   /**
    * Handle invocation expressions
    * e.g. Member invocation      Patient.given.name
@@ -22,8 +48,20 @@ class FhirPathExtractor(latestPath:Seq[(String, Seq[(String, String)])]) extends
         val fname = fn.function().identifier().getText
         fname match {
           case "where" =>
-            fn.function().paramList().expression() match {
-              case List(wexpr) => wexpr match {
+            val params = fn.function().paramList().expression()
+            if(params.size() !=1)
+              throw new FhirPathException("Invalid FHIR Path path expression!")
+            //This function can only be used if its element is an EqualityExpression with '=' or and AndExpression consisting of same type EqualityExpression
+            params.get(0) match {
+                //e.g. Account.subject.where(resolve() is Patient)  * with a resolve
+                case t:TypeExpressionContext =>
+                  val op = t.getRuleContext().getChild(1).getText
+                  if(op != "is")
+                    throw new FhirPathException("Invalid FHIR Path path expression!")
+                  //We allow this only if the first one is resolve
+                  checkResolve(t.expression())
+
+                  path
                 case a:AndExpressionContext =>
                   val eqExpressions = a.expression().asScala
                   if(!eqExpressions.forall(_.isInstanceOf[EqualityExpressionContext]))
@@ -31,23 +69,32 @@ class FhirPathExtractor(latestPath:Seq[(String, Seq[(String, String)])]) extends
                   val restrictions = eqExpressions.map(_.asInstanceOf[EqualityExpressionContext]).map(handleEqualityExpression)
                   val lp = path.last._1
                   path.dropRight(1) :+ (lp -> restrictions)
+                // e.g. ActivityDefinition.relatedArtifact.where(type='composed-of').resource
                 case e:EqualityExpressionContext =>
                   val restrictions = Seq(handleEqualityExpression(e))
                   val lp = path.last._1
                   path.dropRight(1) :+ (lp -> restrictions)
                 case _ => throw new FhirPathException("Invalid FHIR Path path expression!")
               }
-              case _ => throw new FhirPathException("Invalid FHIR Path path expression!")
-            }
+          // Used for search Parameter paths on extensions
           case "extension" =>
-          case "as" =>
-          case "ofType" =>
-          case "resolve" =>
-          case "exists" =>
+            val params = fn.function().paramList().expression()
+            if(params.size() != 1)
+              throw new FhirPathException("Invalid FHIR Path path expression!")
+            //Find extension URL
+            val url = getStringLiteral(params.get(0))
+            path :+ ("extension" -> Seq("url" -> url))
+          //
+          case "as" | "ofType" =>
+            val params = fn.function().paramList().expression()
+            if(params.size() != 1)
+              throw new FhirPathException("Invalid FHIR Path path expression!")
+            //Find extension URL
+            val dataType = getIdentifier(params.get(0))
+            val lp = path.last
+            path.dropRight(1) :+ (lp._1 + dataType.capitalize -> lp._2)
           case _ => throw new FhirPathException("Invalid FHIR Path path expression ")
         }
-
-        path
       case m:MemberInvocationContext =>
         val path =  new FhirPathExtractor(latestPath).visit(ctx.expression())
         new FhirPathExtractor(path).visitMemberInvocation(m)
@@ -56,26 +103,68 @@ class FhirPathExtractor(latestPath:Seq[(String, Seq[(String, String)])]) extends
     }
   }
 
+  /**
+   * Get the identifier text otherwise return exception
+   * @param expr
+   * @return
+   */
+  private  def getIdentifier(expr:ExpressionContext):String = {
+    expr match {
+      case t:TermExpressionContext => t.term() match {
+        case i:InvocationTermContext => i.invocation() match {
+          case mi:MemberInvocationContext => FhirPathLiteralEvaluator.parseIdentifier(mi.identifier().getText)
+          case _ =>  throw new FhirPathException("Invalid FHIR Path path expression!")
+        }
+        case _ => throw new FhirPathException("Invalid FHIR Path path expression!")
+      }
+      case _ => throw new FhirPathException("Invalid FHIR Path path expression!")
+    }
+  }
+
+  /**
+   * Get the string literal otherwise return exception
+   * @param expr
+   * @return
+   */
+  private def getStringLiteral(expr:ExpressionContext):String = {
+    expr match {
+      case t:TermExpressionContext => t.term() match {
+        case lt:LiteralTermContext => lt.literal() match {
+          case s:StringLiteralContext => s.STRING().getText.drop(1).dropRight(1)
+          case _ => throw new FhirPathException("Invalid FHIR Path path expression!")
+        }
+        case _ => throw new FhirPathException("Invalid FHIR Path path expression!")
+      }
+      case _ =>  throw new FhirPathException("Invalid FHIR Path path expression!")
+    }
+  }
+
+  private def checkResolve(expr:ExpressionContext) = {
+    expr match {
+      case t:TermExpressionContext => t.term() match {
+        case i:InvocationTermContext => i.invocation() match {
+          case f:FunctionInvocationContext =>
+            if(f.function().identifier().getText != "resolve" || (f.function().paramList() != null && f.function().paramList().expression().size() > 0))
+              throw new FhirPathException("Invalid FHIR Path path expression!")
+          case _ => throw new FhirPathException("Invalid FHIR Path path expression!")
+        }
+        case _ => throw new FhirPathException("Invalid FHIR Path path expression!")
+      }
+      case _ => throw new FhirPathException("Invalid FHIR Path path expression!")
+    }
+  }
+
   private def handleEqualityExpression(eq:EqualityExpressionContext):(String, String) = {
     val op = eq.getRuleContext().getChild(1).getText
     if(op != "=")
       throw new FhirPathException("Invalid FHIR Path path expression ")
 
-    val elementName = eq.expression(0) match {
-      case t:TermExpressionContext => t.term() match {
-        case i:InvocationTermContext => i.invocation() match {
-          case idt:IdentifierContext => idt.getText
-          case _=> throw new FhirPathException("Invalid FHIR Path path expression ")
-        }
-        case _ => throw new FhirPathException("Invalid FHIR Path path expression ")
-      }
-      case _ => throw new FhirPathException("Invalid FHIR Path path expression ")
-    }
+    val elementName = getIdentifier(eq.expression(0))
 
-    val elementValue = eq.expression(0) match {
+    val elementValue = eq.expression(1) match {
       case t:TermExpressionContext => t.term() match {
         case l:LiteralTermContext => l.literal() match {
-          case s:StringLiteralContext => s.STRING().getText
+          case s:StringLiteralContext => s.STRING().getText.drop(1).dropRight(1)
           case n:NumberLiteralContext => n.getText
           case b:BooleanLiteralContext => b.getText
           case _ => throw new FhirPathException("Invalid FHIR Path path expression ")
@@ -110,67 +199,43 @@ class FhirPathExtractor(latestPath:Seq[(String, Seq[(String, String)])]) extends
     }
   }
 
+  override def visitPolarityExpression(ctx: FhirPathExprParser.PolarityExpressionContext): Seq[(String, Seq[(String, String)])] = throw new FhirPathException(s"Given expression  ${ctx.getText} does not indicate a path within FHIR resource!")
 
-  /*
+  override def visitAdditiveExpression(ctx: FhirPathExprParser.AdditiveExpressionContext): Seq[(String, Seq[(String, String)])]= throw new FhirPathException(s"Given expression  ${ctx.getText} does not indicate a path within FHIR resource!")
 
-  def extractPathItems():Seq[(String, Seq[(String, String)])] = {
-    visitExpression(expression)
-    pathItems
-  }
+  override def visitMultiplicativeExpression(ctx: FhirPathExprParser.MultiplicativeExpressionContext): Seq[(String, Seq[(String, String)])] = throw new FhirPathException(s"Given expression  ${ctx.getText} does not indicate a path within FHIR resource!")
 
-  def visitExpression(context: ExpressionContext):Unit = {
+  override def visitUnionExpression(ctx: FhirPathExprParser.UnionExpressionContext): Seq[(String, Seq[(String, String)])] = throw new FhirPathException(s"Given expression  ${ctx.getText} does not indicate a path within FHIR resource!")
 
-    expression match {
-      case i:InvocationExpressionContext => visitInvocationExpressionContext(i)
-      case t:TermExpressionContext => visitTermExpressionContext(t)
-    }
-  }
+  override def visitOrExpression(ctx: FhirPathExprParser.OrExpressionContext): Seq[(String, Seq[(String, String)])] = throw new FhirPathException(s"Given expression  ${ctx.getText} does not indicate a path within FHIR resource!")
 
-  def visitTermExpressionContext(t:TermExpressionContext) = {
-    t.term() match {
-      case it:InvocationTermContext => visitInvocationContext(it.invocation())
-      case lt:LiteralTermContext => throw new FhirPathException("Invalid FHIR Path path expression ")
-      case ex:ExternalConstantTermContext => throw new FhirPathException("Invalid FHIR Path path expression ")
-      case p: ParenthesizedTermContext => throw new FhirPathException("Invalid FHIR Path path expression ")
-    }
-  }
+  override def visitAndExpression(ctx: FhirPathExprParser.AndExpressionContext): Seq[(String, Seq[(String, String)])] = throw new FhirPathException(s"Given expression  ${ctx.getText} does not indicate a path within FHIR resource!")
 
-  def visitInvocationExpressionContext(invocationExpressionContext: InvocationExpressionContext):Unit = {
-    val expr1 = invocationExpressionContext.expression()
-    val expr2 = invocationExpressionContext.invocation()
-    visitExpression(expr1)
-    visitInvocationContext(expr2)
-  }
+  override def visitMembershipExpression(ctx: FhirPathExprParser.MembershipExpressionContext): Seq[(String, Seq[(String, String)])] = throw new FhirPathException(s"Given expression  ${ctx.getText} does not indicate a path within FHIR resource!")
 
-  def visitInvocationContext(context: InvocationContext):Unit = {
-    context match {
-      case i:MemberInvocationContext => visitMemberInvocationContext(i)
-      case f:FunctionInvocationContext => throw new FhirPathException("Invalid FHIR Path path expression ")
-      case _ => throw new FhirPathException("Invalid FHIR Path path expression ")
-    }
-  }
+  override def visitInequalityExpression(ctx: FhirPathExprParser.InequalityExpressionContext): Seq[(String, Seq[(String, String)])] = throw new FhirPathException(s"Given expression  ${ctx.getText} does not indicate a path within FHIR resource!")
 
-  def visitMemberInvocationContext(m:MemberInvocationContext):Unit = {
-    val pathItem = getPathItemFromIdentifier(m.identifier())
-    //Add the path item
-    pathItems :+ (pathItem -> Nil)
-  }
+  override def visitEqualityExpression(ctx: FhirPathExprParser.EqualityExpressionContext):Seq[(String, Seq[(String, String)])] = throw new FhirPathException(s"Given expression  ${ctx.getText} does not indicate a path within FHIR resource!")
 
-  /*
-  def extractPathItemsFromTermExpressionContext(termExpressionContext: TermExpressionContext):Seq[(String, Seq[(String, String)])] = {
-    termExpressionContext.term() match {
-      case it:InvocationTermContext =>
-      case lt:LiteralTermContext => throw new FhirPathException("Invalid FHIR Path path expression ")
-      case ex:ExternalConstantTermContext => throw new FhirPathException("Invalid FHIR Path path expression ")
-      case p: ParenthesizedTermContext => throw new FhirPathException("Invalid FHIR Path path expression ")
-    }
-  }*/
+  override def visitImpliesExpression(ctx: FhirPathExprParser.ImpliesExpressionContext): Seq[(String, Seq[(String, String)])] = throw new FhirPathException(s"Given expression  ${ctx.getText} does not indicate a path within FHIR resource!")
 
-  def getPathItemFromIdentifier(identifierContext: IdentifierContext):String = {
-    identifierContext.getRuleIndex match {
-      case 0 => identifierContext.IDENTIFIER().getText
-      case _ => throw new FhirPathException("Invalid FHIR Path path expression ")
-    }
-  }*/
+  override def visitExternalConstantTerm(ctx: FhirPathExprParser.ExternalConstantTermContext): Seq[(String, Seq[(String, String)])] = throw new FhirPathException(s"Given expression  ${ctx.getText} does not indicate a path within FHIR resource!")
 
+  override def visitNullLiteral(ctx: FhirPathExprParser.NullLiteralContext): Seq[(String, Seq[(String, String)])] = throw new FhirPathException(s"Given expression  ${ctx.getText} does not indicate a path within FHIR resource!")
+
+  override def visitBooleanLiteral(ctx: FhirPathExprParser.BooleanLiteralContext): Seq[(String, Seq[(String, String)])] = throw new FhirPathException(s"Given expression  ${ctx.getText} does not indicate a path within FHIR resource!")
+
+  override def visitStringLiteral(ctx: FhirPathExprParser.StringLiteralContext): Seq[(String, Seq[(String, String)])]= throw new FhirPathException(s"Given expression  ${ctx.getText} does not indicate a path within FHIR resource!")
+
+  override def visitDateTimeLiteral(ctx: FhirPathExprParser.DateTimeLiteralContext): Seq[(String, Seq[(String, String)])] = throw new FhirPathException(s"Given expression  ${ctx.getText} does not indicate a path within FHIR resource!")
+
+  override def visitTimeLiteral(ctx: FhirPathExprParser.TimeLiteralContext): Seq[(String, Seq[(String, String)])] = throw new FhirPathException(s"Given expression  ${ctx.getText} does not indicate a path within FHIR resource!")
+
+  override def visitQuantityLiteral(ctx: FhirPathExprParser.QuantityLiteralContext): Seq[(String, Seq[(String, String)])] = throw new FhirPathException(s"Given expression  ${ctx.getText} does not indicate a path within FHIR resource!")
+
+  override def visitExternalConstant(ctx: FhirPathExprParser.ExternalConstantContext): Seq[(String, Seq[(String, String)])] = throw new FhirPathException(s"Given expression  ${ctx.getText} does not indicate a path within FHIR resource!")
+
+  override def visitThisInvocation(ctx: FhirPathExprParser.ThisInvocationContext): Seq[(String, Seq[(String, String)])] = throw new FhirPathException(s"Given expression  ${ctx.getText} does not indicate a path within FHIR resource!")
+
+  override def visitTotalInvocation(ctx: FhirPathExprParser.TotalInvocationContext): Seq[(String, Seq[(String, String)])]= throw new FhirPathException(s"Given expression  ${ctx.getText} does not indicate a path within FHIR resource!")
 }

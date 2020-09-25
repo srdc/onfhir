@@ -132,16 +132,53 @@ class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None) {
     evaluator.getFoundPaths
   }
 
-  def getPathItemsWithRestrictions(expr:String):Seq[(String, Seq[(String, String)])] = {
-    val parsedExpr = parse(expr)
+  private def normalizeExpression(expr:String):Option[String] = {
+    var isReplaced = false
+    var finalExpr = expr
+    FhirPathEvaluator.keywords.foreach(k =>
+      if(expr.contains(s".$k.")){
+        isReplaced = true
+        finalExpr = expr.replace(s".$k.", s".`$k`.") //Make it quosi identifier
+      }
+    )
+    if(isReplaced)
+      Some(finalExpr)
+    else
+      None
+  }
 
-    val pathExtractor = new FhirPathExtractor(parsedExpr)
-    pathExtractor.extractPathItems()
+  private def denormalizeExpression(expr:String):String = {
+    var finalExpr = expr
+    FhirPathEvaluator.keywords.foreach(k =>
+      finalExpr =expr.replace(s".`$k`.", s".$k.")
+    )
+    finalExpr
+  }
+
+  /**
+   * Extract path parts from a FHIR Path path expression (SearchParameter.expression) which indicates a path in FHIR content
+   * @param expr
+   * @return
+   */
+  def getPathItemsWithRestrictions(expr:String):Seq[(String, Seq[(String, String)])] = {
+    val normalizedExpr = normalizeExpression(expr)
+    val finalExpr = normalizedExpr.getOrElse(expr)
+
+    val parsedExpr = parse(finalExpr)
+    val pathExtractor = new FhirPathExtractor()
+    val paths = pathExtractor.visit(parsedExpr)
+
+    if(normalizedExpr.isDefined) {
+      paths.map(p => denormalizeExpression(p._1)  -> p._2)
+    } else
+      paths
   }
 
 }
 
 object FhirPathEvaluator {
+  //Keywords to normalize in expressions
+  val keywords = Set("contains")
 
   def apply(referenceResolver: IReferenceResolver): FhirPathEvaluator = new FhirPathEvaluator(Some(referenceResolver))
 
