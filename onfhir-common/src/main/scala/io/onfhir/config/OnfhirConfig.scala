@@ -127,7 +127,7 @@ object OnfhirConfig {
 
   lazy val fhirRootUrl:String = Try(config.getString("fhir.root-url")).toOption.getOrElse(s"$serverLocation/$baseUri")
 
-  lazy val fhirDefinitionsUrl:String = Try(config.getString("fhir.definitions-url")).toOption.getOrElse(fhirRootUrl)
+  //lazy val fhirDefinitionsUrl:String = Try(config.getString("fhir.definitions-url")).toOption.getOrElse(fhirRootUrl)
 
   lazy val fhirValidation:String = Try(config.getString("fhir.validation")).toOption.getOrElse(FHIR_VALIDATION_ALTERNATIVES.PROFILE)
 

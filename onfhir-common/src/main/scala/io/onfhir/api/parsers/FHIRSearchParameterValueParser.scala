@@ -242,7 +242,7 @@ object FHIRSearchParameterValueParser {
       // _query (named queries)
       case FHIR_SEARCH_SPECIAL_PARAMETERS.QUERY => Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, "", name, Seq("" -> valueExpr))
       //ID param
-      case FHIR_SEARCH_SPECIAL_PARAMETERS.ID => Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, "", name, parseSimpleValue(valueExpr, FHIR_PARAMETER_TYPES.TOKEN))
+      case FHIR_SEARCH_SPECIAL_PARAMETERS.ID => Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, FHIR_PARAMETER_TYPES.TOKEN, name, parseSimpleValue(valueExpr, FHIR_PARAMETER_TYPES.TOKEN))
       // _filter
       case FHIR_SEARCH_SPECIAL_PARAMETERS.FILTER =>
         throw new UnsupportedParameterException("Parameter _filter is not supported by onFhir.io yet!")

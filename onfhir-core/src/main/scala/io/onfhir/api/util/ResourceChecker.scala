@@ -1,10 +1,15 @@
 package io.onfhir.api.util
 
 import io.onfhir.api._
-import io.onfhir.api.model.{FHIRResponse, OutcomeIssue, Parameter}
+import io.onfhir.api.model.{FHIRResponse, FhirLiteralReference, OutcomeIssue, Parameter}
 import io.onfhir.config.SearchParameterConf
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
+import io.onfhir.db.ResourceManager
 import io.onfhir.exception.NotImplementedException
+
+import scala.concurrent.Await
+import scala.concurrent.duration.DurationInt
+import scala.util.Try
 
 /**
   * Utility class that runs FHIR queries in memory on a specific resource
@@ -95,8 +100,69 @@ object ResourceChecker {
             case _ =>
                 handleSimpleParameter(parameter, searchParamConf.get, resource)
           }
+
+        case FHIR_PARAMETER_CATEGORIES.CHAINED =>
+          handleChainParameter(parameter, validQueryParameters, resource)
       }
     })
+  }
+
+  /**
+   * Handle chain search parameter
+   * e.g.
+   *  - /DiagnosticReport?subject:Patient.name=peter   (Single chain)
+   *  - /DiagnosticReport?subject:Patient.general-practitioner.name=peter (Deep chain)
+   * @param parameter
+   * @param validQueryParameters
+   * @param resource
+   * @return
+   */
+  private def handleChainParameter(parameter:Parameter, validQueryParameters:Map[String, SearchParameterConf], resource: Resource): Boolean ={
+    val (mainChainType, mainChainParam) = parameter.chain.head
+    val searchParameterConf = validQueryParameters.get(mainChainParam)
+    if(searchParameterConf.isEmpty)
+      throw new NotImplementedException(Seq(
+        OutcomeIssue(
+          FHIRResponse.SEVERITY_CODES.ERROR,
+          FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED,
+          None,
+          Some(s"Search operation doesn't support parameter (${parameter.name}). Please check the conformance statement of the server !!!"),
+          Nil
+        )
+      ))
+   //Get the paths for the chaining reference parameter
+   val referencePaths =
+     searchParameterConf.get
+       .extractElementPaths()
+   val referencedResources =
+     referencePaths
+       .flatMap(p =>
+         FHIRUtil.applySearchParameterPath(p, resource) //Extract the reference value from path
+       )
+       .map(v => FHIRUtil.parseReference(v)) //Parse the reference object
+       .filter(r => r.isInstanceOf[FhirLiteralReference]) //Chaining is only supported on literal references
+       .map(_.asInstanceOf[FhirLiteralReference])
+       .filter(_.rtype == mainChainType)  //Filter only the requested chain type
+       .map(_.rid)  //get the resource id
+
+    //If there is no referenced resource, query is not satisfied
+    if(referencedResources.isEmpty)
+      false
+    else {
+      //Otherwise we should query the first chained type
+      val newSearchParam = {
+        //If this is a single chain, convert the parameter to a normal parameter
+        if (parameter.chain.length == 1)
+          parameter.copy(paramCategory = FHIR_PARAMETER_CATEGORIES.NORMAL, chain = Nil)
+        else //Otherwise drop the first element from chain
+          parameter.copy(chain = parameter.chain.drop(1))
+      }
+      val idQueryParam = Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, FHIR_PARAMETER_TYPES.TOKEN, "_id", referencedResources.map(r => "" -> r))
+      //TODO Change method signature to return Future
+      Try(Await.result(ResourceManager.countResources(mainChainType, List(idQueryParam, newSearchParam)), 5 seconds))
+        .toOption
+        .exists(_ > 0)  //At least one reference should satisfied
+    }
   }
 
   private def handleSimpleParameter(parameter:Parameter, searchParameterConf:SearchParameterConf, resource: Resource): Boolean ={
