@@ -10,7 +10,7 @@ import io.onfhir.api.model.{FHIRRequest, FHIRResponse, Parameter}
 import io.onfhir.api.util.{FHIRUtil, ResourceChecker}
 import io.onfhir.config.OnfhirConfig
 import io.onfhir.db.ResourceManager
-import io.onfhir.exception.AuthorizationFailedException
+import io.onfhir.exception.{AuthorizationFailedException, AuthorizationFailedRejection}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.Future
@@ -26,8 +26,6 @@ object AuthzManager {
   //Logger
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  //Rejection object for our authorization
-  case class FhirAuthorizationFailedRejection(authzResult: AuthzResult) extends Rejection
 
   /**
     * Our authorization directive
@@ -39,10 +37,10 @@ object AuthzManager {
 
     onComplete(authorizeF(authzContext, fhirRequest)).flatMap {
       case Success(ar) =>
-        if(ar.isAuthorized) BasicDirectives.pass else RouteDirectives.reject(FhirAuthorizationFailedRejection(ar))
+        if(ar.isAuthorized) BasicDirectives.pass else RouteDirectives.reject(AuthorizationFailedRejection(ar))
       case scala.util.Failure(ex) =>
         logger.error("Exception while processing authorization", ex)
-        RouteDirectives.reject(FhirAuthorizationFailedRejection(AuthzResult.failureInvalidRequest("Cannot process request for authorization!")))
+        RouteDirectives.reject(AuthorizationFailedRejection(AuthzResult.failureInvalidRequest("Cannot process request for authorization!")))
     }
   }
 

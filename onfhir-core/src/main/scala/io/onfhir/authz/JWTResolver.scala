@@ -27,7 +27,7 @@ class JWTResolver(authzConfig:AuthzConfig) extends ITokenResolver {
     val signatureAlgorithm:JWSAlgorithm = authzConfig.jwtSignatureAlgorithm.get
 
     if(Family.RSA.contains(signatureAlgorithm))
-      myJwtProcessor.setJWSKeySelector(new JWSVerificationKeySelector(signatureAlgorithm, new RemoteJWKSet(authzConfig.authzServerMetadata.jwks_uri.toURL)))
+      myJwtProcessor.setJWSKeySelector(new JWSVerificationKeySelector(signatureAlgorithm, new RemoteJWKSet(authzConfig.authzServerMetadata.jwks_uri.get.toURL)))
     else if(Family.HMAC_SHA.contains(signatureAlgorithm)){
       myJwtProcessor.setJWSKeySelector(new JWSVerificationKeySelector(signatureAlgorithm, new ImmutableSecret(authzConfig.jwtSignatureSecretKey.get.getBytes())))
     }

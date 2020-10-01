@@ -126,7 +126,7 @@ object AuthzConfigurationManager {
           val oidcMetadata = OIDCProviderMetadata.parse(metadata)
           AuthorizationServerMetadata(
             oidcMetadata.getIssuer.getValue,
-            oidcMetadata.getJWKSetURI,
+            Option(oidcMetadata.getJWKSetURI),
             Option(oidcMetadata.getRegistrationEndpointURI),
             Option(oidcMetadata.getTokenEndpointURI),
             oidcMetadata.getTokenEndpointAuthMethods.asScala.toSet,
@@ -331,7 +331,7 @@ object AuthzConfigurationManager {
     try {
       AuthorizationServerMetadata(
         getRequiredParam(metadataJson, PARAM_ISSUER),
-        new URI(getRequiredParam(metadataJson, PARAM_JWKS_URI)),
+        (metadataJson \ PARAM_JWKS_URI).extractOpt[String].map(new URI(_)),
         (metadataJson \ PARAM_REGISTRATION_ENDPOINT).extractOpt[String].map(new URI(_)),
         (metadataJson \ PARAM_TOKEN_ENDPOINT).extractOpt[String].map(new URI(_)),
         (metadataJson \ PARAM_TOKEN_AUTH_METHODS).extractOpt[List[String]].map(_.toSet.map((m:String) => ClientAuthenticationMethod.parse(m))).getOrElse(Set.empty),

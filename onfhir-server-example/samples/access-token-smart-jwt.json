@@ -1,0 +1,9 @@
+{
+  "iss": "https://myauthzserver.com",
+  "sub": "Practitioner/72870bd2-505e-48fa-8bf2-31fcd94b0f72",
+  "aud": "http://myfhir.com/fhir",
+  "exp": 1422568860,
+  "jti": "random-non-reusable-jwt-id-123",
+  "scope": "patient/Observation.* patient/Patient.*",
+  "patient": "8638f268-01e2-45cb-b9fb-2a85c7749cd9"
+}

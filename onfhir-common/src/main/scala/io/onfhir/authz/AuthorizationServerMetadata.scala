@@ -19,7 +19,7 @@ import com.nimbusds.oauth2.sdk.auth.ClientAuthenticationMethod
   * @param introspection_endpoint_auth_signing_alg_values_supported  JWS algorithms supported by the authorization server for token endpoint
   */
 case class AuthorizationServerMetadata(issuer:String,
-                                       var jwks_uri:URI,
+                                       var jwks_uri:Option[URI],
                                        var registration_endpoint:Option[URI],
                                        var token_endpoint:Option[URI],
                                        token_endpoint_auth_methods_supported:Set[ClientAuthenticationMethod] =Set.empty,

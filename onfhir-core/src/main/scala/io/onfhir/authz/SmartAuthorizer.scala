@@ -10,8 +10,8 @@ import io.onfhir.config.FhirConfigurationManager.fhirConfig
 class SmartAuthorizer extends IAuthorizer {
   final val PERMISSION_TYPE_PATIENT = "patient"
   final val PERMISSION_TYPE_USER = "user"
-  final val PERMISSION_TYPE_CONFIDENTIALITY = "conf" // TODO Not implemented yet
-  final val PERMISSION_TYPE_SENSITIVITY = "sens" //TODO Not implemented yet
+  final val PERMISSION_TYPE_CONFIDENTIALITY = "conf"
+  final val PERMISSION_TYPE_SENSITIVITY = "sens"
   //Parameter name for patientId parameter defined in Smart on FHIR specs
   final val PARAM_PATIENT_ID = "patient"
   //Scope scheme defined by WG Heart specification (extended for FHIR operations e.g. patient/Patient.$everything)

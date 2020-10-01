@@ -1,0 +1,35 @@
+{
+  "resourceType": "Observation",
+  "meta": {
+    "profile": [
+      "https://fhir.nhs.uk/R4/StructureDefinition/UKCore-Observation"
+    ]
+  },
+  "status": "final",
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "72166-2",
+        "display": "Smoking Status"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/8638f268-01e2-45cb-b9fb-2a85c7749cd9",
+    "display": "Richard SMITH"
+  },
+  "effectivePeriod": {
+    "start": "2013-04-02T09:30:10+01:00"
+  },
+  "issued": "2013-04-03T15:30:10+01:00",
+  "valueCodeableConcept": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "266919005",
+        "display": "Never smoker"
+      }
+    ]
+  }
+}
