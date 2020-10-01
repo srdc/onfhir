@@ -8,7 +8,7 @@ import java.time.temporal.Temporal
 import io.onfhir.api.validation.IReferenceResolver
 import io.onfhir.path.grammar.{FhirPathExprLexer, FhirPathExprParser}
 import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
-import org.json4s.JsonAST.JValue
+import org.json4s.JsonAST.{JArray, JValue}
 import org.slf4j.{Logger, LoggerFactory}
 
 class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None) {
@@ -114,6 +114,19 @@ class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None) {
     if(result.exists(!_.isInstanceOf[FhirPathString]))
       throw new FhirPathException(s"Expression $expr does not evaluate to a string for the given resource!")
     result.map(_.asInstanceOf[FhirPathString].s)
+  }
+
+  def evaluateForJson(expr:String, on:JValue):Option[JValue] = {
+    val result = evaluate(expr, on)
+    if(result.exists(!_.isInstanceOf[FhirPathComplex]))
+      throw new FhirPathException(s"Expression $expr does not evaluate to a JSON object for the given resource!")
+
+    val results = result.map(_.toJson)
+    results.length match {
+      case 0 => None
+      case 1 => Some(results.head)
+      case _ => Some(JArray(results.toList))
+    }
   }
 
   /**
