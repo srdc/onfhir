@@ -578,35 +578,41 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   def getPeriod(fromDate:ExpressionContext, toDate:ExpressionContext, period:ExpressionContext):Seq[FhirPathResult] = {
-    val fdate:Temporal = new FhirPathExpressionEvaluator(context, current).visit(fromDate) match {
-      case Seq(FhirPathDateTime(dt)) => dt
+    val fdate:Option[Temporal] = new FhirPathExpressionEvaluator(context, current).visit(fromDate) match {
+      case Seq(FhirPathDateTime(dt)) => Some(dt)
+      case Nil => None
       case _ => throw new FhirPathException(s"Invalid function call 'getPeriod', second expression ${fromDate.getText} does not evaluate to a single FHIR date time!")
     }
 
-    val tdate:Temporal = new FhirPathExpressionEvaluator(context, current).visit(toDate) match {
-      case Seq(FhirPathDateTime(dt)) => dt
+    val tdate:Option[Temporal] = new FhirPathExpressionEvaluator(context, current).visit(toDate) match {
+      case Seq(FhirPathDateTime(dt)) => Some(dt)
+      case Nil => None
       case _ => throw new FhirPathException(s"Invalid function call 'getPeriod', second expression ${toDate.getText} does not evaluate to a single FHIR date time!")
     }
 
-    val chronoPeriod =
-      new FhirPathExpressionEvaluator(context, current).visit(period) match {
-        case Seq(FhirPathString(p)) =>
-          p match {
-            case "year" | "years" => ChronoUnit.YEARS
-            case "month" | "months" => ChronoUnit.MONTHS
-            case "week" | "weeks" => ChronoUnit.WEEKS
-            case "day" | "days" => ChronoUnit.DAYS
-            case _ => throw new FhirPathException(s"Invalid function call 'getPeriod', the period expression ${period.getText} does not evaluate to a valid (valid values: 'years', 'months', 'weeks', 'days') time-valued quantity !")
-          }
-        case _ =>
-          throw new FhirPathException(s"Invalid function call 'getPeriod', the period expression ${period.getText} does not evaluate to a valid (valid values:  'years', 'months', 'weeks', 'days') time-valued quantity !")
-      }
+    if(fdate.isEmpty || tdate.isEmpty)
+      Seq(FhirPathNumber(0))
+    else {
+      val chronoPeriod =
+        new FhirPathExpressionEvaluator(context, current).visit(period) match {
+          case Seq(FhirPathString(p)) =>
+            p match {
+              case "year" | "years" => ChronoUnit.YEARS
+              case "month" | "months" => ChronoUnit.MONTHS
+              case "week" | "weeks" => ChronoUnit.WEEKS
+              case "day" | "days" => ChronoUnit.DAYS
+              case _ => throw new FhirPathException(s"Invalid function call 'getPeriod', the period expression ${period.getText} does not evaluate to a valid (valid values: 'years', 'months', 'weeks', 'days') time-valued quantity !")
+            }
+          case _ =>
+            throw new FhirPathException(s"Invalid function call 'getPeriod', the period expression ${period.getText} does not evaluate to a valid (valid values:  'years', 'months', 'weeks', 'days') time-valued quantity !")
+        }
 
-     try {
-          Seq(FhirPathNumber(fdate.until(tdate, chronoPeriod)))
-     } catch {
-       case e:Throwable => throw FhirPathException.apply("Invalid function call 'getPeriod', both date time instances should be either with zone or not!", e)
-     }
+      try {
+        Seq(FhirPathNumber(fdate.get.until(tdate.get, chronoPeriod)))
+      } catch {
+        case e: Throwable => throw FhirPathException.apply("Invalid function call 'getPeriod', both date time instances should be either with zone or not!", e)
+      }
+    }
 
   }
 

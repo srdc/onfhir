@@ -618,6 +618,9 @@ class FhirPathEvaluatorTest extends Specification {
 
       result = FhirPathEvaluator().evaluateNumerical("period.getPeriod(start, end, 'days')", encounter).toLong
       result mustEqual 9
+
+      result = FhirPathEvaluator().evaluateNumerical("period.getPeriod(s, end, 'days')", encounter).toLong
+      result mustEqual 0
     }
 
     "evaluate fixed bugs" in {
