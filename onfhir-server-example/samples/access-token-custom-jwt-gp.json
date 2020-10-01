@@ -1,9 +1,0 @@
-{
-  "iss": "https://myauthzserver.com",
-  "sub": "72870bd2-505e-48fa-8bf2-31fcd94b0f72",
-  "aud": "http://myfhir.com/fhir",
-  "exp": 1422568860,
-  "jti": "random-non-reusable-jwt-id-123",
-  "scope": "gp",
-  "organization": "organization-a"
-}

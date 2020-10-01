@@ -1,6 +1,0 @@
-{
-  "client_id": "https://hyp.saglik.gov.tr",
-  "client_name": "HYP FHIR Repository",
-  "token_endpoint_auth_method": "none",
-  "token_endpoint_auth_signing_alg": null
-}
