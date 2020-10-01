@@ -25,8 +25,6 @@ class AuthzConfig(authzConfig:Config) {
   //JWKS media type registration
   final val JWKSET_MEDIA_TYPE = MediaType.applicationWithFixedCharset("jwk-set+json", HttpCharsets.`UTF-8`, "jwkset")
 
-
-
   /**
     * Input configurations for Authorization
     */
