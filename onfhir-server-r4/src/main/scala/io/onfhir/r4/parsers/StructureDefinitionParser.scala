@@ -99,6 +99,24 @@ class StructureDefinitionParser(fhirComplexTypes:Set[String], fhirPrimitiveTypes
   }
 
   /**
+   * Parse the data type definition in Elem definition
+   * @param typeDef
+   * @return        Data type, profiles for this element, if reference target profiles, versioning, and aggregation
+   */
+  protected def parseTypeInElemDefinition(typeDef:JObject):(String, Seq[String], Seq[String], Option[String], Seq[String]) = {
+    (
+      FHIRUtil.extractValue[String](typeDef, "code") match {
+        case "http://hl7.org/fhirpath/System.String" => "string" // Some base definitions have these
+        case oth => oth
+      },
+      FHIRUtil.extractValue[Seq[String]](typeDef, "profile"),
+      FHIRUtil.extractValue[Seq[String]](typeDef, "targetProfile"),
+      FHIRUtil.extractValueOption[String](typeDef, "versioning"),
+      FHIRUtil.extractValue[Seq[String]](typeDef, "aggregation")
+    )
+  }
+
+  /**
    * Parse FHIR Element definition to generate our internal model to keep restrictions on element
    * @param elemDef       FHIR Element definition to parse
    * @param profileUrl    URL of the profile that this element definition is defined (If not FHIR base)
@@ -109,18 +127,7 @@ class StructureDefinitionParser(fhirComplexTypes:Set[String], fhirPrimitiveTypes
       FHIRUtil
         .extractValueOption[Seq[JObject]](elemDef, "type")
         .getOrElse(Nil)
-        .map(typeDef =>
-          (
-            FHIRUtil.extractValue[String](typeDef, "code") match {
-              case "http://hl7.org/fhirpath/System.String" => "string" // Some base definitions have these
-              case oth => oth
-            },
-            FHIRUtil.extractValue[Seq[String]](typeDef, "profile"),
-            FHIRUtil.extractValue[Seq[String]](typeDef, "targetProfile"),
-            FHIRUtil.extractValueOption[String](typeDef, "versioning"),
-            FHIRUtil.extractValue[Seq[String]](typeDef, "aggregation")
-          )
-        )
+        .map(typeDef => parseTypeInElemDefinition(typeDef))
 
     ElementRestrictions(
       path = FHIRUtil.extractValueOption[String](elemDef, "id").get.dropWhile( _ != '.').drop(1),

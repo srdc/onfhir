@@ -105,7 +105,7 @@ abstract class AbstractStructureDefinitionParser(fhirComplexTypes:Set[String], f
         expression match {
           //This is not a FHIR path expression, but they use it for xhtml type
           //TODO implement this as a function
-          case "htmlChecks()" => None
+          case "htmlChecks()" | "htmlchecks()" => None
           //Go on
           case _ => FHIRUtil.extractValue[String](constraintDef, "key") match {
             //This is a common constraint that forces elements to have childs (we already check it)

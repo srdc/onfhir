@@ -2,10 +2,13 @@ package io.onfhir.stu3.config
 
 import akka.http.scaladsl.model.{HttpCharsets, MediaType, MediaTypes}
 import io.onfhir.api.Resource
+import io.onfhir.api.validation.ProfileRestrictions
 import io.onfhir.audit.IFhirAuditCreator
 import io.onfhir.config.{FHIRCapabilityStatement, FHIRSearchParameter, OnfhirConfig, OperationConf, OperationParamDef, ResourceConf}
 import io.onfhir.r4.config.FhirR4Configurator
+import io.onfhir.r4.parsers.StructureDefinitionParser
 import io.onfhir.stu3.audit.STU3AuditCreator
+import io.onfhir.stu3.parsers.STU3StructureDefinitionParser
 import org.json4s.{JArray, JObject}
 import org.json4s._
 import io.onfhir.util.JsonFormatter.formats
@@ -35,7 +38,7 @@ class FhirSTU3Configurator extends FhirR4Configurator {
       restResourceConf = resourceDefs.arr.map(_.asInstanceOf[JObject]).map(resourceDef =>
         ResourceConf(
           resource = (resourceDef \ "type").extract[String],
-          profile = (resourceDef \ "profile").extractOpt[String],
+          profile = (resourceDef \ "profile" \ "reference").extractOpt[String],
           supportedProfiles = Set.empty[String], //TODO
           interactions = (resourceDef \ "interaction" \ "code").extractOrElse[Seq[String]](Nil).toSet,
           searchParams = (resourceDef \ "searchParam" \ "definition").extractOrElse[Seq[String]](Nil).toSet,
@@ -110,6 +113,10 @@ class FhirSTU3Configurator extends FhirR4Configurator {
     )
   }
 
+  override def parseStructureDefinition(structureDefinition: Resource): ProfileRestrictions = {
+    new STU3StructureDefinitionParser(FHIR_COMPLEX_TYPES, FHIR_PRIMITIVE_TYPES).parseProfile(structureDefinition)
+  }
+
   /**
    * Parse a Operation parameter definition object
    * @param paramDef  OperationDefinition.parameter element
@@ -118,7 +125,11 @@ class FhirSTU3Configurator extends FhirR4Configurator {
   override protected def parseOperationParamDefinition(paramDef:JObject):(String, OperationParamDef) = {
     val binding = paramDef \ "binding"  match {
       case obj:JObject =>
-        Some( (obj \ "strength").extract[String] ->  (obj \ "valueSetUri").extract[String])
+        Some( (obj \ "strength").extract[String] ->
+          (obj \ "valueSetUri")
+            .extractOpt[String]
+            .getOrElse((obj \ "valueSetReference" \ "reference").extract[String])
+        )
       case _ => None
     }
 
