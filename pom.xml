@@ -72,6 +72,7 @@
         <module>onfhir-path</module>
         <module>onfhir-validation</module>
         <module>onfhir-server-r5</module>
+        <module>onfhir-mapping</module>
     </modules>
 
     <repositories>
