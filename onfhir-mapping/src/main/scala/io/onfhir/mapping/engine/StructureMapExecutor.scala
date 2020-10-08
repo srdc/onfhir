@@ -7,8 +7,20 @@ import org.json4s.JsonAST.{JNothing, JObject, JValue}
 import org.json4s.{JsonAST, _}
 import org.slf4j.LoggerFactory
 
+trait IRuleOrGroupFinder {
+  def findRuleOrGroup(name:String):Option[Either[StructureMapGroup, StructureMapRule]]
+}
+/**
+ *
+ * @param structureMap
+ * @param inputs
+ * @param mappingRepository
+ */
+class StructureMapExecutor(structureMap:StructureMap, inputs:Map[String, Resource], mappingRepository: IMappingRepository) {
+  //Imported maps
+  val importedStructureMaps = structureMap.imports.map(url => url -> mappingRepository.getStructureMap(url))
 
-class StructureMapExecutor(structureMap:StructureMap, inputs:Map[String, Resource]) {
+
 
   /**
    * Execute the mapping on given inputs and generate the outputs
@@ -21,14 +33,18 @@ class StructureMapExecutor(structureMap:StructureMap, inputs:Map[String, Resourc
 
 }
 
-class StructureMapGroupExecutor(structureGroup:StructureMapGroup, context:Map[String, Seq[JValue]]) {
+class StructureMapGroupExecutor(structureGroup:StructureMapGroup, context:Map[String, Seq[JValue]]) extends IRuleOrGroupFinder {
 
   def executeMapping() = {
 
   }
+
+  override def findRuleOrGroup(name: String): Option[Either[StructureMapGroup, StructureMapRule]] = {
+
+  }
 }
 
-class StructureMapRuleExecutor(structureMapRule:StructureMapRule, ctxRepository:ContextRepository) {
+case class StructureMapRuleExecutor(structureMapRule:StructureMapRule, ctxRepository:IContextRepository) {
   val logger = LoggerFactory.getLogger(classOf[StructureMapRuleExecutor])
 
   /**
@@ -51,31 +67,19 @@ class StructureMapRuleExecutor(structureMapRule:StructureMapRule, ctxRepository:
      // Permutate results in case multiple sources
      val permutationOfResults:Traversable[Traversable[JValue]] = crossJoin(resultingValues.map(r => r._2))
 
-     val transformedResults =
-       permutationOfResults.flatMap(sources =>
-        structureMapRule.targets.map(target => evaluateTarget(target, sources.toSeq))
-      )
-     //Merge context items
-     val newContext = transformedResults
-       .groupBy(_._1)
-       .mapValues(citems => citems.map(_._2).reduce((c1, c2) =>
-         if(c1.value.isDefined && c2.value.isDefined)
-           c1.copy(value = Some(c1.value.getOrElse(Nil) ++ c2.value.getOrElse(Nil)))
-         else
-           c1
-       ))
-     //Add new context to old context
-     var updatedContext = context ++ newContext
+     //Evaluate the targets
+     permutationOfResults.foreach(sources =>
+       structureMapRule.targets.foreach(target => evaluateTarget(target, sources.toSeq))
+     )
 
-     val childContexts = structureMapRule.childRules.flatMap(cr => applyRule(cr, updatedContext).toSeq)
-     childContexts
-       .groupBy(_._1)
-       .mapValues(v => v.map(_._2))
-       .mapValues(ci => ci.reduce((c1, c2) =>
-          if(c1.value.isDefined){
+     //Construct rule executors for child rules and execute them
+     val childExecutors =
+       structureMapRule.childRules
+        .map(cr => StructureMapRuleExecutor(cr, ContextRepository(ctxRepository)))
+     childExecutors.foreach(_.executeMapping())
 
-          }
-        ))
+     structureMapRule.dependentRules.map(dr => )
+
 
    }
  }

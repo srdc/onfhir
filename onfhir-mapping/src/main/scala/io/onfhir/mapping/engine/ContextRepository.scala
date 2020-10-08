@@ -6,12 +6,12 @@ import org.json4s.JsonAST.{JArray, JNothing, JNull, JObject, JValue}
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-case class ContextRepository(sourceContext: mutable.Map[String, Seq[JValue]], targetContext:mutable.Map[String, TargetContext]) {
-  /**
-   * Get the source context JSON
-   * @param v Context name
-   * @return
-   */
+trait IContextRepository {
+  def getSourceContext(v:String):Option[JValue]
+  def getTargetContext(v:String):Option[TargetContext]
+}
+
+case class RootContextRepository(sourceContext: Map[String, Seq[JValue]], targetContext:Map[String, TargetContext]) extends IContextRepository {
   def getSourceContext(v:String):Option[JValue] = {
     sourceContext
       .get(v)
@@ -20,20 +20,72 @@ case class ContextRepository(sourceContext: mutable.Map[String, Seq[JValue]], ta
         case Seq(s) => Some(s)
         case oth => Some(JArray(oth.toList))
       }
-      .orElse(getTargetContextInJson(v))
+      .orElse(getTargetContext(v).map(_.toJson()))
+  }
+
+  def getTargetContext(v:String):Option[TargetContext] = {
+    targetContext.get(v)
+  }
+}
+/**
+ * Context repository for a group or rule
+ * @param parentRepository   Parent repository for contexts
+ */
+case class ContextRepository(parentRepository:IContextRepository, filteredParams:Option[Set[String]] = None) extends IContextRepository {
+  //Newly created source context
+  val newSourceContext:mutable.Map[String, Seq[JValue]] = new mutable.HashMap[String, Seq[JValue]]()
+  //Newly created target context
+  val newTargetContext:mutable.Map[String, TargetContext] = new mutable.HashMap[String, TargetContext]()
+
+  private def getSourceContextFromParent(v:String):Option[JValue] = {
+    if(filteredParams.forall(_.contains(v)))
+      parentRepository
+        .getSourceContext(v)
+    else
+      None
+  }
+
+  private def getTargetContextFromParent(v:String):Option[TargetContext] = {
+    if(filteredParams.forall(_.contains(v)))
+      parentRepository
+        .getTargetContext(v)
+    else
+      None
+  }
+
+  /**
+   * Get the source context JSON
+   * @param v Context name
+   * @return
+   */
+  def getSourceContext(v:String):Option[JValue] = {
+    getSourceContextFromParent(v)
+      .orElse(
+        newSourceContext
+          .get(v)
+          .flatMap {
+            case Nil => None
+            case Seq(s) => Some(s)
+            case oth => Some(JArray(oth.toList))
+          }
+          .orElse(getTargetContextInJson(v))
+      )
+  }
+
+  override def getTargetContext(v: String): Option[TargetContext] = {
+    getTargetContextFromParent(v)
+      .orElse(newTargetContext.get(v))
   }
 
   def getTargetContextInJson(v:String):Option[JValue] = {
-     targetContext
-       .get(v)
-       .map(tc => tc.toJson())
+    getTargetContext(v).map(tc => tc.toJson())
   }
 
   def setSourceContext(v:String, value: Seq[JValue]) =
-    sourceContext.put(v, value)
+    newSourceContext.put(v, value)
 
   def addRootContext(variable:String, value:Seq[JValue]):Unit = {
-    targetContext.put(variable, TargetContext(value = value))
+    newTargetContext.put(variable, TargetContext(value = value))
   }
 
   /**
@@ -45,7 +97,7 @@ case class ContextRepository(sourceContext: mutable.Map[String, Seq[JValue]], ta
    * @param values
    */
   def addElement(ruleId:String, context:String, element:String, variable:Option[String], listMode:Option[String], values:Seq[JValue]) = {
-      targetContext.get(context) match {
+    getTargetContext(context) match {
         case None => throw new StructureMappingException(s"No such context $context defined previously!")
         case Some(ctx) =>
 
@@ -68,9 +120,9 @@ case class ContextRepository(sourceContext: mutable.Map[String, Seq[JValue]], ta
             //Add the context value
             ctx.elements(element).:+(contextValue)
 
-            //If variable is defined, update the context map
+            //If a new variable is defined, update the context map
             if(newContext.isDefined)
-              targetContext.put(variable.get, newContext.get)
+              newTargetContext.put(variable.get, newContext.get)
           }
       }
   }
