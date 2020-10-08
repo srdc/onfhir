@@ -28,7 +28,7 @@ class StructureMapGroupExecutor(structureGroup:StructureMapGroup, context:Map[St
   }
 }
 
-class StructureMapRuleExecutor(structureMapRule:StructureMapRule, sourceContext:Map[String, SourceContext], targetContext: TargetContext) {
+class StructureMapRuleExecutor(structureMapRule:StructureMapRule, ctxRepository:ContextRepository) {
   val logger = LoggerFactory.getLogger(classOf[StructureMapRuleExecutor])
 
   /**
@@ -42,14 +42,12 @@ class StructureMapRuleExecutor(structureMapRule:StructureMapRule, sourceContext:
    val resultingValues =
      structureMapRule
        .sources
-       .map(s => s -> evaluateSource(s, sourceContext, targetContext))
+       .map(s => s -> evaluateSource(s))
        .filter(s => s._2.isDefined)
        .map(s => s._1 -> s._2.get)
 
    //If there is no source, no change on context
-   if(resultingValues.isEmpty)
-     sourceContext -> targetContext
-   else {
+   if(resultingValues.nonEmpty) {
      // Permutate results in case multiple sources
      val permutationOfResults:Traversable[Traversable[JValue]] = crossJoin(resultingValues.map(r => r._2))
 
@@ -89,45 +87,24 @@ class StructureMapRuleExecutor(structureMapRule:StructureMapRule, sourceContext:
    * @return
    */
  private def evaluateTarget(target:StructureMapTarget, sources:Seq[JValue]) = {
+   val targetValue = target.transform.map(tf => TransformationHandler.transform(sources, tf,  target.parameters)).getOrElse(Seq(JObject()))
    (target.context, target.contextType) match {
      //If there is a context defined in target find it
-     case (Some(variable), Some("variable")) =>
-       targetContext.findVariable(variable) match {
-         case None => throw new StructureMappingException(s"No such target context ${variable} for rule ${structureMapRule.name}!")
-         case Some(ctx) =>
-           val targetValue = target.transform.map(tf => TransformationHandler.transform(sources, tf,  target.parameters)).getOrElse(JObject())
-
-       }
+     case (Some(context), Some("variable")) =>
+       ctxRepository.addElement(structureMapRule.name, context, target.element.get, target.variable, target.listMode, targetValue)
+     case (None, _) =>
+       ctxRepository.addRootContext(target.variable.get, targetValue)
    }
-
-   target.variable.getOrElse(s"_ELEMENT_${target.element.get}") -> //Either a variable or element should exist
-      (
-       target.transform match {
-          case Some(tf) =>
-            val value = TransformationHandler.transform(sources, tf,  target.parameters)
-              if(value == Seq(JObject()))
-                ContextItem(target.context, target.element, target.listMode, None)
-              else
-                ContextItem(target.context, target.element, target.listMode, Some(value))
-
-          case None =>
-            ContextItem(target.context, target.element, target.listMode, None)
-       }
-     )
  }
 
   /**
    * Evaluate a rule.source element to find the values
    * @param source        Source definition
-   * @param sourceContext Source variables
-   * @param targetContext Target variables
    * @return
    */
-  private def evaluateSource(source:StructureMapSource, sourceContext:Map[String, SourceContext], targetContext: TargetContext):Option[Seq[JValue]] = {
-    var sources = sourceContext
-      .get(source.context)    //try to get from the source context with the name
-      .map(_.toJson())
-      .orElse(targetContext.findVariable(source.context).map(_.toJson())) //Otherwise check target context
+  private def evaluateSource(source:StructureMapSource):Option[Seq[JValue]] = {
+    var sources = ctxRepository
+      .getSourceContext(source.context)
       .flatMap(s =>
         //If there is an element, get the field value otherwise source is itself
         source.element match {
@@ -185,14 +162,17 @@ class StructureMapRuleExecutor(structureMapRule:StructureMapRule, sourceContext:
           throw new StructureMappingException(s"Check condition is not satisfied by given source context while evaluating rule ${structureMapRule.name} and source ${source.context}"))
       )
     //Log the messages
-    if(source.logMessage.nonEmpty && sourceContext.nonEmpty)
+    if(source.logMessage.nonEmpty) {
       sources.foreach(sc => sc.foreach(sci => {
         val logString = FhirPathEvaluator().evaluateString(source.logMessage.get, sci)
         logString.foreach(logger.info)
       }))
+    }
 
+    if(source.variable.nonEmpty)
+      ctxRepository.setSourceContext(source.variable.get, sources.getOrElse(Nil))
     sources
-   }
+  }
 
   /**
    * Permutate a list of lists items
