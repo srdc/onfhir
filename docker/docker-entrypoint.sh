@@ -64,6 +64,6 @@ if [ ! -z "$DELAY_EXECUTION" ]; then
 fi
 
 # Finally, tell which jar to run
-JAVA_CMD+="/fhir/onfhir-standalone.jar"
+JAVA_CMD+="/fhir/onfhir-server-standalone.jar"
 
 eval $JAVA_CMD

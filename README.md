@@ -111,11 +111,11 @@ object Boot extends App {
 ### Docker
 We also provide a simple docker setup for onFHIR under 'docker' folder. It provides a docker-compose file with 
 two containers; one for MongoDB database and one for onFHIR application. You can run it with our sample onFHIR setup given with 'sample-setup' directory.
-You can copy the 'onfhir-standalone.jar' file to this sample-setup directory and run the sample setup as it is with the following command;  
+You can copy the 'onfhir-server-standalone.jar' file to this sample-setup directory and run the sample setup as it is with the following command;  
 
 ```
 $ cd docker
-$ cp ../onfhir-server-r4/target/onfhir-standalone.jar ./sample-setup/.
+$ cp ../onfhir-server-r4/target/onfhir-server-standalone.jar ./sample-setup/.
 $ docker-compose -f docker-compose.yml -p onfhir up -d
 ```
 
