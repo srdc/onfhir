@@ -5,6 +5,7 @@ import java.time.temporal.{ChronoField, ChronoUnit, Temporal, TemporalAmount}
 
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.path.FhirPathValueTransformer.transform
+import io.onfhir.util.DateTimeUtil
 import org.json4s.JsonAST.{JBool, JDecimal, JLong, JObject, JString, JValue}
 
 import scala.math.BigDecimal.RoundingMode
@@ -225,7 +226,7 @@ case class FhirPathDateTime(dt:Temporal) extends FhirPathResult with Ordered[Fhi
     case ym:YearMonth => JString(ym.toString)
     case ld:LocalDate => JString(ld.toString)
     case ldt:LocalDateTime => JString(ldt.toString)
-    case zdt:ZonedDateTime => JString(zdt.toString)
+    case zdt:ZonedDateTime => JString(DateTimeUtil.serializeInstant(zdt.toInstant))
   }
 }
 

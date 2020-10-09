@@ -1,0 +1,102 @@
+{
+  "resourceType": "StructureMap",
+  "url": "http://onfhir.io/fhir/StructureMap/medicationrequest-transform-dependent",
+  "name": "Transform from an ActivityDefinition to a MedicationRequest",
+  "status": "draft",
+  "structure": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/activitydefinition",
+      "mode": "source"
+    },
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/supplyrequest",
+      "mode": "target"
+    }
+  ],
+  "group": [
+    {
+      "name": "main",
+      "typeMode": "none",
+      "input": [
+        {
+          "name": "source",
+          "type": "ActivityDefinition",
+          "mode": "source"
+        },
+        {
+          "name": "target",
+          "type": "MedicationRequest",
+          "mode": "target"
+        }
+      ],
+      "rule": [
+        {
+          "name": "dosageInstruction",
+          "source": [
+            {
+              "context": "source",
+              "element": "dosage",
+              "variable": "dosageSource"
+            }
+          ],
+          "target": [
+            {
+              "context": "target",
+              "contextType": "variable",
+              "element": "dosageInstruction",
+              "listMode": [
+                "share"
+              ],
+              "transform": "create",
+              "variable": "dosageTarget",
+              "parameter": [
+                {
+                  "valueString": "Dosage"
+                }
+              ]
+            }
+          ],
+          "dependent": [
+            {
+              "name": "dosageRouteCopy",
+              "variable": ["dosageSource", "dosageTarget"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "dosageRouteCopy",
+      "typeMode": "none",
+      "input": [
+        {
+          "name": "dosageSrc",
+          "mode": "source"
+        },
+        {
+          "name": "dosageTgt",
+          "mode": "target"
+        }
+      ],
+      "rule": [
+        {
+          "name": "route",
+          "source": [
+            {
+              "context": "dosageSrc",
+              "element": "route"
+            }
+          ],
+          "target": [
+            {
+              "context": "dosageTgt",
+              "contextType": "variable",
+              "element": "route",
+              "transform": "copy"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

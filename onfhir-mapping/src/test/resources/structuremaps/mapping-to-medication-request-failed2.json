@@ -1,0 +1,60 @@
+{
+  "resourceType": "StructureMap",
+  "url": "http://onfhir.io/fhir/StructureMap/medicationrequest-transform-failed1",
+  "name": "Transform from an ActivityDefinition to a MedicationRequest",
+  "status": "draft",
+  "structure": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/activitydefinition",
+      "mode": "source"
+    },
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/supplyrequest",
+      "mode": "target"
+    }
+  ],
+  "group": [
+    {
+      "name": "main",
+      "typeMode": "none",
+      "input": [
+        {
+          "name": "source",
+          "type": "ActivityDefinition",
+          "mode": "source"
+        },
+        {
+          "name": "target",
+          "type": "MedicationRequest",
+          "mode": "target"
+        }
+      ],
+      "rule": [
+        {
+          "name": "testing-source-constraints-negative",
+          "source": [
+            {
+              "context": "source",
+              "element": "useContext",
+              "min": 8
+            }
+          ],
+          "target": [
+            {
+              "context": "target",
+              "contextType": "variable",
+              "element": "instantiatesUri",
+              "listMode": ["share"],
+              "transform": "evaluate",
+              "parameter": [
+                {
+                  "valueString": "'dummy'"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
