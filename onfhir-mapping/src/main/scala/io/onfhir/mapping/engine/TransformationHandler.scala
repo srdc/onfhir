@@ -8,7 +8,7 @@ import io.onfhir.path.{FhirPathEvaluator, FhirPathException}
 import io.onfhir.util.JsonFormatter.formats
 import org.json4s.JsonAST.{JArray, JDouble, JInt, JObject, JString, JValue}
 
-object TransformationHandler {
+class TransformationHandler(mappingUtility: IMappingUtility) {
 
   /**
    * Apply FHIR mapping transformation function on evaluated source values with given parameters
@@ -19,7 +19,7 @@ object TransformationHandler {
    */
   def transform(sources:Seq[JValue], transformFunc:String, parameters:Seq[JValue]):Seq[JValue] = {
     try {
-      val method = TransformationHandler.getClass.getMethod(transformFunc, classOf[Seq[JValue]], classOf[Seq[JValue]])
+      val method = this.getClass.getMethod(transformFunc, classOf[Seq[JValue]], classOf[Seq[JValue]])
       val result = method.invoke(this, sources, parameters).asInstanceOf[Seq[JValue]]
       result
     }catch {
@@ -39,10 +39,11 @@ object TransformationHandler {
    * @param parameters
    * @return
    */
-  private def create(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
+  def create(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
     if(parameters.length != 1 || !parameters.head.isInstanceOf[JString])
       throw new StructureMappingException("Transform operation 'create' takes only a single parameter which should indicate a data type!")
-    Seq(JObject())
+    val dt = parameters.head.extract[String]
+    Seq(mappingUtility.createType(dt))
   }
 
   /**
@@ -51,7 +52,7 @@ object TransformationHandler {
    * @param parameters
    * @return
    */
-  private def copy(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue]= {
+  def copy(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue]= {
     if(source.length != 1)
       throw new StructureMappingException("Transform operation 'copy' needs a single source value as input!")
     if(parameters.nonEmpty)
@@ -65,7 +66,7 @@ object TransformationHandler {
    * @param parameters
    * @return
    */
-  private def truncate(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue]= {
+  def truncate(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue]= {
     if(source.length != 1)
       throw new StructureMappingException("Transform operation 'truncate' needs a single source value as input!")
     if(parameters.length != 1 || !parameters.head.isInstanceOf[JInt])
@@ -83,7 +84,7 @@ object TransformationHandler {
    * @param parameters
    * @return
    */
-  private def uuid(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue]= {
+  def uuid(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue]= {
     if(parameters.nonEmpty)
       throw new StructureMappingException("Transform operation 'uuid' does not take any argument!")
     Seq(JString(UUID.randomUUID().toString))
@@ -95,7 +96,7 @@ object TransformationHandler {
    * @param parameters
    * @return
    */
-  private def append(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
+  def append(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
     if(source.isEmpty)
       throw new StructureMappingException("Invalid source input for transform operation 'append'!")
 
@@ -111,7 +112,7 @@ object TransformationHandler {
    * @param parameters
    * @return
    */
-  private def evaluate(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue]= {
+  def evaluate(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue]= {
     if(source.length != 1)
       throw new StructureMappingException("Transform operation 'evaluate' needs a single source value as input!")
 
@@ -124,7 +125,7 @@ object TransformationHandler {
     results
   }
 
-  private def translate(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
+  def translate(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
     throw new NotImplementedError()
   }
 
@@ -134,7 +135,7 @@ object TransformationHandler {
    * @param parameters
    * @return
    */
-  private def cc(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
+  def cc(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
      val result = parameters.length match {
         case 1 if parameters.head.isInstanceOf[JString] =>
           JObject("text" -> parameters.head)
@@ -161,7 +162,7 @@ object TransformationHandler {
    * @param parameters
    * @return
    */
-  private def c(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
+  def c(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
     val result = parameters.length match {
         case 2 if parameters.forall(_.isInstanceOf[JString]) =>
           JObject(
@@ -186,7 +187,7 @@ object TransformationHandler {
    * @param parameters
    * @return
    */
-  private def qty(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
+  def qty(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
       val result = parameters.length match {
         case 2 if parameters.head.isInstanceOf[JDouble] && parameters.last.isInstanceOf[JString] =>
           JObject(
@@ -212,7 +213,7 @@ object TransformationHandler {
    * @param parameters
    * @return
    */
-  private def id(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
+  def id(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
 
       val result = parameters.length match {
         case 2 if parameters.forall(_.isInstanceOf[JString])  =>
@@ -236,25 +237,25 @@ object TransformationHandler {
     Seq(result)
   }
 
-  private def escape(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
+  def escape(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
     throw new NotImplementedError()
   }
 
-  private def cast(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue]= {
+  def cast(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue]= {
     throw new NotImplementedError()
   }
 
 
 
-  private def reference(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
+  def reference(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
     throw new NotImplementedError()
   }
 
-  private def dateOp(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
+  def dateOp(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
     throw new NotImplementedError()
   }
 
-  private def pointer(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
+  def pointer(source:Seq[JValue], parameters:Seq[JValue]):Seq[JValue] = {
     throw new NotImplementedError()
   }
 }

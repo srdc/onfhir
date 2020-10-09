@@ -1,0 +1,41 @@
+{
+  "resourceType": "StructureMap",
+  "url": "http://onfhir.io/fhir/StructureMap/dose-import",
+  "name": "Transform Dosage to Dosage but getting fixed fields - for testing",
+  "status": "draft",
+  "group": [
+    {
+      "name": "dosageRouteCopy",
+      "typeMode": "none",
+      "input": [
+        {
+          "name": "dosageSrc",
+          "mode": "source"
+        },
+        {
+          "name": "dosageTgt",
+          "mode": "target"
+        }
+      ],
+      "rule": [
+        {
+          "name": "route",
+          "source": [
+            {
+              "context": "dosageSrc",
+              "element": "route"
+            }
+          ],
+          "target": [
+            {
+              "context": "dosageTgt",
+              "contextType": "variable",
+              "element": "route",
+              "transform": "copy"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

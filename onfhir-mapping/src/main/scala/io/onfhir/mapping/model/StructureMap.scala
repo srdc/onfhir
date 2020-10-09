@@ -7,4 +7,4 @@ package io.onfhir.mapping.model
  * @param structureDefs   Structure Definitions for target and source that this map is defined on or for
  * @param groups          Defined groups
  */
-case class StructureMap(url:String, imports:Set[String], structureDefs:Seq[(String, String)], groups:Map[String, StructureMapGroup])
+case class StructureMap(url:String, imports:Set[String], structureDefs:Seq[(String, String, Option[String])], groups:Seq[StructureMapGroup])

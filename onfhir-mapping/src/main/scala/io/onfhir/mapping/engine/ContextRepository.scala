@@ -9,17 +9,13 @@ import scala.collection.mutable.ListBuffer
 trait IContextRepository {
   def getSourceContext(v:String):Option[JValue]
   def getTargetContext(v:String):Option[TargetContext]
+
 }
 
-case class RootContextRepository(sourceContext: Map[String, Seq[JValue]], targetContext:Map[String, TargetContext]) extends IContextRepository {
+case class RootContextRepository(sourceContext: Map[String, JValue], targetContext:Map[String, TargetContext]) extends IContextRepository {
   def getSourceContext(v:String):Option[JValue] = {
     sourceContext
       .get(v)
-      .flatMap {
-        case Nil => None
-        case Seq(s) => Some(s)
-        case oth => Some(JArray(oth.toList))
-      }
       .orElse(getTargetContext(v).map(_.toJson()))
   }
 
@@ -30,27 +26,26 @@ case class RootContextRepository(sourceContext: Map[String, Seq[JValue]], target
 /**
  * Context repository for a group or rule
  * @param parentRepository   Parent repository for contexts
+ * @param mappedParams       Mapped params in param repository (param name in this -> param name in parent)
  */
-case class ContextRepository(parentRepository:IContextRepository, filteredParams:Option[Set[String]] = None) extends IContextRepository {
+case class ContextRepository(parentRepository:IContextRepository, mappedParams:Option[Map[String, String]] = None) extends IContextRepository {
   //Newly created source context
   val newSourceContext:mutable.Map[String, Seq[JValue]] = new mutable.HashMap[String, Seq[JValue]]()
   //Newly created target context
   val newTargetContext:mutable.Map[String, TargetContext] = new mutable.HashMap[String, TargetContext]()
 
   private def getSourceContextFromParent(v:String):Option[JValue] = {
-    if(filteredParams.forall(_.contains(v)))
-      parentRepository
-        .getSourceContext(v)
-    else
-      None
+    mappedParams match {
+      case None => parentRepository.getSourceContext(v)
+      case Some(mp) => mp.get(v).flatMap(pv => parentRepository.getSourceContext(pv))
+    }
   }
 
   private def getTargetContextFromParent(v:String):Option[TargetContext] = {
-    if(filteredParams.forall(_.contains(v)))
-      parentRepository
-        .getTargetContext(v)
-    else
-      None
+    mappedParams match {
+      case None =>   parentRepository.getTargetContext(v)
+      case Some(mp) =>  mp.get(v).flatMap(pv => parentRepository.getTargetContext(pv))
+    }
   }
 
   /**
@@ -118,7 +113,7 @@ case class ContextRepository(parentRepository:IContextRepository, filteredParams
                 Some(newTargetContext) -> RefTargetContextValue(ruleId, listMode, newTargetContext)
             }
             //Add the context value
-            ctx.elements(element).:+(contextValue)
+            ctx.elements(element).append(contextValue)
 
             //If a new variable is defined, update the context map
             if(newContext.isDefined)
@@ -149,7 +144,7 @@ case class RefTargetContextValue(ruleId:String, listMode:Option[String], value:T
   }
 }
 
-case class TargetContext(var elements:mutable.Map[String, mutable.Seq[TargetContextValue]] = new mutable.HashMap[String, mutable.Seq[TargetContextValue]](), var value:Seq[JValue]) {
+case class TargetContext(var elements:mutable.Map[String, mutable.ListBuffer[TargetContextValue]] = new mutable.HashMap[String, mutable.ListBuffer[TargetContextValue]](), var value:Seq[JValue]) {
   private def getValue(values:Seq[JValue]):JValue = {
     values.length match {
       case 0 => JNothing

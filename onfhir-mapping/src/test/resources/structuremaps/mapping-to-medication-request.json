@@ -1,0 +1,270 @@
+{
+  "resourceType": "StructureMap",
+  "url": "http://onfhir.io/fhir/StructureMap/medicationrequest-transform",
+  "name": "Transform from an ActivityDefinition to a MedicationRequest",
+  "status": "draft",
+  "structure": [
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/activitydefinition",
+      "mode": "source"
+    },
+    {
+      "url": "http://hl7.org/fhir/StructureDefinition/supplyrequest",
+      "mode": "target"
+    }
+  ],
+  "group": [
+    {
+      "name": "main",
+      "typeMode": "none",
+      "input": [
+        {
+          "name": "source",
+          "type": "ActivityDefinition",
+          "mode": "source"
+        },
+        {
+          "name": "target",
+          "type": "MedicationRequest",
+          "mode": "target"
+        }
+      ],
+      "rule": [
+        {
+          "name": "status",
+          "source": [
+            {
+              "context": "source"
+            }
+          ],
+          "target": [
+            {
+              "context": "target",
+              "contextType": "variable",
+              "element": "status",
+              "transform": "evaluate",
+              "parameter": [
+                {
+                  "valueString": "'draft'"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "intent",
+          "source": [
+            {
+              "context": "source"
+            }
+          ],
+          "target": [
+            {
+              "context": "target",
+              "contextType": "variable",
+              "element": "category",
+              "transform": "evaluate",
+              "parameter": [
+                {
+                  "valueString": "'proposal'"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "priority",
+          "source": [
+            {
+              "context": "source",
+              "element": "priority"
+            }
+          ],
+          "target": [
+            {
+              "context": "target",
+              "contextType": "variable",
+              "element": "priority",
+              "transform": "copy"
+            }
+          ]
+        },
+        {
+          "name": "medication",
+          "source": [
+            {
+              "context": "source",
+              "element": "product",
+              "type": "Reference"
+            }
+          ],
+          "target": [
+            {
+              "context": "target",
+              "contextType": "variable",
+              "element": "medicationReference",
+              "transform": "copy"
+            }
+          ]
+        },
+        {
+          "name": "instantiatesCanonical",
+          "source": [
+            {
+              "context": "source",
+              "element": "url"
+            }
+          ],
+          "target": [
+            {
+              "context": "target",
+              "contextType": "variable",
+              "element": "instantiatesCanonical",
+              "listMode": ["share"],
+              "transform": "copy"
+            }
+          ]
+        },
+        {
+          "name": "dosageInstruction",
+          "source": [
+            {
+              "context": "source",
+              "element": "dosage",
+              "variable": "dosageSrc"
+            }
+          ],
+          "target": [
+            {
+              "context": "target",
+              "contextType": "variable",
+              "element": "dosageInstruction",
+              "listMode": ["share"],
+              "transform": "create",
+              "variable": "dosageTgt",
+              "parameter": [
+                {
+                  "valueString": "Dosage"
+                }
+              ]
+            }
+          ],
+          "rule": [
+            {
+              "name": "route",
+              "source": [
+                {
+                  "context": "dosageSrc",
+                  "element": "route"
+                }
+              ],
+              "target": [
+                {
+                  "context": "dosageTgt",
+                  "contextType": "variable",
+                  "element": "route",
+                  "transform": "copy"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "authoredOn",
+          "source": [
+            {
+              "context": "source"
+            }
+          ],
+          "target": [
+            {
+              "context": "target",
+              "contextType": "variable",
+              "element": "authoredOn",
+              "transform": "evaluate",
+              "parameter": [
+                {
+                  "valueString": "now()"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "performerType",
+          "source": [
+            {
+              "context": "source",
+              "element": "participant",
+              "listMode": "first",
+              "variable": "p"
+            }
+          ],
+          "target": [
+            {
+              "context": "target",
+              "contextType": "variable",
+              "element": "performerType",
+              "transform": "create",
+              "variable": "pt",
+              "parameter": [
+                {
+                  "valueString": "CodeableConcept"
+                }
+              ]
+            }
+          ],
+          "rule": [{
+            "name": "text",
+            "source": [
+              {
+                "context": "p"
+              }
+            ],
+            "target": [
+              {
+                "context": "pt",
+                "contextType": "variable",
+                "element": "text",
+                "transform": "evaluate",
+                "parameter": [
+                  {
+                    "valueString": "type"
+                  }
+                ]
+              }
+            ]
+          }]
+        },
+        {
+          "name": "testing-source-constraints-positive",
+          "source": [
+            {
+              "context": "source",
+              "element": "useContext",
+              "listMode": "not_last",
+              "min": 6,
+              "max": "7",
+              "condition": "code.code='focus'",
+              "check": "code.system='http://terminology.hl7.org/CodeSystem/usage-context-type'"
+            }
+          ],
+          "target": [
+            {
+              "context": "target",
+              "contextType": "variable",
+              "element": "reasonCode",
+              "listMode": ["share"],
+              "transform": "evaluate",
+              "parameter": [
+                {
+                  "valueString": "value as CodeableConcept"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

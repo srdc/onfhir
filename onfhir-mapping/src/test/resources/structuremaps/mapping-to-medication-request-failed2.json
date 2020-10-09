@@ -1,6 +1,6 @@
 {
   "resourceType": "StructureMap",
-  "url": "http://onfhir.io/fhir/StructureMap/medicationrequest-transform-failed1",
+  "url": "http://onfhir.io/fhir/StructureMap/medicationrequest-transform-failed2",
   "name": "Transform from an ActivityDefinition to a MedicationRequest",
   "status": "draft",
   "structure": [
@@ -36,7 +36,7 @@
             {
               "context": "source",
               "element": "useContext",
-              "min": 8
+              "max": "6"
             }
           ],
           "target": [

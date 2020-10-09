@@ -36,4 +36,4 @@ case class StructureMapTarget(
  * @param childRules
  * @param dependentRules
  */
-case class StructureMapRule(name:String, sources:Seq[StructureMapSource], targets:Seq[StructureMapTarget], childRules:Seq[StructureMapRule], dependentRules:Seq[(String, Set[String])])
+case class StructureMapRule(name:String, sources:Seq[StructureMapSource], targets:Seq[StructureMapTarget], childRules:Seq[StructureMapRule], dependentRules:Seq[(String, Seq[String])])

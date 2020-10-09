@@ -7,53 +7,147 @@ import org.json4s.JsonAST.{JNothing, JObject, JValue}
 import org.json4s.{JsonAST, _}
 import org.slf4j.LoggerFactory
 
-trait IRuleOrGroupFinder {
+trait IMappingExecutor {
+  /**
+   * Find rule or group in this context of execution
+   * @param name
+   * @return
+   */
   def findRuleOrGroup(name:String):Option[Either[StructureMapGroup, StructureMapRule]]
+
+  def executeMapping():Unit
 }
 /**
  *
  * @param structureMap
  * @param inputs
- * @param mappingRepository
+ * @param mappingUtility
  */
-class StructureMapExecutor(structureMap:StructureMap, inputs:Map[String, Resource], mappingRepository: IMappingRepository) {
+class StructureMapExecutor(structureMap:StructureMap, inputs:Map[String, Resource], mappingUtility: IMappingUtility) extends IMappingExecutor {
+  val targetDefinitions =
+    structureMap
+      .structureDefs
+      .filter(_._1 == "target") //filter the target mode
+
   //Imported maps
-  val importedStructureMaps = structureMap.imports.map(url => url -> mappingRepository.getStructureMap(url))
+  val importedStructureGroups:Map[String, StructureMapGroup] =
+    structureMap
+      .imports
+      .flatMap(url => mappingUtility.getStructureMap(url))
+      .flatMap(sm => sm.groups)
+      .map(s => s.name -> s)
+      .toMap
 
+  var rootContextRepository:RootContextRepository = _
 
-
+  /**
+   * Get the mapping results after execution
+   * @return
+   */
+  def getMappingResults():Map[String, JObject] = {
+    if(rootContextRepository != null){
+      rootContextRepository.targetContext.mapValues(_.toJson().asInstanceOf[JObject])
+    } else
+      throw new StructureMappingException(s"Structure mapping with ${structureMap.url} not executed yet!")
+  }
+  def executeMapping():Unit = {
+    executeMapping(structureMap.groups.head)
+  }
   /**
    * Execute the mapping on given inputs and generate the outputs
    * @return
    */
-  def executeMapping():Map[String, Resource] = {
+  def executeMapping(groupToStart:StructureMapGroup):Unit = {
+    val mainGroupRequiredInputs = groupToStart.sourceInputs.map(_._1).toSet
+    val notGivenInputs = mainGroupRequiredInputs.diff(inputs.keySet)
+    if(notGivenInputs.nonEmpty)
+      throw new StructureMappingException(s"Some of the inputs ${notGivenInputs.mkString(", ")} not given to the main mapping group ${groupToStart.name}!")
 
+    val mainGroupTargets = groupToStart.targetInputs
 
+    rootContextRepository =
+      RootContextRepository(
+        inputs.filterKeys(mainGroupRequiredInputs.contains),
+        mainGroupTargets
+          .map(t => t._1 -> TargetContext(value = t._2.toSeq.map(rt => createResourceType(rt)))) //Create the type if exist
+          .toMap
+      )
+    val mainGroupExecutor = StructureMapGroupExecutor(this, groupToStart, ContextRepository(rootContextRepository), mappingUtility)
+    mainGroupExecutor.executeMapping()
   }
 
-}
-
-class StructureMapGroupExecutor(structureGroup:StructureMapGroup, context:Map[String, Seq[JValue]]) extends IRuleOrGroupFinder {
-
-  def executeMapping() = {
-
+  private def createResourceType(rt:String):JValue = {
+    mappingUtility.createResource(
+      rt,
+      targetDefinitions
+        .find(_._3.contains(rt)).map(_._2) //Find a profile with th given type alias
+        .orElse(targetDefinitions.find(_._3.isEmpty).map(_._2)) //or find the profile given for target without alias
+    )
   }
 
   override def findRuleOrGroup(name: String): Option[Either[StructureMapGroup, StructureMapRule]] = {
-
+    structureMap
+      .groups  //Try to find within the map itself
+      .find(_.name == name)
+      .map(Left(_))
+      .orElse(importedStructureGroups.get(name).map(Left(_))) //Or imports
   }
 }
 
-case class StructureMapRuleExecutor(structureMapRule:StructureMapRule, ctxRepository:IContextRepository) {
-  val logger = LoggerFactory.getLogger(classOf[StructureMapRuleExecutor])
+case class StructureMapGroupExecutor(parent:IMappingExecutor, structureGroup:StructureMapGroup, ctxRepository:IContextRepository, mappingUtility: IMappingUtility) extends IMappingExecutor {
+
+  def executeMapping():Unit = {
+    //Execute the extended group rules first
+    structureGroup.extend.foreach(g => parent.findRuleOrGroup(g) match {
+      case Some(Left(group)) =>
+        StructureMapGroupExecutor(this, group, ctxRepository, mappingUtility)
+          .executeMapping()
+      case _ =>
+        throw new StructureMappingException(s"Extended group ${g} referred in group ${structureGroup.name} not found in StructureMap hierarchy!")
+    })
+
+    //Execute the rules
+    val ruleExecutors = structureGroup.rules.map(r => StructureMapRuleExecutor(this, r, ContextRepository(ctxRepository), mappingUtility))
+    ruleExecutors.foreach(_.executeMapping())
+  }
 
   /**
-   * Apply a mapping rule
-
-   * @param context           Context (Variables and inputs)
+   * Find rule or group
+   * @param name
    * @return
    */
- def executeMapping() = {
+  override def findRuleOrGroup(name: String): Option[Either[StructureMapGroup, StructureMapRule]] = {
+     structureGroup
+       .rules
+       .find(_.name == name)
+       .map(Right(_))
+       .orElse(parent.findRuleOrGroup(name))
+  }
+}
+
+case class StructureMapRuleExecutor(parent:IMappingExecutor, structureMapRule:StructureMapRule, ctxRepository:ContextRepository, mappingUtility: IMappingUtility) extends IMappingExecutor {
+  val logger = LoggerFactory.getLogger(classOf[StructureMapRuleExecutor])
+
+  val transformationHandler = new TransformationHandler(mappingUtility)
+
+  override def findRuleOrGroup(name: String): Option[Either[StructureMapGroup, StructureMapRule]] = {
+    structureMapRule
+      .childRules
+      .find(_.name == name)
+      .map(Right(_))
+      .orElse(parent.findRuleOrGroup(name))
+  }
+
+
+  def isTargetParam(v:String):Boolean = {
+    ctxRepository.getTargetContext(v).isDefined
+  }
+
+  /**
+   * Execute a mapping rule
+   * @return
+   */
+ def executeMapping():Unit = {
    //Evaluate the source definitions
    val resultingValues =
      structureMapRule
@@ -75,11 +169,34 @@ case class StructureMapRuleExecutor(structureMapRule:StructureMapRule, ctxReposi
      //Construct rule executors for child rules and execute them
      val childExecutors =
        structureMapRule.childRules
-        .map(cr => StructureMapRuleExecutor(cr, ContextRepository(ctxRepository)))
+        .map(cr => StructureMapRuleExecutor(parent, cr, ContextRepository(ctxRepository), mappingUtility))
      childExecutors.foreach(_.executeMapping())
 
-     structureMapRule.dependentRules.map(dr => )
+     //Execute dependent rules or groups
+     val dependentExecutors = structureMapRule.dependentRules.map(dr => parent.findRuleOrGroup(dr._1) match {
+       case None => throw new StructureMappingException(s"Dependent rule/group ${dr._1} referred in rule ${structureMapRule.name} not found in StructureMap hierarchy!")
+       case Some(Left(group)) =>
+         //Check if we have enough target params
+         val requiredTargetParams = group.targetInputs.map(_._1)
+         val requiredSourceParams = group.sourceInputs.map(_._1)
+         val targetParamsShared = dr._2.filter(isTargetParam)
+         val sourceParamsShared = dr._2.diff(targetParamsShared)
+         if(targetParamsShared.length < requiredTargetParams.length)
+           throw new StructureMappingException(s"Target input parameters of dependent group does not match with the shared variables!")
 
+         if(group.sourceInputs.length  != (sourceParamsShared.length + requiredTargetParams.length - targetParamsShared.length))
+           throw new StructureMappingException(s"Source input parameters of dependent group does not match with the shared variables!")
+
+         val variableMap =
+           (requiredSourceParams ++ requiredTargetParams)
+           .zip(sourceParamsShared ++ targetParamsShared)
+           .toMap
+
+         StructureMapGroupExecutor(parent, group, ContextRepository(ctxRepository, Some(variableMap)), mappingUtility)
+       case Some(Right(rule)) =>
+         StructureMapRuleExecutor(parent, rule, ctxRepository, mappingUtility)
+     })
+     dependentExecutors.foreach(_.executeMapping())
 
    }
  }
@@ -91,13 +208,15 @@ case class StructureMapRuleExecutor(structureMapRule:StructureMapRule, ctxReposi
    * @return
    */
  private def evaluateTarget(target:StructureMapTarget, sources:Seq[JValue]) = {
-   val targetValue = target.transform.map(tf => TransformationHandler.transform(sources, tf,  target.parameters)).getOrElse(Seq(JObject()))
+   val targetValue = target.transform.map(tf => transformationHandler.transform(sources, tf,  target.parameters)).getOrElse(Seq(JObject()))
    (target.context, target.contextType) match {
      //If there is a context defined in target find it
      case (Some(context), Some("variable")) =>
        ctxRepository.addElement(structureMapRule.name, context, target.element.get, target.variable, target.listMode, targetValue)
      case (None, _) =>
        ctxRepository.addRootContext(target.variable.get, targetValue)
+     case _ =>
+       throw new StructureMappingException(s"Type mappings not supported yet!")
    }
  }
 
