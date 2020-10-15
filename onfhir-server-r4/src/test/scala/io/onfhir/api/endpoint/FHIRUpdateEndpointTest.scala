@@ -113,7 +113,7 @@ class FHIRUpdateEndpointTest extends OnFhirTest with FHIREndpoint {
     "manage resource contention for wrong versions" in {
       Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient))
         .withHeaders(List(`If-Match`(EntityTag("3", weak = false)))) ~> routes ~> check {
-        status === Conflict
+        status === PreconditionFailed
       }
     }
     "manage resource contention for correct versions" in {

@@ -1,8 +1,10 @@
 package io.onfhir.api.service
 
 import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model.headers.`If-Match`
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
+import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.util.{BaseFhirProfileHandler, FHIRUtil}
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
@@ -28,8 +30,10 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
       val validations =
         if (fhirRequest.resourceId.isDefined)
           validatePatchInteraction(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.ifNoneExist)
-        else
-          validateConditionalPatchInteraction(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.queryParams, fhirRequest.prefer)
+        else {
+          fhirRequest.addParsedQueryParams(FHIRSearchParameterValueParser.parseSearchParameters(fhirRequest.resourceType.get, fhirRequest.queryParams, None))
+          validateConditionalPatchInteraction(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.getParsedQueryParams(), fhirRequest.prefer)
+        }
 
       validations.map(_ =>
         //Extra business rules validations if exist
@@ -49,7 +53,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
     if(fhirRequest.resourceId.isDefined)
       patchResource(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.resourceId.get, fhirRequest.ifMatch, fhirRequest.prefer, isTesting)
     else {
-      conditionalPatchResource(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.queryParams, fhirRequest.ifMatch, fhirRequest.prefer, isTesting)
+      conditionalPatchResource(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.getParsedQueryParams(), fhirRequest.ifMatch, fhirRequest.prefer, isTesting)
 
     }
   }
@@ -88,7 +92,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
     * @param prefer   Prefer header
     * @return
     */
-  private def patchResource(patch: Resource, _type:String, _id:String, ifMatch:Option[String], prefer:Option[String], isTesting:Boolean) : Future[FHIRResponse] = {
+  private def patchResource(patch: Resource, _type:String, _id:String, ifMatch:Option[`If-Match`], prefer:Option[String], isTesting:Boolean) : Future[FHIRResponse] = {
     logger.debug(s"requesting 'patch' for ${_type} with ${_id}...")
 
     //2) check if resource already exists
@@ -125,7 +129,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
   private def conditionalPatchResource(patch: Resource,
                                        _type:String,
                                        searchParameters:List[Parameter],
-                                       ifMatch:Option[String],
+                                       ifMatch:Option[`If-Match`],
                                        prefer:Option[String],
                                        isTesting:Boolean
                                       ) : Future[FHIRResponse] = {

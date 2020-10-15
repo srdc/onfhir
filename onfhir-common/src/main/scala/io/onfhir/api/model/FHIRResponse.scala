@@ -5,9 +5,7 @@ import akka.http.scaladsl.model._
 import io.onfhir.api.Resource
 import io.onfhir.api._
 import io.onfhir.util.JsonFormatter._
-import org.json4s.Extraction
-
-
+import org.json4s.{Extraction}
 
 /**
   * Object representing a HttpResponse for FHIR protocol
@@ -21,7 +19,7 @@ import org.json4s.Extraction
   */
 case class FHIRResponse(
                          httpStatus:StatusCode,
-                         responseBody:Option[Resource] = None,
+                         var responseBody:Option[Resource] = None,
                          location:Option[Uri] = None,
                          lastModified:Option[DateTime] = None,
                          newVersion:Option[Long]=None,

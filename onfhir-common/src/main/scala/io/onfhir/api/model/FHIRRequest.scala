@@ -3,7 +3,7 @@ package io.onfhir.api.model
 import java.time.Instant
 
 import akka.http.scaladsl.model.ContentType
-import akka.http.scaladsl.model.headers.{`If-Modified-Since`, `If-None-Match`}
+import akka.http.scaladsl.model.headers.{`If-Modified-Since`, `If-None-Match`, `If-Match`}
 import io.onfhir.api.Resource
 import io.onfhir.api._
 import io.onfhir.api.parsers.{BundleRequestParser, FHIRSearchParameterValueParser}
@@ -22,8 +22,7 @@ import io.onfhir.config.FhirConfigurationManager.fhirConfig
   * @param compartmentType        FHIR Compartment type if this is a compartment search
   * @param compartmentId          Compartment id if this is a compartment search
   * @param resource               The body of request (parsed into Json4s model)
-  * @param queryParams            Parsed search parameters if this is a search or conditional operation
-  * @param operationParameters    FHIR Operation parameters given in URI
+  * @param queryParams            Supplied search parameters if this is a search or conditional operation
   * @param ifNoneExist            FHIR IfNone Header
   * @param prefer                 FHIR Prefer Header
   * @param ifMatch                FHIR IfMatch Header
@@ -41,22 +40,30 @@ case class FHIRRequest(
                         var compartmentType:Option[String] = None,
                         var compartmentId:Option[String] = None,
                         var resource:Option[Resource] = None,
-                        var queryParams:List[Parameter] = List.empty,
-                        var operationParameters:Map[String, List[String]] = Map.empty,
+                        var queryParams:Map[String, List[String]] =  Map.empty,
+                        //var operationParameters:Map[String, List[String]] = Map.empty,
                         //HTTP Headers used in different interactions
                         var ifNoneExist:Option[String] = None,
                         var prefer:Option[String] = None,
-                        var ifMatch:Option[String] = None,
-                        var summary:Option[String] = None,
+                        var ifMatch:Option[`If-Match`] = None,
                         var ifNoneMatch: Option[`If-None-Match`] = None,
                         var ifModifiedSince:Option[`If-Modified-Since`] = None,
                         //Other contextual params
+                        var contentType: Option[String] = None,
                         var isIdGenerated:Boolean = true, //If we generate the id of request or is it come from the Bundle request
                         var requestTime:Instant = Instant.now(), //Time when request is constructed
                         var response:Option[FHIRResponse] = None, // FHIR response to the request
                         var responseTime:Option[Instant] = None, // Time that response is ready
                         var childRequests:Seq[FHIRRequest] = Nil // Child requests for batch and transaction
                       ){
+  // Parsed query parameters
+  private var parsedQueryParams:List[Parameter] = List.empty
+
+  def addParsedQueryParams(params:List[Parameter]):Unit = {
+    parsedQueryParams = parsedQueryParams ++ params
+  }
+
+  def getParsedQueryParams():List[Parameter] = parsedQueryParams
 
   //Set id for the request externally
   def setId(id:Option[String]):FHIRRequest = {
@@ -110,7 +117,7 @@ case class FHIRRequest(
     this.resourceType = Some(resourceType)
     this.prefer = prefer
     //Set the compartment search parameter
-    queryParams = List(FHIRSearchParameterValueParser.constructCompartmentSearchParameter(compartmentType, compartmentId, resourceType))
+    //queryParams = List(FHIRSearchParameterValueParser.constructCompartmentSearchParameter(compartmentType, compartmentId, resourceType))
   }
 
   /**
@@ -120,7 +127,7 @@ case class FHIRRequest(
     * @param ifMatch        FHIR IfMatch Header value
     * @param prefer         FHIR Prefer Header value
     */
-  def initializeUpdateRequest(resourceType:String, resourceId:Option[String], ifMatch:Option[String], prefer:Option[String]):Unit = {
+  def initializeUpdateRequest(resourceType:String, resourceId:Option[String], ifMatch:Option[`If-Match`], prefer:Option[String]):Unit = {
     this.interaction = FHIR_INTERACTIONS.UPDATE
     this.resourceType = Some(resourceType)
     this.resourceId  = resourceId
@@ -156,15 +163,26 @@ case class FHIRRequest(
     * @param resourceId       Id of the resource to be retrieved
     * @param ifModifiedSince  FHIR IfModifiedSince Header value
     * @param ifNoneMatch      FHIR IfNoneMatch Header value
-    * @param summary          FHIR summary parameter value if exists
+    * @param summary          FHIR _summary parameter value if exists
+    * @param elements         FHIR _elements parameter value if exists
     */
-  def initializeReadRequest(resourceType:String, resourceId:String, ifModifiedSince:Option[`If-Modified-Since`], ifNoneMatch: Option[`If-None-Match`], summary:Option[String]):Unit = {
+  def initializeReadRequest(resourceType:String,
+                            resourceId:String,
+                            ifModifiedSince:Option[`If-Modified-Since`],
+                            ifNoneMatch: Option[`If-None-Match`],
+                            summary:Option[String],
+                            elements:Option[String]
+                           ):Unit = {
     this.interaction = FHIR_INTERACTIONS.READ
     this.resourceType = Some(resourceType)
     this.resourceId  = Some(resourceId)
     this.ifModifiedSince = ifModifiedSince
     this.ifNoneMatch = ifNoneMatch
-    this.summary = summary
+    this.queryParams =
+      (
+        summary.map(s => "_summary" -> List(s)).toSeq ++
+        elements.map(e => "_elements" -> List(e)).toSeq
+      ).toMap
   }
 
   /**
@@ -187,7 +205,7 @@ case class FHIRRequest(
     * @param ifMatch        FHIR IfMatch Header value
     * @param prefer         FHIR Prefer Header value
     */
-  def initializePatchRequest(resourceType:String, resourceId:Option[String], ifMatch:Option[String], prefer:Option[String]):Unit = {
+  def initializePatchRequest(resourceType:String, resourceId:Option[String], ifMatch:Option[`If-Match`], prefer:Option[String]):Unit = {
     this.interaction = FHIR_INTERACTIONS.PATCH
     this.resourceType = Some(resourceType)
     this.resourceId  = resourceId

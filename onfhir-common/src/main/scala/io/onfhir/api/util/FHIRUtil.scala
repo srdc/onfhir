@@ -6,7 +6,7 @@ import java.time.Instant
 import java.util.UUID
 
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.`Content-Type`
+import akka.http.scaladsl.model.headers.{EntityTag, `Content-Type`}
 import com.nimbusds.jose.util.Base64URL
 import io.onfhir.config.{OnfhirConfig, OperationParamDef}
 import io.onfhir.api._
@@ -211,7 +211,7 @@ object FHIRUtil {
         (FHIR_COMMON_FIELDS.ID -> _id) ~
         (FHIR_COMMON_FIELDS.META ->
           (FHIR_COMMON_FIELDS.VERSION_ID -> _vid.toString) ~
-            (FHIR_COMMON_FIELDS.LAST_UPDATED -> (lastModified.toIsoDateTimeString + "Z"))
+            (FHIR_COMMON_FIELDS.LAST_UPDATED -> DateTimeUtil.serializeDateTime(lastModified))
           )
 
     FHIRUtil.populateResourceWithExtraFields(resourceForDeletion, FHIR_METHOD_NAMES.METHOD_DELETE, statusCode)
@@ -423,11 +423,12 @@ object FHIRUtil {
 
       //bdl-4: entry.response only for some types of bundles (expression : entry.response.empty() or type = 'batch-response' or type = 'transaction-response')
       if(Seq(FHIR_BUNDLE_TYPES.BATCH_RESPONSE, FHIR_BUNDLE_TYPES.TRANSACTION_RESPONSE, FHIR_BUNDLE_TYPES.HISTORY).contains(bundleType)) {
+        val etag:String = EntityTag.apply(currentVersion, weak = true).toString()
         //Construct Bundle.response
         entry = entry ~
           (FHIR_BUNDLE_FIELDS.RESPONSE ->
             (FHIR_BUNDLE_FIELDS.STATUS -> statusCode) ~
-            (FHIR_BUNDLE_FIELDS.ETAG -> currentVersion) ~
+            (FHIR_BUNDLE_FIELDS.ETAG -> etag) ~
             (FHIR_BUNDLE_FIELDS.LAST_MODIIFED -> lastUpdated)
           )
       }
@@ -474,6 +475,26 @@ object FHIRUtil {
   }
 
   /**
+   * Get the reference url to refer this resource e.g. Observation/65625454
+   * @param resource
+   * @return
+   */
+  def getReference(resource: Resource):String = {
+    val (rtype, rid) = extractResourceTypeAndId(resource)
+    s"$rtype/$rid"
+  }
+
+  /**
+   * Get the reference url with version to refer this resource e.g. Observation/4646/_history/2
+   * @param resource
+   * @return
+   */
+  def getReferenceWithVersion(resource: Resource):String = {
+    val versionId = extractVersionFromResource(resource)
+    s"${getReference(resource)}/_history/$versionId"
+  }
+
+  /**
     * Extract resource id
     * @param resource
     * @return
@@ -489,6 +510,10 @@ object FHIRUtil {
     */
   def extractVersionFromResource(resource: Resource): Long = {
     (resource \ FHIR_COMMON_FIELDS.META \ FHIR_COMMON_FIELDS.VERSION_ID).extract[String].toLong
+  }
+
+  def extractVersionOptionFromResource(resource: Resource): Option[Long] = {
+    (resource \ FHIR_COMMON_FIELDS.META \ FHIR_COMMON_FIELDS.VERSION_ID).extractOpt[String].map(_.toLong)
   }
 
   /**

@@ -1,6 +1,5 @@
-package in.onfhir.config
+package io.onfhir.config
 
-import io.onfhir.config.SearchParameterConfigurator
 import org.specs2.mutable.Specification
 
 class SearchParameterConfiguratorTest extends Specification {

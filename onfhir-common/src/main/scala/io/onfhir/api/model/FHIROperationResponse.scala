@@ -1,12 +1,12 @@
 package io.onfhir.api.model
 
+import akka.http.javadsl.model.headers.WWWAuthenticate
 import akka.http.scaladsl.model.{DateTime, StatusCode, Uri}
-
-import io.onfhir.api.Resource
+import io.onfhir.api.{FHIR_COMMON_FIELDS, FHIR_DATA_TYPES, Resource}
+import io.onfhir.api.util.FHIRUtil
 import io.onfhir.util.JsonFormatter._
-
 import org.json4s.Extraction
-import org.json4s.JsonAST.{JArray, JValue}
+import org.json4s.JsonAST.JObject
 
 import scala.collection.mutable
 
@@ -14,10 +14,9 @@ import scala.collection.mutable
   * Created by tuncay on 10/3/2017.
   * FHIR Operation response
   */
-class FHIROperationResponse(statusCode:StatusCode,
-                            location:Option[Uri] = None,
-                            lastModified:Option[DateTime] = None,
-                            newVersion:Option[Long]=None) extends FHIRResponse(statusCode, location = location, lastModified = lastModified, newVersion = newVersion) {
+class FHIROperationResponse(httpStatus:StatusCode, location:Option[Uri] = None, lastModified:Option[DateTime] = None, newVersion:Option[Long] = None)
+  extends FHIRResponse(httpStatus, location = location, lastModified = lastModified, newVersion = newVersion) {
+
   //Return parameters for Operation
   private val outputParams:mutable.ListBuffer[(String, FHIROperationParam)]  = new mutable.ListBuffer[(String, FHIROperationParam)]()
 
@@ -70,8 +69,69 @@ class FHIROperationResponse(statusCode:StatusCode,
   }
 
   /**
+   *
+   * @param pname
+   * @param value
+   */
+  def setOutputParam(pname:String, value:FHIROperationParam):Unit = outputParams.append(pname -> value)
+
+  /**
     * Get output parameters returned from the operation
     * @return
     */
   def getOutputParams:Seq[(String,FHIROperationParam)] = outputParams
+
+  /**
+   * Get single cardinality output param
+   * @param pname
+   * @return
+   */
+  def getOutputParam(pname:String):Option[FHIROperationParam] = {
+    outputParams.find(_._1 == pname).map(_._2)
+  }
+
+  /**
+   * Get multi cardinality output param
+   * @param pname
+   * @return
+   */
+  def getOutputParams(pname:String):Seq[FHIROperationParam] = {
+    outputParams.filter(_._1 == pname).map(_._2)
+  }
+}
+
+object FHIROperationResponse {
+  //Parse and convert FHIR response to FHIR Operation response
+  def apply(response:FHIRResponse):FHIROperationResponse = {
+    val operationResponse = new FHIROperationResponse(response.httpStatus, response.location, response.lastModified, response.newVersion)
+
+    response.responseBody
+      .foreach(body =>
+        FHIRUtil.extractValue[String](body, FHIR_COMMON_FIELDS.RESOURCE_TYPE) match {
+          case FHIR_DATA_TYPES.PARAMETERS =>
+            val parameters =
+              FHIRUtil.extractValue[Seq[JObject]](body, "parameter")
+                .map(parseOperationParameter)
+            parameters.foreach(p => operationResponse.setOutputParam(p._1, p._2))
+          case oth =>
+            operationResponse.setResponse(body)
+        }
+      )
+    operationResponse
+  }
+
+  private def parseOperationParameter(parameter:JObject):(String, FHIROperationParam) = {
+    val pname = FHIRUtil.extractValue[String](parameter, "name")
+    FHIRUtil.extractValueOption[JObject](parameter, "resource") match {
+      case Some(r) => pname -> FHIROperationParam.createSimpleParam(r)
+      case None =>
+        parameter.findField(_._1.startsWith("value")).map(_._2) match {
+          case Some(v) => pname -> FHIROperationParam.createSimpleParam(v)
+          case None =>
+            val subparts = FHIRUtil.extractValue[Seq[JObject]](parameter, "part")
+            pname -> FHIRMultiOperationParam.apply(subparts.map(parseOperationParameter))
+        }
+    }
+  }
+
 }

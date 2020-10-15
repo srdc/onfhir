@@ -1541,7 +1541,8 @@
             }]
         }
       ],
-      "interaction" : [{
+      "interaction" : [
+        {
         "code" : "transaction",
         "documentation" : "Implemented per the specification (or Insert other doco here)"
       },
@@ -1557,7 +1558,8 @@
         "code" : "search-system",
         "documentation" : "Implemented per the specification (or Insert other doco here)"
       }],
-      "searchParam" : [{
+      "searchParam" : [
+        {
           "name" : "_text",
           "definition" : "http://hl7.org/fhir/SearchParameter/DomainResource-text",
           "type" : "string",
@@ -1654,7 +1656,8 @@
           "documentation" : "Logical id of this artifact"
         }
       ],
-      "operation" : [{
+      "operation" : [
+        {
         "name" : "validate",
         "definition" : "http://hl7.org/fhir/OperationDefinition/Resource-validate"
       },
@@ -1677,6 +1680,9 @@
         {
           "name" : "expand",
           "definition" : "http://hl7.org/fhir/OperationDefinition/ValueSet-expand"
-        }]
+        }],
+      "compartment": [
+        "http://hl7.org/fhir/CompartmentDefinition/patient"
+      ]
     }]
 }

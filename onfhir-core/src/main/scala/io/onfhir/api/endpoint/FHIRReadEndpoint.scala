@@ -36,17 +36,19 @@ trait FHIRReadEndpoint {
         pathPrefix(OnfhirConfig.baseUri / Segment / Segment) { (_type, _id) =>
           pathEndOrSingleSlash {
             parameters(FHIR_SEARCH_RESULT_PARAMETERS.SUMMARY.?) { summary =>
-              optionalHeaderValueByType[`If-None-Match`](()) { ifNoneMatch =>
-                optionalHeaderValueByType[`If-Modified-Since`](()) { ifModifiedSince =>
-                  //Create the FHIR request object
-                  fhirRequest.initializeReadRequest(_type, _id, ifModifiedSince, ifNoneMatch, summary)
-                  //Enforce authorization
-                  AuthzManager.authorize(authContext._2, fhirRequest) {
-                    complete {
-                      new FHIRReadService().executeInteraction(fhirRequest)
+              parameters(FHIR_SEARCH_RESULT_PARAMETERS.ELEMENTS.?) { elements =>
+                optionalHeaderValueByType[`If-None-Match`](()) { ifNoneMatch =>
+                  optionalHeaderValueByType[`If-Modified-Since`](()) { ifModifiedSince =>
+                    //Create the FHIR request object
+                    fhirRequest.initializeReadRequest(_type, _id, ifModifiedSince, ifNoneMatch, summary, elements)
+                    //Enforce authorization
+                    AuthzManager.authorize(authContext._2, fhirRequest) {
+                      complete {
+                        new FHIRReadService().executeInteraction(fhirRequest)
+                      }
                     }
-                  }
 
+                  }
                 }
               }
             }
