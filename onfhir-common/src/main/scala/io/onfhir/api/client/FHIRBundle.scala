@@ -17,7 +17,7 @@ abstract class FHIRBundle(bundle:Resource) {
     FHIRUtil.extractValueOption[JObject](entry, "resource")
 }
 
-abstract class FHIRPaginatedBundle(bundle:Resource)  extends FHIRBundle(bundle) {
+abstract class FHIRPaginatedBundle(bundle:Resource, val request:FhirRequestBuilder)  extends FHIRBundle(bundle) {
   val total:Option[Long] = FHIRUtil.extractValueOption[Long](bundle, "total")
 
   private val links:Map[String, String] = (bundle \ "link") match {
@@ -49,7 +49,7 @@ abstract class FHIRPaginatedBundle(bundle:Resource)  extends FHIRBundle(bundle) 
  * FHIR Bundle that represents a search set
  * @param bundle
  */
-class FHIRSearchSetBundle(bundle:Resource, val request:FhirSearchRequestBuilder) extends FHIRPaginatedBundle(bundle) {
+class FHIRSearchSetBundle(bundle:Resource, override val request:FhirSearchRequestBuilder) extends FHIRPaginatedBundle(bundle, request) {
 
   /**
    * Search results
@@ -81,7 +81,7 @@ class FHIRSearchSetBundle(bundle:Resource, val request:FhirSearchRequestBuilder)
   }
 }
 
-class FHIRHistoryBundle(bundle:Resource, val request:FhirHistoryRequestBuilder) extends FHIRPaginatedBundle(bundle) {
+class FHIRHistoryBundle(bundle:Resource, override val request:FhirHistoryRequestBuilder) extends FHIRPaginatedBundle(bundle, request) {
   case class BundleRequestEntry(method:String, url:String)
   case class BundleResponseEntry(status:String, lastUpdateTime:DateTime, version:Option[Long])
 

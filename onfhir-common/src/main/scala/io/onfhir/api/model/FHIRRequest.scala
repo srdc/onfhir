@@ -2,8 +2,8 @@ package io.onfhir.api.model
 
 import java.time.Instant
 
-import akka.http.scaladsl.model.ContentType
-import akka.http.scaladsl.model.headers.{`If-Modified-Since`, `If-None-Match`, `If-Match`}
+import akka.http.scaladsl.model.{ContentType, HttpMethod, Uri}
+import akka.http.scaladsl.model.headers.{`If-Match`, `If-Modified-Since`, `If-None-Match`, `X-Forwarded-For`, `X-Forwarded-Host`}
 import io.onfhir.api.Resource
 import io.onfhir.api._
 import io.onfhir.api.parsers.{BundleRequestParser, FHIRSearchParameterValueParser}
@@ -26,7 +26,6 @@ import io.onfhir.config.FhirConfigurationManager.fhirConfig
   * @param ifNoneExist            FHIR IfNone Header
   * @param prefer                 FHIR Prefer Header
   * @param ifMatch                FHIR IfMatch Header
-  * @param summary                FHIR Summary parameter for FHIR Read operation
   * @param ifNoneMatch            FHIR IfNoneMatch Header
   * @param ifModifiedSince        FHIR IfModifiedSince Header
   */
@@ -48,13 +47,18 @@ case class FHIRRequest(
                         var ifMatch:Option[`If-Match`] = None,
                         var ifNoneMatch: Option[`If-None-Match`] = None,
                         var ifModifiedSince:Option[`If-Modified-Since`] = None,
+                        var xForwardedFor:Option[`X-Forwarded-For`] = None,
+                        var xForwardedHost:Option[`X-Forwarded-Host`] = None,
+                        var xIntermediary:Option[String] = None,
                         //Other contextual params
-                        var contentType: Option[String] = None,
+                        var contentType: Option[ContentType.WithCharset] = None,
                         var isIdGenerated:Boolean = true, //If we generate the id of request or is it come from the Bundle request
                         var requestTime:Instant = Instant.now(), //Time when request is constructed
                         var response:Option[FHIRResponse] = None, // FHIR response to the request
                         var responseTime:Option[Instant] = None, // Time that response is ready
-                        var childRequests:Seq[FHIRRequest] = Nil // Child requests for batch and transaction
+                        var childRequests:Seq[FHIRRequest] = Nil, // Child requests for batch and transaction
+                        //Other client specific params
+                        var httpMethod:Option[HttpMethod] = None //Preferred HTTP method when there is alternative
                       ){
   // Parsed query parameters
   private var parsedQueryParams:List[Parameter] = List.empty

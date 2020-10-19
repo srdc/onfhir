@@ -4,7 +4,7 @@ import java.time.{Instant, ZonedDateTime}
 
 import akka.http.scaladsl.model.DateTime
 import io.onfhir.api.FHIR_INTERACTIONS
-import io.onfhir.api.model.FHIRRequest
+import io.onfhir.api.model.{FHIRRequest, FHIRResponse}
 import io.onfhir.util.DateTimeUtil
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -17,7 +17,7 @@ class FhirHistoryRequestBuilder(onFhirClient: IOnFhirClient, rtype:Option[String
       requestUri = s"${onFhirClient.getBaseUrl()}",
       resourceType = rtype,
       resourceId = rid)
-  ){
+  ) with IFhirBundleReturningRequestBuilder {
   type This = FhirHistoryRequestBuilder
 
   private var sinceParam:Option[(String, String)] = None
@@ -52,13 +52,20 @@ class FhirHistoryRequestBuilder(onFhirClient: IOnFhirClient, rtype:Option[String
       .map(r => {
         if(r.httpStatus.isFailure() || r.responseBody.isEmpty)
           throw FhirClientException("Problem in FHIR search!", Some(r))
-        try {
-          new FHIRHistoryBundle(r.responseBody.get, this)
-        } catch {
-          case e:Throwable =>
-            throw FhirClientException("Invalid history result bundle!", Some(r))
-        }
+        constructBundle(r)
       })
   }
 
+  override def constructBundle(fhirResponse: FHIRResponse): FHIRHistoryBundle = {
+    try {
+      new FHIRHistoryBundle(fhirResponse.responseBody.get, this)
+    } catch {
+      case e:Throwable =>
+        throw FhirClientException("Invalid history result bundle!", Some(fhirResponse))
+    }
+  }
+
+  override def nextPage(): Unit = {
+    this.page = Some(this.page.getOrElse(1) + 1)
+  }
 }

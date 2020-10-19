@@ -1,5 +1,6 @@
 package io.onfhir.api.client
 
+import io.onfhir.api.FHIR_CONTENT_TYPES
 import org.json4s.{JArray, JInt, JString, JValue}
 import org.json4s.JsonAST.JObject
 
@@ -10,7 +11,8 @@ class FhirPathPatchRequestBuilder(patchRequestBuilder: FhirPatchRequestBuilder) 
   val parameters:ListBuffer[JObject] = new ListBuffer[JObject]
 
   protected override def compile():Unit = {
-    request.contentType = Some("application/fhir+json")
+    super.compile()
+    request.contentType = Some(FHIR_CONTENT_TYPES.FHIR_JSON_CONTENT_TYPE)
 
     request.resource = Some(
       JObject(

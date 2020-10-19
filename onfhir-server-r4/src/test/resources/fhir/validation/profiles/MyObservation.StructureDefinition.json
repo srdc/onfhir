@@ -1,0 +1,348 @@
+{
+  "resourceType": "StructureDefinition",
+  "url": "http://example.org/fhir/StructureDefinition/MyObservation",
+  "name": "MyObservation",
+  "status": "draft",
+  "fhirVersion": "4.0.0",
+  "mapping": [
+    {
+      "identity": "workflow",
+      "uri": "http://hl7.org/fhir/workflow",
+      "name": "Workflow Pattern"
+    },
+    {
+      "identity": "sct-concept",
+      "uri": "http://snomed.info/conceptdomain",
+      "name": "SNOMED CT Concept Domain Binding"
+    },
+    {
+      "identity": "v2",
+      "uri": "http://hl7.org/v2",
+      "name": "HL7 v2 Mapping"
+    },
+    {
+      "identity": "rim",
+      "uri": "http://hl7.org/v3",
+      "name": "RIM Mapping"
+    },
+    {
+      "identity": "w5",
+      "uri": "http://hl7.org/fhir/fivews",
+      "name": "FiveWs Pattern Mapping"
+    },
+    {
+      "identity": "sct-attr",
+      "uri": "http://snomed.org/attributebinding",
+      "name": "SNOMED CT Attribute Binding"
+    }
+  ],
+  "kind": "resource",
+  "abstract": false,
+  "type": "Observation",
+  "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Observation",
+  "derivation": "constraint",
+  "differential": {
+    "element": [
+      {
+        "id": "Observation.identifier",
+        "path": "Observation.identifier",
+        "slicing": {
+          "discriminator": [
+            {
+              "type": "value",
+              "path": "use"
+            }
+          ],
+          "rules": "openAtEnd"
+        },
+        "min": 1
+      },
+      {
+        "id": "Observation.identifier:i1",
+        "path": "Observation.identifier",
+        "sliceName": "i1",
+        "min": 1,
+        "max": "1"
+      },
+      {
+        "id": "Observation.identifier:i1.use",
+        "path": "Observation.identifier.use",
+        "fixedCode": "usual"
+      },
+      {
+        "id": "Observation.identifier:i1.system",
+        "path": "Observation.identifier.system",
+        "min": 1
+      },
+      {
+        "id": "Observation.identifier:i1.value",
+        "path": "Observation.identifier.value",
+        "min": 1
+      },
+      {
+        "id": "Observation.basedOn",
+        "path": "Observation.basedOn",
+        "min": 1,
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "http://hl7.org/fhir/StructureDefinition/NutritionOrder",
+              "http://hl7.org/fhir/StructureDefinition/ServiceRequest"
+            ],
+            "aggregation": [
+              "referenced"
+            ],
+            "versioning": "independent"
+          }
+        ]
+      },
+      {
+        "id": "Observation.partOf",
+        "path": "Observation.partOf",
+        "max": "0",
+        "type": [
+          {
+            "code": "Reference",
+            "versioning": "specific"
+          }
+        ]
+      },
+      {
+        "id": "Observation.status",
+        "path": "Observation.status",
+        "fixedCode": "final"
+      },
+      {
+        "id": "Observation.category",
+        "path": "Observation.category",
+        "min": 1
+      },
+      {
+        "id": "Observation.subject",
+        "path": "Observation.subject",
+        "min": 1,
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "http://hl7.org/fhir/StructureDefinition/Patient",
+              "http://hl7.org/fhir/StructureDefinition/Group"
+            ],
+            "versioning": "independent"
+          }
+        ]
+      },
+      {
+        "id": "Observation.encounter",
+        "path": "Observation.encounter",
+        "type": [
+          {
+            "code": "Reference",
+            "versioning": "specific"
+          }
+        ]
+      },
+      {
+        "id": "Observation.effective[x]",
+        "path": "Observation.effective[x]",
+        "min": 1
+      },
+      {
+        "id": "Observation.issued",
+        "path": "Observation.issued",
+        "max": "0"
+      },
+      {
+        "id": "Observation.note.author[x]",
+        "path": "Observation.note.author[x]",
+        "type": [
+          {
+            "code": "string"
+          }
+        ],
+        "maxLength": 100
+      },
+      {
+        "id": "Observation.device",
+        "path": "Observation.device",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "http://hl7.org/fhir/StructureDefinition/Device"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Observation.component",
+        "path": "Observation.component",
+        "slicing": {
+          "discriminator": [
+            {
+              "type": "value",
+              "path": "code"
+            }
+          ],
+          "rules": "open"
+        },
+        "min": 2
+      },
+      {
+        "id": "Observation.component:obs1",
+        "path": "Observation.component",
+        "sliceName": "obs1",
+        "min": 1,
+        "max": "1"
+      },
+      {
+        "id": "Observation.component:obs1.code",
+        "path": "Observation.component.code",
+        "patternCodeableConcept": {
+          "coding": [
+            {
+              "system": "http://loinc.org",
+              "code": "L1"
+            }
+          ]
+        }
+      },
+      {
+        "id": "Observation.component:obs1.value[x]",
+        "path": "Observation.component.value[x]",
+        "type": [
+          {
+            "code": "Quantity"
+          }
+        ],
+        "binding": {
+          "strength": "required",
+          "valueSet": "http://hl7.org/fhir/ValueSet/ucum-common"
+        }
+      },
+      {
+        "id": "Observation.component:obs1.interpretation",
+        "path": "Observation.component.interpretation",
+        "min": 1,
+        "binding": {
+          "strength": "required"
+        }
+      },
+      {
+        "id": "Observation.component:obs1.referenceRange",
+        "path": "Observation.component.referenceRange",
+        "min": 1
+      },
+      {
+        "id": "Observation.component:obs2",
+        "path": "Observation.component",
+        "sliceName": "obs2",
+        "max": "2"
+      },
+      {
+        "id": "Observation.component:obs2.code.coding.system",
+        "path": "Observation.component.code.coding.system",
+        "fixedUri": "http://loinc.org"
+      },
+      {
+        "id": "Observation.component:obs2.code.coding.code",
+        "path": "Observation.component.code.coding.code",
+        "fixedCode": "L2"
+      },
+      {
+        "id": "Observation.component:obs2.value[x]",
+        "path": "Observation.component.value[x]",
+        "type": [
+          {
+            "code": "Quantity"
+          }
+        ],
+        "patternQuantity": {
+          "unit": "/mg",
+          "system": "http://unitsofmeasure.org",
+          "code": "/mg"
+        }
+      },
+      {
+        "id": "Observation.component:obs2.value[x].value",
+        "path": "Observation.component.value[x].value",
+        "minValueDecimal": 5.0,
+        "maxValueDecimal": 10.0
+      },
+      {
+        "id": "Observation.component:obs2.interpretation",
+        "path": "Observation.component.interpretation",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:obs3",
+        "path": "Observation.component",
+        "sliceName": "obs3"
+      },
+      {
+        "id": "Observation.component:obs3.code.coding.system",
+        "path": "Observation.component.code.coding.system",
+        "fixedUri": "http://loinc.org"
+      },
+      {
+        "id": "Observation.component:obs3.code.coding.code",
+        "path": "Observation.component.code.coding.code",
+        "fixedCode": "L3"
+      },
+      {
+        "id": "Observation.component:obs3.value[x]",
+        "path": "Observation.component.value[x]",
+        "type": [
+          {
+            "code": "boolean"
+          }
+        ]
+      },
+      {
+        "id": "Observation.component:obs3.interpretation",
+        "path": "Observation.component.interpretation",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:obs3.referenceRange",
+        "path": "Observation.component.referenceRange",
+        "max": "0"
+      },
+      {
+        "id": "Observation.component:obs4",
+        "path": "Observation.component",
+        "sliceName": "obs4",
+        "min": 1
+      },
+      {
+        "id": "Observation.component:obs4.code.coding.system",
+        "path": "Observation.component.code.coding.system",
+        "fixedUri": "http://loinc.org"
+      },
+      {
+        "id": "Observation.component:obs4.code.coding.code",
+        "path": "Observation.component.code.coding.code",
+        "fixedCode": "L4"
+      },
+      {
+        "id": "Observation.component:obs4.value[x]",
+        "path": "Observation.component.value[x]",
+        "type": [
+          {
+            "code": "SampledData",
+            "profile": [
+              "http://example.org/fhir/StructureDefinition/MySampledData"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "Observation.component:obs4.value[x].factor",
+        "path": "Observation.component.value[x].factor",
+        "min": 1,
+        "fixedDecimal": 0.05
+      }
+    ]
+  }
+}

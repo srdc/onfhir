@@ -79,6 +79,11 @@ abstract class FhirRequestBuilder(val onFhirClient: IOnFhirClient, val request:F
   }
 }
 
+trait IFhirBundleReturningRequestBuilder {
+  def constructBundle(fhirResponse:FHIRResponse):FHIRPaginatedBundle
+
+  def nextPage():Unit
+}
 
 abstract class FhirSearchLikeRequestBuilder(onFhirClient: IOnFhirClient, request: FHIRRequest) extends FhirRequestBuilder(onFhirClient, request) {
 

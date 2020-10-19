@@ -1,0 +1,133 @@
+{
+  "resourceType": "StructureDefinition",
+  "url": "http://example.org/fhir/StructureDefinition/MyList",
+  "name": "MyList",
+  "status": "draft",
+  "fhirVersion": "4.0.0",
+  "mapping": [
+    {
+      "identity": "rim",
+      "uri": "http://hl7.org/v3",
+      "name": "RIM Mapping"
+    },
+    {
+      "identity": "w5",
+      "uri": "http://hl7.org/fhir/fivews",
+      "name": "FiveWs Pattern Mapping"
+    }
+  ],
+  "kind": "resource",
+  "abstract": false,
+  "type": "List",
+  "baseDefinition": "http://hl7.org/fhir/StructureDefinition/List",
+  "derivation": "constraint",
+  "differential": {
+    "element": [
+      {
+        "id": "List.note",
+        "path": "List.note",
+        "slicing": {
+          "discriminator": [
+            {
+              "type": "exists",
+              "path": "author[x]"
+            }
+          ],
+          "rules": "open"
+        }
+      },
+      {
+        "id": "List.note:WithAuthor",
+        "path": "List.note",
+        "sliceName": "WithAuthor",
+        "min": 1
+      },
+      {
+        "id": "List.note:WithAuthor.author[x]",
+        "path": "List.note.author[x]",
+        "min": 1,
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "http://hl7.org/fhir/StructureDefinition/Practitioner"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "List.note:WithAuthor.time",
+        "path": "List.note.time",
+        "min": 1
+      },
+      {
+        "id": "List.note:WithoutAuthor",
+        "path": "List.note",
+        "sliceName": "WithoutAuthor"
+      },
+      {
+        "id": "List.note:WithoutAuthor.author[x]",
+        "path": "List.note.author[x]",
+        "max": "0"
+      },
+      {
+        "id": "List.note:WithoutAuthor.time",
+        "path": "List.note.time",
+        "max": "0"
+      },
+      {
+        "id": "List.entry",
+        "path": "List.entry",
+        "slicing": {
+          "discriminator": [
+            {
+              "type": "type",
+              "path": "item.resolve()"
+            }
+          ],
+          "rules": "open"
+        }
+      },
+      {
+        "id": "List.entry:Patients",
+        "path": "List.entry",
+        "sliceName": "Patients",
+        "min": 1
+      },
+      {
+        "id": "List.entry:Patients.date",
+        "path": "List.entry.date",
+        "min": 1
+      },
+      {
+        "id": "List.entry:Patients.item",
+        "path": "List.entry.item",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "http://hl7.org/fhir/StructureDefinition/Patient"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "List.entry:Groups",
+        "path": "List.entry",
+        "sliceName": "Groups"
+      },
+      {
+        "id": "List.entry:Groups.item",
+        "path": "List.entry.item",
+        "type": [
+          {
+            "code": "Reference",
+            "targetProfile": [
+              "http://hl7.org/fhir/StructureDefinition/Group"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

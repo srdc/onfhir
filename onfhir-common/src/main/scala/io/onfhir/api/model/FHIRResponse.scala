@@ -24,8 +24,10 @@ case class FHIRResponse(
                          lastModified:Option[DateTime] = None,
                          newVersion:Option[Long]=None,
                          outcomeIssues:Seq[OutcomeIssue] = Seq.empty,
-                         authenticateHeader:Option[WWWAuthenticate] = None) {
-
+                         authenticateHeader:Option[WWWAuthenticate] = None,
+                         var xCorrelationId:Option[String] = None,
+                         xIntermediary:Option[String] = None
+                       ) {
   def isError:Boolean = httpStatus.isFailure()
 }
 

@@ -1,5 +1,6 @@
 package io.onfhir.api.client
 
+import io.onfhir.api.FHIR_CONTENT_TYPES
 import org.json4s.JsonAST.{JArray, JObject, JString, JValue}
 
 import scala.collection.mutable.ListBuffer
@@ -10,7 +11,7 @@ class FhirJsonPatchRequestBuilder(patchRequestBuilder: FhirPatchRequestBuilder) 
   private val parameters:ListBuffer[JObject] = new ListBuffer[JObject]
 
   override protected def compile(): Unit = {
-    request.contentType = Some("application/json-patch+json")
+    request.contentType = Some(FHIR_CONTENT_TYPES.FHIR_JSON_PATCH_CONTENT_TYPE)
 
     request.resource = Some(JObject("patches" -> JArray(parameters.toList)))
   }

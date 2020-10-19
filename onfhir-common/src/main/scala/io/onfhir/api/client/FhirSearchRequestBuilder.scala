@@ -1,10 +1,11 @@
 package io.onfhir.api.client
 
+import akka.http.scaladsl.model.HttpMethods
 import io.onfhir.api.FHIR_INTERACTIONS
-import io.onfhir.api.model.FHIRRequest
+import io.onfhir.api.model.{FHIRRequest, FHIRResponse}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Success
+import scala.util.{Failure, Success}
 
 /**
  * Request builder for FHIR search-type interaction
@@ -14,8 +15,14 @@ import scala.util.Success
  */
 class FhirSearchRequestBuilder(onFhirClient: IOnFhirClient, rtype:String, count:Option[Int] = None, var page:Option[Int] = None)
   extends FhirSearchLikeRequestBuilder(onFhirClient, FHIRRequest(interaction = FHIR_INTERACTIONS.SEARCH, requestUri = s"${onFhirClient.getBaseUrl()}/$rtype", resourceType = Some(rtype)))
+    with IFhirBundleReturningRequestBuilder
   {
   type This = FhirSearchRequestBuilder
+
+  def byHttpPost():FhirSearchRequestBuilder = {
+    request.httpMethod = Some(HttpMethods.POST)
+    this
+  }
 
   def forCompartment(ctype:String, cid:String):FhirSearchRequestBuilder = {
     request.compartmentType = Some(ctype)
@@ -37,17 +44,25 @@ class FhirSearchRequestBuilder(onFhirClient: IOnFhirClient, rtype:String, count:
         .map(r => {
           if(r.httpStatus.isFailure() || r.responseBody.isEmpty)
             throw FhirClientException("Problem in FHIR search!", Some(r))
-          try {
-            new FHIRSearchSetBundle(r.responseBody.get, this)
-          } catch {
-            case e:Throwable =>
-              throw FhirClientException("Invalid search result bundle!", Some(r))
-          }
+          constructBundle(r)
         })
   }
 
   def toIterator()(implicit executionContext: ExecutionContext):Iterator[Future[FHIRSearchSetBundle]] = {
     new SearchSetIterator(this)
+  }
+
+  override def constructBundle(fhirResponse: FHIRResponse): FHIRSearchSetBundle = {
+      try {
+        new FHIRSearchSetBundle(fhirResponse.responseBody.get, this)
+      } catch {
+        case e:Throwable =>
+          throw FhirClientException("Invalid search result bundle!", Some(fhirResponse))
+      }
+  }
+
+  override def nextPage():Unit = {
+    this.page = Some(this.page.getOrElse(1) + 1)
   }
 }
 
@@ -67,6 +82,7 @@ class SearchSetIterator(rb:FhirSearchRequestBuilder)(implicit executionContext: 
         val temp = rb.executeAndReturnBundle()
         temp onComplete {
           case Success(v) => latestBundle = Some(v)
+          case Failure(exception) =>
         }
         temp
       case Some(b) => rb.onFhirClient.next(b)
