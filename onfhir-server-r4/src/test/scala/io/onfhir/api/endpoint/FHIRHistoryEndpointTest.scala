@@ -65,21 +65,21 @@ class FHIRHistoryEndpointTest extends OnFhirTest with FHIREndpoint {
         (createEntry \ "request" \ "url").extractOpt[String] must beSome("Patient")
         (createEntry \ "response" \ "lastModified").extractOpt[String] must beSome(lastModifiedCreate)
         (createEntry \ "response" \ "status").extractOpt[String] must beSome("201")
-        (createEntry \ "response" \ "etag").extractOpt[String] must beSome("1")
+        (createEntry \ "response" \ "etag").extractOpt[String] must beSome("W/\"1\"")
 
         val updateEntry = ((bundle \ "entry") (1)).asInstanceOf[JObject]
         (updateEntry \ "request" \ "method").extractOpt[String] must beSome("PUT")
         (updateEntry \ "request" \ "url").extractOpt[String] must beSome("Patient/" + rid)
         (updateEntry \ "response" \ "lastModified").extractOpt[String] must beSome(lastModifiedUpdate)
         (updateEntry \ "response" \ "status").extractOpt[String] must beSome("200")
-        (updateEntry \ "response" \ "etag").extractOpt[String] must beSome("2")
+        (updateEntry \ "response" \ "etag").extractOpt[String] must beSome("W/\"2\"")
 
         val deleteEntry = ((bundle \ "entry") (0)).asInstanceOf[JObject]
         (deleteEntry \ "request" \ "method").extractOpt[String] must beSome("DELETE")
         (deleteEntry \ "request" \ "url").extractOpt[String] must beSome("Patient/" + rid)
         (deleteEntry \ "response" \ "lastModified").extractOpt[String] must beSome
         (deleteEntry \ "response" \ "status").extractOpt[String] must beSome("204")
-        (deleteEntry \ "response" \ "etag").extractOpt[String] must beSome("3")
+        (deleteEntry \ "response" \ "etag").extractOpt[String] must beSome("W/\"3\"")
       }
       //Handle paging
       Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + rid + "/_history?_page=2&_count=2") ~> routes ~> check {
@@ -137,10 +137,10 @@ class FHIRHistoryEndpointTest extends OnFhirTest with FHIREndpoint {
         (bundle \ "total").extractOpt[Int] must beSome(2)
 
         val entryPatient = (bundle \ "entry").asInstanceOf[JArray].arr.find(e => (e \ "fullUrl").extract[String].split('/').last == resourceId)
-        entryPatient.map(e => (e \  "response" \ "etag").extract[String]) must beSome("2")
+        entryPatient.map(e => (e \  "response" \ "etag").extract[String]) must beSome("W/\"2\"")
 
         val otherPatient = (bundle \ "entry").asInstanceOf[JArray].arr.find(e => (e \ "fullUrl").extract[String].split('/').last != resourceId)
-        otherPatient.map(e => (e \  "response" \ "etag").extract[String]) must beSome("3")
+        otherPatient.map(e => (e \  "response" \ "etag").extract[String]) must beSome("W/\"3\"")
       }
     }
 

@@ -401,7 +401,7 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
     * @param operationConf The operation definition configurations
     * @return FHIR response
     */
-  def validateAndCompleteOperation(fhirRequest: FHIRRequest, operationConf:OperationConf):Future[FHIRResponse] = {
+  def validateAndCompleteOperation(fhirRequest: FHIRRequest, operationConf:OperationConf):Future[FHIROperationResponse] = {
     //Validate the Operation request body first
     validateRequestBody(fhirRequest).flatMap( _ =>
       //If the operation is on a resource instance, check existence of that resource
@@ -436,7 +436,7 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
             Future.sequence(
                 operationConf.inputParams.map(paramDef => {
                   (
-                    fhirRequest.operationParameters.get(paramDef.name) match {
+                    fhirRequest.queryParams.get(paramDef.name) match {
                       //If parameter is not given in the URL (primitive parameter), given in the body; either Parameters resource or whole resource itself
                       case None => validateAndGetParamFromBody(operationConf, paramDef, fhirRequest.resource)
                       //If parameter is given in the URL
@@ -459,7 +459,7 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
 
             //If there are query parameters apart from operation parameters, we should parse them and pass to the operation
             val operationParamSet = parameterValues.map(_._1).toSet
-            val queryParams = fhirRequest.operationParameters.filterNot(op => operationParamSet.contains(op._1))
+            val queryParams = fhirRequest.queryParams.filterNot(op => operationParamSet.contains(op._1))
             val parsedQueryParams =
               if(fhirRequest.resourceType.isDefined && queryParams.nonEmpty)
                 FHIRSearchParameterValueParser.parseSearchParameters(fhirRequest.resourceType.get, queryParams, fhirRequest.prefer)
@@ -501,13 +501,15 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
     * @param operationResponse  FHIR Operation response
     * @return
     */
-  private def constuctFHIRResponse(operationConf: OperationConf, operationResponse:FHIROperationResponse):FHIRResponse = {
+  private def constuctFHIRResponse(operationConf: OperationConf, operationResponse:FHIROperationResponse):FHIROperationResponse = {
     if(operationConf.outputParams.length == 1 && operationConf.outputParams.head.name == "return" && !(fhirConfig.FHIR_COMPLEX_TYPES ++ fhirConfig.FHIR_PRIMITIVE_TYPES).contains(operationConf.outputParams.head.pType.getOrElse(""))) {
-      operationResponse.copy(responseBody = Some(operationResponse.getOutputParams.head._2.asInstanceOf[FHIRSimpleOperationParam].extractValue[Resource]()))
+      operationResponse.responseBody = Some(operationResponse.getOutputParams.head._2.asInstanceOf[FHIRSimpleOperationParam].extractValue[Resource]())
+      operationResponse
     } else if(operationConf.outputParams.isEmpty){
       operationResponse
     } else {
-      operationResponse.copy(responseBody = Some(constuctParametersResource(operationConf, operationResponse)))
+      operationResponse.responseBody = Some(constuctParametersResource(operationConf, operationResponse))
+      operationResponse
     }
   }
 

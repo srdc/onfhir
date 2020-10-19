@@ -3,6 +3,7 @@ package io.onfhir.api.service
 import akka.http.scaladsl.model.StatusCodes
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
+import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
@@ -19,9 +20,10 @@ class FHIRHistoryService (transactionSession: Option[TransactionSession] = None)
     * @param fhirRequest FHIR Request
     */
   override def validateInteraction(fhirRequest: FHIRRequest): Future[Unit] = {
-    Future.apply(
+    Future.apply {
       validateHistoryInteraction(fhirRequest.resourceType, fhirRequest.resourceId)
-    )
+      fhirRequest.addParsedQueryParams(FHIRSearchParameterValueParser.parseSearchParameters(fhirRequest.resourceType.get, fhirRequest.queryParams, None))
+    }
   }
 
   /**
@@ -31,7 +33,7 @@ class FHIRHistoryService (transactionSession: Option[TransactionSession] = None)
     * @param isTesting   If this is just a test
     */
   override def completeInteraction(fhirRequest: FHIRRequest, authzContext: Option[AuthzContext] = None, isTesting: Boolean): Future[FHIRResponse] = {
-    resourceHistory(fhirRequest.resourceType.get, fhirRequest.resourceId, fhirRequest.queryParams)
+    resourceHistory(fhirRequest.resourceType.get, fhirRequest.resourceId, fhirRequest.getParsedQueryParams())
   }
 
 

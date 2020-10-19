@@ -1,4 +1,4 @@
-FROM srdc/java:oraclejdk-8
+FROM openjdk:11
 
 # Create folders
 RUN mkdir -p /onfhir

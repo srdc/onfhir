@@ -38,6 +38,7 @@ object FHIRServiceFactory {
     */
   def getFHIRService(fhirRequest:FHIRRequest, transactionSession: Option[TransactionSession] = None) : FHIRInteractionService = {
     fhirRequest.interaction match {
+      case FHIR_INTERACTIONS.TRANSACTION | FHIR_INTERACTIONS.BATCH => new FHIRBatchTransactionService()
       case FHIR_INTERACTIONS.DELETE => new FHIRDeleteService(transactionSession)
       case FHIR_INTERACTIONS.CREATE => new FHIRCreateService(transactionSession)
       case FHIR_INTERACTIONS.UPDATE => new FHIRUpdateService(transactionSession)

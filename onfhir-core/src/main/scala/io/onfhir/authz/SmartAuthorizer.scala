@@ -74,7 +74,7 @@ class SmartAuthorizer extends IAuthorizer {
             if (resourceRestrictions.isEmpty)
               AuthzResult.failureInsufficientScope(s"Not authorized for the FHIR interaction '$interaction' on resource type '${resourceType.get}'!")
             else
-              AuthzResult.filtering(resourceType.get, baseResourceRestrictions, otherResourceRestrictions)
+              AuthzResult.filtering(resourceType.get, resourceRestrictions)
         }
       }
     }
@@ -111,7 +111,6 @@ class SmartAuthorizer extends IAuthorizer {
   /**
     *
     * @param scope
-    * @param resourceType
     * @return
     */
   private def resolveResourceRestrictionsForConfSensTypeScope(scope:WGHeartScope):List[(String, String)] = {
@@ -189,9 +188,9 @@ class SmartAuthorizer extends IAuthorizer {
   }
 
   /**
-    * Check if the authzation context is as expected
-    * @param authzContext authorization context
-    * @param includePatientScope flag that indicates if patient scope is included
+    * Check if the authorization context is as expected
+    * @param authzContext   Authorization context
+    * @param scopes         Current scopes
     * @return
     */
   private def isAuthzContextValid(authzContext: AuthzContext, scopes:Seq[WGHeartScope]):Boolean = {

@@ -66,7 +66,7 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
    * @param resourceElementRestrictions For validation against a data type, chain of element restrictions defined in profiles for inner elements
    * @return
    */
-  def validateComplexContentAgainstProfile(profileChain: Seq[ProfileRestrictions], value: JObject, parentPath: Option[String], resourceElementRestrictions: Seq[Seq[(String, ElementRestrictions)]] = Nil): Seq[OutcomeIssue] = {
+  def validateComplexContentAgainstProfile(profileChain: Seq[ProfileRestrictions], value: JObject, parentPath: Option[String], resourceElementRestrictions: Seq[Seq[(String, ElementRestrictions)]] = Nil, forceRecognitionOfElementsEvenForAbstractChain:Boolean = false): Seq[OutcomeIssue] = {
     logger.debug(s"Validating against profile ${profileChain.head.url}...")
     //Chain of possible restrictions for this field
     val allRestrictions = resourceElementRestrictions ++ profileChain.map(_.elementRestrictions)
@@ -93,7 +93,7 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
           extractFieldNameAndDataType(field, allRestrictions) match {
             //If there is no definition for the element, return error
             case None =>
-              if(!isAllAbstract)
+              if(!isAllAbstract || forceRecognitionOfElementsEvenForAbstractChain)
                 FhirContentValidator.convertToOutcomeIssue(FHIRUtil.mergeElementPath(parentPath, field), Seq(ConstraintFailure(s"Unrecognized element '${FHIRUtil.mergeElementPath(parentPath, field)}' !")))
               else //If we are validating against an abstract chain just ignore unknown elements
                 Nil
@@ -117,7 +117,7 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
         //Find out the field name and DataType for the given field
         extractFieldNameAndDataType(field, allRestrictions) match {
           case None =>
-            if(!isAllAbstract)
+            if(!isAllAbstract || forceRecognitionOfElementsEvenForAbstractChain)
               FhirContentValidator.convertToOutcomeIssue(FHIRUtil.mergeElementPath(parentPath, s"_$field"), Seq(ConstraintFailure(s"Unrecognized element '${FHIRUtil.mergeElementPath(parentPath, s"_$field")}' !")))
             else
               Nil
@@ -351,7 +351,7 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
     if(!ppe.isInstanceOf[JObject])
       FhirContentValidator.convertToOutcomeIssue(path, Seq(ConstraintFailure(s"Extension for FHIR primitive element within array should be given as JSON object!")))
     else
-      validateComplexContentAgainstProfile(Seq(fhirConfig.getBaseProfile(FHIR_DATA_TYPES.ELEMENT)), ppe.asInstanceOf[JObject], Some(path), Nil)
+      validateComplexContentAgainstProfile(Seq(fhirConfig.getBaseProfile(FHIR_DATA_TYPES.ELEMENT)), ppe.asInstanceOf[JObject], Some(path), Nil, forceRecognitionOfElementsEvenForAbstractChain = true)
   }
 
   /**

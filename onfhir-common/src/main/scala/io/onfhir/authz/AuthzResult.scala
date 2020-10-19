@@ -66,23 +66,26 @@ object AuthzResult{
   /**
     * Create a conditional authorization result which means authorize if the given restrictions are satisfied
     * @param rtype Related resource type
-    * @param comparmentFilters Restrictions indicated as Compartment query e.g. records that belong to a specific Patient --> Compartment Patient -> 356589
-    * @param authorizationFilterParams Restrictions idnicated as FHIR query
+    * @param authorizationFilterParams Restrictions indicated as FHIR query (additionally restrictions indicated as Compartment query e.g. records that belong to a specific Patient -->  (Patient -> 356589)
     * @return
     */
-  def filtering(rtype:String, comparmentFilters:List[(String, String)], authorizationFilterParams: List[(String, String)]):AuthzResult =
+  def filtering(rtype:String,  authorizationFilterParams: List[(String, String)]):AuthzResult = {
+    def isCompartment(pname:String):Boolean = pname.head.isLetter && pname.head.isUpper
+
     new AuthzResult(
       FILTERING,
       //Parse the compartment search
-      comparmentFilters
+      authorizationFilterParams
+        .filter(p => isCompartment(p._1))
         .map(cf => FHIRSearchParameterValueParser.constructCompartmentSearchParameter(cf._1, cf._2, rtype)) ++
         //Parse the other search parameters strictly
         FHIRSearchParameterValueParser
           .parseSearchParameters(
             rtype,
-            authorizationFilterParams.groupBy(_._1).map(g => g._1 -> g._2.map(_._2)),
+            authorizationFilterParams.filterNot( p=> isCompartment(p._1)).groupBy(_._1).map(g => g._1 -> g._2.map(_._2)),
             Some(FHIR_HTTP_OPTIONS.FHIR_SEARCH_STRICT))
     )
+  }
 
 
   /**

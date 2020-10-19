@@ -41,6 +41,9 @@ abstract class FHIRInteractionService(val transactionSession:Option[TransactionS
   def executeInteraction(fhirRequest:FHIRRequest, authzContext: Option[AuthzContext] = None, isTesting:Boolean = false):Future[FHIRResponse] = {
     validateInteraction(fhirRequest) flatMap { _ =>
       completeInteraction(fhirRequest, authzContext, isTesting).map(response => {
+        //Set the correlation id
+        response.xCorrelationId = if(fhirRequest.isIdGenerated) None else Some(fhirRequest.id)
+        //Set the response within request for auditing
         fhirRequest.setResponse(response)
         response
       })

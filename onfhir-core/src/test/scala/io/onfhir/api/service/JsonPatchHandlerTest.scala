@@ -6,9 +6,11 @@ import org.specs2.mutable.Specification
 import io.onfhir.util.JsonFormatter._
 import org.json4s.Diff
 import org.json4s.JsonAST.{JArray, JNothing, JObject, JString}
+import org.junit.runner.RunWith
+import org.specs2.runner.JUnitRunner
 
 import scala.io.Source
-
+@RunWith(classOf[JUnitRunner])
 class JsonPatchHandlerTest extends Specification {
   sequential
 

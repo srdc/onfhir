@@ -3,6 +3,7 @@ package io.onfhir.api.service
 import akka.http.scaladsl.model.{StatusCode, StatusCodes, Uri}
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
+import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
@@ -24,7 +25,8 @@ class FHIRDeleteService(transactionSession: Option[TransactionSession] = None) e
       if (fhirRequest.resourceId.isDefined)
         validateDeleteInteraction(fhirRequest.resourceType.get, fhirRequest.resourceId.get)
       else {
-        validateConditionalDeleteInteraction(fhirRequest.resourceType.get, fhirRequest.queryParams, fhirRequest.prefer)
+        fhirRequest.addParsedQueryParams(FHIRSearchParameterValueParser.parseSearchParameters(fhirRequest.resourceType.get, fhirRequest.queryParams, None))
+        validateConditionalDeleteInteraction(fhirRequest.resourceType.get, fhirRequest.getParsedQueryParams(), fhirRequest.prefer)
       }
     }
   }
@@ -40,7 +42,7 @@ class FHIRDeleteService(transactionSession: Option[TransactionSession] = None) e
     if(fhirRequest.resourceId.isDefined)
       deleteResource(fhirRequest.resourceType.get, fhirRequest.resourceId.get, isTesting)
     else
-      conditionalDeleteResource(fhirRequest.resourceType.get, fhirRequest.queryParams, isTesting)
+      conditionalDeleteResource(fhirRequest.resourceType.get, fhirRequest.getParsedQueryParams(), isTesting)
   }
 
   /**

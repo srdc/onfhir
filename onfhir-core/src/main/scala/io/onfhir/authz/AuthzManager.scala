@@ -205,8 +205,7 @@ object AuthzManager {
           authorizeAgainstCompartmentSearch(fhirRequest, resourceRestrictions) match {
             case (false, _) => Future.apply(false)
             case (true, filteredResourceRestrictions) =>
-              //Merge the parameters
-              fhirRequest.queryParams = fhirRequest.queryParams ++ filteredResourceRestrictions
+              fhirRequest.addParsedQueryParams(filteredResourceRestrictions)
               Future.apply(true)
           }
         case _ => Future.apply(true)

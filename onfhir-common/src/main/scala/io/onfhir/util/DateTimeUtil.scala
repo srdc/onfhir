@@ -208,4 +208,12 @@ object DateTimeUtil {
     val dt = DateTime.fromIsoDateTimeString(instStr)
     dt.get*/
   }
+
+  def dateTimeToInstant(dateTime: DateTime):Instant = {
+    Instant.ofEpochMilli(dateTime.clicks)
+  }
+
+  def serializeDateTime(dateTime: DateTime):String = {
+    serializeInstant(dateTimeToInstant(dateTime))
+  }
 }

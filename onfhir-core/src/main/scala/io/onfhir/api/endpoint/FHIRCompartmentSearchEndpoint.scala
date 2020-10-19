@@ -1,5 +1,6 @@
 package io.onfhir.api.endpoint
 
+import akka.http.scaladsl.server.Directives
 import akka.http.scaladsl.server.Directives._
 import io.onfhir.api.FHIR_HTTP_OPTIONS
 import io.onfhir.api.model.FHIRRequest
@@ -32,10 +33,10 @@ trait FHIRCompartmentSearchEndpoint {
           optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { prefer =>
             //Create the FHIR request object
             fhirRequest.initializeCompartmentSearchRequest(compartmentName, compartmentId, _type, prefer)
-            //Parse search paremeters
-            FHIRSearchParameterValueParser.parseSearchParametersFromUri(_type, prefer) { searchParameters =>
+            //Extract search parameters
+            Directives.parameterMultiMap { searchParameters =>
               //Set the Query params
-              fhirRequest.queryParams = fhirRequest.queryParams ++ searchParameters
+              fhirRequest.queryParams = searchParameters
               //Check authorization
               AuthzManager.authorize(authContext._2, fhirRequest) {
                 complete {
@@ -53,10 +54,9 @@ trait FHIRCompartmentSearchEndpoint {
           optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { prefer =>
             //Create the FHIR request object
             fhirRequest.initializeCompartmentSearchRequest(compartmentName, compartmentId, _type, prefer)
-            //Parse search paremeters
-            FHIRSearchParameterValueParser.parseSearchParametersFromEntity(_type, prefer) { searchParameters =>
+            Directives.formFieldMultiMap { searchParameters =>
               //Set the Query params
-              fhirRequest.queryParams = fhirRequest.queryParams ++ searchParameters
+              fhirRequest.queryParams = searchParameters
               //Check authorization
               AuthzManager.authorize(authContext._2, fhirRequest) {
                 complete {

@@ -1,0 +1,43 @@
+{
+  "resourceType": "Observation",
+  "id": "ldlcholesterol",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p><b>Generated Narrative with Details</b></p><p><b>id</b>: ldlcholesterol</p><p><b>status</b>: final</p><p><b>code</b>: LDL Chol. (Calc) <span>(Details : {LOINC code '13457-7' = 'Cholesterol in LDL [Mass/volume] in Serum or Plasma by calculation', given as 'Cholesterol in LDL [Mass/volume] in Serum or Plasma by calculation'})</span></p><p><b>subject</b>: <a>Patient/pat2</a></p><p><b>performer</b>: <a>Acme Laboratory, Inc</a></p><p><b>value</b>: 4.6 mmol/L<span> (Details: UCUM code mmol/L = 'mmol/L')</span></p><h3>ReferenceRanges</h3><table><tr><td>-</td><td><b>High</b></td></tr><tr><td>*</td><td>3.0 mmol/L<span> (Details: UCUM code mmol/L = 'mmol/L')</span></td></tr></table></div>"
+  },
+  "status": "final",
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "13457-7",
+        "display": "Cholesterol in LDL [Mass/volume] in Serum or Plasma by calculation"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/pat2"
+  },
+  "performer": [
+    {
+      "reference": "Organization/1832473e-2fe0-452d-abe9-3cdb9879522f",
+      "display": "Acme Laboratory, Inc"
+    }
+  ],
+  "valueQuantity": {
+    "value": 4.6,
+    "unit": "mmol/L",
+    "system": "http://unitsofmeasure.org",
+    "code": "mmol/L"
+  },
+  "referenceRange": [
+    {
+      "high": {
+        "value": 3.0,
+        "unit": "mmol/L",
+        "system": "http://unitsofmeasure.org",
+        "code": "mmol/L"
+      }
+    }
+  ]
+}

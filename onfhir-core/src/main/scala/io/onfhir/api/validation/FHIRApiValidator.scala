@@ -4,7 +4,7 @@ import java.net.{URI, URL}
 
 import akka.http.scaladsl.model.DateTime
 import akka.http.scaladsl.model.StatusCodes.ClientError
-import akka.http.scaladsl.model.headers.{EntityTag, `If-Modified-Since`, `If-None-Match`}
+import akka.http.scaladsl.model.headers.{EntityTag, `If-Match`, `If-Modified-Since`, `If-None-Match`}
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue}
 import io.onfhir.api.service.FHIRSubscriptionBusinessValidator
@@ -199,7 +199,7 @@ object FHIRApiValidator {
     * @param rtype
     * @param ifmatch
     */
-  def validateVersionedUpdate(rtype:String, ifmatch:Option[String]):Unit = {
+  def validateVersionedUpdate(rtype:String, ifmatch:Option[`If-Match`]):Unit = {
     //If versioned update is forced and ifMatch header is empty
     if(fhirConfig.resourceConfigurations.apply(rtype).versioning == FHIR_VERSIONING_OPTIONS.VERSIONED_UPDATE && ifmatch.isEmpty)
       throw new BadRequestException(Seq(
@@ -373,9 +373,9 @@ def validateSearchParameters(_type:String, parameters:Set[String], preferHeader:
     * @param ifMatch The version (as Option) sent by the client
     * @param currentVersion Current version of a resource to be checked agains
     */
-  def validateIfMatch(ifMatch:Option[String], currentVersion:Long):Unit =  {
+  def validateIfMatch(ifMatch:Option[`If-Match`], currentVersion:Long):Unit =  {
     if(ifMatch.isDefined){
-      val version = ifMatch.get
+      val version = ifMatch.get.m.toString()
       if(version.equals(EntityTag(currentVersion.toString, weak = false).toString) ||
          version.equals(EntityTag(currentVersion.toString, weak = true).toString())){
         //allow user to proceed
@@ -383,7 +383,7 @@ def validateSearchParameters(_type:String, parameters:Set[String], preferHeader:
       //if requested version does not match with the current version send 409 Conflict
       else {
         logger.debug("conflicting version, returning 409 Conflict...")
-        throw new ConflictException(
+        throw new PreconditionFailedException(Seq(
           OutcomeIssue(
             FHIRResponse.SEVERITY_CODES.FATAL, //fatal
             FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED, //not supported
@@ -391,7 +391,7 @@ def validateSearchParameters(_type:String, parameters:Set[String], preferHeader:
             Some(s"Conflicting Version: The version ($version) in If-Match header" +
             s" is not the current version ($currentVersion) for the given resource"),
             Seq("Header[If-Match]")
-          )
+          ))
         )
       }
     }
@@ -423,7 +423,7 @@ def validateSearchParameters(_type:String, parameters:Set[String], preferHeader:
   def validateIfModifiedSince(ifModifiedSince:Option[`If-Modified-Since`], lastUpdated:DateTime):Unit = {
     if(ifModifiedSince.isDefined){
       val since = ifModifiedSince.get.date.compare(lastUpdated)
-      if(since > 0) {
+      if(since >= 0) {
         throw new NotModifiedException()
       }
     }

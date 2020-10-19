@@ -43,9 +43,13 @@ abstract class AbstractFhirContentValidator(val fhirConfig:FhirConfig, val profi
    * @param value                         FHIR JSON content
    * @param parentPath                    Parent path for the element
    * @param resourceElementRestrictions   Extra element constraints coming from outside
+   * @param forceRecognitionOfElementsEvenForAbstractChain  Normally if all profiles in validation chain are abstract,
+   *                                                        we ignore unknown elements as they most probably validated
+   *                                                        in other chains, by setting this param to true, we can force
+   *                                                        returning issues for unrecognized elements
    * @return
    */
-  def validateComplexContentAgainstProfile(profileChain: Seq[ProfileRestrictions], value: JObject, parentPath: Option[String], resourceElementRestrictions: Seq[Seq[(String, ElementRestrictions)]] = Nil): Seq[OutcomeIssue]
+  def validateComplexContentAgainstProfile(profileChain: Seq[ProfileRestrictions], value: JObject, parentPath: Option[String], resourceElementRestrictions: Seq[Seq[(String, ElementRestrictions)]] = Nil, forceRecognitionOfElementsEvenForAbstractChain:Boolean = false): Seq[OutcomeIssue]
 
   /**
    * Find profile with the given URL

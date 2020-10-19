@@ -18,7 +18,7 @@ object ErrorHandler {
     */
   implicit def fhirErrorHandler(fhirRequest:FHIRRequest) =
     ExceptionHandler {
-      case e:Exception if fhirErrorHandlerToResponse.isDefinedAt(e) => Directives.complete{
+      case e:Throwable if fhirErrorHandlerToResponse.isDefinedAt(e) => Directives.complete{
         val response = fhirErrorHandlerToResponse(e)
         fhirRequest.setResponse(response)
         response
@@ -29,7 +29,7 @@ object ErrorHandler {
     * Handling of exceptions by converting them to FHIRResponse
     * @return
     */
-  def fhirErrorHandlerToResponse:PartialFunction[Exception, FHIRResponse] = {
+  def fhirErrorHandlerToResponse:PartialFunction[Throwable, FHIRResponse] = {
       /** Unexpected exceptions while parsing - thrown by 3rd party libraries that we dont' control */
       case ex: JsonMappingException =>
         FHIRResponse.errorResponse(
