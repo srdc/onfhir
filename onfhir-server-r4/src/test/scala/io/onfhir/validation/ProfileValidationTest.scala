@@ -1,5 +1,5 @@
 package io.onfhir.validation
-/*
+
 import io.onfhir.api.{DEFAULT_IMPLEMENTED_FHIR_OPERATIONS, Resource}
 import io.onfhir.api.model.{FhirLiteralReference, FhirReference}
 import io.onfhir.api.util.IOUtil
@@ -42,13 +42,13 @@ class ProfileValidationTest extends Specification {
       IOUtil.readStandardBundleFile("v2-tables.json", Set("ValueSet", "CodeSystem"))
 
   val extraProfiles = Seq(
-    IOUtil.readInnerResource("fhir/r4/profiles/MyObservation.StructureDefinition.json"),
-    IOUtil.readInnerResource("fhir/r4/profiles/MySampledData.StructureDefinition.json"),
-    IOUtil.readInnerResource("fhir/r4/profiles/MyMyObservation.StructureDefinition.json"),
-    IOUtil.readInnerResource("fhir/r4/profiles/MyList.StructureDefinition.json"),
-    IOUtil.readInnerResource("fhir/r4/profiles/MyList2.StructureDefinition.json"),
-    IOUtil.readInnerResource("fhir/r4/profiles/MyExtension.StructureDefinition.json"),
-    IOUtil.readInnerResource("fhir/r4/profiles/MyExtension2.StructureDefinition.json")
+    IOUtil.readModuleResource("/fhir/validation/profiles/MyObservation.StructureDefinition.json"),
+    IOUtil.readModuleResource("/fhir/validation/profiles/MySampledData.StructureDefinition.json"),
+    IOUtil.readModuleResource("/fhir/validation/profiles/MyMyObservation.StructureDefinition.json"),
+    IOUtil.readModuleResource("/fhir/validation/profiles/MyList.StructureDefinition.json"),
+    IOUtil.readModuleResource("/fhir/validation/profiles/MyList2.StructureDefinition.json"),
+    IOUtil.readModuleResource("/fhir/validation/profiles/MyExtension.StructureDefinition.json"),
+    IOUtil.readModuleResource("/fhir/validation/profiles/MyExtension2.StructureDefinition.json")
   ).map(sdParser.parseProfile)
 
 
@@ -83,15 +83,15 @@ class ProfileValidationTest extends Specification {
         case FhirLiteralReference(_, "Observation", rid, _) =>
           rid match {
             case "cholesterol" =>
-              Some(IOUtil.readInnerResource("fhir/r4/dreport/cholesterol.json"))
+              Some(IOUtil.readModuleResource("/fhir/validation/dreport/cholesterol.json"))
             case "triglyceride" =>
-              Some(IOUtil.readInnerResource("fhir/r4/dreport/tryglyceride.json"))
+              Some(IOUtil.readModuleResource("/fhir/validation/dreport/tryglyceride.json"))
             case "hdlcholesterol" =>
-              Some(IOUtil.readInnerResource("fhir/r4/dreport/hdlcholesterol.json"))
+              Some(IOUtil.readModuleResource("/fhir/validation/dreport/hdlcholesterol.json"))
             case "ldlcholesterol" =>
-              Some(IOUtil.readInnerResource("fhir/r4/dreport/ldlcholesterol.json"))
+              Some(IOUtil.readModuleResource("/fhir/validation/dreport/ldlcholesterol.json"))
             case "extra" =>
-              Some(IOUtil.readInnerResource("fhir/r4/valid/observation-bp.json"))
+              Some(IOUtil.readModuleResource("/fhir/validation/valid/observation-bp.json"))
             case _ => None
           }
         case _ => None
@@ -120,6 +120,15 @@ class ProfileValidationTest extends Specification {
         case _ => false
       }
     }
+
+    /**
+     * Current resource validated
+     */
+    override val resource: Resource = JObject()
+    /**
+     * If resource is a part of a bundle (for inter bundle references), the root part of fullUrl of resource validated and the whole Bundle
+     */
+    override val bundle: Option[(String, Resource)] = None
   }
 
 
@@ -128,30 +137,30 @@ class ProfileValidationTest extends Specification {
   "ProfileValidation" should {
    "validate a valid FHIR resource against base definitions" in {
       val fhirContentValidator = FhirContentValidator(fhirConfig, "http://hl7.org/fhir/StructureDefinition/Observation")
-      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/valid/observation-glucose.json")).mkString).asInstanceOf[JObject]
+      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/valid/observation-glucose.json")).mkString).asInstanceOf[JObject]
       var issues = fhirContentValidator.validateComplexContent(observation)
       issues.isEmpty mustEqual(true)
 
-      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/valid/observation-erythrocyte.json")).mkString).asInstanceOf[JObject]
+      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/valid/observation-erythrocyte.json")).mkString).asInstanceOf[JObject]
       issues = fhirContentValidator.validateComplexContent(observation)
       issues.isEmpty mustEqual(true)
 
-      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/valid/observation-bp.json")).mkString).asInstanceOf[JObject]
+      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/valid/observation-bp.json")).mkString).asInstanceOf[JObject]
       issues = fhirContentValidator.validateComplexContent(observation)
       issues.isEmpty mustEqual(true)
 
-      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/valid/observation-group.json")).mkString).asInstanceOf[JObject]
+      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/valid/observation-group.json")).mkString).asInstanceOf[JObject]
       issues = fhirContentValidator.validateComplexContent(observation)
       issues.isEmpty mustEqual(true)
 
-      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/valid/observation-reject.json")).mkString).asInstanceOf[JObject]
+      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/valid/observation-reject.json")).mkString).asInstanceOf[JObject]
       issues = fhirContentValidator.validateComplexContent(observation)
       issues.exists(_.severity == "error") mustEqual(false)
     }
 
     "not validate an invalid FHIR resource against base definitions" in {
       val fhirContentValidator = FhirContentValidator(fhirConfig, "http://hl7.org/fhir/StructureDefinition/Observation")
-      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/invalid/observation-invalid-cardinality.json")).mkString).asInstanceOf[JObject]
+      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/invalid/observation-invalid-cardinality.json")).mkString).asInstanceOf[JObject]
       var issues = fhirContentValidator.validateComplexContent(observation)
       issues.isEmpty mustEqual(false)
       issues.exists(i => i.expression.head == "identifier") mustEqual(true)  // Should be an array but given as object
@@ -159,7 +168,7 @@ class ProfileValidationTest extends Specification {
       issues.exists(_.expression.head == "subject") mustEqual(true) //Should an array but given as object
       issues.exists(i => i.expression.head == "status") mustEqual(true) //Is required but not given
 
-      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/invalid/observation-invalid-basics.json")).mkString).asInstanceOf[JObject]
+      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/invalid/observation-invalid-basics.json")).mkString).asInstanceOf[JObject]
       issues = fhirContentValidator.validateComplexContent(observation)
       issues.isEmpty mustEqual(false)
       issues.exists(i => i.expression.head == "status") mustEqual(true) //Invalid primitive empty code
@@ -170,7 +179,7 @@ class ProfileValidationTest extends Specification {
       issues.exists(i => i.expression.head == "extension[0].url") mustEqual(true) //Required but not exist
       issues.exists(i => i.expression.head == "extension[0]")  mustEqual(true) //Constraint failure both extension has value and extension
 
-      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/invalid/observation-invalid-complex.json")).mkString).asInstanceOf[JObject]
+      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/invalid/observation-invalid-complex.json")).mkString).asInstanceOf[JObject]
       issues = fhirContentValidator.validateComplexContent(observation)
       issues.isEmpty mustEqual(false)
       issues.exists(i => i.expression.head == "status" && i.severity == "error") mustEqual true
@@ -181,13 +190,13 @@ class ProfileValidationTest extends Specification {
 
     "validate a valid FHIR resource with primitive extensions against base definitions" in {
       val fhirContentValidator = FhirContentValidator(fhirConfig, "http://hl7.org/fhir/StructureDefinition/Patient")
-      val patient = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/valid/patient.json")).mkString).asInstanceOf[JObject]
+      val patient = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/valid/patient.json")).mkString).asInstanceOf[JObject]
       val issues = fhirContentValidator.validateComplexContent(patient)
       issues.exists(_.severity == "error") mustEqual(false)
     }
     "not validate an invalid FHIR resource with primitive extensions against base definitions" in {
       val fhirContentValidator = FhirContentValidator(fhirConfig, "http://hl7.org/fhir/StructureDefinition/Patient")
-      val patient = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/invalid/patient.json")).mkString).asInstanceOf[JObject]
+      val patient = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/invalid/patient.json")).mkString).asInstanceOf[JObject]
       val issues = fhirContentValidator.validateComplexContent(patient)
       issues.exists(_.severity == "error") mustEqual(true)
       issues.exists(i => i.expression.head == "birthDate.as" && i.severity == "error") mustEqual true
@@ -196,7 +205,7 @@ class ProfileValidationTest extends Specification {
     }
 
     "validate a valid FHIR resource against profile" in {
-      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/valid/observation-my.json")).mkString).asInstanceOf[JObject]
+      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/valid/observation-my.json")).mkString).asInstanceOf[JObject]
       var fhirContentValidator = FhirContentValidator(fhirConfig, "http://example.org/fhir/StructureDefinition/MyObservation")
       var issues = fhirContentValidator.validateComplexContent(observation)
       issues.isEmpty mustEqual(true)
@@ -204,25 +213,25 @@ class ProfileValidationTest extends Specification {
       //Genetics example for fhir-observation-genetics profiles
       fhirContentValidator = FhirContentValidator(fhirConfig, "http://hl7.org/fhir/StructureDefinition/observation-genetics")
 
-      observation = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/genetics/observation-example-diplotype1.json")).mkString).asInstanceOf[JObject]
+      observation = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/genetics/observation-example-diplotype1.json")).mkString).asInstanceOf[JObject]
       issues = fhirContentValidator.validateComplexContent(observation)
       issues.exists(_.severity == "error") mustEqual(false)
 
-      observation = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/genetics/observation-example-haplotype1.json")).mkString).asInstanceOf[JObject]
+      observation = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/genetics/observation-example-haplotype1.json")).mkString).asInstanceOf[JObject]
       issues = fhirContentValidator.validateComplexContent(observation)
       issues.exists(_.severity == "error") mustEqual(false)
 
-      observation = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/genetics/observation-example-TPMT-haplotype-one.json")).mkString).asInstanceOf[JObject]
+      observation = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/genetics/observation-example-TPMT-haplotype-one.json")).mkString).asInstanceOf[JObject]
       issues = fhirContentValidator.validateComplexContent(observation)
       issues.exists(_.severity == "error") mustEqual(false)
 
-      observation = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/genetics/observation-example-genetics-brcapat.json")).mkString).asInstanceOf[JObject]
+      observation = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/genetics/observation-example-genetics-brcapat.json")).mkString).asInstanceOf[JObject]
       issues = fhirContentValidator.validateComplexContent(observation)
       issues.exists(_.severity == "error") mustEqual(false)
     }
 
     "not validate an invalid FHIR resource against profile" in {
-      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/invalid/observation-my-invalid.json")).mkString).asInstanceOf[JObject]
+      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/invalid/observation-my-invalid.json")).mkString).asInstanceOf[JObject]
       val fhirContentValidator = FhirContentValidator(fhirConfig, "http://example.org/fhir/StructureDefinition/MyObservation")
       var issues = fhirContentValidator.validateComplexContent(observation)
       issues.isEmpty mustEqual(false)
@@ -251,7 +260,7 @@ class ProfileValidationTest extends Specification {
     }
 
     "validate a valid FHIR resource against derived profile" in {
-      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/valid/observation-mymy.json")).mkString).asInstanceOf[JObject]
+      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/valid/observation-mymy.json")).mkString).asInstanceOf[JObject]
       var fhirContentValidator = FhirContentValidator(fhirConfig, "http://example.org/fhir/StructureDefinition/MyMyObservation")
       var issues = fhirContentValidator.validateComplexContent(observation)
       issues.isEmpty mustEqual(true)
@@ -259,7 +268,7 @@ class ProfileValidationTest extends Specification {
 
 
     "not validate an invalid FHIR resource against derived profile" in {
-      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/invalid/observation-mymy-invalid.json")).mkString).asInstanceOf[JObject]
+      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/invalid/observation-mymy-invalid.json")).mkString).asInstanceOf[JObject]
       var fhirContentValidator = FhirContentValidator(fhirConfig, "http://example.org/fhir/StructureDefinition/MyMyObservation")
       var issues = fhirContentValidator.validateComplexContent(observation)
       issues.isEmpty mustEqual(false)
@@ -271,12 +280,12 @@ class ProfileValidationTest extends Specification {
     }
 
     "validate a valid resource with slicing that has resolve() expression in discriminator" in {
-      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/dreport/diagnosticreport-example-lipids.json")).mkString).asInstanceOf[JObject]
+      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/dreport/diagnosticreport-example-lipids.json")).mkString).asInstanceOf[JObject]
       val fhirContentValidator = FhirContentValidator(fhirConfig, "http://hl7.org/fhir/StructureDefinition/lipidprofile", referenceResolverForLipidProfileSample)
       var issues = fhirContentValidator.validateComplexContent(observation)
       issues.exists(_.severity == "error") mustEqual(false)
 
-      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/dreport/diagnosticreport-example-lipids2.json")).mkString).asInstanceOf[JObject]
+      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/dreport/diagnosticreport-example-lipids2.json")).mkString).asInstanceOf[JObject]
       issues = fhirContentValidator.validateComplexContent(observation)
       issues.exists(_.severity == "error") mustEqual(false)
     }
@@ -285,44 +294,44 @@ class ProfileValidationTest extends Specification {
       val fhirContentValidator = FhirContentValidator(fhirConfig, "http://hl7.org/fhir/StructureDefinition/lipidprofile", referenceResolverForLipidProfileSample)
 
       //Missing reference to a cholesterol profile
-      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/dreport/diagnosticreport-example-lipids-invalid-missing-cholesterol.json")).mkString).asInstanceOf[JObject]
+      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/dreport/diagnosticreport-example-lipids-invalid-missing-cholesterol.json")).mkString).asInstanceOf[JObject]
       var issues = fhirContentValidator.validateComplexContent(observation)
       issues.exists(_.severity == "error") mustEqual(true)
       issues.exists(i => i.expression.head == "result" && i.severity == "error" && i.diagnostics.exists(d => d.contains( "Cholesterol"))) mustEqual true
 
       //Missing reference to a tryglyceride profile
-      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/dreport/diagnosticreport-example-lipids-invalid-missing-tryglyceride.json")).mkString).asInstanceOf[JObject]
+      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/dreport/diagnosticreport-example-lipids-invalid-missing-tryglyceride.json")).mkString).asInstanceOf[JObject]
       issues = fhirContentValidator.validateComplexContent(observation)
       issues.exists(_.severity == "error") mustEqual(true)
       issues.exists(i => i.expression.head == "result" && i.severity == "error" && i.diagnostics.exists(d => d.contains( "Triglyceride"))) mustEqual true
 
       //Extra reference to a tryglyceride profile (max cardinality 1, cardinality 2)
-      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/dreport/diagnosticreport-example-lipids-invalid-extra-tryglyceride.json")).mkString).asInstanceOf[JObject]
+      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/dreport/diagnosticreport-example-lipids-invalid-extra-tryglyceride.json")).mkString).asInstanceOf[JObject]
       issues = fhirContentValidator.validateComplexContent(observation)
       issues.exists(_.severity == "error") mustEqual(true)
       issues.exists(i => i.expression.head == "result" && i.severity == "error" && i.diagnostics.exists(d => d.contains( "Triglyceride"))) mustEqual true
 
       //Extra reference used in a closed slicing
-      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/dreport/diagnosticreport-example-lipids-invalid-extra-reference-for-closed-slicing.json")).mkString).asInstanceOf[JObject]
+      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/dreport/diagnosticreport-example-lipids-invalid-extra-reference-for-closed-slicing.json")).mkString).asInstanceOf[JObject]
       issues = fhirContentValidator.validateComplexContent(observation)
       issues.exists(_.severity == "error") mustEqual(true)
       issues.exists(i => i.expression.head == "result" && i.severity == "error" && i.diagnostics.exists(d => d.contains( "closed"))) mustEqual true
 
       //Unordered references in a ordered slicing
-      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/dreport/diagnosticreport-example-lipids-invalid-unordered.json")).mkString).asInstanceOf[JObject]
+      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/dreport/diagnosticreport-example-lipids-invalid-unordered.json")).mkString).asInstanceOf[JObject]
       issues = fhirContentValidator.validateComplexContent(observation)
       issues.exists(_.severity == "error") mustEqual(true)
       issues.exists(i => i.expression.head == "result" && i.severity == "error" && i.diagnostics.exists(d => d.contains( "Triglyceride") && d.contains("index '2' should be in index '1'"))) mustEqual true
       issues.exists(i => i.expression.head == "result" && i.severity == "error" && i.diagnostics.exists(d => d.contains( "HDLCholesterol") && d.contains("index '1' should be in index '3'"))) mustEqual true
 
-      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/dreport/diagnosticreport-example-lipids-invalid-missing-reference.json")).mkString).asInstanceOf[JObject]
+      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/dreport/diagnosticreport-example-lipids-invalid-missing-reference.json")).mkString).asInstanceOf[JObject]
       issues = fhirContentValidator.validateComplexContent(observation)
       issues.exists(_.severity == "error") mustEqual(true)
       issues.exists(i => i.severity == "error" && i.diagnostics.exists(d => d.contains( "Referenced resource Patient/pat3 does not exist"))) mustEqual true
     }
 
     "validate a valid resource with slicing with discriminator type: 'type' and 'exists'" in {
-      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/list/mylist-valid.json")).mkString).asInstanceOf[JObject]
+      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/list/mylist-valid.json")).mkString).asInstanceOf[JObject]
       val fhirContentValidator = FhirContentValidator(fhirConfig, "http://example.org/fhir/StructureDefinition/MyList")
       var issues = fhirContentValidator.validateComplexContent(observation)
       issues.exists(_.severity == "error") mustEqual(false)
@@ -332,32 +341,32 @@ class ProfileValidationTest extends Specification {
       val fhirContentValidator = FhirContentValidator(fhirConfig, "http://example.org/fhir/StructureDefinition/MyList")
 
       //Missing element for withAuthor slice although the min cardinality is one
-      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/list/mylist-invalid-missing-withAuthor.json")).mkString).asInstanceOf[JObject]
+      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/list/mylist-invalid-missing-withAuthor.json")).mkString).asInstanceOf[JObject]
       var issues = fhirContentValidator.validateComplexContent(observation)
       issues.exists(_.severity == "error") mustEqual(true)
       issues.exists(i => i.expression.head == "note" && i.severity == "error" && i.diagnostics.exists(d => d.contains( "WithAuthor"))) mustEqual true
 
       //Invalid slice matching (invalid target Reference type and missing time element)
-      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/list/mylist-invalid-withAuthor-uncompliant-slice.json")).mkString).asInstanceOf[JObject]
+      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/list/mylist-invalid-withAuthor-uncompliant-slice.json")).mkString).asInstanceOf[JObject]
       issues = fhirContentValidator.validateComplexContent(observation)
       issues.exists(_.severity == "error") mustEqual(true)
       issues.exists(i => i.expression.head == "note[0].authorReference" && i.severity == "error") mustEqual true
       issues.exists(i => i.expression.head == "note[0].time" && i.severity == "error") mustEqual true
 
       //Invalid slice matching (extra time element)
-      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/list/mylist-invalid-withoutAuthor-extra-uncompliant-slice.json")).mkString).asInstanceOf[JObject]
+      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/list/mylist-invalid-withoutAuthor-extra-uncompliant-slice.json")).mkString).asInstanceOf[JObject]
       issues = fhirContentValidator.validateComplexContent(observation)
       issues.exists(_.severity == "error") mustEqual(true)
       issues.exists(i => i.expression.head == "note[2].time" && i.severity == "error") mustEqual true
 
       //Missing element for Patients slice although the min cardinality is one
-      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/list/mylist-invalid-missing-Patients-slice.json")).mkString).asInstanceOf[JObject]
+      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/list/mylist-invalid-missing-Patients-slice.json")).mkString).asInstanceOf[JObject]
       issues = fhirContentValidator.validateComplexContent(observation)
       issues.exists(_.severity == "error") mustEqual(true)
       issues.exists(i => i.expression.head == "entry" && i.severity == "error" && i.diagnostics.exists(d => d.contains( "Patients"))) mustEqual true
 
 
-      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/list/mylist-invalid-Patients-uncompliant-slice.json")).mkString).asInstanceOf[JObject]
+      observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/list/mylist-invalid-Patients-uncompliant-slice.json")).mkString).asInstanceOf[JObject]
       issues = fhirContentValidator.validateComplexContent(observation)
       issues.exists(_.severity == "error") mustEqual(true)
       issues.exists(i => i.expression.head == "entry[1].date" && i.severity == "error") mustEqual true
@@ -365,14 +374,14 @@ class ProfileValidationTest extends Specification {
 
 
     "validate a valid resource with slicing with extension in discriminator path" in {
-      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/list/mylist2-valid.json")).mkString).asInstanceOf[JObject]
+      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/list/mylist2-valid.json")).mkString).asInstanceOf[JObject]
       val fhirContentValidator = FhirContentValidator(fhirConfig, "http://example.org/fhir/StructureDefinition/MyList2")
       var issues = fhirContentValidator.validateComplexContent(observation)
       issues.exists(_.severity == "error") mustEqual(false)
     }
 
     "not validate a invalid resource with slicing with extension in discriminator path" in {
-      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/list/mylist2-invalid.json")).mkString).asInstanceOf[JObject]
+      var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/list/mylist2-invalid.json")).mkString).asInstanceOf[JObject]
       val fhirContentValidator = FhirContentValidator(fhirConfig, "http://example.org/fhir/StructureDefinition/MyList2")
       var issues = fhirContentValidator.validateComplexContent(observation)
       issues.exists(_.severity == "error") mustEqual(true)
@@ -383,11 +392,11 @@ class ProfileValidationTest extends Specification {
     }
 
     "validate base conformance statement" in  {
-      var cptStatement = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/r4/foundation/conformance-statement.json")).mkString).asInstanceOf[JObject]
+      var cptStatement = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/foundation/conformance-statement.json")).mkString).asInstanceOf[JObject]
       val fhirContentValidator = FhirContentValidator(fhirConfig, "http://hl7.org/fhir/StructureDefinition/CapabilityStatement")
       var issues = fhirContentValidator.validateComplexContent(cptStatement)
       issues.exists(_.severity == "error") mustEqual(false)
     }
 
   }
-}*/
+}

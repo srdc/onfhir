@@ -1,7 +1,9 @@
 package io.onfhir.config
 
+import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
-
+import org.specs2.runner.JUnitRunner
+@RunWith(classOf[JUnitRunner])
 class SearchParameterConfiguratorTest extends Specification {
   sequential
 
@@ -10,56 +12,56 @@ class SearchParameterConfiguratorTest extends Specification {
       val expr = "ActivityDefinition.useContext.code"
 
       val (path, restriction) = SearchParameterConfigurator.parsePathExpression(expr)
-      path mustEqual "useContext.code"
-      restriction must beEmpty
+      path mustEqual "ActivityDefinition.useContext.code"
+      restriction isEmpty
     }
 
     "parse search parameter path expressions with as" in {
       var expr = "(ActivityDefinition.useContext.value as CodeableConcept)"
 
       val (path, restriction) = SearchParameterConfigurator.parsePathExpression(expr)
-      path mustEqual "useContext.valueCodeableConcept"
-      restriction must beEmpty
+      path mustEqual "ActivityDefinition.useContext.valueCodeableConcept"
+      restriction isEmpty
 
       expr = "(Observation.value as CodeableConcept).text"
       val (path2, restriction2) = SearchParameterConfigurator.parsePathExpression(expr)
-      path2 mustEqual "valueCodeableConcept.text"
-      restriction2 must beEmpty
+      path2 mustEqual "Observation.valueCodeableConcept.text"
+      restriction2 isEmpty
     }
 
     "parse search parameter path expressions with as within expression" in {
       var expr = "Condition.abatement.as(Age)"
       val (path, restriction) = SearchParameterConfigurator.parsePathExpression(expr)
-      path mustEqual "abatementAge"
-      restriction must beEmpty
+      path mustEqual "Condition.abatementAge"
+      restriction isEmpty
 
       expr = "Condition.x.as(dateTime).text"
       val (path2, restriction2) = SearchParameterConfigurator.parsePathExpression(expr)
-      path2 mustEqual "xDateTime.text"
-      restriction2 must beEmpty
+      path2 mustEqual "Condition.xDateTime.text"
+      restriction2 isEmpty
     }
 
     "parse search parameter path expressions with restriction" in {
       var expr = "ActivityDefinition.relatedArtifact.where(type='composed-of').resource"
       val (path, restriction) = SearchParameterConfigurator.parsePathExpression(expr)
-      path mustEqual "relatedArtifact.resource"
+      path mustEqual "ActivityDefinition.relatedArtifact.resource"
       restriction mustEqual Seq("@.type" -> "composed-of")
 
       expr= "Library.relatedArtifact.where(type=&#39;composed-of&#39;).resource"
       val (path2, restriction2) = SearchParameterConfigurator.parsePathExpression(expr)
-      path2 mustEqual "relatedArtifact.resource"
+      path2 mustEqual "Library.relatedArtifact.resource"
       restriction2 mustEqual Seq("@.type" -> "composed-of")
 
       expr= "Library.relatedArtifact.where(type=&#39;composed-of&#39;)"
       val (path3, restriction3) = SearchParameterConfigurator.parsePathExpression(expr)
-      path3 mustEqual "relatedArtifact"
+      path3 mustEqual "Library.relatedArtifact"
       restriction3 mustEqual Seq("type" -> "composed-of")
     }
 
     "parse search parameter path expressions with index" in {
       val expr = "Bundle.entry[0].resource"
       val (path, restriction) = SearchParameterConfigurator.parsePathExpression(expr)
-      path mustEqual "entry[0].resource"
+      path mustEqual "Bundle.entry[0].resource"
       restriction must beEmpty
     }
 

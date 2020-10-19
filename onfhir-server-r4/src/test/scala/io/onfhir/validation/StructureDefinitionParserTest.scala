@@ -1,5 +1,5 @@
 package io.onfhir.validation
-/*
+
 import io.onfhir.api.util.{FHIRUtil, IOUtil}
 import io.onfhir.config.FhirConfig
 import io.onfhir.r4.config.FhirR4Configurator
@@ -16,8 +16,8 @@ class StructureDefinitionParserTest extends Specification {
   val otherProfiles = IOUtil.readStandardBundleFile("profiles-others.json", Set("StructureDefinition"))
   val furtherProfiles =
     Seq(
-      IOUtil.readInnerResource("/fhir/r4/profiles/MyObservation.StructureDefinition.json"),
-      IOUtil.readInnerResource("/fhir/r4/profiles/MySampledData.StructureDefinition.json"),
+      IOUtil.readModuleResource("/fhir/validation/profiles/MyObservation.StructureDefinition.json"),
+      IOUtil.readModuleResource("/fhir/validation/profiles/MySampledData.StructureDefinition.json"),
     )
   var r4Configurator = new FhirR4Configurator()
   val allDataTypes = dataTypeProfiles.flatMap(r4Configurator.getTypeFromStructureDefinition)
@@ -50,4 +50,4 @@ class StructureDefinitionParserTest extends Specification {
     }*/
 
   }
-}*/
+}

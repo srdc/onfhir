@@ -46,9 +46,5 @@ object OnFhirLocalClient extends BaseFhirClient {
         baseRequest.page = Some(baseRequest.page.getOrElse(1) + 1)
         baseRequest.executeAndReturnBundle().map(_.asInstanceOf[T])
     }
-
-    //Update the page
-
-
   }
 }

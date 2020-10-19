@@ -11389,6 +11389,10 @@
         "documentation" : "Implemented per the specification (or Insert other doco here)"
       },
       {
+          "code" : "patch",
+          "documentation" : "Implemented per the specification (or Insert other doco here)"
+      },
+      {
         "code" : "delete",
         "documentation" : "Implemented per the specification (or Insert other doco here)"
       },
@@ -17903,7 +17907,8 @@
       "documentation" : "Logical id of this artifact"
     }
     ],
-    "operation" : [{
+    "operation" : [
+      {
       "name" : "validate",
       "definition" : "http://hl7.org/fhir/OperationDefinition/Resource-validate"
     },
@@ -17931,6 +17936,13 @@
         "name" : "lastn",
         "definition" : "http://hl7.org/fhir/OperationDefinition/Observation-lastn"
     }
+    ],
+    "compartment": [
+      "http://hl7.org/fhir/CompartmentDefinition/patient",
+      "http://hl7.org/fhir/CompartmentDefinition/practitioner",
+      "http://hl7.org/fhir/CompartmentDefinition/encounter",
+      "http://hl7.org/fhir/CompartmentDefinition/device",
+      "http://hl7.org/fhir/CompartmentDefinition/relatedPerson"
     ]
   }]
 }
