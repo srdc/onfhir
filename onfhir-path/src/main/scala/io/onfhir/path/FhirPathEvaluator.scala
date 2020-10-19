@@ -174,8 +174,9 @@ class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None) {
    * @return
    */
   def getPathItemsWithRestrictions(expr:String):Seq[(String, Seq[(String, String)])] = {
-    val normalizedExpr = normalizeExpression(expr)
-    val finalExpr = normalizedExpr.getOrElse(expr)
+    val escapedExpr = expr.replaceAll("&#39;","'")
+    val normalizedExpr = normalizeExpression(escapedExpr)
+    val finalExpr = normalizedExpr.getOrElse(escapedExpr)
 
     val parsedExpr = parse(finalExpr)
     val pathExtractor = new FhirPathExtractor()

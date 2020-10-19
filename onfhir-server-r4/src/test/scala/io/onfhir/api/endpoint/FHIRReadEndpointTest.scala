@@ -228,7 +228,7 @@ class FHIRReadEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId + "?_summary=invalid") ~> routes ~> check {
         status === BadRequest
-        responseAs[String] must contain("invalid for _summary parameter")
+        responseAs[String] must contain("Invalid parameter value for _summary")
       }
     }
   }

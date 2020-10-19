@@ -13,10 +13,10 @@ import io.onfhir.config.OnfhirConfig
 import io.onfhir.db.{ResourceManager, TransactionSession}
 import io.onfhir.exception.{BadRequestException, InternalServerException, NotFoundException}
 import io.onfhir.server.ErrorHandler
+import io.onfhir.util.DateTimeUtil
 import io.onfhir.util.JsonFormatter._
 import org.json4s.JsonDSL._
 import org.json4s.JsonAST.{JObject, JString}
-
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Await, Future}
@@ -34,14 +34,11 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
     */
   override def validateInteraction(fhirRequest: FHIRRequest): Future[Unit] = {
     Future.apply {
-      // Extract bundle type from the resource
-      val bundleType = (fhirRequest.resource.get \ FHIR_COMMON_FIELDS.TYPE).extractOrElse[String]("")
       // Validate resource type
-      FHIRApiValidator.validateResourceTypeMatching(fhirRequest.resource.get, FHIR_BUNDLE_TYPES.BUNDLE)
+      if(fhirRequest.resource.isDefined)
+        FHIRApiValidator.validateResourceTypeMatching(fhirRequest.resource.get, FHIR_BUNDLE_TYPES.BUNDLE)
       // Validate interaction
-      FHIRApiValidator.validateSystemLevelInteraction(bundleType)
-      //Set the bundle type
-      fhirRequest.interaction = bundleType
+      FHIRApiValidator.validateSystemLevelInteraction(fhirRequest.interaction)
     }
   }
 
@@ -392,10 +389,10 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
       //Handle the 'fullUrl' element
       if (!requestResponse.isIdGenerated)
         entry = entry ~ (FHIR_BUNDLE_FIELDS.FULL_URL -> requestResponse.id)
-      else {
+      /*else {
         //Construct the URL from request and response
         constructFullUrl(requestResponse).foreach(fullUrl => entry = entry ~ (FHIR_BUNDLE_FIELDS.FULL_URL -> fullUrl))
-      }
+      }*/
       //Construct the response element
       entry = entry ~ (FHIR_BUNDLE_FIELDS.RESPONSE -> convertFHIRResponseToMap(requestResponse.response.get))
       //Return the entry
@@ -413,7 +410,7 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
     var response: Resource = FHIR_BUNDLE_FIELDS.STATUS -> fhirResponse.httpStatus.value
 
     if (fhirResponse.lastModified.isDefined)
-      response = response ~ ("lastModified" -> fhirResponse.lastModified.get.toIsoDateTimeString)
+      response = response ~ ("lastModified" -> DateTimeUtil.serializeDateTime(fhirResponse.lastModified.get))
     if (fhirResponse.location.isDefined)
       response = response ~ ("location" -> fhirResponse.location.get.toString())
     if (fhirResponse.newVersion.isDefined)
@@ -448,7 +445,7 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
     */
   private def getResourceIdForConditionalUpdate(fhirRequest: FHIRRequest): Future[Option[String]] = {
     ResourceManager
-      .queryResources(fhirRequest.resourceType.get, fhirRequest.queryParams, count = 1, elementsIncludedOrExcluded = Some(true, Set.empty), excludeExtraFields = true)
+      .queryResources(fhirRequest.resourceType.get, fhirRequest.getParsedQueryParams(), count = 1, elementsIncludedOrExcluded = Some(true, Set.empty), excludeExtraFields = true)
       .map {
         case (1, Seq(foundResource)) => Some(FHIRUtil.extractIdFromResource(foundResource))
         case _ => None

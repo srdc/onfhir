@@ -44,6 +44,10 @@ object IOUtil {
     parseResource(new InputStreamReader(new BOMInputStream(getClass.getClassLoader.getResourceAsStream(resourcePath))), resourcePath).asInstanceOf[JObject]
   }
 
+  def readModuleResource(resourcePath:String):Resource = {
+    parseResource(new InputStreamReader(new BOMInputStream(getClass.getResourceAsStream(resourcePath))), resourcePath).asInstanceOf[JObject]
+  }
+
   /**
    * Read all JSON resources in a folder or zip and parse them
    * @param folderPath          Path to the zip file or folder if given

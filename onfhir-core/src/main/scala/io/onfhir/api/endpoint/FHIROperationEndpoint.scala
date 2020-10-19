@@ -115,7 +115,7 @@ trait FHIROperationEndpoint {
         //Initialize FHIR operation request
         fhirRequest.initializeOperationRequest("$"+operationConf.name, resourceType, resourceId)
         //Initialize parameters in the request
-        fhirRequest.operationParameters = parameters
+        fhirRequest.queryParams = parameters
         entity(as[Resource]) { resource =>
           //Initialize operation body
           fhirRequest.resource = if(resource.obj.isEmpty) None else Some(resource)

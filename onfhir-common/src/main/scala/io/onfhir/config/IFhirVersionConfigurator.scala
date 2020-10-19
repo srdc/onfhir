@@ -1,7 +1,7 @@
 package io.onfhir.config
 
 import akka.http.scaladsl.model.{MediaType, MediaTypes}
-import io.onfhir.api.{FHIR_SEARCH_RESULT_PARAMETERS, FHIR_SEARCH_SPECIAL_PARAMETERS, Resource}
+import io.onfhir.api.{FHIR_MEDIA_TYPES, FHIR_SEARCH_RESULT_PARAMETERS, FHIR_SEARCH_SPECIAL_PARAMETERS, Resource}
 import io.onfhir.api.validation.{IFhirResourceValidator, IFhirTerminologyValidator, ProfileRestrictions, ValueSetRestrictions}
 import io.onfhir.audit.IFhirAuditCreator
 
@@ -111,8 +111,8 @@ trait IFhirVersionConfigurator {
     FHIR_SEARCH_SPECIAL_PARAMETERS.CONTENT
   )
 
-  val FHIR_JSON_MEDIA_TYPE = MediaType.applicationWithOpenCharset("fhir+json")
-  val FHIR_XML_MEDIA_TYPE = MediaType.applicationWithOpenCharset("fhir+xml")
+  val FHIR_JSON_MEDIA_TYPE = FHIR_MEDIA_TYPES.FHIR_JSON_MEDIA_TYPE
+  val FHIR_XML_MEDIA_TYPE = FHIR_MEDIA_TYPES.FHIR_XML_MEDIA_TYPE
 
   /** MediaType configurations for this FHIR version */
   // List of Supported FHIR JSON Media Types
@@ -126,7 +126,7 @@ trait IFhirVersionConfigurator {
     FHIR_XML_MEDIA_TYPE
   )
   // Patch media types supported by onFHIR
-  val FHIR_PATCH_MEDIA_TYPES:Seq[MediaType] = Seq(MediaType.applicationWithOpenCharset("json-patch+json"))
+  val FHIR_PATCH_MEDIA_TYPES:Seq[MediaType] = Seq(FHIR_MEDIA_TYPES.FHIR_JSON_PATCH_MEDIA_TYPE)
   //Map from _format param value to actual MediaType
   val FHIR_FORMAT_MIME_TYPE_MAP:Map[String, MediaType] = Map(
     "html" -> MediaTypes.`text/html`,

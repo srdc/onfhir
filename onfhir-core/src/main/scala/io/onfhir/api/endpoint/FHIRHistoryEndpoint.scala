@@ -1,7 +1,7 @@
 package io.onfhir.api.endpoint
 
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.{Directives, Route}
 import io.onfhir.api.{FHIR_HTTP_OPTIONS, FHIR_INTERACTIONS}
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
@@ -22,14 +22,13 @@ trait FHIRHistoryEndpoint {
     */
   def historyRoute(fhirRequest: FHIRRequest, authContext:(AuthContext, Option[AuthzContext])):Route = {
     (get | head) {
-      optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { prefer =>
         //GET [base]/[type]/[id]/_history {?[parameters]&_format=[mime-type]}
         pathPrefix(OnfhirConfig.baseUri / Segment / Segment / FHIR_HTTP_OPTIONS.HISTORY) { (_type, _id) =>
           pathEndOrSingleSlash {
             //Create the FHIR request object
             fhirRequest.initializeHistoryRequest(FHIR_INTERACTIONS.HISTORY_INSTANCE, Some(_type), Some(_id))
             //Parse search paremeters
-            FHIRSearchParameterValueParser.parseSearchParametersFromUri(_type, prefer) { searchParameters =>
+            Directives.parameterMultiMap { searchParameters =>
               //Put the parameters into the FHIR Request
               fhirRequest.queryParams = searchParameters
               //Enforce authorization, add the authorization filter params to search params
@@ -47,7 +46,7 @@ trait FHIRHistoryEndpoint {
               //Create the FHIR request object
               fhirRequest.initializeHistoryRequest(FHIR_INTERACTIONS.HISTORY_TYPE, Some(_type), None)
               //Parse search paremeters
-              FHIRSearchParameterValueParser.parseSearchParametersFromUri(_type, prefer) { searchParameters =>
+              Directives.parameterMultiMap { searchParameters =>
                 //Put the parameters into the FHIR Request
                 fhirRequest.queryParams = searchParameters
                 //Enforce authorization
@@ -66,7 +65,7 @@ trait FHIRHistoryEndpoint {
               //Create the FHIR request object
               fhirRequest.initializeHistoryRequest(FHIR_INTERACTIONS.HISTORY_SYSTEM, None, None)
               //Parse search paremeters
-              FHIRSearchParameterValueParser.parseSearchParametersFromUri("", prefer) { searchParameters =>
+              Directives.parameterMultiMap { searchParameters =>
                 fhirRequest.queryParams = searchParameters
                 //Enforce authorization, add the authorization filter params to search params
                 AuthzManager.authorize(authContext._2, fhirRequest) {
@@ -77,7 +76,7 @@ trait FHIRHistoryEndpoint {
               }
             }
           }
-      }
+
     }
   }
 }

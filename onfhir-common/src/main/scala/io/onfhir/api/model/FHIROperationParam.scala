@@ -2,7 +2,7 @@ package io.onfhir.api.model
 
 import org.json4s.JsonAST.JValue
 import io.onfhir.util.JsonFormatter._
-import org.json4s.Extraction
+import org.json4s.{Extraction}
 
 class InvalidParamRequest(message:String) extends Exception(message)
 
@@ -10,8 +10,7 @@ abstract class FHIROperationParam
 
 /**
  * Operation parameter value with a specific value
- * @param value Value or values of the param
- *              e.g. JArray for params with cardinality greater than 1
+ * @param value Value of the param
  *              e.g. JObject for FHIR complex data types or resources
  *              e.g. Other JValues for FHIR simple data types
  */
@@ -40,7 +39,6 @@ case class FHIRSimpleOperationParam(value:JValue) extends FHIROperationParam {
  * @param params
  */
 case class FHIRMultiOperationParam(params:Seq[(String, FHIROperationParam)]) extends FHIROperationParam{
-
   /**
    * Get a single cardinality parameter
    * @param pname Parameter name

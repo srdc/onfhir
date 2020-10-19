@@ -1,0 +1,43 @@
+{
+  "resourceType": "Observation",
+  "id": "triglyceride",
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\"><p><b>Generated Narrative with Details</b></p><p><b>id</b>: triglyceride</p><p><b>status</b>: final</p><p><b>code</b>: Triglyceride <span>(Details : {LOINC code '35217-9' = 'Triglyceride [Mass or Moles/volume] in Serum or Plasma', given as 'Triglyceride [Moles/​volume] in Serum or Plasma'})</span></p><p><b>subject</b>: <a>Patient/pat2</a></p><p><b>performer</b>: <a>Acme Laboratory, Inc</a></p><p><b>value</b>: 1.3 mmol/L<span> (Details: UCUM code mmol/L = 'mmol/L')</span></p><h3>ReferenceRanges</h3><table><tr><td>-</td><td><b>High</b></td></tr><tr><td>*</td><td>2.0 mmol/L<span> (Details: UCUM code mmol/L = 'mmol/L')</span></td></tr></table></div>"
+  },
+  "status": "final",
+  "code": {
+    "coding": [
+      {
+        "system": "http://loinc.org",
+        "code": "35217-9",
+        "display": "Triglyceride [Moles/​volume] in Serum or Plasma"
+      }
+    ]
+  },
+  "subject": {
+    "reference": "Patient/pat2"
+  },
+  "performer": [
+    {
+      "reference": "Organization/1832473e-2fe0-452d-abe9-3cdb9879522f",
+      "display": "Acme Laboratory, Inc"
+    }
+  ],
+  "valueQuantity": {
+    "value": 1.3,
+    "unit": "mmol/L",
+    "system": "http://unitsofmeasure.org",
+    "code": "mmol/L"
+  },
+  "referenceRange": [
+    {
+      "high": {
+        "value": 2.0,
+        "unit": "mmol/L",
+        "system": "http://unitsofmeasure.org",
+        "code": "mmol/L"
+      }
+    }
+  ]
+}

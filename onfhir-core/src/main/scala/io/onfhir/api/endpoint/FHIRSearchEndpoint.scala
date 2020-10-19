@@ -1,7 +1,7 @@
 package io.onfhir.api.endpoint
 
 import akka.http.scaladsl.server.Directives._
-import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.{Directives, Route}
 import io.onfhir.api.FHIR_HTTP_OPTIONS
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
@@ -31,7 +31,7 @@ trait FHIRSearchEndpoint {
               //Initialize the FHIR request object
               fhirRequest.initializeSearchRequest(_type, preferHeader)
               //Parse search paremeters
-              FHIRSearchParameterValueParser.parseSearchParametersFromUri(_type, preferHeader) { searchParameters =>
+              Directives.parameterMultiMap { searchParameters =>
                 //Put the parameters and content into the FHIR Request
                 fhirRequest.queryParams = searchParameters
                 //Enforce authorization, add the authorization filter params to search params
@@ -51,13 +51,10 @@ trait FHIRSearchEndpoint {
             optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { preferHeader =>
               //Create the FHIR request object
               fhirRequest.initializeSearchRequest(_type, preferHeader)
-              FHIRSearchParameterValueParser.parseSearchParametersFromUri(_type, preferHeader) { urlParameters =>
-                //Parse search paremeters
-                FHIRSearchParameterValueParser.parseSearchParametersFromEntity(_type, preferHeader) { entityParameters =>
-                  // Add both parameters
-                  val searchParameters = urlParameters ++ entityParameters
+              Directives.parameterMultiMap { urlParameters =>
+                Directives.formFieldMultiMap { entityParameters =>
                   //Put the parameters and content into the FHIR Request
-                  fhirRequest.queryParams = searchParameters
+                  fhirRequest.queryParams = urlParameters ++ entityParameters
                   //Enforce authorization, add the authorization filter params to search params
                   AuthzManager.authorize(authContext._2, fhirRequest) {
                     complete {

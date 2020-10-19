@@ -3,6 +3,7 @@ package io.onfhir.api.service
 import akka.http.scaladsl.model.StatusCodes
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, Parameter}
+import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
@@ -27,7 +28,12 @@ class FHIRSearchService(transactionSession: Option[TransactionSession] = None) e
       if(fhirRequest.compartmentType.isDefined) {
         FHIRApiValidator.validateCompartment(fhirRequest.compartmentType.get, fhirRequest.resourceType.get)
         FHIRApiValidator.validateId(fhirRequest.compartmentId.get)
+
+        fhirRequest.addParsedQueryParams(List(FHIRSearchParameterValueParser.constructCompartmentSearchParameter(fhirRequest.compartmentType.get, fhirRequest.compartmentId.get, fhirRequest.resourceType.get)))
       }
+
+      fhirRequest.addParsedQueryParams(
+          FHIRSearchParameterValueParser.parseSearchParameters(fhirRequest.resourceType.get, fhirRequest.queryParams, fhirRequest.prefer))
     }
   }
 
@@ -43,7 +49,7 @@ class FHIRSearchService(transactionSession: Option[TransactionSession] = None) e
     else
       logger.debug(s"Processing search request on ${fhirRequest.resourceType}...")
     //Perform the search
-    searchAndReturnBundle(fhirRequest.resourceType.get, fhirRequest.queryParams) map { bundle =>
+    searchAndReturnBundle(fhirRequest.resourceType.get, fhirRequest.getParsedQueryParams()) map { bundle =>
       FHIRResponse(StatusCodes.OK, Some(bundle))
     }
   }

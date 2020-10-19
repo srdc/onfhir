@@ -1,8 +1,10 @@
 package io.onfhir.api.service
 
+import akka.http.scaladsl.model.headers.`If-Match`
 import akka.http.scaladsl.model.{StatusCodes, Uri}
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
+import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
@@ -23,8 +25,10 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
      val validations =
        if(fhirRequest.resourceId.isDefined)
         validateUpdateInteraction(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.resourceId.get, fhirRequest.ifMatch)
-       else
-         validateConditionalUpdateInteraction(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.queryParams, fhirRequest.prefer)
+       else {
+         fhirRequest.addParsedQueryParams(FHIRSearchParameterValueParser.parseSearchParameters(fhirRequest.resourceType.get, fhirRequest.queryParams, None))
+         validateConditionalUpdateInteraction(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.getParsedQueryParams(), fhirRequest.prefer)
+       }
 
     validations.map(_ =>
       //Extra business rules validations if exist
@@ -43,7 +47,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
     if(fhirRequest.resourceId.isDefined)
       updateResource(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.resourceId.get, fhirRequest.ifMatch, fhirRequest.prefer, isTesting)
     else
-      conditionalUpdateResource(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.queryParams, fhirRequest.ifMatch, fhirRequest.prefer, isTesting)
+      conditionalUpdateResource(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.getParsedQueryParams(), fhirRequest.ifMatch, fhirRequest.prefer, isTesting)
   }
 
   /**
@@ -52,7 +56,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
     * @param _type      Resource type
     * @param _id        Resource id
     */
-  private def validateUpdateInteraction(resource: Resource, _type:String, _id:String, ifmatch:Option[String]):Future[Unit] = {
+  private def validateUpdateInteraction(resource: Resource, _type:String, _id:String, ifmatch:Option[`If-Match`]):Future[Unit] = {
     //1.1) Validate if "update" is supported for Resource Type
     FHIRApiValidator.validateInteractionOnResourceType(FHIR_INTERACTIONS.UPDATE, _type)
     //1.2) Check the id field and id in URL (e.g. is matching, conformant to ID format)
@@ -96,7 +100,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
   private def conditionalUpdateResource(resource: Resource,
                                         _type:String,
                                         searchParameters:List[Parameter],
-                                        ifMatch:Option[String],
+                                        ifMatch:Option[`If-Match`],
                                         prefer:Option[String],
                                         testUpdate:Boolean = false
                                         ) : Future[FHIRResponse] = {
@@ -181,7 +185,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
     * @param testUpdate - Indicates if it is the real update operation
     * @return
     */
-  def updateResource(resource: Resource, _type:String, _id:String, ifMatch:Option[String], prefer:Option[String], testUpdate:Boolean = false) : Future[FHIRResponse] = {
+  def updateResource(resource: Resource, _type:String, _id:String, ifMatch:Option[`If-Match`], prefer:Option[String], testUpdate:Boolean = false) : Future[FHIRResponse] = {
     logger.debug(s"requesting 'update' for ${_type} with ${_id}...")
 
     //1) check if resource already exists
