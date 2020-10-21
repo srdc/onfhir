@@ -27,8 +27,8 @@ trait FHIRCompartmentSearchEndpoint {
     */
   def compartmentSearchRoute(fhirRequest: FHIRRequest, authContext:(AuthContext, Option[AuthzContext])) =
     (get | head) {
-      //GET [base][/CompartmentType]/[CompartmentId]/[ResourceType]{?[parameters]{&_format=[mime-type]}} => power2dm.compartment Search
-      pathPrefix(OnfhirConfig.baseUri / Segment / Segment / """[^\$]+[A-Za-z0-9\-\.]*""".r) { (compartmentName, compartmentId, _type) =>
+      //GET [base][/CompartmentType]/[CompartmentId]/[ResourceType]{?[parameters]{&_format=[mime-type]}} =>
+      pathPrefix(OnfhirConfig.baseUri / Segment / Segment / """^([A-Za-z0-9\-\.]+|\*)$""".r) { (compartmentName, compartmentId, _type) =>
         pathEndOrSingleSlash {
           optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { prefer =>
             //Create the FHIR request object

@@ -60,14 +60,25 @@ case class FHIRRequest(
                         //Other client specific params
                         var httpMethod:Option[HttpMethod] = None //Preferred HTTP method when there is alternative
                       ){
-  // Parsed query parameters
-  private var parsedQueryParams:List[Parameter] = List.empty
+  // Parsed query parameters for the resource type
+  private var parsedQueryParams:Either[List[Parameter], Map[String, List[Parameter]]] = Left(List.empty)
 
   def addParsedQueryParams(params:List[Parameter]):Unit = {
-    parsedQueryParams = parsedQueryParams ++ params
+    parsedQueryParams = Left(parsedQueryParams.left.get ++ params)
   }
 
-  def getParsedQueryParams():List[Parameter] = parsedQueryParams
+  def addParsedQueryParams(rtype:String, params:List[Parameter]):Unit = {
+    parsedQueryParams = Right(
+      parsedQueryParams.right.getOrElse(Map.empty).get(rtype) match {
+        case Some(p) => parsedQueryParams.right.getOrElse(Map.empty) ++ Map(rtype -> (p ++ params))
+        case None =>   parsedQueryParams.right.getOrElse(Map.empty) ++ Map(rtype -> params)
+      }
+    )
+  }
+
+  def getParsedQueryParams():List[Parameter] = parsedQueryParams.left.get
+
+  def getAllParsedQueryParams():Map[String, List[Parameter]] = parsedQueryParams.right.get
 
   //Set id for the request externally
   def setId(id:Option[String]):FHIRRequest = {
@@ -96,6 +107,11 @@ case class FHIRRequest(
     this.prefer = prefer
   }
 
+  def initializeSearchRequest(prefer:Option[String]):Unit = {
+    this.interaction = FHIR_INTERACTIONS.SEARCH_SYSTEM
+    this.prefer = prefer
+  }
+
   /**
     * Initialize a FHIR Search request
     * @param resourceType   FHIR Resource Type to search
@@ -115,13 +131,11 @@ case class FHIRRequest(
     * @param prefer           FHIR Prefer Header value
     */
   def initializeCompartmentSearchRequest(compartmentType:String, compartmentId:String, resourceType:String, prefer:Option[String]):Unit = {
-    this.interaction = FHIR_INTERACTIONS.SEARCH
+    this.interaction = if(resourceType == "*") FHIR_INTERACTIONS.SEARCH_SYSTEM else FHIR_INTERACTIONS.SEARCH
     this.compartmentType = Some(compartmentType)
     this.compartmentId = Some(compartmentId)
-    this.resourceType = Some(resourceType)
+    this.resourceType = if(resourceType == "*") None else Some(resourceType)
     this.prefer = prefer
-    //Set the compartment search parameter
-    //queryParams = List(FHIRSearchParameterValueParser.constructCompartmentSearchParameter(compartmentType, compartmentId, resourceType))
   }
 
   /**

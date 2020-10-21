@@ -93,6 +93,56 @@ object ResourceManager {
   }
 
   /**
+   * FHIR system level search over multiple resource types
+   * @param parametersForResourceTypes  Parsed search parameters for each resource type to search
+   * @param excludeExtraParams          If true, the extra params set by Onfhir are excluded from the returned resources
+   * @param transactionSession          If part of a transaction, the transaction session
+   * @return                            Num of Total Matched Resources, Matched Resources (with Paging)
+   */
+  def searchResourcesFromMultipleResourceTypes(parametersForResourceTypes:Map[String, List[Parameter]],excludeExtraParams:Boolean = false)(implicit transactionSession: Option[TransactionSession] = None):Future[(Long, Seq[Resource])] = {
+    val resultParameters = parametersForResourceTypes
+      .mapValues(_.filter(_.paramCategory == FHIR_PARAMETER_CATEGORIES.RESULT))
+
+    val commonResultParameters =
+      resultParameters
+        .headOption.map(_._2)
+        .getOrElse(List.empty[Parameter])
+
+    //Check _page and _count
+    val (page, count) = FHIRResultParameterResolver.resolveCountPageParameters(commonResultParameters)
+    //_total parameter, if total number of matched resource is needed or not
+    val needTotal = commonResultParameters.find(_.name == FHIR_SEARCH_RESULT_PARAMETERS.TOTAL).forall(_.valuePrefixList.head._2 != "none")
+    //For each resource type find out summary and sorting fields
+    val summaryFields  =
+      resultParameters
+        .map(rparams =>
+          rparams._1 -> FHIRResultParameterResolver.resolveSummaryParameter( rparams._1, rparams._2)
+        )
+    val sortingFields =
+      resultParameters.map(rparams =>
+        rparams._1 -> FHIRResultParameterResolver.resolveSortingParameters(rparams._1, rparams._2)
+      )
+
+    //Filter query parameters for each resource type
+    val queryParameters =
+      parametersForResourceTypes
+        .mapValues(_.filterNot(_.paramCategory == FHIR_PARAMETER_CATEGORIES.RESULT))
+
+    //If summary is count
+    if(summaryFields.exists(_._2.exists(s => s._1 && s._2.isEmpty))){
+      Future
+        .sequence(queryParameters.map(rqp => countResources(rqp._1, rqp._2))) //Count the query for each resource type
+        .map(counts => counts.sum -> Nil) //and sum them
+    } else {
+      Future
+        .sequence(queryParameters.map(rqp => constructQuery(rqp._1, rqp._2).map(q => rqp._1 -> q))) //Construct queries for each resource type
+        .flatMap(queries =>
+          queryResourcesDirectlyFromMultipleResourceTypes(queries.toMap, count, page,sortingFields, summaryFields, excludeExtraParams, needTotal)
+        )
+    }
+  }
+
+  /**
     * Search FHIR resources of a specific Resource Type with given query
     * @param rtype Resource type
     * @param queryParams Parsed FHIR parameters
@@ -151,6 +201,36 @@ object ResourceManager {
         DocumentManager
           .searchDocuments(rtype, query, count, page, sortingPaths, elementsIncludedOrExcluded, excludeExtraFields)
           //.searchDocumentsByAggregation(rtype, query, count, page, sortingPaths, elementsIncludedOrExcluded, excludeExtraFields)
+          .map(_.map(_.fromBson))
+    } yield total -> resultResources
+  }
+
+  /**
+   * Search FHIR resources from multiple resource types
+   * @param queries                       Queries for each resource type
+   * @param count                         Number of resources to return
+   * @param page                          Page to return
+   * @param sortingFields                 Sorting fields (param name, sorting direction, path and target data type) for each resource type
+   * @param elementsIncludedOrExcluded    Elements to include or exclude for each resource type
+   * @param excludeExtraFields            If true, extra fields are cleared
+   * @param needTotal                     If total number of results is needed at the response
+   * @param transactionSession            If part of a transaction, the transaction session
+   * @return
+   */
+  def queryResourcesDirectlyFromMultipleResourceTypes(queries:Map[String, Option[Bson]],
+                             count:Int = -1, page:Int = 1,
+                             sortingFields:Map[String, Seq[(String, Int, Seq[(String, String)])]],
+                             elementsIncludedOrExcluded:Map[String, Option[(Boolean, Set[String])]],
+                             excludeExtraFields:Boolean = false,
+                             needTotal:Boolean = true
+                            )(implicit transactionSession: Option[TransactionSession] = None):Future[(Long, Seq[Resource])] = {
+
+    val sortingPaths = sortingFields.mapValues(constructFinalSortingPaths)
+    for {
+      total <- if(needTotal) DocumentManager.countDocumentsFromMultipleCollections(queries) else Future.apply(-1L) //If they don't need total number, just return -1 for it
+      resultResources <-
+        DocumentManager
+          .searchDocumentsFromMultipleCollection(queries, count, page, sortingPaths, elementsIncludedOrExcluded, excludeExtraFields)
           .map(_.map(_.fromBson))
     } yield total -> resultResources
   }

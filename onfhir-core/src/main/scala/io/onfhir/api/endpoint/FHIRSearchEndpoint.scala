@@ -66,6 +66,27 @@ trait FHIRSearchEndpoint {
             }
           }
         }
+      } ~ (get | head) {
+        //GET [base]{?_type=[resource-types][parameters]{&_format=[mime-type]}}
+        pathPrefix(OnfhirConfig.baseUri) {
+          pathEndOrSingleSlash {
+            optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { preferHeader =>
+              //Initialize the FHIR request object
+              fhirRequest.initializeSearchRequest(preferHeader)
+              //Parse search paremeters
+              Directives.parameterMultiMap { searchParameters =>
+                //Put the parameters and content into the FHIR Request
+                fhirRequest.queryParams = searchParameters
+                //Enforce authorization, add the authorization filter params to search params
+                AuthzManager.authorize(authContext._2, fhirRequest) {
+                  complete {
+                    new FHIRSearchService().executeInteraction(fhirRequest)
+                  }
+                }
+              }
+            }
+          }
+        }
       }
   }
 }

@@ -129,6 +129,7 @@ package object api {
     val METHOD_PUT = "PUT"
     val METHOD_GET = "GET"
     val METHOD_DELETE = "DELETE"
+    val METHOD_PATCH = "PATCH"
   }
 
   /**

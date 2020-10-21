@@ -57,14 +57,14 @@ object FHIRUtil {
   /**
     * Generates and returns the bundle links for search responses
     *
-    * @param rtype           type of the resource
+    * @param rtype           type (s) of the resource to search if Nil it means all
     * @param rid             id of the resource (for History searches)
     * @param totalCount      number of entries in bundle
     * @param parameters      query parameters used for query
     * @return List of LinkName and Location
     */
   def generateBundleLinks(
-                           rtype: Option[String],
+                           rtype: Seq[String],
                            rid: Option[String],
                            totalCount: Long,
                            parameters: List[Parameter],
@@ -79,15 +79,18 @@ object FHIRUtil {
     // Prepare the Location builder function
     val locationFunc =
       if (isHistory)
-        constructHistorySearchLocation(rtype, rid, _: List[Parameter])
+        constructHistorySearchLocation(rtype.headOption, rid, _: List[Parameter])
       else
         compartmentTypeAndId
-          .map(c => constructCompartmentSearchLocation(c._1, c._2, rtype.get, _: List[Parameter]))
-          .getOrElse(constructSearchLocation(rtype.get, _: List[Parameter]))
-    //Get the location
-    var location = locationFunc(otherParametersExceptPage)
-
-    location = if(otherParametersExceptPage.isEmpty) location + "?" else location + "&"
+          .map(c => constructCompartmentSearchLocation(c._1, c._2, rtype, _: List[Parameter]))
+          .getOrElse(
+            rtype match {
+              case Seq(s) => constructSearchLocation(Some(s), _: List[Parameter]) //Normal search
+              case oth =>   constructSearchLocation(None, _: List[Parameter], Some(oth))  //System level search with multiple types
+            }
+          )
+    //Get the location (path + query) ready to append _page parameter
+    val location = locationFunc(otherParametersExceptPage)
 
     //If we don't calculate the total count in search, then does not return last link
     val links =
@@ -139,8 +142,14 @@ object FHIRUtil {
       _type.map( "/" + _).getOrElse("") + //Resource type if exist
       _id.map("/" + _ ).getOrElse("") //Resource id if exist
 
-    val query = "?" + parameters.filter(p => historyParams.contains(p.name)).map(p => p.name + "=" + p.valuePrefixList.head._2).mkString("&")
-    val location = url + "/" + FHIR_HTTP_OPTIONS.HISTORY + (if (!query.endsWith("?")) query else "")
+    val paramStr =
+      parameters
+        .filter(p => historyParams.contains(p.name))
+        .map(p => p.name + "=" + p.valuePrefixList.head._2)
+
+    val query = "?" + paramStr.map(pstr => pstr + "&").mkString("")
+
+    val location = url + "/" + FHIR_HTTP_OPTIONS.HISTORY + query
 
     location.replace(' ', '+')
   }
@@ -148,37 +157,43 @@ object FHIRUtil {
   /**
     * Construct URI for search
     *
-    * @param _type      type of the resource
+    * @param path      Path of the search after root url if exists
     * @param parameters query parameters, e.g. _id, _lastUpdated, _format, . . .
+    * @param typeParameter  _type parameter if exist for system level search
     * @return url
     */
-  private def constructSearchLocation(_type: String, parameters: List[Parameter]): String = {
-    val url = OnfhirConfig.fhirRootUrl + "/" + _type
+  private def constructSearchLocation(path: Option[String], parameters: List[Parameter], typeParameter:Option[Seq[String]] = None): String = {
+    val url = OnfhirConfig.fhirRootUrl + path.map(p => "/" + p).getOrElse("")
 
-    val query =
-      if(parameters.nonEmpty)
-        "?" + parameters.map ( p => {
-          //Construct name part
-          val namePart = p.paramCategory match {
-            case FHIR_PARAMETER_CATEGORIES.CHAINED =>
-              p.chain.map(c => c._2 + ":" + c._1).mkString(".") + "." + p.name
-            case FHIR_PARAMETER_CATEGORIES.REVCHAINED =>
-              p.chain.map(c => "_has" + c._1 + ":" + c._2).mkString(":") + ":" + p.name
-            case _ =>
-              p.name + p.suffix
-          }
-          //Construct the value part
-          val valuePart =
-            if(p.paramCategory == FHIR_PARAMETER_CATEGORIES.RESULT && (p.name == FHIR_SEARCH_RESULT_PARAMETERS.INCLUDE || p.name == FHIR_SEARCH_RESULT_PARAMETERS.REVINCLUDE))
-              p.valuePrefixList.mkString(":") + (if(p.paramType != "") ":"+ p.paramType else "")
-            else
-              p.valuePrefixList.map(vp => vp._1 + vp._2).mkString(",")
+    val typeParamString = typeParameter match {
+      case Some(Nil) | None => Nil
+      case Some(oth) => Seq(s"_type=${oth.mkString(",")}")
+    }
 
-          //Return name and value part
-          namePart + "=" + URLEncoder.encode(valuePart, StandardCharsets.UTF_8.toString)
-        }).mkString("&")
-      else
-        ""//No parameter
+    val otherParamsStr = parameters.map ( p => {
+      //Construct name part
+      val namePart = p.paramCategory match {
+        case FHIR_PARAMETER_CATEGORIES.CHAINED =>
+          p.chain.map(c => c._2 + ":" + c._1).mkString(".") + "." + p.name
+        case FHIR_PARAMETER_CATEGORIES.REVCHAINED =>
+          p.chain.map(c => "_has" + c._1 + ":" + c._2).mkString(":") + ":" + p.name
+        case _ =>
+          p.name + p.suffix
+      }
+      //Construct the value part
+      val valuePart =
+        if(p.paramCategory == FHIR_PARAMETER_CATEGORIES.RESULT && (p.name == FHIR_SEARCH_RESULT_PARAMETERS.INCLUDE || p.name == FHIR_SEARCH_RESULT_PARAMETERS.REVINCLUDE))
+          p.valuePrefixList.mkString(":") + (if(p.paramType != "") ":"+ p.paramType else "")
+        else
+          p.valuePrefixList.map(vp => vp._1 + vp._2).mkString(",")
+
+      //Return name and value part
+      namePart + "=" + URLEncoder.encode(valuePart, StandardCharsets.UTF_8.toString)
+    })
+    //Merge all
+    val allParams = typeParamString ++ otherParamsStr
+    //Construct query string
+    val query = "?" + allParams.map(p => p + "&").mkString("")
 
     (url + query).replace(' ', '+')
   }
@@ -188,13 +203,20 @@ object FHIRUtil {
     *
     * @param compartmentType compartment type of the resource
     * @param compartmentId   compartment id of the resoruce
-    * @param _type           type of the binded resource if specified
+    * @param _type           type of the resource if type level search or types for system level search
     * @param parameters      query parameters, e.g. _id, _lastUpdated, _format, . . .
     * @return url
     */
-  private def constructCompartmentSearchLocation(compartmentType: String, compartmentId: String, _type: String, parameters: List[Parameter]): String = {
-    val compartmentUrl = compartmentType + "/" + compartmentId + "/" + _type
-    constructSearchLocation(compartmentUrl, parameters.filterNot(_.paramCategory == FHIR_PARAMETER_CATEGORIES.COMPARTMENT))
+  private def constructCompartmentSearchLocation(compartmentType: String, compartmentId: String, _type: Seq[String], parameters: List[Parameter]): String = {
+    _type match {
+      case Seq(s) =>
+        val compartmentUrl =  compartmentType + "/" + compartmentId + "/" + s
+        constructSearchLocation(Some(compartmentUrl), parameters.filterNot(_.paramCategory == FHIR_PARAMETER_CATEGORIES.COMPARTMENT))
+      case oth =>
+        //Compartment search with all resources
+        val compartmentUrl =  compartmentType + "/" + compartmentId + "/" + "*"
+        constructSearchLocation(Some(compartmentUrl), parameters.filterNot(_.paramCategory == FHIR_PARAMETER_CATEGORIES.COMPARTMENT), typeParameter = Some(oth))
+    }
   }
 
   /**
