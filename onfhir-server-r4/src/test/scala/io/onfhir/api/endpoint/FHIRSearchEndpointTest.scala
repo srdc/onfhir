@@ -1260,4 +1260,124 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
     }
   }
+
+  "FHIR Compartment Search endpoint" should {
+    "handle compartment search" in {
+      val query = "?code=85354-9"
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient/example/Observation" +  query) ~> routes ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, "Observation", 2, Some(query))
+        (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsBpId, obsBp2Id)
+      }
+
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient/example22/Observation" +  query) ~> routes ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, "Observation", 0, Some(query))
+      }
+    }
+
+    "handle compartment search for all resources in the compartment" in {
+      val query = "?_sort=-_lastUpdated"
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient/example/*" +  query) ~> routes ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, "", 7, Some(query))
+        val rtypes = (bundle \ "entry" \ "resource" \ "resourceType").extract[Seq[String]]
+        rtypes.count(_ == "Observation") mustEqual 4
+        rtypes.count(_ == "RiskAssessment") mustEqual 2
+        rtypes.count(_ == "MolecularSequence") mustEqual 1
+      }
+    }
+
+    "handle compartment search for some resource types in the compartment" in {
+      val query = "?_type=RiskAssessment,MolecularSequence&_sort=-_lastUpdated"
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient/example/*" +  query) ~> routes ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, "", 3, Some(query))
+        val rtypes = (bundle \ "entry" \ "resource" \ "resourceType").extract[Seq[String]]
+        rtypes.count(_ == "RiskAssessment") mustEqual 2
+        rtypes.count(_ == "MolecularSequence") mustEqual 1
+      }
+    }
+  }
+
+  "FHIR System Level Search endpoint" should {
+    "handle search on multiple resource types without any query" in {
+      val query = "?_type=Observation,RiskAssessment"
+      Get("/" + OnfhirConfig.baseUri + query) ~> routes ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, "", 14, Some(query))
+        val rtypes = (bundle \ "entry" \ "resource" \ "resourceType").extract[Seq[String]]
+        rtypes.count(_ == "Observation") mustEqual 7
+        rtypes.count(_ == "RiskAssessment") mustEqual 7
+      }
+    }
+    "handle search on multiple resource types with a common parameter" in {
+      val query="?_type=Observation,RiskAssessment&date=ge2015"
+      Get("/" + OnfhirConfig.baseUri + query) ~> routes ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, "", 4, Some(query))
+        val rtypes = (bundle \ "entry" \ "resource" \ "resourceType").extract[Seq[String]]
+        rtypes.count(_ == "Observation") mustEqual 2
+        rtypes.count(_ == "RiskAssessment") mustEqual 2
+      }
+    }
+    "handle search on multiple resource types with sorting on a common parameter" in {
+      var query="?_type=Observation,RiskAssessment&date=ge2015&_sort=-_lastUpdated"
+      Get("/" + OnfhirConfig.baseUri + query) ~> routes ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, "", 4, Some(query))
+        val rtypes = (bundle \ "entry" \ "resource" \ "resourceType").extract[Seq[String]]
+        rtypes.count(_ == "Observation") mustEqual 2
+        rtypes.count(_ == "RiskAssessment") mustEqual 2
+
+        ((bundle \ "entry")(0) \ "resource" \ "resourceType").extract[String] mustEqual("RiskAssessment")
+        ((bundle \ "entry")(1) \ "resource" \ "resourceType").extract[String] mustEqual("RiskAssessment")
+      }
+
+      query="?_type=Observation,RiskAssessment&date=ge2015&_sort=date"
+      Get("/" + OnfhirConfig.baseUri + query) ~> routes ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, "", 4, Some(query))
+        val rtypes = (bundle \ "entry" \ "resource" \ "resourceType").extract[Seq[String]]
+        rtypes.count(_ == "Observation") mustEqual 2
+        rtypes.count(_ == "RiskAssessment") mustEqual 2
+
+        ((bundle \ "entry")(0) \ "resource" \ "resourceType").extract[String] mustEqual("Observation")
+        ((bundle \ "entry")(1) \ "resource" \ "resourceType").extract[String] mustEqual("Observation")
+      }
+    }
+
+    "handle search on multiple resource types with paging" in {
+      val query = "?_type=Observation,RiskAssessment&date=ge2015&_sort=-_lastUpdated&_count=2&_page=2"
+      Get("/" + OnfhirConfig.baseUri + query) ~> routes ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, "", 4, Some(query))
+        val rtypes = (bundle \ "entry" \ "resource" \ "resourceType").extract[Seq[String]]
+        rtypes.count(_ == "Observation") mustEqual 2
+        rtypes.count(_ == "RiskAssessment") mustEqual 0
+      }
+    }
+
+    "reject search on multiple types if query parameter is not common" in {
+      val query="?_type=Observation,RiskAssessment&device=Device/123"
+      Get("/" + OnfhirConfig.baseUri + query) ~> routes ~> check {
+        status === BadRequest
+      }
+    }
+    "reject search on multiple types if sorting parameter is not common" in {
+      val query="?_type=Observation,RiskAssessment&_sort=device"
+      Get("/" + OnfhirConfig.baseUri + query) ~> routes ~> check {
+        status === BadRequest
+      }
+    }
+  }
 }

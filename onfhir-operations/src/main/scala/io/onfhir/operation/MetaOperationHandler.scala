@@ -37,10 +37,39 @@ class MetaOperationHandler extends FHIROperationHandlerService {
        //See https://www.hl7.org/fhir/resource-operations.html#meta-delete
        case "meta-delete" => handleMetaDelete(operationRequest, resourceType.get, resourceId.get)
        //See https://www.hl7.org/fhir/resource-operations.html#meta
-       case "meta" => throw new InternalServerException(s"Operation ${operationName} not supported yet by the MetaOperationHandler!!!")
+       case "meta" if (resourceType.isDefined && resourceId.isDefined) => handleMeta(resourceType.get, resourceId.get)
+       case "meta" => throw new InternalServerException(s"System or type level operation ${operationName} not supported yet by the MetaOperationHandler!!!")
        case _ => throw new InternalServerException(s"Operation ${operationName} not supported by the MetaOperationHandler!!!")
      }
    }
+
+  /**
+   * Handle instance level meta
+   * @param resourceType
+   * @param resourceId
+   * @return
+   */
+  def handleMeta(resourceType:String, resourceId:String):Future[FHIROperationResponse] = {
+    ResourceManager
+      .getResource(resourceType, resourceId, includingOrExcludingFields = Some(true -> Set("meta")), excludeExtraFields = true)
+      .map {
+        case None =>
+          logger.debug("resource not found, return 404 NotFound...")
+          throw new NotFoundException(Seq(
+            OutcomeIssue(
+              FHIRResponse.SEVERITY_CODES.INFORMATION,
+              FHIRResponse.OUTCOME_CODES.INFORMATIONAL,
+              None,
+              Some(s"Resource with type (${resourceType}), id (${resourceId}) not found..."),
+              Nil
+            )
+          ))
+        case Some(resource) =>
+          val response = new FHIROperationResponse(StatusCodes.OK)
+          response.setResponse((resource \ FHIR_COMMON_FIELDS.META).asInstanceOf[JObject])
+          response
+      }
+  }
 
   /**
     * Handles $meta-add operation

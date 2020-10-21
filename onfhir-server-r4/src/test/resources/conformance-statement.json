@@ -1551,10 +1551,6 @@
         "documentation" : "Implemented per the specification (or Insert other doco here)"
       },
       {
-        "code" : "history-system",
-        "documentation" : "Implemented per the specification (or Insert other doco here)"
-      },
-      {
         "code" : "search-system",
         "documentation" : "Implemented per the specification (or Insert other doco here)"
       }],
