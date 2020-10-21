@@ -1,5 +1,6 @@
 package io.onfhir.api.endpoint
 
+import java.time.{Instant, LocalDate}
 import java.util.concurrent.TimeUnit
 
 import akka.actor.ActorSystem
@@ -13,6 +14,8 @@ import io.onfhir.path.FhirPathEvaluator
 import org.junit.runner.RunWith
 import org.specs2.runner.JUnitRunner
 import io.onfhir.api.model.FHIRMarshallers._
+import io.onfhir.util.DateTimeUtil
+
 import scala.concurrent.duration.FiniteDuration
 import scala.io.Source
 
@@ -34,6 +37,10 @@ class FHIRPatchEndpointTest extends OnFhirTest with FHIREndpoint {
 
   val jsonPatchContentType = ContentType.apply(MediaType.applicationWithOpenCharset("json-patch+json"), HttpCharsets.`UTF-8`)
   val jsonFhirContentType =ContentType.apply(MediaType.applicationWithOpenCharset("fhir+json"), HttpCharsets.`UTF-8`)
+
+  val bodyWeightGoal = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Goal/goal-weight.json")).mkString
+  val goalStatusPatch = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-path-patch-with-expression-value.json")).mkString
+  val goalStatusPatch2 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-path-patch-with-expression-value-2.json")).mkString
 
   val resourceType = "Observation"
   val observationId = "obsbp"
@@ -141,6 +148,32 @@ class FHIRPatchEndpointTest extends OnFhirTest with FHIREndpoint {
         FhirPathEvaluator().evaluateString("component[0].code.coding[1].code", result) mustNotEqual Seq("test2")
         FhirPathEvaluator().evaluateString("component[0].code.coding[2].code", result) mustNotEqual Seq("test3")
         FhirPathEvaluator().evaluateString("component[0].code.coding[3].code", result) mustNotEqual Seq("8480-6")
+      }
+    }
+
+    "handle fhir patch with expression - Goal status updating example" in {
+      Post("/" + OnfhirConfig.baseUri + "/" + "Goal", HttpEntity(bodyWeightGoal)) ~> routes ~> check {
+        eventually(status === StatusCodes.Created)
+      }
+
+      val now = DateTimeUtil.serializeInstant(Instant.now())
+      //We should also add a search param for target-measure but not defined in main standard
+      val conditionalQuery = "?patient=Patient/example&lifecycle-status=active,accepted&achievement-status:not=not-achieved&target-date=ge"+now
+
+      Patch("/" + OnfhirConfig.baseUri + "/" + "Goal"  + conditionalQuery, HttpEntity.apply(jsonFhirContentType, goalStatusPatch)) ~> routes ~> check {
+        eventually(status === StatusCodes.OK)
+        val result = responseAs[Resource]
+        FhirPathEvaluator().evaluateString("achievementStatus.coding.code", result) mustEqual Seq("achieved")
+        FhirPathEvaluator().evaluateString("outcomeReference.reference", result) mustEqual Seq("Observation/1321313")
+        FhirPathEvaluator().evaluateDateTime("statusDate", result) mustEqual LocalDate.now()
+      }
+
+      Patch("/" + OnfhirConfig.baseUri + "/" + "Goal"  + conditionalQuery, HttpEntity.apply(jsonFhirContentType, goalStatusPatch2)) ~> routes ~> check {
+        eventually(status === StatusCodes.OK)
+        val result = responseAs[Resource]
+        FhirPathEvaluator().evaluateString("achievementStatus.coding.code", result) mustEqual Seq("in-progress")
+        FhirPathEvaluator().evaluateString("outcomeReference.reference", result) mustEqual Seq("Observation/1321313", "Observation/1321314")
+        FhirPathEvaluator().evaluateDateTime("statusDate", result) mustEqual LocalDate.now()
       }
     }
 

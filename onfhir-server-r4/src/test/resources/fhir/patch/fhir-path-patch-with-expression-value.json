@@ -1,0 +1,75 @@
+{
+  "resourceType": "Parameters",
+  "parameter": [
+    {
+      "name": "operation",
+      "part": [
+        {
+          "name": "type",
+          "valueCode": "add"
+        },
+        {
+          "name": "path",
+          "valueString": "Goal.achievementStatus.coding.where(system='http://terminology.hl7.org/CodeSystem/goal-achievement')"
+        },
+        {
+          "name": "name",
+          "valueString": "code"
+        },
+        {
+          "name": "value",
+          "valueExpression": {
+            "language": "text/fhirpath",
+            "expression": "iif(Goal.target.where($this.measure.coding.code = '29463-7').where($this.detailRange.low.value <= 72 and $this.detailRange.high.value >= 72).exists(), 'achieved', iif(Goal.target.dueDate > now(), 'in-progress', 'not-achieved'))"
+          }
+        }
+      ]
+    },
+    {
+      "name": "operation",
+      "part": [
+        {
+          "name": "type",
+          "valueCode": "add"
+        },
+        {
+          "name": "path",
+          "valueString": "Goal"
+        },{
+          "name": "name",
+          "valueString": "outcomeReference"
+        },
+        {
+          "name": "value",
+          "valueReference": {
+            "reference": "Observation/1321313"
+          }
+        }
+      ]
+    },
+    {
+      "name": "operation",
+      "part": [
+        {
+          "name": "type",
+          "valueCode": "add"
+        },
+        {
+          "name": "path",
+          "valueString": "Goal"
+        },
+        {
+          "name": "name",
+          "valueString": "statusDate"
+        },
+        {
+          "name": "value",
+          "valueExpression": {
+            "language": "text/fhirpath",
+            "expression": "today()"
+          }
+        }
+      ]
+    }
+  ]
+}

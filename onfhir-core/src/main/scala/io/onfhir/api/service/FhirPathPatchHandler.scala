@@ -2,6 +2,7 @@ package io.onfhir.api.service
 import io.onfhir.api.Resource
 import io.onfhir.api.model.{FHIRResponse, OutcomeIssue}
 import io.onfhir.api.util.{BaseFhirProfileHandler, FHIRUtil}
+import io.onfhir.api.validation.ReferenceResolver
 import io.onfhir.exception.BadRequestException
 import io.onfhir.path.FhirPathEvaluator
 import io.onfhir.util.JsonFormatter._
@@ -330,10 +331,23 @@ class FhirPathPatchHandler(profileHandler:BaseFhirProfileHandler) extends IFHIRP
       .filter(p => p.obj.exists(e => e._1 == "name" && e._2.extractOpt[String].contains("operation"))) //name of the parameter should be operation
   }
 
-  def extractOrConstructValueFromMultiParam(part:JObject):JValue = {
+  def extractOrConstructValueFromMultiParam(part:JObject, resource: Resource, ind:Int):JValue = {
     part.obj
       .find(_._1.startsWith("value")) match {
-      case Some(v) => v._2
+      //Value evaluated from expression
+      case Some(("valueExpression", expr:JObject)) =>
+        FHIRUtil.extractValue[String](expr, "language") match {
+          case "text/fhirpath" =>
+            FHIRUtil.extractValueOption[String](expr, "expression") match {
+              case Some(e) =>
+                evaluateFhirPathExpressionToGetValue(e, resource, ind)
+              case None => expr
+            }
+          case _ => expr
+        }
+      //Normal single value
+      case Some((_,  v)) => v
+      //value constructed from parts
       case None =>
         part.obj.find(e =>e._1 == "part")
           .map(_._2.asInstanceOf[JArray])
@@ -343,10 +357,38 @@ class FhirPathPatchHandler(profileHandler:BaseFhirProfileHandler) extends IFHIRP
                 .map(_.asInstanceOf[JObject])
                 .map(p =>
                   FHIRUtil.extractValue[String](p, "name") ->
-                    extractOrConstructValueFromMultiParam(p)
+                    extractOrConstructValueFromMultiParam(p, resource, ind)
                 )
+                .groupBy(_._1)
+                .mapValues(_.map(_._2))
+                .mapValues(l => if(l.length > 1) JArray(l) else l.head)
+                .toList
             )
           ).getOrElse(JNothing)
+    }
+  }
+
+  /**
+   * Evaluate given FHIR path expression to extract the value to use
+   * @param e
+   * @param resource
+   * @param ind
+   * @return
+   */
+  private def evaluateFhirPathExpressionToGetValue(e:String, resource: Resource, ind:Int):JValue = {
+    val fpe = FhirPathEvaluator(new ReferenceResolver(profileHandler.fhirConfig, resource))
+    fpe.evaluateAndReturnJson(e, resource) match {
+      case None | Some(JArray(_)) => throw new BadRequestException(Seq(
+        OutcomeIssue(
+          FHIRResponse.SEVERITY_CODES.ERROR,
+          FHIRResponse.OUTCOME_CODES.INVALID,
+          None,
+          Some(s"Invalid FHIR Patch, given value expression does not evaluate to any result or single JSON result!"),
+          Seq(s"Parameters.parameter[$ind].part.where(name = 'value')")
+        )
+      ))
+      case Some(oth) =>
+        oth
     }
   }
 
@@ -372,7 +414,7 @@ class FhirPathPatchHandler(profileHandler:BaseFhirProfileHandler) extends IFHIRP
                case "type" => part.obj.find(_._1 == "valueCode")
                case "index" | "source" | "destination" => part.obj.find(_._1 == "valueInteger")
                case "value" =>
-                 extractOrConstructValueFromMultiParam(part) match {
+                 extractOrConstructValueFromMultiParam(part, resource, ind) match {
                    case JNothing => None
                    case oth => Some("value" -> oth)
                  }

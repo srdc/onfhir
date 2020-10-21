@@ -116,11 +116,14 @@ class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None) {
     result.map(_.asInstanceOf[FhirPathString].s)
   }
 
-  def evaluateForJson(expr:String, on:JValue):Option[JValue] = {
+  /**
+   * Evaluate the expression and return it as JSON value
+   * @param expr
+   * @param on
+   * @return
+   */
+  def evaluateAndReturnJson(expr:String, on:JValue):Option[JValue] = {
     val result = evaluate(expr, on)
-    if(result.exists(!_.isInstanceOf[FhirPathComplex]))
-      throw new FhirPathException(s"Expression $expr does not evaluate to a JSON object for the given resource!")
-
     val results = result.map(_.toJson)
     results.length match {
       case 0 => None
