@@ -1,7 +1,8 @@
 package io.onfhir.validation
 
+import io.onfhir.api.DEFAULT_RESOURCE_PATHS
 import io.onfhir.api.util.{FHIRUtil, IOUtil}
-import io.onfhir.config.FhirConfig
+import io.onfhir.config.{FhirConfig, OnfhirConfig}
 import io.onfhir.r4.config.FhirR4Configurator
 import io.onfhir.r4.parsers.StructureDefinitionParser
 import org.junit.runner.RunWith
@@ -11,9 +12,9 @@ import org.specs2.runner.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 class StructureDefinitionParserTest extends Specification {
 
-  val resourceProfiles = IOUtil.readStandardBundleFile("profiles-resources.json", Set("StructureDefinition"))
-  val dataTypeProfiles = IOUtil.readStandardBundleFile("profiles-types.json", Set("StructureDefinition"))
-  val otherProfiles = IOUtil.readStandardBundleFile("profiles-others.json", Set("StructureDefinition"))
+  val resourceProfiles = IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS,"profiles-resources.json", Set("StructureDefinition"))
+  val dataTypeProfiles = IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS,"profiles-types.json", Set("StructureDefinition"))
+  val otherProfiles = IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS,"profiles-others.json", Set("StructureDefinition"))
   val furtherProfiles =
     Seq(
       IOUtil.readModuleResource("/fhir/validation/profiles/MyObservation.StructureDefinition.json"),

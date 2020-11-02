@@ -1,6 +1,8 @@
 package io.onfhir.validation
 
+import io.onfhir.api.DEFAULT_RESOURCE_PATHS
 import io.onfhir.api.util.IOUtil
+import io.onfhir.config.OnfhirConfig
 import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
@@ -8,8 +10,8 @@ import org.specs2.runner.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 class TerminologyParserTest extends Specification {
   val valueSetsOrCodeSystems =
-    IOUtil.readStandardBundleFile("valuesets.json", Set("ValueSet", "CodeSystem")) ++
-      IOUtil.readStandardBundleFile("v3-codesystems.json", Set("ValueSet", "CodeSystem"))
+    IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS,"valuesets.json", Set("ValueSet", "CodeSystem")) ++
+      IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS,"v3-codesystems.json", Set("ValueSet", "CodeSystem"))
 
   sequential
   "TerminologyParserTest" should {
