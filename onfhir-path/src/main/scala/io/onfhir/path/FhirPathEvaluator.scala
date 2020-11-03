@@ -93,20 +93,13 @@ class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None, en
   }
 
   def evaluateOptionalNumerical(expr:String, on:JValue):Option[BigDecimal] = {
-    val results = evaluateNumericals(expr, on)
+    val results = evaluateNumerical(expr, on)
     if(results.length > 1)
       throw new FhirPathException(s"Expression $expr does not evaluate to a single number for the given resource!")
     results.headOption
   }
 
-  def evaluateNumerical(expr:String, on:JValue):BigDecimal = {
-    val results = evaluateNumericals(expr, on)
-    if(results.length != 1)
-      throw new FhirPathException(s"Expression $expr does not evaluate to a single number for the given resource!")
-    results.head
-  }
-
-  def evaluateNumericals(expr:String, on:JValue):Seq[BigDecimal] = {
+  def evaluateNumerical(expr:String, on:JValue):Seq[BigDecimal] = {
     val result = evaluate(expr, on)
     if(result.exists(!_.isInstanceOf[FhirPathNumber]))
       throw new FhirPathException(s"Expression $expr does not evaluate to numbers for the given resource!")
