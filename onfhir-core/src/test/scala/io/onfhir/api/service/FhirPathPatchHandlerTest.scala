@@ -12,6 +12,7 @@ import org.junit.runner.RunWith
 import org.specs2.runner.JUnitRunner
 
 import scala.io.Source
+
 @RunWith(classOf[JUnitRunner])
 class FhirPathPatchHandlerTest extends Specification {
   sequential
@@ -124,7 +125,7 @@ class FhirPathPatchHandlerTest extends Specification {
       diff.deleted mustEqual JNothing
       diff.changed mustEqual JNothing
       FhirPathEvaluator().evaluateString("component[2].code.text", result) mustEqual Seq("test")
-      FhirPathEvaluator().evaluateNumerical("component[2].valueQuantity.value", result) mustEqual 10
+      FhirPathEvaluator().evaluateNumerical("component[2].valueQuantity.value", result).head mustEqual 10
     }
 
     "handle insert operation - inserting to a middle of an array" in {
@@ -214,7 +215,7 @@ class FhirPathPatchHandlerTest extends Specification {
     }
     "handle replace operation when path does match a repetitive element (replacing the whole array)" in {
       val result = fhirPatchHandler.applyPatch(replacePatch5, "Observation", observation)
-      FhirPathEvaluator().evaluateNumerical("component[0].code.coding.count()", result) mustEqual 1
+      FhirPathEvaluator().evaluateNumerical("component[0].code.coding.count()", result).head mustEqual 1
       FhirPathEvaluator().evaluateString("component[0].code.coding[0].code", result) mustEqual Seq("test")
     }
 

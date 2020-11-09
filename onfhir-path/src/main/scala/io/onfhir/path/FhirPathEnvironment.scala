@@ -35,19 +35,19 @@ class FhirPathEnvironment(
   def getEnvironmentContext(ename:String):Seq[FhirPathResult] = {
     ename match {
       //Trying to access to the root resource validated
-      case "%resource" => resolvedResource
-      case "%context"  => _this
+      case "resource" => resolvedResource
+      case "context"  => _this
       //Fixed codes
-      case "%ucum" => Seq(FhirPathString("http://unitsofmeasure.org"))
-      case "%sct" => Seq(FhirPathString("http://snomed.info/sct"))
-      case "%loinc" => Seq(FhirPathString("http://loinc.org"))
+      case "ucum" => Seq(FhirPathString("http://unitsofmeasure.org"))
+      case "sct" => Seq(FhirPathString("http://snomed.info/sct"))
+      case "loinc" => Seq(FhirPathString("http://loinc.org"))
 
       case vsPattern(vs) => throw new Exception("Context like 'vs-[valueset]' not implement yet!")
       case extPattern(ext) => throw new Exception("Context like 'ext-[extension]' not implement yet!")
       //If such a environment variable is supplied
       case sv if environmentVariables.isDefinedAt(sv) => environmentVariables(sv)
       //Otherwise check System Environment Variables
-      case oth => sys.env.get(oth.drop(1)).map(v => FhirPathString(v)).toSeq
+      case oth => sys.env.get(oth).map(v => FhirPathString(v)).toSeq
     }
   }
 }

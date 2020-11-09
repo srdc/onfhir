@@ -31,15 +31,21 @@
         </plugins>
     </build>
     <dependencies>
+        <dependency>
+            <groupId>io.onfhir</groupId>
+            <artifactId>onfhir-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.onfhir</groupId>
+            <artifactId>onfhir-path</artifactId>
+        </dependency>
+
         <!-- JSON Utilities -->
         <dependency>
             <groupId>org.json4s</groupId>
             <artifactId>json4s-jackson_${scala.binary.version}</artifactId>
         </dependency>
-        <dependency>
-            <groupId>io.onfhir</groupId>
-            <artifactId>onfhir-common</artifactId>
-        </dependency>
+
         <!-- Application Configuration -->
         <dependency>
             <groupId>com.typesafe</groupId>
