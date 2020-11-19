@@ -5,6 +5,7 @@ import akka.http.scaladsl.model.{ContentTypeRange, ContentTypes, HttpEntity, Htt
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshaller}
 import io.onfhir.api.model.{FhirSubscription, FhirSubscriptionChannel, InternalEntity, Parameter}
 import io.onfhir.config.SearchParameterConf
+import io.onfhir.event.{ResourceAccessed, ResourceCreated, ResourceDeleted, ResourceUpdated}
 import org.json4s.{Formats, ShortTypeHints}
 import org.json4s.jackson.JsonMethods._
 import org.json4s.jackson.Serialization
@@ -13,7 +14,15 @@ import org.json4s.jackson.Serialization
  */
 object InternalJsonMarshallers {
   implicit lazy val formats: Formats =
-    Serialization.formats(ShortTypeHints.apply(List(classOf[Parameter], classOf[SearchParameterConf], classOf[FhirSubscription], classOf[FhirSubscriptionChannel])))
+    Serialization.formats(ShortTypeHints.apply(List(
+      classOf[Parameter],
+      classOf[SearchParameterConf],
+      classOf[FhirSubscription],
+      classOf[FhirSubscriptionChannel],
+      classOf[ResourceCreated],
+      classOf[ResourceUpdated],
+      classOf[ResourceDeleted],
+      classOf[ResourceAccessed])))
 
   def parseAndExtract[T](content:String)(implicit manifest:Manifest[T]):T = {
     parse(content).extract[T]

@@ -30,7 +30,7 @@ object FhirEventBus extends IFhirEventBus {
     * @param event Fhir event
     * @return
     */
-  override protected def matches(classifier: FhirEventSubscription, event: FhirEvent): Boolean = {
+  override protected def matches(classifier: FhirEventSubscription, event: FhirDataEvent): Boolean = {
     classifier.eventType.isAssignableFrom(event.getClass) && // the event type should be matched
       classifier.rtype.forall( _.contains(event.rtype)) && //If subscription is on a resource type, it should be matched
         classifier.rid.forall(_ == event.rid) &&  //If subscription is on a specific resource instance, it should be matched
@@ -48,5 +48,5 @@ object FhirEventBus extends IFhirEventBus {
     * @param event
     * @param subscriber
     */
-  override protected def publish(event: FhirEvent, subscriber: ActorRef): Unit = subscriber ! event
+  override protected def publish(event: FhirDataEvent, subscriber: ActorRef): Unit = subscriber ! event
 }

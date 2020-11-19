@@ -663,6 +663,18 @@ package object api {
   }
 
   /**
+   * FHIR Resource dependent trigger events
+   */
+  object FhirTriggerEvents {
+    val RESOURCE_CHANGED = "data-changed" // Resource created, updated, or deleted
+    val RESOURCE_NEW_CONTENT = "data-upserted"  // Resource created or updated
+    val RESOURCE_CREATED = "data-added"         // Resource created
+    val RESOURCE_UPDATED = "data-modified"      // Resource updated
+    val RESOURCE_DELETED = "data-removed"       // Resource removed
+    val RESOURCE_ACCESSED = "data-accessed"     // Resource accessed (as a result of Read, Search)
+  }
+
+  /**
     * FHIR Operations that are defined by FHIR and implemented in default within onFhir
     */
   val DEFAULT_IMPLEMENTED_FHIR_OPERATIONS:Map[String, String] =

@@ -1030,7 +1030,7 @@ object ResourceManager {
       )
     else
       fop
-        .map( c => resourceUpdated(rtype, rid, resource)) //trigger the event
+        .map( c => resourceUpdated(rtype, rid, resourceWithMeta, FHIRUtil.clearExtraFields(previousVersion._2))) //trigger the event
         .map( _ =>
           (newVersion, DateTimeUtil.instantToDateTime(lastModified), resourceWithMeta)
         )
@@ -1090,7 +1090,7 @@ object ResourceManager {
         DocumentManager.deleteCurrent(rtype, rid, statusCode.intValue().toString, newVersion, lastModified, shardQueryOpt)
 
      fop
-      .map( _ => resourceDeleted(rtype, rid)) //trigger the event
+      .map( _ => resourceDeleted(rtype, rid, FHIRUtil.clearExtraFields(previousVersion._2))) //trigger the event
       .map( _ =>
         (newVersion, DateTimeUtil.instantToDateTime(lastModified))
       )
@@ -1119,15 +1119,6 @@ object ResourceManager {
     */
   private def resourceCreated(rtype:String, rid:String, resource:Resource): Unit = {
     FhirEventBus.publish(ResourceCreated(rtype, rid, resource))
-    /*
-    if(OnfhirConfig.isKafkaEnabled(rtype)) {
-      logger.debug(s"Sending resource to Kafka...")
-      val kafkaKey   = rtype.toLowerCase + ":" + rid //e.g. observation:23132
-      val kafkaValue = resource.toJson
-      //KafkaClient.sendString(OnfhirConfig.kafkaTopic, kafkaKey, kafkaValue)
-      Future.apply()
-    } else
-      Future.apply(Unit)*/
   }
 
   /**
@@ -1137,15 +1128,8 @@ object ResourceManager {
     * @param resource    Last version of updated resource
     * @return
     */
-  private def resourceUpdated(rtype:String, rid:String, resource:Resource): Unit = {
-    FhirEventBus.publish(ResourceUpdated(rtype, rid, resource))
-    /*if (OnfhirConfig.isKafkaEnabled(rtype)) {
-      logger.debug(s"Sending resource to Kafka...")
-      val kafkaKey = rtype.toLowerCase + ":" + rid //e.g. observation:23132
-      val kafkaValue = resource.toJson
-      //KafkaClient.sendString(OnfhirConfig.kafkaTopic, kafkaKey, kafkaValue)
-      Future.apply()
-    } else Future.apply(Unit)*/
+  private def resourceUpdated(rtype:String, rid:String, resource:Resource, previous:Resource): Unit = {
+    FhirEventBus.publish(ResourceUpdated(rtype, rid, resource, previous))
   }
 
   /**
@@ -1154,15 +1138,7 @@ object ResourceManager {
     * @param rid    Deleted resource id
     * @return
     */
-  private def resourceDeleted(rtype:String, rid:String):Unit = {
-    FhirEventBus.publish(ResourceDeleted(rtype, rid))
-    /*if(OnfhirConfig.isKafkaEnabled(rtype)) {
-      logger.debug(s"Sending resource deletion to Kafka...")
-      val kafkaKey   = rtype.toLowerCase + ":" + rid + ":" + "delete" //e.g. observation:23132:delete
-      val kafkaValue = ""//FHIRUtil.clearExtraFields(document).fromBson.toJson //TODO
-      //KafkaClient.sendString(OnfhirConfig.kafkaTopic, kafkaKey, kafkaValue)
-      Future.apply()
-    }
-    else Future.apply(Unit)*/
+  private def resourceDeleted(rtype:String, rid:String, previous:Resource):Unit = {
+    FhirEventBus.publish(ResourceDeleted(rtype, rid, previous))
   }
 }
