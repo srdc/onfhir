@@ -613,7 +613,53 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
         case e: Throwable => throw FhirPathException.apply("Invalid function call 'getPeriod', both date time instances should be either with zone or not!", e)
       }
     }
+  }
 
+  /**
+   * For FHIR coding elements, filter the ones that match the given coding list as FHIR code query
+   * @param codingList  Expression that evaluates to Seq[FhirPathString] in FHIR token query format [system]|[code]
+   * @return
+   */
+  def isCodingIn(codingList:ExpressionContext):Seq[FhirPathResult] = {
+    val systemAndCodes:Seq[(Option[String], Option[String])] = new FhirPathExpressionEvaluator(context, current).visit(codingList) match {
+      case s:Seq[_] if s.forall(i =>i.isInstanceOf[FhirPathString]) =>
+        s
+          .map(_.asInstanceOf[FhirPathString])
+          .map(i =>
+            try {
+              FHIRUtil.parseTokenValue(i.s)
+            } catch {
+              case t:Throwable => throw new FhirPathException(s"Invalid function call 'filterCodings', first expression ${codingList.getText} does not evaluate to sequence of FHIR Path Strings in FHIR token query format!", Some(t))
+            }
+          )
+      case _ => throw new FhirPathException(s"Invalid function call 'filterCodings', first expression ${codingList.getText} does not evaluate to sequence of FHIR Path Strings!")
+    }
+
+    val codingMatch =
+      current
+      .filter(_.isInstanceOf[FhirPathComplex])
+      .map(_.asInstanceOf[FhirPathComplex])
+      .exists(coding =>
+        systemAndCodes
+          .exists {
+            // |code query
+            case (Some(""), Some(c)) =>
+              FHIRUtil.extractValueOption[String](coding.json, "system").isEmpty &&
+                FHIRUtil.extractValueOption[String](coding.json, "code").contains(c)
+            // system|code
+            case (Some(s), Some(c)) =>
+              FHIRUtil.extractValueOption[String](coding.json, "system").contains(s) &&
+                FHIRUtil.extractValueOption[String](coding.json, "code").contains(c)
+            // code
+            case (None, Some(c)) =>
+              FHIRUtil.extractValueOption[String](coding.json, "code").contains(c)
+            // system|
+            case (Some(s), None) =>
+              FHIRUtil.extractValueOption[String](coding.json, "system").contains(s)
+          }
+      )
+
+    Seq(FhirPathBoolean(codingMatch))
   }
 
 }

@@ -3,8 +3,7 @@ package io.onfhir.api.util
 import java.io.{File, FileInputStream, InputStream, InputStreamReader, Reader}
 import java.util.zip.{ZipEntry, ZipInputStream}
 
-import io.onfhir.api.{DEFAULT_RESOURCE_PATHS, Resource}
-import io.onfhir.config.OnfhirConfig
+import io.onfhir.api.{Resource}
 import io.onfhir.exception.InitializationException
 import io.onfhir.util.OnFhirZipInputStream
 import org.apache.commons.io.input.BOMInputStream
@@ -37,15 +36,15 @@ object IOUtil {
   }
 
   def readResource(filePath:String):Resource = {
-    parseResource( new InputStreamReader(new BOMInputStream(new FileInputStream(new File(filePath)))), filePath).asInstanceOf[JObject]
+    parseResource( new InputStreamReader(new BOMInputStream(new FileInputStream(new File(filePath)))), filePath)
   }
 
   def readInnerResource(resourcePath:String):Resource = {
-    parseResource(new InputStreamReader(new BOMInputStream(getClass.getClassLoader.getResourceAsStream(resourcePath))), resourcePath).asInstanceOf[JObject]
+    parseResource(new InputStreamReader(new BOMInputStream(getClass.getClassLoader.getResourceAsStream(resourcePath))), resourcePath)
   }
 
   def readModuleResource(resourcePath:String):Resource = {
-    parseResource(new InputStreamReader(new BOMInputStream(getClass.getResourceAsStream(resourcePath))), resourcePath).asInstanceOf[JObject]
+    parseResource(new InputStreamReader(new BOMInputStream(getClass.getResourceAsStream(resourcePath))), resourcePath)
   }
 
   /**
@@ -74,7 +73,7 @@ object IOUtil {
           //Given as folder
           givenFile.listFiles().toSeq.map(file => {
             try {
-              parseResource(new InputStreamReader(new BOMInputStream(new FileInputStream(file))), file.getAbsolutePath).asInstanceOf[JObject]
+              parseResource(new InputStreamReader(new BOMInputStream(new FileInputStream(file))), file.getAbsolutePath)
             } catch {
               case e:Exception =>
                 throw new InitializationException(s"Cannot parse resource in ${path + "/" + file.getName}  ...", Some(e))
@@ -96,18 +95,20 @@ object IOUtil {
 
   /**
    * Read and parse FHIR Bundle file
+   * @param baseDefinitionsPath         Path to retrieve base FHIR definitions zip
+   * @param defaultBaseDefinitionsPath  Default path within onFhir in class resources for base definitions if path is not given
    * @param fileName            Name of the file in the FHIR standard definitions zip e.g. profiles-resources.json --> Base FHIR resource definitions (StructureDefinitions)
    * @param resourceTypeFilter  Types of the resources to extract from the Bundle
    * @return
    */
-  def readStandardBundleFile(fileName:String, resourceTypeFilter:Set[String]) :Seq[Resource] = {
-    readResourceInZip(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS, fileName, resourceTypeFilter.mkString(",")) match {
+  def readStandardBundleFile(baseDefinitionsPath:Option[String], defaultBaseDefinitionsPath:String, fileName:String, resourceTypeFilter:Set[String]) :Seq[Resource] = {
+    readResourceInZip(baseDefinitionsPath, defaultBaseDefinitionsPath, fileName, resourceTypeFilter.mkString(",")) match {
       case None =>
-        throw new InitializationException(s"Cannot find  resource bundle '$fileName' in path ${OnfhirConfig.baseDefinitions.getOrElse(DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS)}!")
+        throw new InitializationException(s"Cannot find  resource bundle '$fileName' in path ${baseDefinitionsPath.getOrElse(defaultBaseDefinitionsPath)}!")
       case Some(is) =>
         try {
           //Parse the Bundle
-          val bundle = parseResource(new InputStreamReader(new BOMInputStream(is)), fileName).asInstanceOf[JObject]
+          val bundle = parseResource(new InputStreamReader(new BOMInputStream(is)), fileName)
           //Get the resources
           val resources = FHIRUtil.extractValueOptionByPath[Seq[Resource]](bundle, "entry.resource").getOrElse(Nil)
 
@@ -118,17 +119,17 @@ object IOUtil {
             )
         }catch {
           case e:Exception =>
-            throw new InitializationException(s"Cannot parse resource bundle from path ${OnfhirConfig.baseDefinitions.getOrElse(DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS)} into JSON!", Some(e))
+            throw new InitializationException(s"Cannot parse resource bundle from path ${baseDefinitionsPath.getOrElse(defaultBaseDefinitionsPath)} into JSON!", Some(e))
         }
     }
   }
 
   /**
    * Read the file as input stream within a zip file
-   * @param zipFilePath
-   * @param defaultZipFilePath
-   * @param resourceName
-   * @param rtype
+   * @param zipFilePath         Zip file path
+   * @param defaultZipFilePath  Default zip file path if zipFilePath is not given
+   * @param resourceName        Resource name within the zip
+   * @param rtype               Resource type to filter
    * @return
    */
   def readResourceInZip(zipFilePath:Option[String], defaultZipFilePath:String, resourceName:String, rtype:String):Option[InputStream] = {
@@ -169,7 +170,7 @@ object IOUtil {
 
   /**
    * Read all JSONs in a zip file
-   * @param zipStream
+   * @param zipStream   Zip file input stream
    * @return
    */
     private def readAllResourcesInZip(zipStream:ZipInputStream, path:String):Seq[Resource] = {

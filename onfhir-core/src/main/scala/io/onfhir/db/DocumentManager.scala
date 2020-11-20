@@ -3,6 +3,7 @@ package io.onfhir.db
 import java.time.Instant
 import java.util.UUID
 
+import com.mongodb.MongoClientSettings
 import com.mongodb.bulk.BulkWriteUpsert
 import com.mongodb.client.model.{BsonField, Field, InsertOneModel}
 import io.onfhir.Onfhir
@@ -11,7 +12,7 @@ import io.onfhir.config.OnfhirConfig
 import io.onfhir.exception.{ConflictException, InternalServerException}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.bson.{BsonArray, BsonDateTime, BsonDocument, BsonString, BsonValue}
+import org.mongodb.scala.bson.{BsonArray, BsonDateTime, BsonDocument, BsonString, BsonValue, _}
 import org.mongodb.scala.model.Filters.{and, equal, in, nin, notEqual}
 import org.mongodb.scala.model.Projections.{exclude, include}
 import org.mongodb.scala.model.Sorts.{ascending, descending}
@@ -22,7 +23,6 @@ import org.bson.BsonValue
 import org.json4s.JValue
 import org.mongodb.scala.model.{Accumulators, Aggregates, BsonField, BulkWriteOptions, Filters, Projections, UpdateOptions, Updates}
 import org.mongodb.scala.{Completed, FindObservable, MongoCollection, bson}
-import org.mongodb.scala.bson._
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
@@ -162,16 +162,17 @@ object DocumentManager {
                       excludeExtraFields:Boolean = false,
                       excludeDeleted:Boolean = true )(implicit transactionSession: Option[TransactionSession] = None):Future[Seq[Document]] = {
 
+    val finalFilter:Option[Bson] = filter match {
+      case None => if(excludeDeleted) Some(isActiveQuery) else None
+      case Some(sfilter) => if(excludeDeleted) Some(and(isActiveQuery, sfilter)) else Some(sfilter)
+    }
+
     //If we have alternative paths for a search parameter, use search by aggregation
     if(sortingPaths.exists(_._3.length > 1)){
-      searchDocumentsByAggregation(rtype, filter, count, page, sortingPaths, includingOrExcludingFields, excludeExtraFields)
+      searchDocumentsByAggregation(rtype, finalFilter, count, page, sortingPaths, includingOrExcludingFields, excludeExtraFields)
     }
     //Otherwise run a normal MongoDB find query
     else {
-      val finalFilter:Option[Bson] = filter match {
-        case None => if(excludeDeleted) Some(isActiveQuery) else None
-        case Some(sfilter) => if(excludeDeleted) Some(and(isActiveQuery, sfilter)) else Some(sfilter)
-      }
       //Construct query
       var query = transactionSession match {
         case None => if(finalFilter.isDefined ) MongoDB.getCollection(rtype).find(finalFilter.get) else MongoDB.getCollection(rtype).find()
@@ -197,7 +198,93 @@ object DocumentManager {
   }
 
   /**
-    * Searching documents by aggreation pipelin to handle some complex sorting
+   * Searches and finds document(s) according to given query, pagination, sorting parameters on multiple resource types
+   * @param filters                         Mongo Filter constructed for each resource type
+   * @param count                           Limit for # of resources to be returned
+   * @param page                            Page number
+   * @param sortingPaths                    Sorting parameters and sorting direction (negative: descending, positive: ascending) for each resource type
+   * @param includingOrExcludingFields      List of to be specifically included or excluded fields in the resulting document,
+   *                                        if not given; all document included (true-> include, false -> exclude) for each resource type
+   * @param excludeExtraFields              If true exclude extra fields related with version control from the document
+   * @param excludeDeleted                  If deleted resources are not taken into accouunt in search or not
+   * @param transactionSession
+   * @return
+   */
+  def searchDocumentsFromMultipleCollection(
+                      filters:Map[String, Option[Bson]],
+                      count:Int = -1,
+                      page:Int= 1,
+                      sortingPaths:Map[String, Seq[(String, Int, Seq[String])]] = Map.empty,
+                      includingOrExcludingFields:Map[String, Option[(Boolean, Set[String])]] = Map.empty,
+                      excludeExtraFields:Boolean = false,
+                      excludeDeleted:Boolean = true )(implicit transactionSession: Option[TransactionSession] = None):Future[Seq[Document]] = {
+    //Construct final filters
+    val finalFilters:Map[String, Option[Bson]] = filters.mapValues {
+      case None => if(excludeDeleted) Some(isActiveQuery) else None
+      case Some(sfilter) => if(excludeDeleted) Some(and(isActiveQuery, sfilter)) else Some(sfilter)
+    }
+
+    //Internal method to construct aggregation pipeline for each resource type
+    def constructAggQueryForResourceType(filter:Option[Bson], sortingPaths:Seq[(String, Int, Seq[String])], includingOrExcludingFields:Option[(Boolean, Set[String])]):ListBuffer[Bson] = {
+      val aggregations = new ListBuffer[Bson]
+      //First, append the match query
+      if(filter.isDefined)
+        aggregations.append(Aggregates.`match`(filter.get))
+
+      if(sortingPaths.nonEmpty) {
+        //Then add common sorting field for sort parameters that has multiple alternative paths
+        aggregations.append(sortingPaths.map(sp => addFieldAggregationForParamWithAlternativeSorting(sp)) : _*)
+      }
+      //Handle projections (summary and extra fields)
+      if(includingOrExcludingFields.isDefined || excludeExtraFields)
+        aggregations.append(handleProjectionForAggregationSearch(includingOrExcludingFields, excludeExtraFields, Set.empty))
+
+      aggregations
+    }
+
+    //Construct an aggregation pipeline for each resource type
+    val aggregatesForEachResourceType =
+      finalFilters
+      .map(f => f._1 -> constructAggQueryForResourceType(f._2, sortingPaths(f._1), includingOrExcludingFields(f._1)))
+
+    //We will start from the first resource type
+    val firstAggregation = aggregatesForEachResourceType.head
+    //Then call unionWith operator for others
+    val unionWithAggregations:Seq[Bson] =
+      aggregatesForEachResourceType
+        .tail
+        .map(a => constructUnionWithExpression(a._1, a._2.map(_.toBsonDocument[BsonDocument](classOf[BsonDocument],MongoClientSettings.getDefaultCodecRegistry))))
+        .toSeq
+    //Sorting aggregations
+    val sortingAggregations = sortingPaths.head._2.map(sp => Aggregates.sort( if(sp._2 > 0) ascending(s"__sort_${sp._1}") else descending(s"__sort_${sp._1}")))
+    //Get rid of extra sorting field
+    val finalProjectionAggregation = {
+      if(sortingPaths.head._2.nonEmpty)
+        Seq(Aggregates.project(exclude(sortingPaths.head._2.map(sp => s"__sort_${sp._1}"): _*)))
+      else
+        Nil
+    }
+
+    //Handle paging parameters
+    val pagingAggregations =
+      if(count != -1){
+        Seq(
+          Aggregates.skip((page-1) * count),
+          Aggregates.limit(count)
+        )
+      } else Nil
+
+    //Merge aggregations
+    val finalAggregations = firstAggregation._2 ++ unionWithAggregations ++ sortingAggregations ++ pagingAggregations ++ finalProjectionAggregation
+    //Execute aggregation pipeline
+    transactionSession match {
+      case None => MongoDB.getCollection(firstAggregation._1).aggregate(finalAggregations).toFuture()
+      case Some(ts) =>  MongoDB.getCollection(firstAggregation._1).aggregate(ts.dbSession, finalAggregations).toFuture()
+    }
+  }
+
+  /**
+    * Searching documents by aggregation pipeline to handle some complex sorting
     * @param rtype  type of the resource
     * @param filter  query filter for desired resource
     * @param count  limit for # of resources to be returned
@@ -273,6 +360,7 @@ object DocumentManager {
     }
   }
 
+
   /**
     * Construct a Mongo addFields aggregation that add a common field for alternative paths based on existence of the path (with $ifNull )
     * @param sortingParam Sorting params (name, sort direction, paths)
@@ -292,6 +380,21 @@ object DocumentManager {
       )
     //Add field with param name
     Aggregates.addFields(new Field(s"__sort_${sortingParam._1}", ifNullStatement))
+  }
+
+
+  /**
+   * Construct a Mongo unionWith aggregation operator
+   * @param coll      Collection to union with
+   * @param pipeline  pipeline for collection
+   * @return
+   */
+  def constructUnionWithExpression(coll:String, pipeline:Seq[BsonValue]):Bson = {
+    new BsonDocument("$unionWith",
+      new BsonDocument(
+        "coll", BsonString(coll))
+        .append("pipeline", BsonArray.fromIterable(pipeline))
+      )
   }
 
   /**
@@ -366,6 +469,19 @@ object DocumentManager {
         case oth => oth
       }
     )
+  }
+
+  /**
+   * Count documents in multiple resource types
+   * @param queries
+   * @param excludeDeleted
+   * @param transactionSession
+   * @return
+   */
+  def countDocumentsFromMultipleCollections(queries:Map[String, Option[Bson]], excludeDeleted:Boolean = true)(implicit transactionSession: Option[TransactionSession] = None): Future[Long] = {
+    Future
+      .sequence(queries.map(q => countDocuments(q._1, q._2, excludeDeleted)))
+      .map(counts => counts.sum)
   }
 
   /***

@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.DateTime
 import akka.http.scaladsl.model.StatusCodes.ClientError
 import akka.http.scaladsl.model.headers.{EntityTag, `If-Match`, `If-Modified-Since`, `If-None-Match`}
 import io.onfhir.api._
-import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue}
+import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
 import io.onfhir.api.service.FHIRSubscriptionBusinessValidator
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.exception._
@@ -305,6 +305,65 @@ object FHIRApiValidator {
   }
 
   /**
+   * For system level interactions validate and return the list of resource types given in _type parameter
+   * @param fhirRequest
+   * @return
+   */
+  def validateAndReturnTypeParameter(fhirRequest:FHIRRequest):Seq[String] = {
+    fhirRequest.queryParams.get("_type") match {
+      case Some(List(rtypes)) =>
+        val resourceTypes = rtypes.split(',').toSet
+        val unsupportedResourceTypes = resourceTypes.diff(fhirConfig.resourceConfigurations.keySet)
+        if(unsupportedResourceTypes.nonEmpty) {
+          throw new BadRequestException(Seq(
+            OutcomeIssue(
+              FHIRResponse.SEVERITY_CODES.ERROR, //fatal
+              FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED, //not supported
+              None,
+              Some(s"Resource types '${unsupportedResourceTypes.mkString(", ")}' mentioned in _type parameter for system level search are not supported..."),
+              Nil
+            )
+          ))
+        }
+        resourceTypes.toSeq
+
+      case Some(List("*")) | None =>
+        //If there is no compartment, return error
+        if(fhirRequest.compartmentType.isEmpty)
+          fhirConfig.resourceConfigurations.keySet.toSeq
+        else
+          fhirConfig
+            .compartmentRelations(fhirRequest.compartmentType.get)
+            .filter(_._2.nonEmpty).keys
+            .filter(fhirConfig.resourceConfigurations.keySet.contains)
+            .toSeq
+    }
+  }
+
+  /**
+   * Validate usage of result parameters for system search
+   * @param fhirRequest
+   */
+  def validateResultParametersForSystemSearch(fhirRequest:FHIRRequest):Unit = {
+    val commonResultParameters =
+      fhirRequest.getAllParsedQueryParams()
+        .headOption.map(_._2)
+        .getOrElse(List.empty[Parameter])
+        .filter(_.paramCategory == FHIR_PARAMETER_CATEGORIES.RESULT)
+
+    if(commonResultParameters.exists(p => p.name == FHIR_SEARCH_RESULT_PARAMETERS.ELEMENTS || p.name == FHIR_SEARCH_RESULT_PARAMETERS.INCLUDE || p.name == FHIR_SEARCH_RESULT_PARAMETERS.REVINCLUDE))
+      throw new BadRequestException(Seq(
+        OutcomeIssue(
+          FHIRResponse.SEVERITY_CODES.ERROR,
+          FHIRResponse.OUTCOME_CODES.INVALID,
+          None,
+          Some(s"Search parameters ${FHIR_SEARCH_RESULT_PARAMETERS.ELEMENTS}, ${FHIR_SEARCH_RESULT_PARAMETERS.INCLUDE} or ${FHIR_SEARCH_RESULT_PARAMETERS.REVINCLUDE} cannot be used for system level search ..."),
+          Nil
+        )
+      ))
+  }
+
+  /**
     * Validate if update operation is allowed to create a new resource
     */
   def validateUpdateCreate(rtype:String):Unit = {
@@ -436,21 +495,8 @@ def validateSearchParameters(_type:String, parameters:Set[String], preferHeader:
     * @param compartmentType type of the compartment
     * @param _type type of the resource
     */
-  def validateCompartment(compartmentType:String, _type:String):Unit = {
-    if(fhirConfig.compartmentRelations.isDefinedAt(compartmentType)) {
-      if(!fhirConfig.compartmentRelations(compartmentType).isDefinedAt(_type)) {
-        throw new NotFoundException(Seq(
-          OutcomeIssue(
-            FHIRResponse.SEVERITY_CODES.FATAL, //fatal
-            FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED, //not supported
-            None,
-            Some(s"Querying on resource type ${_type} is not supported for compartment $compartmentType !!! Please check the compartment definition..."),
-            Nil
-          )
-        ))
-
-      }
-    } else
+  def validateCompartment(compartmentType:String):Unit = {
+    if(!fhirConfig.compartmentRelations.isDefinedAt(compartmentType))
       throw new NotFoundException(Seq(
         OutcomeIssue(
           FHIRResponse.SEVERITY_CODES.FATAL, //fatal
@@ -460,6 +506,25 @@ def validateSearchParameters(_type:String, parameters:Set[String], preferHeader:
           Nil
         )
       ))
+  }
+
+  /**
+   * Validate compartment search on this resource type
+   * @param compartmentType
+   * @param _type
+   */
+  def validateCompartmentSearchOnResourceType(compartmentType:String, _type:String):Unit = {
+    if(!fhirConfig.compartmentRelations(compartmentType).isDefinedAt(_type)) {
+      throw new NotFoundException(Seq(
+        OutcomeIssue(
+          FHIRResponse.SEVERITY_CODES.FATAL, //fatal
+          FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED, //not supported
+          None,
+          Some(s"Querying on resource type ${_type} is not supported for compartment $compartmentType !!! Please check the compartment definition..."),
+          Nil
+        )
+      ))
+    }
   }
 
   /**

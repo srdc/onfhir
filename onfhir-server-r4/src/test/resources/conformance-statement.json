@@ -1539,6 +1539,102 @@
               "type" : "token",
               "documentation" : "Reference Sequence of the sequence"
             }]
+        },
+        {
+          "type" : "Goal",
+          "profile" : "http://hl7.org/fhir/StructureDefinition/Goal",
+          "interaction" : [{
+            "code" : "read",
+            "documentation" : "Implemented per the specification (or Insert other doco here)"
+          },
+            {
+              "code" : "vread",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "update",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "patch",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "delete",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "history-instance",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "history-type",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "create",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "search-type",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            }],
+          "conditionalCreate" : true,
+          "conditionalUpdate" : true,
+          "conditionalDelete" : "multiple",
+          "referencePolicy" : ["literal",
+            "logical"],
+          "searchInclude" : ["Goal.patient",
+            "Goal.subject"],
+          "searchRevInclude" : ["CarePlan.goal"],
+          "searchParam" : [{
+            "name" : "identifier",
+            "definition" : "http://hl7.org/fhir/SearchParameter/clinical-identifier",
+            "type" : "token",
+            "documentation" : "External Ids for this goal"
+          },
+            {
+              "name" : "lifecycle-status",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Goal-lifecycle-status",
+              "type" : "token",
+              "documentation" : "proposed | planned | accepted | active | on-hold | completed | cancelled | entered-in-error | rejected"
+            },
+            {
+              "name" : "achievement-status",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Goal-achievement-status",
+              "type" : "token",
+              "documentation" : "in-progress | improving | worsening | no-change | achieved | sustaining | not-achieved | no-progress | not-attainable"
+            },
+            {
+              "name" : "patient",
+              "definition" : "http://hl7.org/fhir/SearchParameter/clinical-patient",
+              "type" : "reference",
+              "documentation" : "Who this goal is intended for"
+            },
+            {
+              "name" : "subject",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Goal-subject",
+              "type" : "reference",
+              "documentation" : "Who this goal is intended for"
+            },
+            {
+              "name" : "start-date",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Goal-start-date",
+              "type" : "date",
+              "documentation" : "When goal pursuit begins"
+            },
+            {
+              "name" : "category",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Goal-category",
+              "type" : "token",
+              "documentation" : "E.g. Treatment, dietary, behavioral, etc."
+            },
+            {
+              "name" : "target-date",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Goal-target-date",
+              "type" : "date",
+              "documentation" : "Reach goal on or before"
+            }]
         }
       ],
       "interaction" : [
@@ -1548,10 +1644,6 @@
       },
       {
         "code" : "batch",
-        "documentation" : "Implemented per the specification (or Insert other doco here)"
-      },
-      {
-        "code" : "history-system",
         "documentation" : "Implemented per the specification (or Insert other doco here)"
       },
       {

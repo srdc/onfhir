@@ -5,7 +5,7 @@ import io.onfhir.config.FhirConfig
 import io.onfhir.validation.{ArrayRestriction, ReferenceRestrictions, TypeRestriction}
 import org.slf4j.Logger
 
-abstract class BaseFhirProfileHandler(fhirConfig: FhirConfig) {
+abstract class BaseFhirProfileHandler(val fhirConfig: FhirConfig) {
   protected val logger:Logger
   /**
    * Check if a search path match with element definition path

@@ -1,0 +1,79 @@
+{
+  "resourceType": "Bundle",
+  "type": "batch",
+  "entry": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "Patient?identifier=urn:oid:1.2.36.146.595.217.0.1|12345"
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "Observation/obsbp"
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "Observation/obsbp",
+        "ifNoneMatch": "W/\"2\""
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "Observation/obsbp/_history/1"
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "Observation/obsbp/_history?_count=2"
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "url": "Patient?family=Chalmers"
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "url": "Patient?family=Chalmers"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Parameters",
+        "parameter": [
+          {
+            "name": "operation",
+            "part": [
+              {
+                "name": "type",
+                "valueCode": "replace"
+              },
+              {
+                "name": "path",
+                "valueString": "Observation.code.coding[0].code"
+              },
+              {
+                "name": "value",
+                "valueCode": "89354-9"
+              }
+            ]
+          }
+        ]
+      },
+      "request": {
+        "method": "PATCH",
+        "url": "Observation/obsbp",
+        "ifModifiedSince": "2000-01-01T00:00:00Z",
+        "ifMatch": "W/\"1\""
+      }
+    }
+  ]
+}

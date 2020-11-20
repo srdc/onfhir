@@ -93,14 +93,17 @@ object BundleRequestParser {
     //Construct the Spray Uri for request
     val sprayUrl = Uri(requestUrl)
 
+    val fhirRequest = new FHIRRequest(interaction = FHIR_INTERACTIONS.UNKNOWN, requestUri = requestUrl)
+
     requestMethod match {
       //Delete Interaction
       case FHIR_METHOD_NAMES.METHOD_DELETE => {
         parseUrl(sprayUrl) match {
           case Seq(rtype, rid) =>
-            FHIRRequest(interaction = FHIR_INTERACTIONS.DELETE, requestUri = requestUrl, resourceType = Some(rtype), resourceId = Some(rid))
+            fhirRequest.initializeDeleteRequest(rtype, Some(rid))
           case Seq(rtype) =>
-            FHIRRequest(interaction = FHIR_INTERACTIONS.DELETE, requestUri = requestUrl, resourceType = Some(rtype), queryParams = sprayUrl.query().toMultiMap)
+            fhirRequest.initializeDeleteRequest(rtype, None)
+            fhirRequest.queryParams = sprayUrl.query().toMultiMap
           case _ => throw new NotFoundException(invalidOperation(FHIR_INTERACTIONS.DELETE, requestUrl))
         }
       }
@@ -108,31 +111,59 @@ object BundleRequestParser {
       case FHIR_METHOD_NAMES.METHOD_PUT => {
         parseUrl(sprayUrl) match {
           case Seq(rtype, rid) =>
-            FHIRRequest(interaction = FHIR_INTERACTIONS.UPDATE, requestUri = requestUrl, resourceType = Some(rtype), resourceId = Some(rid), ifMatch = ifMatch, resource = Some(resource))
-              .setId(fullUrl)
+            fhirRequest.initializeUpdateRequest(rtype, Some(rid), ifMatch, None)
+            fhirRequest.resource = Some(resource)
+            fhirRequest.setId(fullUrl)
           case Seq(rtype) =>
-            FHIRRequest(interaction = FHIR_INTERACTIONS.DELETE, requestUri = requestUrl, resourceType = Some(rtype), queryParams = sprayUrl.query().toMultiMap, resource = Some(resource))
-              .setId(fullUrl)
+            fhirRequest.initializeUpdateRequest(rtype, None, ifMatch, None)
+            fhirRequest.queryParams = sprayUrl.query().toMultiMap
+            fhirRequest.resource = Some(resource)
+            fhirRequest.setId(fullUrl)
           case _ => throw new NotFoundException(invalidOperation(FHIR_INTERACTIONS.UPDATE, requestUrl))
         }
       }
+      case FHIR_METHOD_NAMES.METHOD_PATCH =>
+        parseUrl(sprayUrl) match {
+          case Seq(rtype, rid) =>
+            fhirRequest.initializePatchRequest(rtype, Some(rid), ifMatch, None)
+            fhirRequest.resource = Some(resource)
+            fhirRequest.setId(fullUrl)
+          case Seq(rtype) =>
+            fhirRequest.initializePatchRequest(rtype, None, ifMatch, None)
+            fhirRequest.queryParams = sprayUrl.query().toMultiMap
+            fhirRequest.resource = Some(resource)
+            fhirRequest.setId(fullUrl)
+          case _ => throw new NotFoundException(invalidOperation(FHIR_INTERACTIONS.PATCH, requestUrl))
+        }
       case  FHIR_METHOD_NAMES.METHOD_POST => {
         parseUrl(sprayUrl) match {
+          //System level search
+          case Seq(FHIR_HTTP_OPTIONS.SEARCH) =>
+            fhirRequest.initializeSearchRequest(None)
           //Search with post
           case Seq(rtype, FHIR_HTTP_OPTIONS.SEARCH) =>
-            FHIRRequest(interaction = FHIR_INTERACTIONS.SEARCH, requestUri = requestUrl, resourceType = Some(rtype), queryParams = sprayUrl.query().toMultiMap)
+            fhirRequest.initializeSearchRequest(rtype, None)
+            fhirRequest.queryParams = sprayUrl.query().toMultiMap
           //Compartment search with post
           case Seq(ctype, cid, rtype, FHIR_HTTP_OPTIONS.SEARCH) =>
-            FHIRRequest(interaction = FHIR_INTERACTIONS.SEARCH, requestUri = requestUrl, compartmentType = Some(ctype), compartmentId = Some(cid), resourceType = Some(rtype), queryParams = sprayUrl.query().toMultiMap)
+            fhirRequest.initializeCompartmentSearchRequest(ctype, cid, rtype, None)
+            fhirRequest.queryParams = sprayUrl.query().toMultiMap
           //Create interaction
           case Seq(rtype) =>
-            FHIRRequest(interaction = FHIR_INTERACTIONS.CREATE, requestUri = requestUrl, resource = Some(resource), resourceType = Some(rtype), ifNoneExist = ifNoneExist)
-              .setId(fullUrl)
+            fhirRequest.initializeCreateRequest(rtype, ifNoneExist, None)
+            fhirRequest.resource = Some(resource)
+            fhirRequest.setId(fullUrl)
           //Type and instance level Operations
           case Seq(rtype, operation) if operation.startsWith("$") =>
-            FHIRRequest(interaction = operation, requestUri = requestUrl, resourceType = Some(rtype), queryParams = sprayUrl.query().toMultiMap, resource = Some(resource))
+            fhirRequest.initializeOperationRequest(operation, Some(rtype))
+            fhirRequest.queryParams = sprayUrl.query().toMultiMap
+            fhirRequest.resource = Some(resource)
+            fhirRequest.setId(fullUrl)
           case Seq(rtype, rid, operation) if  operation.startsWith("$")=>
-            FHIRRequest(interaction = operation, requestUri = requestUrl, resourceType = Some(rtype), resourceId = Some(rid), queryParams = sprayUrl.query().toMultiMap, resource = Some(resource))
+            fhirRequest.initializeOperationRequest(operation, Some(rtype), Some(rid))
+            fhirRequest.queryParams = sprayUrl.query().toMultiMap
+            fhirRequest.resource = Some(resource)
+            fhirRequest.setId(fullUrl)
           case _ =>
             throw new NotFoundException(invalidOperation("Create or Search or Operation", requestUrl))
         }
@@ -140,30 +171,39 @@ object BundleRequestParser {
       //ORDER IS IMPORTANT
       case FHIR_METHOD_NAMES.METHOD_GET => {
         parseUrl(sprayUrl) match {
+          case Nil =>
+            fhirRequest.initializeSearchRequest(None)
           case Seq("metadata") =>
-            FHIRRequest(interaction = FHIR_INTERACTIONS.CAPABILITIES, requestUri = requestUrl)
+            fhirRequest.initializeCapabilitiesRequest()
           //Search with Get
           case Seq(rtype)=>
-            FHIRRequest(interaction = FHIR_INTERACTIONS.SEARCH, requestUri = requestUrl, resourceType = Some(rtype), queryParams = sprayUrl.query().toMultiMap)
+            fhirRequest.initializeSearchRequest(rtype, None)
+            fhirRequest.queryParams = sprayUrl.query().toMultiMap
           //History interaction
           case Seq(rtype, FHIR_HTTP_OPTIONS.HISTORY) =>
-            FHIRRequest(interaction = FHIR_INTERACTIONS.HISTORY_TYPE, requestUri = requestUrl, resourceType = Some(rtype), queryParams = sprayUrl.query().toMultiMap)
+            fhirRequest.initializeHistoryRequest(FHIR_INTERACTIONS.HISTORY_TYPE, Some(rtype), None)
+            fhirRequest.queryParams = sprayUrl.query().toMultiMap
           //Read interaction
           case Seq(rtype, rid) =>
-            FHIRRequest(interaction = FHIR_INTERACTIONS.READ, requestUri = requestUrl, resourceType = Some(rtype), resourceId = Some(rid), ifModifiedSince = ifModifiedSince, ifNoneMatch = ifNoneMatch)
+            fhirRequest.initializeReadRequest(rtype, rid, ifModifiedSince, ifNoneMatch, None, None)
+            fhirRequest.queryParams = sprayUrl.query().toMultiMap
           case Seq(rtype, rid, FHIR_HTTP_OPTIONS.HISTORY) =>
-            FHIRRequest(interaction = FHIR_INTERACTIONS.HISTORY_INSTANCE, requestUri = requestUrl, resourceType = Some(rtype), resourceId = Some(rid),queryParams = sprayUrl.query().toMultiMap)
+            fhirRequest.initializeHistoryRequest( FHIR_INTERACTIONS.HISTORY_INSTANCE, Some(rtype), Some(rid))
+            fhirRequest.queryParams = sprayUrl.query().toMultiMap
           //Compartment search with get
           case Seq(ctype, cid, rtype) =>
-            FHIRRequest(interaction = FHIR_INTERACTIONS.SEARCH, requestUri = requestUrl, compartmentType = Some(ctype), compartmentId = Some(cid), resourceType = Some(rtype), queryParams = sprayUrl.query().toMultiMap)
+            fhirRequest.initializeCompartmentSearchRequest(ctype, cid, rtype, None)
+            fhirRequest.queryParams = sprayUrl.query().toMultiMap
           //VRead interaction
           case Seq(rtype, rid, FHIR_HTTP_OPTIONS.HISTORY, vid) =>
-            FHIRRequest(interaction = FHIR_INTERACTIONS.VREAD, requestUri = requestUrl, resourceType = Some(rtype), resourceId = Some(rid), versionId = Some(vid))
+            fhirRequest.initializeVReadRequest(rtype,rid, vid)
           case _ =>
             throw new NotFoundException(invalidOperation("Invalid HTTP Get", requestUrl))
         }
       }
     }
+    //Return the request
+    fhirRequest
   }
 
   /**

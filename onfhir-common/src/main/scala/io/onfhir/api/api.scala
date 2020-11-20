@@ -129,6 +129,7 @@ package object api {
     val METHOD_PUT = "PUT"
     val METHOD_GET = "GET"
     val METHOD_DELETE = "DELETE"
+    val METHOD_PATCH = "PATCH"
   }
 
   /**
@@ -659,6 +660,18 @@ package object api {
     val active = "active"
     val requested = "requested"
     val off = "off"
+  }
+
+  /**
+   * FHIR Resource dependent trigger events
+   */
+  object FhirTriggerEvents {
+    val RESOURCE_CHANGED = "data-changed" // Resource created, updated, or deleted
+    val RESOURCE_NEW_CONTENT = "data-upserted"  // Resource created or updated
+    val RESOURCE_CREATED = "data-added"         // Resource created
+    val RESOURCE_UPDATED = "data-modified"      // Resource updated
+    val RESOURCE_DELETED = "data-removed"       // Resource removed
+    val RESOURCE_ACCESSED = "data-accessed"     // Resource accessed (as a result of Read, Search)
   }
 
   /**

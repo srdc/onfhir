@@ -10,6 +10,6 @@ import io.onfhir.api.model.Parameter
   * @param rid        Resource id that is interested
   * @param query      FHIR query parameters indicating the resources interested
   */
-case class FhirEventSubscription(eventType: Class[FhirEvent] = classOf[FhirEvent], rtype:Option[Seq[String]] = None, rid:Option[String] = None, query:Option[List[Parameter]] = None) extends Ordered[FhirEventSubscription]  {
+case class FhirEventSubscription(eventType: Class[FhirDataEvent] = classOf[FhirDataEvent], rtype:Option[Seq[String]] = None, rid:Option[String] = None, query:Option[List[Parameter]] = None) extends Ordered[FhirEventSubscription]  {
   override def compare(that: FhirEventSubscription): Int = -1
 }

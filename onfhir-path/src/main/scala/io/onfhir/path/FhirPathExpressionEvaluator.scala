@@ -57,7 +57,7 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
     * @param ctx the parse tree
     *     */
   override def visitExternalConstantTerm(ctx: FhirPathExprParser.ExternalConstantTermContext):  Seq[FhirPathResult] = {
-    val externalConstant = ctx.externalConstant().getText()
+    val externalConstant = ctx.externalConstant().identifier().getText()
     context.getEnvironmentContext(externalConstant)
   }
 

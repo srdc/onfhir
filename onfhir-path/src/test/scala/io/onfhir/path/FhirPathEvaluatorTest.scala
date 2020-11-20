@@ -113,32 +113,32 @@ class FhirPathEvaluatorTest extends Specification {
     }
 
     "evaluate path with arithmetic operators on numbers" in {
-      var result = FhirPathEvaluator().evaluateNumerical("7.2+3.1", observation)
-      result mustEqual 10.3
+      var result = FhirPathEvaluator().evaluateOptionalNumerical("7.2+3.1", observation)
+      result must beSome(10.3)
 
-      result = FhirPathEvaluator().evaluateNumerical("7.2 + 3.1", observation)
-      result mustEqual 10.3
+      result = FhirPathEvaluator().evaluateOptionalNumerical("7.2 + 3.1", observation)
+      result must beSome(10.3)
 
-      result = FhirPathEvaluator().evaluateNumerical("7.1 - 3.1", observation)
-      result mustEqual 4
+      result = FhirPathEvaluator().evaluateOptionalNumerical("7.1 - 3.1", observation)
+      result must beSome( 4)
 
-      result = FhirPathEvaluator().evaluateNumerical("2 * 4 - 1", observation)
-      result mustEqual 7
+      result = FhirPathEvaluator().evaluateOptionalNumerical("2 * 4 - 1", observation)
+      result must beSome( 7)
 
-      result = FhirPathEvaluator().evaluateNumerical("4.2/2 ", observation)
-      result mustEqual 2.1
+      result = FhirPathEvaluator().evaluateOptionalNumerical("4.2/2 ", observation)
+      result must beSome( 2.1)
 
-      result = FhirPathEvaluator().evaluateNumerical("5 div 2 ", observation)
-      result mustEqual 2
+      result = FhirPathEvaluator().evaluateOptionalNumerical("5 div 2 ", observation)
+      result must beSome( 2)
 
-      result = FhirPathEvaluator().evaluateNumerical("5 mod 2 ", observation)
-      result mustEqual 1
+      result = FhirPathEvaluator().evaluateOptionalNumerical("5 mod 2 ", observation)
+      result must beSome( 1)
 
-      result = FhirPathEvaluator().evaluateNumerical("(Observation.value as Quantity).value + 2.2", observation)
-      result mustEqual 8.5
+      result = FhirPathEvaluator().evaluateOptionalNumerical("(Observation.value as Quantity).value + 2.2", observation)
+      result must beSome(  8.5)
 
-      result = FhirPathEvaluator().evaluateNumerical("(Observation.value as Quantity).value - (Observation.value as Quantity).value", observation)
-      result mustEqual 0
+      result = FhirPathEvaluator().evaluateOptionalNumerical("(Observation.value as Quantity).value - (Observation.value as Quantity).value", observation)
+      result must beSome(  0)
     }
 
     "evaluate path with arithmetic operators on datetime and time" in {
@@ -398,8 +398,8 @@ class FhirPathEvaluatorTest extends Specification {
       FhirPathEvaluator().evaluate("Observation.code.coding.combine(%context.code.coding).distinct()", observation).length mustEqual 2
       FhirPathEvaluator().evaluate("Observation.method.distinct()", observation) must empty
       //count
-      FhirPathEvaluator().evaluateNumerical("Observation.code.coding.count()", observation) mustEqual 2
-      FhirPathEvaluator().evaluateNumerical("Observation.method.count()", observation) mustEqual 0
+      FhirPathEvaluator().evaluateOptionalNumerical("Observation.code.coding.count()", observation) must beSome(2)
+      FhirPathEvaluator().evaluateOptionalNumerical("Observation.method.count()", observation) must beSome(0)
     }
 
     "evaluate paths with filtering/projection functions" in {
@@ -419,12 +419,12 @@ class FhirPathEvaluatorTest extends Specification {
       FhirPathEvaluator().evaluateString("Questionnaire.repeat(code).code", questionnaire).toSet mustEqual Set("VL 1-1, 18-65_1.2.2")
       FhirPathEvaluator().evaluate("Questionnaire.repeat(x)", questionnaire) must empty
       //ofType
-      FhirPathEvaluator().evaluateNumerical("Observation.value.ofType(Quantity).value", observation) mustEqual 6.3
+      FhirPathEvaluator().evaluateOptionalNumerical("Observation.value.ofType(Quantity).value", observation) must beSome(6.3)
       FhirPathEvaluator().evaluate("Observation.method.ofType(Quantity)", observation) must empty
       FhirPathEvaluator().evaluate("Observation.component.value.ofType(Quantity)", observation2) must empty
       FhirPathEvaluator().evaluate("Observation.component.value.ofType(CodeableConcept)", observation2).length mustEqual 5
       FhirPathEvaluator().evaluate("Observation.component.value.ofType(CodeableConcept).coding.code", observation2).length > 5
-      FhirPathEvaluator().evaluateNumerical("Observation.value.as(Quantity).value", observation) mustEqual 6.3
+      FhirPathEvaluator().evaluateOptionalNumerical("Observation.value.as(Quantity).value", observation) must beSome( 6.3)
       FhirPathEvaluator().satisfies("Observation.value.is(Quantity)", observation) mustEqual true
     }
 
@@ -436,7 +436,7 @@ class FhirPathEvaluatorTest extends Specification {
       //first
       FhirPathEvaluator().evaluateString("Observation.component.first().code.coding.first().code", observation2).head mustEqual "32411-1"
       FhirPathEvaluator().evaluate("Observation.method.first()", observation2) must empty //if empty return empty
-      FhirPathEvaluator().evaluateNumerical("Observation.valueQuantity.first().value", observation) mustEqual 6.3
+      FhirPathEvaluator().evaluateOptionalNumerical("Observation.valueQuantity.first().value", observation) must beSome(6.3)
       //last
       FhirPathEvaluator().evaluateString("Observation.component.last().code.coding.last().code", observation2).head mustEqual "249224006"
       FhirPathEvaluator().evaluate("Observation.method.last()", observation2) must empty //if empty return empty
@@ -459,21 +459,21 @@ class FhirPathEvaluatorTest extends Specification {
     }
     "evaluate paths with conversion functions" in {
       //iif
-      FhirPathEvaluator().evaluateNumerical("Observation.component.iif(code.coding.code contains '32412-9', 5)", observation2) mustEqual 5
+      FhirPathEvaluator().evaluateNumerical("Observation.component.iif(code.coding.code contains '32412-9', 5)", observation2) mustEqual Seq(5)
       FhirPathEvaluator().evaluate("Observation.component.iif(code.coding.code contains '32416-9', 5)", observation2) must empty
-      FhirPathEvaluator().evaluateNumerical("Observation.component.iif(code.coding.code contains '32416-9', 5, 2)", observation2) mustEqual 2
-      FhirPathEvaluator().evaluateNumerical("Observation.component.iif(ali, 5, 2)", observation2) mustEqual 2 //if criteria returns empty, again false case
+      FhirPathEvaluator().evaluateNumerical("Observation.component.iif(code.coding.code contains '32416-9', 5, 2)", observation2) mustEqual Seq(2)
+      FhirPathEvaluator().evaluateNumerical("Observation.component.iif(ali, 5, 2)", observation2) mustEqual Seq(2) //if criteria returns empty, again false case
       //toInteger
-      FhirPathEvaluator().evaluateNumerical("Observation.component.code.coding[1].code.toInteger()", observation2) mustEqual 249227004 //from string
-      FhirPathEvaluator().evaluateNumerical("Observation.component.code.coding[1].code.toInteger().toInteger()", observation2) mustEqual 249227004 //from integer
-      FhirPathEvaluator().evaluateNumerical("Observation.component.exists().toInteger()", observation2) mustEqual 1 //from boolean
-      FhirPathEvaluator().evaluateNumerical("Observation.component.empty().toInteger()", observation2) mustEqual 0 //from boolean
+      FhirPathEvaluator().evaluateNumerical("Observation.component.code.coding[1].code.toInteger()", observation2) mustEqual Seq(249227004) //from string
+      FhirPathEvaluator().evaluateNumerical("Observation.component.code.coding[1].code.toInteger().toInteger()", observation2) mustEqual Seq(249227004) //from integer
+      FhirPathEvaluator().evaluateNumerical("Observation.component.exists().toInteger()", observation2) mustEqual Seq(1) //from boolean
+      FhirPathEvaluator().evaluateNumerical("Observation.component.empty().toInteger()", observation2) mustEqual Seq(0) //from boolean
       FhirPathEvaluator().evaluate("Observation.effectiveDateTime.toInteger()", observation2) must throwA[Exception]
       //toDecimal
-      FhirPathEvaluator().evaluateNumerical("Observation.component.code.coding[1].code.toDecimal()", observation2) mustEqual 249227004 //from string
-      FhirPathEvaluator().evaluateNumerical("Observation.valueQuantity.value.toDecimal()", observation) mustEqual 6.3
-      FhirPathEvaluator().evaluateNumerical("Observation.component.exists().toDecimal()", observation2) mustEqual 1 //from boolean
-      FhirPathEvaluator().evaluateNumerical("Observation.component.empty().toDecimal()", observation2) mustEqual 0 //from boolean
+      FhirPathEvaluator().evaluateNumerical("Observation.component.code.coding[1].code.toDecimal()", observation2) mustEqual Seq(249227004) //from string
+      FhirPathEvaluator().evaluateNumerical("Observation.valueQuantity.value.toDecimal()", observation) mustEqual Seq(6.3)
+      FhirPathEvaluator().evaluateNumerical("Observation.component.exists().toDecimal()", observation2) mustEqual Seq(1) //from boolean
+      FhirPathEvaluator().evaluateNumerical("Observation.component.empty().toDecimal()", observation2) mustEqual Seq(0) //from boolean
       //toString
       FhirPathEvaluator().evaluateString("Observation.valueQuantity.value.toString()", observation).head mustEqual "6.3" //from string
       FhirPathEvaluator().evaluateString("Observation.component.exists().toString()", observation2).head mustEqual "'true'" //from boolean
@@ -483,9 +483,9 @@ class FhirPathEvaluatorTest extends Specification {
     }
     "evaluate paths with string manipulation functions" in {
       //indexOf
-      FhirPathEvaluator().evaluateNumerical("Observation.performer.display.indexOf('Langeveld')", observation) mustEqual 3
-      FhirPathEvaluator().evaluateNumerical("Observation.performer.display.indexOf('ali')", observation) mustEqual -1
-      FhirPathEvaluator().evaluateNumerical("Observation.performer.display.indexOf('')", observation) mustEqual 0
+      FhirPathEvaluator().evaluateNumerical("Observation.performer.display.indexOf('Langeveld')", observation) mustEqual Seq(3)
+      FhirPathEvaluator().evaluateNumerical("Observation.performer.display.indexOf('ali')", observation) mustEqual Seq(-1)
+      FhirPathEvaluator().evaluateNumerical("Observation.performer.display.indexOf('')", observation) mustEqual Seq(0)
       //substring
       FhirPathEvaluator().evaluateString("Observation.performer.display.substring(3)", observation).head mustEqual "Langeveld"
       FhirPathEvaluator().evaluateString("Observation.performer.display.substring(3, 2)", observation).head mustEqual "La"
@@ -512,7 +512,7 @@ class FhirPathEvaluatorTest extends Specification {
       //replaceMatches
       FhirPathEvaluator().evaluateString("Observation.performer.display.replaceMatches('L.n', 'Lun')", observation).head mustEqual "A. Lungeveld"
       //length
-      FhirPathEvaluator().evaluateNumerical("Observation.performer.display.length()", observation) mustEqual 12
+      FhirPathEvaluator().evaluateNumerical("Observation.performer.display.length()", observation) mustEqual Seq(12)
       FhirPathEvaluator().evaluate("{}", observation) must empty
     }
     "evaluate paths with tree navigation functions" in {
@@ -569,13 +569,13 @@ class FhirPathEvaluatorTest extends Specification {
       pids mustEqual(Seq("p1"))
 
       var results2 = FhirPathEvaluator().evaluateNumerical("groupBy($this.notexist, sum($this.valueQuantity.value))[0].agg", JArray(Seq(observation, observation2).toList))
-      results2 mustEqual 16.3
+      results2 mustEqual Seq(16.3)
 
       results2 = FhirPathEvaluator().evaluateNumerical("groupBy($this.notexist, min($this.valueQuantity.value))[0].agg", JArray(Seq(observation, observation2).toList))
-      results2 mustEqual 6.3
+      results2 mustEqual Seq(6.3)
 
       results2 = FhirPathEvaluator().evaluateNumerical("groupBy($this.notexist, max($this.valueQuantity.value))[0].agg", JArray(Seq(observation, observation2).toList))
-      results2 mustEqual 10
+      results2 mustEqual Seq(10)
     }
 
     "evaluate new constraints in FHIR 4.0.1" in {
@@ -601,25 +601,25 @@ class FhirPathEvaluatorTest extends Specification {
     }
 
     "evaluate onfhir added time functions" in {
-      var result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.getPeriod(start, @2020-09-07T10:00:00Z, 'years')", observation).toLong
+      var result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.getPeriod(start, @2020-09-07T10:00:00Z, 'years')", observation).head.toLong
       result mustEqual 7
 
-      result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.getPeriod(start, now(), 'years')", observation).toLong
+      result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.getPeriod(start, now(), 'years')", observation).head.toLong
       result mustEqual 7
 
-      result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.getPeriod(start, @2013-08-07T10:00:00Z, 'months')", observation).toLong
+      result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.getPeriod(start, @2013-08-07T10:00:00Z, 'months')", observation).head.toLong
       result mustEqual 4
 
-      result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.getPeriod(start, @2013-04-07T09:30:10+01:00, 'days')", observation).toLong
+      result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.getPeriod(start, @2013-04-07T09:30:10+01:00, 'days')", observation).head.toLong
       result mustEqual 5
 
       //Due to given zoned date time in resource
       FhirPathEvaluator().evaluateNumerical("effectivePeriod.getPeriod(start, @2020-09-07, 'years')", observation) must throwA[FhirPathException]
 
-      result = FhirPathEvaluator().evaluateNumerical("period.getPeriod(start, end, 'days')", encounter).toLong
+      result = FhirPathEvaluator().evaluateNumerical("period.getPeriod(start, end, 'days')", encounter).head.toLong
       result mustEqual 9
 
-      result = FhirPathEvaluator().evaluateNumerical("period.getPeriod(s, end, 'days')", encounter).toLong
+      result = FhirPathEvaluator().evaluateNumerical("period.getPeriod(s, end, 'days')", encounter).head.toLong
       result mustEqual 0
     }
 

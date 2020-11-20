@@ -11,7 +11,12 @@ import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
 import org.json4s.JsonAST.{JArray, JValue}
 import org.slf4j.{Logger, LoggerFactory}
 
-class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None) {
+/**
+ * Fhir Path Engine implementation
+ * @param referenceResolver     onFhir reference resolver (resolving literal and inter-bundle references)
+ * @param environmentVariables  Supplied environment variables
+ */
+class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None, environmentVariables:Map[String, JValue] = Map.empty) {
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   private def normalizeInput(input:String):String = {
@@ -41,7 +46,7 @@ class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None) {
   private def evaluate(expr:FhirPathExprParser.ExpressionContext, on:JValue):Seq[FhirPathResult] = {
     logger.debug(s"Evaluating FHIR path expression '${expr.getText}' ...")
     val resource = FhirPathValueTransformer.transform(on)
-    val environment = new FhirPathEnvironment(resource.head, referenceResolver)
+    val environment = new FhirPathEnvironment(resource, referenceResolver, environmentVariables.mapValues(FhirPathValueTransformer.transform))
     val evaluator = new FhirPathExpressionEvaluator(environment, resource)
     evaluator.visit(expr)
   }
@@ -87,12 +92,20 @@ class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None) {
     }
   }
 
-  def evaluateNumerical(expr:String, on:JValue):BigDecimal = {
-    val result = evaluate(expr, on)
-    if(result.length != 1 || !result.head.isInstanceOf[FhirPathNumber])
-      throw new FhirPathException(s"Expression $expr does not evaluate to a number for the given resource!")
-    result.head.asInstanceOf[FhirPathNumber].v
+  def evaluateOptionalNumerical(expr:String, on:JValue):Option[BigDecimal] = {
+    val results = evaluateNumerical(expr, on)
+    if(results.length > 1)
+      throw new FhirPathException(s"Expression $expr does not evaluate to a single number for the given resource!")
+    results.headOption
   }
+
+  def evaluateNumerical(expr:String, on:JValue):Seq[BigDecimal] = {
+    val result = evaluate(expr, on)
+    if(result.exists(!_.isInstanceOf[FhirPathNumber]))
+      throw new FhirPathException(s"Expression $expr does not evaluate to numbers for the given resource!")
+    result.map(_.asInstanceOf[FhirPathNumber].v)
+  }
+
 
   def evaluateDateTime(expr:String, on:JValue):Temporal = {
     val result = evaluate(expr, on)
@@ -109,6 +122,13 @@ class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None) {
     t.lt -> t.zone
   }
 
+  def evaluateOptionalString(expr:String, on:JValue):Option[String] = {
+    val result = evaluate(expr, on)
+    if(result.length > 1 || result.exists(!_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Expression $expr does not evaluate to a single string for the given resource!")
+    result.headOption.map(_.asInstanceOf[FhirPathString].s)
+  }
+
   def evaluateString(expr:String, on:JValue):Seq[String] = {
     val result = evaluate(expr, on)
     if(result.exists(!_.isInstanceOf[FhirPathString]))
@@ -116,11 +136,14 @@ class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None) {
     result.map(_.asInstanceOf[FhirPathString].s)
   }
 
-  def evaluateForJson(expr:String, on:JValue):Option[JValue] = {
+  /**
+   * Evaluate the expression and return it as JSON value
+   * @param expr
+   * @param on
+   * @return
+   */
+  def evaluateAndReturnJson(expr:String, on:JValue):Option[JValue] = {
     val result = evaluate(expr, on)
-    if(result.exists(!_.isInstanceOf[FhirPathComplex]))
-      throw new FhirPathException(s"Expression $expr does not evaluate to a JSON object for the given resource!")
-
     val results = result.map(_.toJson)
     results.length match {
       case 0 => None
@@ -139,7 +162,7 @@ class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None) {
     logger.debug(s"Evaluating FHIR path expression '${expr}' to find indicated paths  ...")
     val parsedExpr = parse(expr)
     val resource = FhirPathValueTransformer.transform(on)
-    val environment = new FhirPathEnvironment(resource.head, referenceResolver)
+    val environment = new FhirPathEnvironment(resource, referenceResolver,environmentVariables.mapValues(FhirPathValueTransformer.transform))
     val evaluator = new FhirPathPathFinder(environment, resource)
     evaluator.visit(parsedExpr)
     evaluator.getFoundPaths
@@ -199,4 +222,8 @@ object FhirPathEvaluator {
   def apply(): FhirPathEvaluator = new FhirPathEvaluator(None)
 
   def apply(referenceResolver: Option[IReferenceResolver]): FhirPathEvaluator = new FhirPathEvaluator(referenceResolver)
+
+  def apply(referenceResolver: IReferenceResolver, environmentVariables:Map[String, JValue]) = new FhirPathEvaluator(Some(referenceResolver), environmentVariables)
+
+  def apply(environmentVariables:Map[String, JValue]): FhirPathEvaluator = new FhirPathEvaluator(None, environmentVariables)
 }

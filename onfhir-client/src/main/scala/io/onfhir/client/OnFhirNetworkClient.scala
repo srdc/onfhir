@@ -4,13 +4,15 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.stream.Materializer
-import io.onfhir.api.client.{BaseFhirClient, FHIRPaginatedBundle, IFhirBundleReturningRequestBuilder}
+import io.onfhir.api.client.{BaseFhirClient, FHIRPaginatedBundle, FhirClientException, IFhirBundleReturningRequestBuilder}
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse}
 import io.onfhir.client.parsers.{FHIRRequestMarshaller, FHIRResponseUnmarshaller}
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{ExecutionContext, Future}
 
 case class OnFhirNetworkClient(serverBaseUrl:String, interceptors:Seq[IHttpRequestInterceptor] = Nil)(implicit actorSystem: ActorSystem) extends BaseFhirClient {
+  val logger:Logger = LoggerFactory.getLogger(this.getClass)
   implicit val ex:ExecutionContext = actorSystem.dispatcher
   implicit val materializer: Materializer = Materializer(actorSystem)
 
@@ -21,6 +23,11 @@ case class OnFhirNetworkClient(serverBaseUrl:String, interceptors:Seq[IHttpReque
       .marshallRequest(fhirRequest, serverBaseUrl)
       .flatMap(httpRequest => executeHttpRequest(httpRequest))
       .flatMap(httpResponse => FHIRResponseUnmarshaller.unmarshallResponse(httpResponse))
+      .recover {
+        case t:Throwable =>
+          logger.error("Problem while executing FHIR request!", t)
+          throw FhirClientException("Problem while executing FHIR request!" + t.getMessage)
+      }
   }
 
   override def next[T <: FHIRPaginatedBundle](bundle: T): Future[T] = {
@@ -30,6 +37,11 @@ case class OnFhirNetworkClient(serverBaseUrl:String, interceptors:Seq[IHttpReque
         executeHttpRequest(httpRequest.withUri(Uri.apply(bundle.getNext())))
       )
       .flatMap(httpResponse => FHIRResponseUnmarshaller.unmarshallResponse(httpResponse))
+      .recover {
+        case t:Throwable =>
+          logger.error("Problem while executing FHIR request!", t)
+          throw FhirClientException("Problem while executing FHIR request!" + t.getMessage)
+      }
       .map(fhirResponse =>
         bundle.request
           .asInstanceOf[IFhirBundleReturningRequestBuilder]

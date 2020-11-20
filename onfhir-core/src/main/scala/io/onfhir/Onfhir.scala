@@ -15,7 +15,7 @@ import io.onfhir.authz._
 import io.onfhir.config.{FhirConfigurationManager, IFhirVersionConfigurator, OnfhirConfig, SSLConfig}
 
 import io.onfhir.db.{DBConflictManager, EmbeddedMongo}
-import io.onfhir.event.{FhirEvent, FhirEventBus, FhirEventSubscription}
+import io.onfhir.event.{FhirDataEvent, FhirEventBus, FhirEventSubscription}
 import io.onfhir.event.kafka.KafkaEventProducer
 
 import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
@@ -144,7 +144,7 @@ class Onfhir(
         case (_, None) => None
       }
 
-      FhirEventBus.subscribe(actorRef, FhirEventSubscription(classOf[FhirEvent], resourcesToSendToKafka))
+      FhirEventBus.subscribe(actorRef, FhirEventSubscription(classOf[FhirDataEvent], resourcesToSendToKafka))
       actorRef
     }
 

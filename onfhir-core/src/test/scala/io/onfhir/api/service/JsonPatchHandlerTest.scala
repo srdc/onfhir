@@ -166,7 +166,7 @@ class JsonPatchHandlerTest extends Specification {
       val result = JsonPatchHandler.applyPatch(movePatch2, "Observation", observation)
       FhirPathEvaluator().evaluateString("component[0].code.coding[0].code", result) mustEqual Seq("8480-6")
       FhirPathEvaluator().evaluateString("component[0].code.coding[1].code", result) mustEqual Seq("bp-s")
-      FhirPathEvaluator().evaluateNumerical("component[0].code.coding.count()", result) mustEqual 2
+      FhirPathEvaluator().evaluateNumerical("component[0].code.coding.count()", result).head mustEqual 2
 
       FhirPathEvaluator().evaluateString("component[1].code.coding[0].code", result) mustEqual Seq("271649006")
       FhirPathEvaluator().evaluateString("component[1].code.coding[1].code", result) mustEqual Seq("8462-4")
