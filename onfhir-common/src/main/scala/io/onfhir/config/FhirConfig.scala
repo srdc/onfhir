@@ -269,7 +269,7 @@ case class SearchParameterConf(pname:String,
   }
 
   def extractElementPathsTargetTypesAndRestrictions(withArrayIndicators:Boolean = false):Seq[(String, String, Seq[(String,String)])] = {
-    (extractElementPaths(withArrayIndicators = true), targetTypes, restrictions).zipped.toSeq
+    (extractElementPaths(withArrayIndicators), targetTypes, restrictions).zipped.toSeq
   }
 }
 
