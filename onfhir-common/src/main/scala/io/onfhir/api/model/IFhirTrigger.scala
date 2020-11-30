@@ -1,11 +1,13 @@
-package io.onfhir.api.model
+package io.onfhir.event.model
+
+import io.onfhir.api.model.{InternalEntity, Parameter}
 
 sealed trait IFhirTrigger extends InternalEntity
 
 /**
  * A FHIR data trigger definition (represent partially FHIR TriggerDefinition)
  * @param rtype               Resource type to monitor
- * @param dataEvent           Data event to monitor (see io.onfhir.api.model.FhirTriggerEvents)
+ * @param dataEvent           Data event to monitor (see io.onfhir.event.FhirTriggerEvents)
  * @param criteria            Parsed FHIR Query that defines criteria on the latest resource content
  * @param previousCriteria    Parsed FHIR Query that defines criteria on the previous resource content
  * @param bothRequired        If both criteria given, they should be satisfied both or one is enough
