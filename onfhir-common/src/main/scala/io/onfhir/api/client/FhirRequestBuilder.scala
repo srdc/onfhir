@@ -4,13 +4,11 @@ import io.onfhir.api.{FHIR_HTTP_OPTIONS, Resource}
 import io.onfhir.api.model.{FHIROperationResponse, FHIRRequest, FHIRResponse}
 
 import scala.language.implicitConversions
-import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
 
 object  FhirRequestBuilder {
   implicit def toExecution(fhirRequestBuilder: FhirRequestBuilder)(implicit ex:ExecutionContext): Future[FHIRResponse] = {
-    fhirRequestBuilder.execute().map(_.asInstanceOf[FHIRResponse])
+    fhirRequestBuilder.execute()
   }
 
   implicit def toExecutionReturnResource(fhirRequestBuilder: FhirRequestBuilder)(implicit ex:ExecutionContext): Future[Resource] = {
@@ -43,6 +41,8 @@ object  FhirRequestBuilder {
       .executeAndReturnOperationOutcome()
   }
 }
+
+
 abstract class FhirRequestBuilder(val onFhirClient: IOnFhirClient, val request:FHIRRequest) {
   protected type This <: FhirRequestBuilder
   // Prefer header setting for return preferences
@@ -56,6 +56,11 @@ abstract class FhirRequestBuilder(val onFhirClient: IOnFhirClient, val request:F
   }
 
   protected def compile():Unit = {}
+
+  def compileRequest():FHIRRequest = {
+    compile()
+    request
+  }
 
   def execute():Future[FHIRResponse] = {
       compile()
@@ -79,26 +84,9 @@ abstract class FhirRequestBuilder(val onFhirClient: IOnFhirClient, val request:F
   }
 }
 
-trait IFhirBundleReturningRequestBuilder {
-  def constructBundle(fhirResponse:FHIRResponse):FHIRPaginatedBundle
 
-  def nextPage():Unit
-}
 
-abstract class FhirSearchLikeRequestBuilder(onFhirClient: IOnFhirClient, request: FHIRRequest) extends FhirRequestBuilder(onFhirClient, request) {
 
-  protected val conditionalParams:mutable.ListBuffer[(String, Seq[String])] = new ListBuffer[(String, Seq[String])]
-
-  def where(param:String, value:String*):This = {
-    conditionalParams.append(param-> value.toSeq)
-    this.asInstanceOf[This]
-  }
-
-  override protected def compile():Unit = {
-    if(conditionalParams.nonEmpty)
-      request.queryParams = conditionalParams.groupBy(_._1).mapValues(v => v.map(_._2.mkString(",")).toList)
-  }
-}
 
 
 

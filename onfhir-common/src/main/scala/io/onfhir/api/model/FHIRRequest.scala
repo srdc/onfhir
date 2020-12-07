@@ -59,7 +59,7 @@ case class FHIRRequest(
                         var childRequests:Seq[FHIRRequest] = Nil, // Child requests for batch and transaction
                         //Other client specific params
                         var httpMethod:Option[HttpMethod] = None //Preferred HTTP method when there is alternative
-                      ){
+                      ) extends InternalEntity {
   // Parsed query parameters for the resource type
   private var parsedQueryParams:Either[List[Parameter], Map[String, List[Parameter]]] = Left(List.empty)
 

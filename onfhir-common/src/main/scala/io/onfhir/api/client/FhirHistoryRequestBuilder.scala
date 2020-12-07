@@ -14,7 +14,7 @@ class FhirHistoryRequestBuilder(onFhirClient: IOnFhirClient, rtype:Option[String
     FHIRRequest(
       interaction =
         if(rid.isEmpty) FHIR_INTERACTIONS.HISTORY_TYPE else FHIR_INTERACTIONS.HISTORY_INSTANCE,
-      requestUri = s"${onFhirClient.getBaseUrl()}",
+      requestUri = s"${onFhirClient.getBaseUrl()}${rtype.map(rt => "/" + rt + rid.map("/" + _).getOrElse("")).getOrElse("")}",
       resourceType = rtype,
       resourceId = rid)
   ) with IFhirBundleReturningRequestBuilder {

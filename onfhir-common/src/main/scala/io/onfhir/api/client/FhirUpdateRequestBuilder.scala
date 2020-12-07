@@ -13,7 +13,7 @@ import io.onfhir.api.util.FHIRUtil
  */
 class FhirUpdateRequestBuilder(onFhirClient: IOnFhirClient, rtype:String, rid:Option[String], resource: Resource, useIfMatch:Boolean = true)
   extends FhirSearchLikeRequestBuilder(onFhirClient, {
-    FHIRRequest(interaction = FHIR_INTERACTIONS.UPDATE, requestUri = s"${onFhirClient.getBaseUrl()}/$rtype/$rid", resourceType = Some(rtype), resourceId = rid, resource = Some(resource))
+    FHIRRequest(interaction = FHIR_INTERACTIONS.UPDATE, requestUri = s"${onFhirClient.getBaseUrl()}/$rtype/${rid.map("/" + _).getOrElse("")}", resourceType = Some(rtype), resourceId = rid, resource = Some(resource))
   }) {
   type This = FhirUpdateRequestBuilder
 

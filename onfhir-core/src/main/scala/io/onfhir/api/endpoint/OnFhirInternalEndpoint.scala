@@ -40,6 +40,15 @@ trait OnFhirInternalEndpoint {
                   }
                 }
               }
+            } ~
+            pathPrefix("searchparameters" / Segment / "parse") { rtype =>
+              pathEndOrSingleSlash {
+                get {
+                  parameterMultiMap { paramMap =>
+                    complete(new OnFhirInternalApiService().parseFhirSearch(rtype, paramMap))
+                  }
+                }
+              }
             }
 
         }

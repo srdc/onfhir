@@ -2,6 +2,7 @@ package io.onfhir.event
 
 import io.onfhir.api.Resource
 import io.onfhir.api.model.InternalEntity
+import org.json4s.{JNothing, JValue}
 
 object FhirEventUtil {
 
@@ -13,7 +14,12 @@ object FhirEventUtil {
   }
 }
 
-abstract class FhirDataEvent extends InternalEntity {
+trait IFhirEvent extends InternalEntity {
+  def getContent:JValue = JNothing
+  def getContextParams:Map[String, JValue] = Map.empty
+}
+
+abstract class FhirDataEvent extends IFhirEvent {
   val rtype:String
   val rid:String
 
@@ -26,11 +32,6 @@ abstract class FhirDataEvent extends InternalEntity {
    */
   def getEvent:String
 
-  /**
-   * Get the main resource content
-   * @return
-   */
-  def getResource:Resource
 }
 
 /**
@@ -42,7 +43,7 @@ abstract class FhirDataEvent extends InternalEntity {
 case class ResourceCreated(rtype:String, rid:String, resource:Resource) extends FhirDataEvent {
   override def getEvent: String = "data-added"
 
-  override def getResource: Resource = resource
+  override def getContent: JValue = resource
 }
 
 /**
@@ -55,7 +56,9 @@ case class ResourceCreated(rtype:String, rid:String, resource:Resource) extends 
 case class ResourceUpdated(rtype:String, rid:String, resource:Resource, previous:Resource) extends FhirDataEvent {
   override def getEvent: String = "data-modified"
 
-  override def getResource: Resource = resource
+  override def getContent: JValue = resource
+
+  override def getContextParams:Map[String, JValue] = Map("previous" -> previous)
 }
 
 /**
@@ -67,7 +70,7 @@ case class ResourceUpdated(rtype:String, rid:String, resource:Resource, previous
 case class ResourceDeleted(rtype:String, rid:String, previous:Resource) extends FhirDataEvent {
   override def getEvent: String = "data-removed"
 
-  override def getResource: Resource = previous
+  override def getContextParams:Map[String, JValue] = Map("previous" -> previous)
 }
 
 /**
@@ -79,5 +82,5 @@ case class ResourceDeleted(rtype:String, rid:String, previous:Resource) extends 
 case class ResourceAccessed(rtype:String, rid:String, resource: Resource) extends FhirDataEvent {
   override def getEvent: String = "data-accessed"
 
-  override def getResource: Resource = resource
+  override def getContent: JValue = resource
 }

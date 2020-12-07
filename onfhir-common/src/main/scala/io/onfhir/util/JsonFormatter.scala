@@ -42,6 +42,16 @@ object JsonFormatter{
     }
   }
 
+  class JsonConvertable2(value:JValue) {
+    def toJson: String = {
+      Serialization.write(value)
+    }
+
+    def toPrettyJson:String = {
+      Serialization.writePretty(value)
+    }
+  }
+
   /**
     * Implicit conversion that ties the new JsonParsable class to the Scala Strings
     */
@@ -58,4 +68,6 @@ object JsonFormatter{
    * @return
    */
   implicit def parseFromReader(reader:io.Reader):JsonParsable2 = new JsonParsable2(reader)
+
+  implicit def convertToJson2(value:JValue):JsonConvertable2 = new JsonConvertable2(value)
 }

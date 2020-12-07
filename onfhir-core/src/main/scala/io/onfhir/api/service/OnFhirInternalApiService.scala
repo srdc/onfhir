@@ -1,10 +1,11 @@
 package io.onfhir.api.service
 
 import akka.Done
-import akka.http.scaladsl.model.{HttpResponse, StatusCodes}
+import akka.http.scaladsl.model.{HttpResponse, StatusCodes, Uri}
 import io.onfhir.Onfhir
 import io.onfhir.api._
 import io.onfhir.api.model.{FhirSubscription, Parameter}
+import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.util.{FHIRUtil, SubscriptionUtil}
 import io.onfhir.config.SearchParameterConf
 import io.onfhir.db.ResourceManager
@@ -88,4 +89,9 @@ class OnFhirInternalApiService {
     }
   }
 
+  def parseFhirSearch(rtype:String, paramMultiMap:Map[String, List[String]]):Future[Seq[Parameter]] = {
+    Future.apply {
+      FHIRSearchParameterValueParser.parseSearchParameters(rtype, paramMultiMap)
+    }
+  }
 }

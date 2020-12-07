@@ -11,7 +11,7 @@ import io.onfhir.api.model.FHIRRequest
  */
 class FhirPatchRequestBuilder(onFhirClient: IOnFhirClient, rtype:String, rid:Option[String])
   extends FhirSearchLikeRequestBuilder(onFhirClient,
-    FHIRRequest(interaction = FHIR_INTERACTIONS.PATCH, requestUri = s"${onFhirClient.getBaseUrl()}/$rtype/$rid", resourceType = Some(rtype), resourceId = rid)
+    FHIRRequest(interaction = FHIR_INTERACTIONS.PATCH, requestUri = s"${onFhirClient.getBaseUrl()}/$rtype/${rid.map("/" + _).getOrElse("")}", resourceType = Some(rtype), resourceId = rid)
   ) {
   type This = FhirPatchRequestBuilder
 
