@@ -2,7 +2,7 @@ package io.onfhir.event
 
 import io.onfhir.api.Resource
 import io.onfhir.api.model.InternalEntity
-import org.json4s.{JNothing, JValue}
+import org.json4s.{JNothing, JString, JValue}
 
 object FhirEventUtil {
 
@@ -14,11 +14,37 @@ object FhirEventUtil {
   }
 }
 
+/**
+ * An event in OnFhir ecosystem
+ */
 trait IFhirEvent extends InternalEntity {
+  /**
+   * Get the JSON content of the event
+   * @return
+   */
   def getContent:JValue = JNothing
+
+  /**
+   * Get context parameters about the event
+   * @return
+   */
   def getContextParams:Map[String, JValue] = Map.empty
 }
 
+/**
+ * A named event in onFhir ecosystem
+ * @param eventName Name of the event
+ * @param event     Event itself
+ */
+case class FhirNamedEvent(eventName:String, event:IFhirEvent) extends IFhirEvent {
+  override def getContent: JValue = event.getContent
+
+  override def getContextParams: Map[String, JValue] = event.getContextParams + ("eventName" -> JString(eventName))
+}
+
+/**
+ * Base class for Data related event
+ */
 abstract class FhirDataEvent extends IFhirEvent {
   val rtype:String
   val rid:String
@@ -75,9 +101,9 @@ case class ResourceDeleted(rtype:String, rid:String, previous:Resource) extends 
 
 /**
  * Event triggered when a FHIR Resource accessed
- * @param rtype
- * @param rid
- * @param resource
+ * @param rtype     Resource type
+ * @param rid       Resource id
+ * @param resource  Resource content accessed
  */
 case class ResourceAccessed(rtype:String, rid:String, resource: Resource) extends FhirDataEvent {
   override def getEvent: String = "data-accessed"

@@ -16,12 +16,16 @@ import org.slf4j.{Logger, LoggerFactory}
  * @param referenceResolver     onFhir reference resolver (resolving literal and inter-bundle references)
  * @param environmentVariables  Supplied environment variables
  */
-class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None, environmentVariables:Map[String, JValue] = Map.empty) {
+case class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None, environmentVariables:Map[String, JValue] = Map.empty) {
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   private def normalizeInput(input:String):String = {
     //As function 'contains' and literal 'contains' clash in the grammar, we have
     if(input.contains("contains(")) input.replace("contains(", "_contains(") else input
+  }
+
+  def withEnviromentVariable(variable:String, value:JValue):FhirPathEvaluator = {
+    this.copy(environmentVariables = environmentVariables + (variable -> value))
   }
 
   /**
