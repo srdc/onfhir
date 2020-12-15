@@ -197,9 +197,7 @@ class SmartAuthorizer extends IAuthorizer {
     //If it includes patient scope and does not include patientId
     !(scopes.exists(s => s.ptype.equals(PERMISSION_TYPE_PATIENT)) && authzContext.furtherParams.get(PARAM_PATIENT_ID).isEmpty) &&
     //If it includes user scope and does not include user id
-    !(scopes.exists(s => s.ptype.equals(PERMISSION_TYPE_USER)) && authzContext.sub.isEmpty) &&
-    //If our fhir-server is not within audience
-    authzContext.aud.contains(OnfhirConfig.fhirRootUrl)
+    !(scopes.exists(s => s.ptype.equals(PERMISSION_TYPE_USER)) && authzContext.sub.isEmpty)
   }
 
   /**
