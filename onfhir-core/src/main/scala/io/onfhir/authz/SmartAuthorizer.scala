@@ -71,10 +71,14 @@ class SmartAuthorizer extends IAuthorizer {
                 .getOrElse(List.empty)
 
             val resourceRestrictions = baseResourceRestrictions ++ otherResourceRestrictions
+
             if (resourceRestrictions.isEmpty)
               AuthzResult.failureInsufficientScope(s"Not authorized for the FHIR interaction '$interaction' on resource type '${resourceType.get}'!")
+            //If all restrictions allow full access
+            else if(resourceRestrictions.forall(_._2 == "*"))
+              AuthzResult.success()
             else
-              AuthzResult.filtering(resourceType.get, resourceRestrictions)
+              AuthzResult.filtering(resourceType.get, resourceRestrictions.filterNot(_._2 == "*"))
         }
       }
     }
@@ -99,13 +103,16 @@ class SmartAuthorizer extends IAuthorizer {
     * @return search parameter -> parameter value
     */
   private def resolveResourceRestrictionsForUserTypeScope(authzContext: AuthzContext, resourceType:String):List[(String,String)] = {
+    //TODO We don't have any restriction for user scopes for now
+    List("Practitioner" -> "*")
+    /*
     //Extract user id from authz context
     val authorizedUser= authzContext.sub.get
 
     List(
       "Practitioner" -> authorizedUser,
       "RelatedPerson" -> authorizedUser
-    )
+    )*/
   }
 
   /**
