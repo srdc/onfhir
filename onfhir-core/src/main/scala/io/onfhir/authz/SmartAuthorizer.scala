@@ -154,7 +154,7 @@ class SmartAuthorizer extends IAuthorizer {
         //Permission for all interactions
         case "*" =>  Some(WGHeartScope(scopeElems.apply(0), remElems.apply(0), read=true, write=true))
         //Permission for FHIR operation
-        case op if op.startsWith("$") => Some(WGHeartScope(scopeElems.apply(0),  remElems.apply(0), read=false, write=false, operations = Set(op)))
+        case op  => Some(WGHeartScope(scopeElems.apply(0),  remElems.apply(0), read=false, write=false, operations = Set(op)))
       }
     }
   }
@@ -236,7 +236,7 @@ class SmartAuthorizer extends IAuthorizer {
            | FHIR_INTERACTIONS.SEARCH
            | FHIR_INTERACTIONS.HISTORY_TYPE => accessRight.read
       //FHIR Operations
-      case operation if operation.startsWith("$") => accessRight.operations.contains(operation)
+      case operation if operation.startsWith("$") => accessRight.operations.contains(operation.drop(1))
       //Otherwise false
       case _ => false
     }
