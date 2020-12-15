@@ -34,7 +34,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
       case ite:InvocationTargetException =>
         ite.getTargetException match {
           case fpe:FhirPathException => throw fpe
-          case e:Throwable => throw FhirPathException.apply("Invalid function call $fname!", e)
+          case e:Throwable => throw FhirPathException.apply(s"Invalid function call $fname!", e)
         }
     }
   }
