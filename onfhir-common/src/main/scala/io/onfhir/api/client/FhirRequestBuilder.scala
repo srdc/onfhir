@@ -6,7 +6,7 @@ import io.onfhir.api.model.{FHIROperationResponse, FHIRRequest, FHIRResponse}
 import scala.language.implicitConversions
 import scala.concurrent.{ExecutionContext, Future}
 
-object  FhirRequestBuilder {
+object FhirRequestBuilder {
   implicit def toExecution(fhirRequestBuilder: FhirRequestBuilder)(implicit ex:ExecutionContext): Future[FHIRResponse] = {
     fhirRequestBuilder.execute()
   }

@@ -1,8 +1,11 @@
 package io.onfhir.event
 
+import java.time.{Instant, ZonedDateTime}
+
 import io.onfhir.api.Resource
 import io.onfhir.api.model.InternalEntity
-import org.json4s.{JNothing, JString, JValue}
+import io.onfhir.util.DateTimeUtil
+import org.json4s.{JNothing, JObject, JString, JValue}
 
 object FhirEventUtil {
 
@@ -40,6 +43,18 @@ case class FhirNamedEvent(eventName:String, event:IFhirEvent) extends IFhirEvent
   override def getContent: JValue = event.getContent
 
   override def getContextParams: Map[String, JValue] = event.getContextParams + ("eventName" -> JString(eventName))
+}
+
+/**
+ * Event used for time based triggers
+ * @param scheduledTime   Actual scheduled time for this trigger
+ * @param context         Attached context to the trigger
+ */
+case class FhirTimeEvent(scheduledTime:Instant, context:Map[String, String] = Map.empty[String, String]) extends IFhirEvent {
+  override def getContent: JValue = JNothing
+  override def getContextParams: Map[String, JValue] = {
+    Map("eventScheduledTime" -> JString(DateTimeUtil.serializeInstant(scheduledTime))) ++ context.mapValues(JString(_))
+  }
 }
 
 /**

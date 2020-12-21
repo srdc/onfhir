@@ -7,7 +7,7 @@ import akka.http.scaladsl.model.{ContentTypeRange, ContentTypes, HttpEntity, Htt
 import akka.http.scaladsl.unmarshalling.{FromResponseUnmarshaller, Unmarshaller}
 import io.onfhir.api.model.{FhirSubscription, FhirSubscriptionChannel, InternalEntity, Parameter}
 import io.onfhir.config.SearchParameterConf
-import io.onfhir.event.{ResourceAccessed, ResourceCreated, ResourceDeleted, ResourceUpdated}
+import io.onfhir.event.{FhirNamedEvent, FhirTimeEvent, ResourceAccessed, ResourceCreated, ResourceDeleted, ResourceUpdated}
 import org.json4s
 import org.json4s.{CustomSerializer, Formats, JString, ShortTypeHints}
 import org.json4s.jackson.JsonMethods._
@@ -36,7 +36,10 @@ object InternalJsonMarshallers {
       classOf[ResourceCreated],
       classOf[ResourceUpdated],
       classOf[ResourceDeleted],
-      classOf[ResourceAccessed]))) + new FhirDateTimeSerializer
+      classOf[ResourceAccessed],
+      classOf[FhirNamedEvent],
+      classOf[FhirTimeEvent]
+    ))) + new FhirDateTimeSerializer
 
   def parseAndExtract[T](content:String)(implicit manifest:Manifest[T]):T = {
     parse(content).extract[T]
