@@ -326,7 +326,7 @@ object PrefixModifierHandler {
   def tokenModifierHandler(systemPath:String, codePath:String, system:Option[String], code:Option[String], modifier:String):Bson = {
     modifier match {
       //Without modifier
-      case "" =>
+      case "" | FHIR_PREFIXES_MODIFIERS.NOT=>
         handleTokenCodeSystemQuery(systemPath, codePath, system, code)
       case FHIR_PREFIXES_MODIFIERS.STARTS_WITH | FHIR_PREFIXES_MODIFIERS.NOT_STARTS_WITH =>
         handleTokenStartsWithModifier(systemPath, codePath, system, code, modifier == FHIR_PREFIXES_MODIFIERS.NOT_STARTS_WITH)

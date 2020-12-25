@@ -863,7 +863,9 @@ object FHIRUtil {
     */
   def resolveReferenceValue(reference:String, modifier:String, targetReferenceTypes:Seq[String]):(Option[String], String, String, Option[String]) = {
     modifier match {
-      case "" | FHIR_PREFIXES_MODIFIERS.TYPE | FHIR_PREFIXES_MODIFIERS.NOT  =>
+      case FHIR_PREFIXES_MODIFIERS.TYPE =>
+        (None, reference, reference, None)
+      case "" | FHIR_PREFIXES_MODIFIERS.NOT  =>
         if(reference.contains("/"))
           parseReferenceValue(reference)
         else {

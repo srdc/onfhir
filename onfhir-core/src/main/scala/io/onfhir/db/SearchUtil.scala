@@ -179,7 +179,10 @@ object SearchUtil {
     targetType match {
       //Simple types, only one field to match (so we don't need to evaluate elemMatch options)
       case FHIR_DATA_TYPES.STRING | FHIR_DATA_TYPES.ID |  FHIR_DATA_TYPES.URI | FHIR_DATA_TYPES.CODE =>
-        Filters.eq(FHIRUtil.normalizeElementPath(path), token)
+        modifier match {
+          case FHIR_PREFIXES_MODIFIERS.NOT => Filters.ne(FHIRUtil.normalizeElementPath(path), token)
+          case _ => Filters.eq(FHIRUtil.normalizeElementPath(path), token)
+        }
       case FHIR_DATA_TYPES.BOOLEAN =>
         PrefixModifierHandler.tokenBooleanModifierHandler(FHIRUtil.normalizeElementPath(path), token, modifier)
       //A special modifier case
@@ -234,10 +237,13 @@ object SearchUtil {
                 .tokenModifierHandler(FHIRUtil.mergeElementPath(queryPath, systemField), FHIRUtil.mergeElementPath(queryPath,codeField), system, code, modifier)
 
             //If an array exist, use elemMatch otherwise return the query
-            elemMatchPath match {
+            var finalQuery = elemMatchPath match {
               case None => mainQuery
               case Some(emp) => elemMatch(emp, mainQuery)
             }
+            if(modifier == FHIR_PREFIXES_MODIFIERS.NOT)
+              finalQuery = not(finalQuery)
+           finalQuery
         }
     }
   }
@@ -385,6 +391,33 @@ object SearchUtil {
             Filters.eq(
               FHIRUtil.mergeElementPath(queryPath, s"${FHIR_COMMON_FIELDS.REFERENCE}.${FHIR_EXTRA_FIELDS.REFERENCE_RESOURCE_TYPE}"),
               rid)
+          case FHIR_PREFIXES_MODIFIERS.NOT =>
+            //negate all the queries
+            var baseQueries:Seq[Bson] = Seq(
+              Filters.ne(FHIRUtil.mergeElementPath(queryPath, s"${FHIR_COMMON_FIELDS.REFERENCE}.${FHIR_EXTRA_FIELDS.REFERENCE_RESOURCE_ID}"), rid),
+              Filters.ne(FHIRUtil.mergeElementPath(queryPath, s"${FHIR_COMMON_FIELDS.REFERENCE}.${FHIR_EXTRA_FIELDS.REFERENCE_RESOURCE_TYPE}"), rtype),
+              url match {
+                // If no url is given or it is our root url
+                case None | Some(OnfhirConfig.fhirRootUrl) =>
+                  Filters.and(
+                    Filters.exists(FHIRUtil.mergeElementPath(queryPath, s"${FHIR_COMMON_FIELDS.REFERENCE}.${FHIR_EXTRA_FIELDS.REFERENCE_URL}"), true),
+                    Filters.ne(FHIRUtil.mergeElementPath(queryPath, s"${FHIR_COMMON_FIELDS.REFERENCE}.${FHIR_EXTRA_FIELDS.REFERENCE_URL}"), OnfhirConfig.fhirRootUrl)
+                  )
+                //If given any other, it should match
+                case Some(other) =>
+                  Filters.or(
+                    Filters.exists(FHIRUtil.mergeElementPath(queryPath, s"${FHIR_COMMON_FIELDS.REFERENCE}.${FHIR_EXTRA_FIELDS.REFERENCE_URL}"), false),
+                    Filters.ne(FHIRUtil.mergeElementPath(queryPath, s"${FHIR_COMMON_FIELDS.REFERENCE}.${FHIR_EXTRA_FIELDS.REFERENCE_URL}"), other)
+                  )
+              }
+            )
+
+            //Add version specific query if given
+            baseQueries =
+              baseQueries ++
+                version.map(v => Filters.ne(FHIRUtil.mergeElementPath(queryPath, s"${FHIR_COMMON_FIELDS.REFERENCE}.${FHIR_EXTRA_FIELDS.REFERENCE_RESOURCE_VERSION}"), v)).toSeq
+
+            or(baseQueries:_*)
           //No modifier
           case _ =>
             //Base queries for reference on resource type and id

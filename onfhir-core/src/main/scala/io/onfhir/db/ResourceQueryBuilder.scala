@@ -46,8 +46,8 @@ object ResourceQueryBuilder {
                 PrefixModifierHandler.missingHandler(paths.map(FHIRUtil.normalizeElementPath), parameter.valuePrefixList.head._2)
 
               //Not modifier is common
-              case FHIR_PREFIXES_MODIFIERS.NOT =>
-                not(constructQueryForSimple(pv._2, parameter.paramType, "", searchParameterConf))
+              //case FHIR_PREFIXES_MODIFIERS.NOT =>
+              //  not(constructQueryForSimple(pv._2, parameter.paramType, "", searchParameterConf))
 
               //Otherwise
               case _ =>

@@ -1,11 +1,12 @@
 package io.onfhir.event
 
+import java.time.temporal.Temporal
 import java.time.{Instant, ZonedDateTime}
 
 import io.onfhir.api.Resource
-import io.onfhir.api.model.InternalEntity
+import io.onfhir.api.model.{FhirTriggerEvents, InternalEntity}
 import io.onfhir.util.DateTimeUtil
-import org.json4s.{JNothing, JObject, JString, JValue}
+import org.json4s.{JArray, JNothing, JObject, JString, JValue}
 
 object FhirEventUtil {
 
@@ -20,7 +21,7 @@ object FhirEventUtil {
 /**
  * An event in OnFhir ecosystem
  */
-trait IFhirEvent extends InternalEntity {
+abstract class IFhirEvent extends InternalEntity {
   /**
    * Get the JSON content of the event
    * @return
@@ -43,6 +44,19 @@ case class FhirNamedEvent(eventName:String, event:IFhirEvent) extends IFhirEvent
   override def getContent: JValue = event.getContent
 
   override def getContextParams: Map[String, JValue] = event.getContextParams + ("eventName" -> JString(eventName))
+}
+
+/**
+ * A complex temporal pattern detected among the FHIR data streams
+ * @param matchedPatterns Matched patterns; pattern name -> events matched
+ */
+case class FhirPatternEvent(matchedPatterns:Map[String, Seq[IFhirEvent]]) extends IFhirEvent {
+  // Return the content as JSON e.g. patternName -> [{event1}, {event2}]
+  override def getContent: JValue =
+    JObject(
+      matchedPatterns
+        .map(mp => mp._1 -> JArray(mp._2.map(_.getContent).toList)).toList
+    )
 }
 
 /**
@@ -73,6 +87,18 @@ abstract class FhirDataEvent extends IFhirEvent {
    */
   def getEvent:String
 
+  /**
+   * Check if this data event is related with the given event
+   * @param event
+   * @return
+   */
+  def isRelated(event:String):Boolean = {
+    event match {
+      case FhirTriggerEvents.RESOURCE_CHANGED => Set(FhirTriggerEvents.RESOURCE_CREATED, FhirTriggerEvents.RESOURCE_UPDATED, FhirTriggerEvents.RESOURCE_DELETED).contains(getEvent)
+      case FhirTriggerEvents.RESOURCE_NEW_CONTENT =>  Set(FhirTriggerEvents.RESOURCE_CREATED, FhirTriggerEvents.RESOURCE_UPDATED).contains(getEvent)
+      case e => getEvent == e
+    }
+  }
 }
 
 /**

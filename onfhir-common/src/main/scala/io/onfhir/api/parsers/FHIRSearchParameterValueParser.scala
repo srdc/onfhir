@@ -131,7 +131,8 @@ object FHIRSearchParameterValueParser {
 
     /* Prefix Definition for Quantity*/
     override def prefixes:Parser[String] = """""".r
-    override def suffixes:Parser[String] = """^((?!(:(text|in|not-in|exact|contains))).)*$|$""".r ^^ {_.toString}
+    //override def suffixes:Parser[String] = """^((?!(:(not|text|in|not-in|exact|contains))).)*$|$""".r ^^ {_.toString}
+    override def suffixes:Parser[String] = """(:(type|identifier|below|above|missing|not))|$""".r ^^ {_.toString}
 
     def parseReferenceName:Parser[(String, String)] = parseName
     def parseReferenceValue:Parser[(String, String)] = parseValue
