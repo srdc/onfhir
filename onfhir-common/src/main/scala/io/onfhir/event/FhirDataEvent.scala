@@ -21,7 +21,7 @@ object FhirEventUtil {
 /**
  * An event in OnFhir ecosystem
  */
-abstract class IFhirEvent extends InternalEntity {
+trait IFhirEvent extends InternalEntity {
   /**
    * Get the JSON content of the event
    * @return
