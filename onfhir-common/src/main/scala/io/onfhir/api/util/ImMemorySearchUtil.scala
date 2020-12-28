@@ -516,8 +516,9 @@ object ImMemorySearchUtil {
                     }
                 )
             //No modifier
-            case _ =>
-              valuesAndTargetType._1
+            case "" | FHIR_PREFIXES_MODIFIERS.NOT =>
+              var result =
+                valuesAndTargetType._1
                 .flatMap(v =>  FHIRUtil.applySearchParameterPath(FHIR_COMMON_FIELDS.REFERENCE, v)) //Get the reference element
                 .exists(
                   _.extractOpt[String]
@@ -529,6 +530,11 @@ object ImMemorySearchUtil {
                         version == actualVersion
                     }
                 )
+
+              if(modifier == FHIR_PREFIXES_MODIFIERS.NOT)
+                !result
+              else
+                result
           }
 
         //Handle canonical target type
