@@ -23,7 +23,7 @@ trait FHIRHistoryEndpoint {
   def historyRoute(fhirRequest: FHIRRequest, authContext:(AuthContext, Option[AuthzContext])):Route = {
     (get | head) {
         //GET [base]/[type]/[id]/_history {?[parameters]&_format=[mime-type]}
-        pathPrefix(OnfhirConfig.baseUri / Segment / Segment / FHIR_HTTP_OPTIONS.HISTORY) { (_type, _id) =>
+        pathPrefix(Segment / Segment / FHIR_HTTP_OPTIONS.HISTORY) { (_type, _id) =>
           pathEndOrSingleSlash {
             //Create the FHIR request object
             fhirRequest.initializeHistoryRequest(FHIR_INTERACTIONS.HISTORY_INSTANCE, Some(_type), Some(_id))
@@ -41,7 +41,7 @@ trait FHIRHistoryEndpoint {
           }
         } ~
           //GET [base]/[type]/_history {?[parameters]&_format=[mime-type]}
-          pathPrefix(OnfhirConfig.baseUri / Segment / FHIR_HTTP_OPTIONS.HISTORY) { _type =>
+          pathPrefix(Segment / FHIR_HTTP_OPTIONS.HISTORY) { _type =>
             pathEndOrSingleSlash {
               //Create the FHIR request object
               fhirRequest.initializeHistoryRequest(FHIR_INTERACTIONS.HISTORY_TYPE, Some(_type), None)
@@ -60,7 +60,7 @@ trait FHIRHistoryEndpoint {
             }
           } ~
           //GET [base]/_history {?[parameters]&_format=[mime-type]}
-          pathPrefix(OnfhirConfig.baseUri / FHIR_HTTP_OPTIONS.HISTORY) {
+          pathPrefix(FHIR_HTTP_OPTIONS.HISTORY) {
             pathEndOrSingleSlash {
               //Create the FHIR request object
               fhirRequest.initializeHistoryRequest(FHIR_INTERACTIONS.HISTORY_SYSTEM, None, None)

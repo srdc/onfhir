@@ -23,7 +23,7 @@ trait FHIRDeleteEndpoint {
   def deleteRoute(fhirRequest: FHIRRequest, authContext:(AuthContext, Option[AuthzContext])):Route  = {
     delete {
       //DELETE [base]/[type]/[id]
-      pathPrefix(OnfhirConfig.baseUri / Segment / Segment) { (_type, _id) =>
+      pathPrefix(Segment / Segment) { (_type, _id) =>
         pathEndOrSingleSlash {
           //Create the FHIR request object
           fhirRequest.initializeDeleteRequest(_type, Some(_id))
@@ -37,7 +37,7 @@ trait FHIRDeleteEndpoint {
         }
       } ~
         // Conditional Delete [base]/[type]?{search-params}
-        pathPrefix(OnfhirConfig.baseUri / Segment) { _type =>
+        pathPrefix(Segment) { _type =>
           pathEndOrSingleSlash {
             optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { prefer =>
               //Create the FHIR request object

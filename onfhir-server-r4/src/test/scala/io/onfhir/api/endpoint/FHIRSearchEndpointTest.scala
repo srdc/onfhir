@@ -78,17 +78,17 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
 
     "reject when a parameter which server doesn't support passed with strict header" in {
       Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "?_error=error")
-        .withHeaders(RawHeader("Prefer", "handling=strict")) ~> routes ~> check {
+        .withHeaders(RawHeader("Prefer", "handling=strict")) ~> fhirRoute ~> check {
         status === NotImplemented
       }
       //Default is also strict
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "?_error=error") ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "?_error=error") ~> fhirRoute ~> check {
         status === NotImplemented
       }
     }
 
     "ignore erroneous search parameter and execute search when the lenient header is used" in {
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "?_error=error").withHeaders(RawHeader("Prefer", "handling=lenient")) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "?_error=error").withHeaders(RawHeader("Prefer", "handling=lenient")) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, None)
@@ -96,22 +96,22 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
     }
 
     "honor search on resource id (_id)" in {
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + obsGlucoseId, HttpEntity(obsGlucose)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + obsGlucoseId, HttpEntity(obsGlucose)) ~> fhirRoute ~> check {
         status === Created
       }
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + obsHemoglobinId, HttpEntity(obsHemoglobin)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + obsHemoglobinId, HttpEntity(obsHemoglobin)) ~> fhirRoute ~> check {
         status === Created
       }
       var query = "?_id=" + obsGlucoseId
       //Return the resource if exist
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
       }
       //Not return the resource if not exist
       query = "?_id=" + obsGlucoseId + "212"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, Some(query))
@@ -121,7 +121,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
     "honor search on resource last update time (_lastUpdated)" in {
       var query = "?_lastUpdated=ge" + LocalDate.now().minusDays(1).toString
       //Return the resource if exist
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 2, Some(query))
@@ -129,17 +129,17 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       query = "?_lastUpdated=ge" + DateTimeUtil.serializeInstant(Instant.now())
       //Update one of the resource again, It should not be returned now
       Thread.sleep(1000)
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + obsHemoglobinId, HttpEntity(obsHemoglobin)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + obsHemoglobinId, HttpEntity(obsHemoglobin)) ~> fhirRoute ~> check {
         status === OK
       }
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]] must contain(obsHemoglobinId)
       }
       query = "?_lastUpdated=ge" + DateTimeUtil.serializeInstant(Instant.now())
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, Some(query))
@@ -149,7 +149,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
     "handle token type search parameters on CodeableConcept" in {
       //Query on CodeableConcept with whole system and code
       var query = "?code=http://loinc.org|15074-8"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
@@ -157,14 +157,14 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //No result
       query = "?code=http://loinc.org|000"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, Some(query))
       }
       //Query on CodeableConcept with only code
       query = "?code=15074-8"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
@@ -172,7 +172,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Query on CodeableConcept with only code and no system
       query = "?code=|hmgb"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
@@ -180,21 +180,21 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Nor result because there is a system
       query = "?code=|15074-8"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, Some(query))
       }
       //Query on CodeableConcept with system
       query = "?code=http://loinc.org|"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 2, Some(query))
       }
       //No result
       query = "?code=http://loinc2.org|"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, Some(query))
@@ -204,7 +204,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
     "handle token type search parameter on Identifier" in {
       //Query on identifier with system and value
       var query = "?identifier=http://www.bmc.nl/zorgportal/identifiers/observations|6323"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
@@ -212,14 +212,14 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //No result
       query = "?identifier=http://www.bmc.nl|6323"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, Some(query))
       }
       //Query on identifier with value only
       query = "?identifier=6323"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
@@ -227,14 +227,14 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //No result
       query = "?identifier=6324"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, Some(query))
       }
       //Query on identifier with value only and no system
       query = "?identifier=|81912"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
@@ -242,20 +242,20 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //No result
       query = "?identifier=|6323"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, Some(query))
       }
       query = "?identifier=http://www.bmc.nl/zorgportal/identifiers/observations|"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
       }
       //No result
       query = "?identifier=http://www.bmc.nl|"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, Some(query))
@@ -264,14 +264,14 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
 
     "handle token type search parameter on code" in {
       var query = "?status=final"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 2, Some(query))
       }
       //No result
       query = "?status=preliminary"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, Some(query))
@@ -279,18 +279,18 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
     }
 
     "handle token type search parameter on boolean" in {
-      Put("/" + OnfhirConfig.baseUri + "/" + "Patient" + "/" + patientId, HttpEntity(patient)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + "Patient" + "/" + patientId, HttpEntity(patient)) ~> fhirRoute ~> check {
         status === Created
       }
       var query = "?active=true"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "Patient", 1, Some(query))
       }
       //No result
       query = "?active=false"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "Patient", 0, Some(query))
@@ -299,14 +299,14 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
 
     "handle token type search parameter on ContactPoint" in {
       var query = "?phone=%2803%29%205555%206473"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "Patient", 1, Some(query))
       }
       //Negative result
       query = "?phone=%2893%29%205555%206473"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "Patient", 0, Some(query))
@@ -316,7 +316,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
     "handle modifier 'text' for token type search parameters" in {
       //Test text modifier with complete text
       var query = "?code:text=Glucose%20%20in%20blood"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
@@ -324,21 +324,21 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Test text modifier with partial text (start and case insensitivity)
       query = "?code:text=gluco"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]] must contain(obsGlucoseId)
       }
       query = "?code:text=hypertension"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, Some(query))
       }
       //TODO Ignorance of accents or other diacritical marks, punctuation and non-significant whitespace is not supported yet
       /*query = "?code:text=glucose%20in"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType+ query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType+ query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "Patient", 1, Some(query))
@@ -349,14 +349,14 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
     "handle modifier 'not' for token type" in {
       //Test modifier not
       var query = "?code:not=http://loinc.org|15074-8"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]] must contain(obsHemoglobinId)
       }
       query = "?code:not=15074-8"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
@@ -364,7 +364,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Also return resources that does not have the element
       query = "?identifier:not=6324"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "Patient", 2, Some(query))
@@ -374,15 +374,15 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
     "handle modifier 'in' and 'not-in' for token type" in {
       //Test modifier in
       var query = "?code:in=http://hl7.org/fhir/ValueSet/example-extensional"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, Some(query))
       }
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + obsCholesterolId, HttpEntity(obsCholesterol)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + obsCholesterolId, HttpEntity(obsCholesterol)) ~> fhirRoute ~> check {
         status === Created
       }
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
@@ -390,7 +390,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //not-in
       query = "?code:not-in=http://hl7.org/fhir/ValueSet/example-extensional"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 2, Some(query))
@@ -398,14 +398,14 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
 
       query = "?code:in=http://unknown.com"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === NotImplemented
       }
     }
 
     "handle modifier 'of-type' for token type" in {
       var query = "?identifier:of-type=http://terminology.hl7.org/CodeSystem/v2-0203|MR|12345"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "Patient", 1, Some(query))
@@ -413,42 +413,42 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //negative result as value does not match
       query = "?identifier:of-type=http://terminology.hl7.org/CodeSystem/v2-0203|MR|12344"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "Patient", 0, Some(query))
       }
       //negative result as code is not matching
       query = "?identifier:of-type=http://terminology.hl7.org/CodeSystem/v2-0203|MZ|12345"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "Patient", 0, Some(query))
       }
       //negative result as system is not matching
       query = "?identifier:of-type=http://terminology.hl7.org/CodeSystem/dsfsdf|MR|12345"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "Patient", 0, Some(query))
       }
       //Only used for Identifiers
       query = "?code:of-type=http://terminology.hl7.org/CodeSystem/dsfsdf|MR|12345"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === BadRequest
       }
     }
 
     "handle date type search parameters" in {
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + obsBpId, HttpEntity(obsBP)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + obsBpId, HttpEntity(obsBP)) ~> fhirRoute ~> check {
         status === Created
       }
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + obsBp2Id, HttpEntity(obsBP2)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + obsBp2Id, HttpEntity(obsBP2)) ~> fhirRoute ~> check {
         status === Created
       }
       //Date precision query on Period, instant and dateTime and Timing
       var query = "?date=2013-04-02"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 2, Some(query))
@@ -456,7 +456,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
 
       }
       query = "?date=2014-04-02"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, Some(query))
@@ -464,14 +464,14 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Month precision query on Period, instant and dateTime
       query = "?date=2013-04"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 5, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsGlucoseId, obsCholesterolId, obsHemoglobinId, obsBpId, obsBp2Id)
       }
       query = "?date=2013-03"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, Some(query))
@@ -479,21 +479,21 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Year precision query on Period, instant and dateTime
       query = "?date=2013"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 5, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsGlucoseId, obsCholesterolId, obsHemoglobinId, obsBpId, obsBp2Id)
       }
       query = "?date=2014"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, Some(query))
       }
       //Instant precision
       query = "?date=2013-04-02T09:30:05.123+01:00"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
@@ -501,7 +501,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //DateTime precision
       query = "?date=2013-04-02T09:30:05+01:00"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 2, Some(query))
@@ -509,22 +509,22 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //DateTime precision with different time zone
       query = "?date=2013-04-02T08:30:05Z"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 2, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsGlucoseId, obsCholesterolId)
       }
       //Create other patients
-      Put("/" + OnfhirConfig.baseUri + "/" + "Patient" + "/" + patient2Id, HttpEntity(patient2)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + "Patient" + "/" + patient2Id, HttpEntity(patient2)) ~> fhirRoute ~> check {
         status === Created
       }
-      Post("/" + OnfhirConfig.baseUri + "/" + "Patient", HttpEntity(patient3)) ~> routes ~> check {
+      Post("/" + OnfhirConfig.baseUri + "/" + "Patient", HttpEntity(patient3)) ~> fhirRoute ~> check {
         status === Created
       }
 
       query = "?birthdate=1974-12-25"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
@@ -532,7 +532,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
 
       query = "?birthdate=1974-12"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 2, Some(query))
@@ -540,7 +540,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]] must not(contain(patient2Id))
       }
       query = "?birthdate=1974"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 3, Some(query))
@@ -552,27 +552,27 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
     "handle prefixes for date type search parameters" in {
       //Testing ne
       var query = "?birthdate=ne1974"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, Some(query))
       }
       query = "?birthdate=ne1974-12"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]] must contain(patient2Id)
       }
       query = "?date=ne2013-04-02T08:30:05Z"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 3, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsHemoglobinId, obsBpId, obsBp2Id)
       }
       query = "?date=ne2013-04-02"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 3, Some(query))
@@ -580,7 +580,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Testing gt
       query = "?date=gt2013-04-02T08:30:11Z"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 3, Some(query))
@@ -589,7 +589,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       // the range above the search value intersects (i.e. overlaps) with the range of the target value
       // 8:30:00 - 8:30:59.999 above this is 8:31 which does not intersect with 8:30:10
       query = "?date=gt2013-04-02T08:30Z"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 3, Some(query))
@@ -597,14 +597,14 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Testing lt - the range below the search value intersects (i.e. overlaps) with the range of the target value
       query = "?date=lt2013-04-02T08:30:11Z"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 3, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsGlucoseId, obsCholesterolId, obsBpId)
       }
       query = "?date=lt2013-04-02T08:30Z"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
@@ -613,14 +613,14 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
 
       //Testing ge and le
       query = "?date=ge2013-04-02T08:30Z"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 4, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsGlucoseId, obsCholesterolId, obsBpId, obsHemoglobinId)
       }
       query = "?date=le2013-04-02T08:30Z"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 3, Some(query))
@@ -628,31 +628,31 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Testing sa
       query = "?date=sa2013-04-03"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsHemoglobinId)
       }
       query = "?date=sa2013-04-01"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 5, Some(query))
       }
       //Testing eb
       query = "?date=eb2013-04-03"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 2, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsGlucoseId, obsCholesterolId)
       }
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + obsHemoglobin2Id, HttpEntity(obsHemoglobin2)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + obsHemoglobin2Id, HttpEntity(obsHemoglobin2)) ~> fhirRoute ~> check {
         status === Created
       }
       query = "?date=eb2013-04-07"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 5, Some(query))
@@ -660,7 +660,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Testing ap (%10 approximation)
       query = "?date=ap2013-04-02T08:29Z"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 2, Some(query))
@@ -670,7 +670,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
 
     "handle quantity type search parameters" in {
       var query = "?value-quantity=72"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
@@ -678,7 +678,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Test minus
       query = "?value-quantity=-6.3"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
@@ -687,20 +687,20 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
 
       //Query with unit and system
       query = "?value-quantity=72|http://unitsofmeasure.org|mg/dL"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsCholesterolId)
       }
       query = "?value-quantity=72|http://unitsofmeasure.org|mg"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, Some(query))
       }
       query = "?value-quantity=72||mg/dL"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
@@ -708,28 +708,28 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Test precision
       query = "?value-quantity=7.5||g/dl"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsHemoglobin2Id)
       }
       query = "?value-quantity=7.49||g/dl"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsHemoglobin2Id)
       }
       query = "?value-quantity=749.4e-2||g/dl"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsHemoglobin2Id)
       }
       query = "?value-quantity=7.493||g/dl"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, Some(query))
@@ -739,28 +739,28 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
     "handle prefixes for quantity type search parameters" in {
       //Test ge, gt
       var query = "?value-quantity=ge7.49||g/dl"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsHemoglobin2Id)
       }
       query = "?value-quantity=gt7.496||g/dl"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, Some(query))
       }
       //Test le, lt
       query = "?value-quantity=le7.4945||g/dl"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 2, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsHemoglobinId, obsHemoglobin2Id)
       }
       query = "?value-quantity=lt7.494||g/dl"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
@@ -768,59 +768,59 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Test ap
       query = "?value-quantity=ap8||g/dl"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 2, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsHemoglobinId, obsHemoglobin2Id)
       }
       //Test query on SampledData
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + obsEkgId, HttpEntity(obsEkg)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + obsEkgId, HttpEntity(obsEkg)) ~> fhirRoute ~> check {
         status === Created
       }
       query = "?value-quantity=gt-1000||U"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsEkgId)
       }
       query = "?value-quantity=sa-4000||U"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsEkgId)
       }
       query = "?value-quantity=eb2500||U"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, Some(query))
       }
       //Test query on Range
-      Put("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + "/" + actdefId, HttpEntity(actdef)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + "/" + actdefId, HttpEntity(actdef)) ~> fhirRoute ~> check {
         status === Created
       }
-      Put("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + "/" + actdef2Id, HttpEntity(actdef2)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + "/" + actdef2Id, HttpEntity(actdef2)) ~> fhirRoute ~> check {
         status === Created
       }
       query = "?context-quantity=gt10||a"
-      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "ActivityDefinition", 2, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(actdefId, actdef2Id)
       }
       query = "?context-quantity=sa10||a"
-      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "ActivityDefinition", 2, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(actdefId, actdef2Id)
       }
       query = "?context-quantity=eb19||a"
-      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "ActivityDefinition", 1, Some(query))
@@ -830,7 +830,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
 
     "handle reference type search parameters" in {
       var query = "?patient=Patient/example"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 4, Some(query))
@@ -838,7 +838,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Test with type given as type modifier
       query = "?patient:Patient=example"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 4, Some(query))
@@ -846,7 +846,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Test direct id query
       query = "?encounter=e001"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
@@ -854,11 +854,11 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Not allowed as the search parameter has two target types Patient,Group
       query = "?patient=example"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === BadRequest
       }
       query = "?encounter=Encounter/e001"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
@@ -866,20 +866,20 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Test query with full url
       query = s"?encounter=${OnfhirConfig.fhirRootUrl}/Encounter/e001"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsEkgId)
       }
       query = s"?encounter=http://example.com/Encounter/e001"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 0, Some(query))
       }
       query = s"?organization=http://example.com/fhir/Organization/1"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "Patient", 1, Some(query))
@@ -887,7 +887,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Test query on versioned references
       query = s"?encounter=Encounter/e002"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 1, Some(query))
@@ -895,7 +895,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Test query on canonical without version
       query = s"?depends-on=Library/zika-virus-intervention-logic"
-      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "ActivityDefinition", 2, Some(query))
@@ -903,7 +903,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Test query on canonical with version
       query = s"?depends-on=Library/zika-virus-intervention-logic|1.2"
-      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "ActivityDefinition", 1, Some(query))
@@ -911,7 +911,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Test query on canonical with version with below
       query = s"?depends-on:below=Library/zika-virus-intervention-logic|1"
-      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "ActivityDefinition", 2, Some(query))
@@ -920,7 +920,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
 
       //Test 'identifier' modifier
       query = s"?based-on:identifier=https://acme.org/identifiers|1234"
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, resourceType, 2, Some(query))
@@ -929,21 +929,21 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
     }
 
     "handle number type search parameters on decimals" in {
-      Put("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + "/" + geneticRiskId, HttpEntity(geneticRisk)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + "/" + geneticRiskId, HttpEntity(geneticRisk)) ~> fhirRoute ~> check {
         status === Created
       }
-      Put("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + "/" + cardiacRiskId, HttpEntity(cardiacRisk)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + "/" + cardiacRiskId, HttpEntity(cardiacRisk)) ~> fhirRoute ~> check {
         status === Created
       }
-      Put("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + "/" + breastCancerRiskId, HttpEntity(breastCancerRisk)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + "/" + breastCancerRiskId, HttpEntity(breastCancerRisk)) ~> fhirRoute ~> check {
         status === Created
       }
-      Put("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + "/" + breastCancerRisk2Id, HttpEntity(breastCancerRisk2)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + "/" + breastCancerRisk2Id, HttpEntity(breastCancerRisk2)) ~> fhirRoute ~> check {
         status === Created
       }
 
      var query = s"?probability=2e-2"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 1, Some(query))
@@ -951,7 +951,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Test precision query e.g. 99.5 - 100.5
       query = s"?probability=100"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 1, Some(query))
@@ -959,14 +959,14 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Test precision query e.g. 99.95 - 100.05
       query = s"?probability=100.0"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 0, Some(query))
       }
       //Test precision query e.g. 95 - 105
       query = s"?probability=1e2"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 2, Some(query))
@@ -974,21 +974,21 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Test precision query e.g. 95 - 105
       query = s"?probability=0.1e3"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 2, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(breastCancerRiskId, breastCancerRisk2Id)
       }
       query = s"?probability=99"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 0, Some(query))
       }
       //Test precision query e.g. [0.001325, 0.001335)
       query = s"?probability=0.00133"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 1, Some(query))
@@ -996,7 +996,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Test precision query e.g. [0.001325, 0.001335)
       query = s"?probability=1.33e-3"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 1, Some(query))
@@ -1004,7 +1004,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Test precision query e.g. [0.001325, 0.001335)
       query = s"?probability=0.001330"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 0, Some(query))
@@ -1014,59 +1014,59 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
     "handle prefixes for number type search parameters" in {
       //Test ne with precision not in 99.5 - 100.5
       var query = s"?probability=ne100"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 3, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(breastCancerRisk2Id, cardiacRiskId, geneticRiskId)
       }
       query = s"?probability=ne100.0"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 4, Some(query))
       }
       //Test comparisons
       query = s"?probability=ge99.7"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 1, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(breastCancerRiskId)
       }
       query = s"?probability=gt99.7"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 0, Some(query))
       }
       query = s"?probability=sa99.7"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 0, Some(query))
       }
       query = s"?probability=lt99.69"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 3, Some(query))
       }
       query = s"?probability=eb99.69"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 3, Some(query))
       }
       query = s"?probability=le99.7"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 4, Some(query))
       }
       //Test ap
       query = s"?probability=ap90"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 1, Some(query))
@@ -1075,79 +1075,79 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
     }
 
     "handle number type search parameters on Range and integer" in{
-      Put("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + "/" + cardiacRisk2Id, HttpEntity(cardiacRisk2)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + "/" + cardiacRisk2Id, HttpEntity(cardiacRisk2)) ~> fhirRoute ~> check {
         status === Created
       }
-      Put("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + "/" + cardiacRisk3Id, HttpEntity(cardiacRisk3)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + "/" + cardiacRisk3Id, HttpEntity(cardiacRisk3)) ~> fhirRoute ~> check {
         status === Created
       }
-      Put("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + "/" + cardiacRisk4Id, HttpEntity(cardiacRisk4)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + "/" + cardiacRisk4Id, HttpEntity(cardiacRisk4)) ~> fhirRoute ~> check {
         status === Created
       }
 
       //Test on Range range should contain the target range
       var query =  s"?probability=26"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 1, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(cardiacRisk2Id)
       }
       query =  s"?probability=ne26"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 6, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet should not(contain(cardiacRisk2Id))
       }
       query =  s"?probability=gt25"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 5, Some(query))
       }
       query =  s"?probability=gt45"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 3, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet should not(contain(cardiacRisk4Id))
       }
       query =  s"?probability=le20"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 4, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet should contain(cardiacRisk3Id, cardiacRisk4Id)
       }
       query =  s"?probability=sa25.5"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 2, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(breastCancerRiskId, breastCancerRisk2Id)
       }
       query =  s"?probability=sa25"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 3, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(cardiacRisk2Id, breastCancerRiskId, breastCancerRisk2Id)
       }
       query =  s"?probability=eb45"
-      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "RiskAssessment" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 3, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(cardiacRiskId, cardiacRisk2Id, geneticRiskId)
       }
 
-      Put("/" + OnfhirConfig.baseUri + "/" + "MolecularSequence" + "/" + molseqId, HttpEntity(molseq)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + "MolecularSequence" + "/" + molseqId, HttpEntity(molseq)) ~> fhirRoute ~> check {
         status === Created
       }
       //Test exact match
       query =  s"?variant-start=22125503"
-      Get("/" + OnfhirConfig.baseUri + "/" + "MolecularSequence" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "MolecularSequence" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 1, Some(query))
@@ -1155,14 +1155,14 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //If number is given directly, it should not match
       query =  s"?variant-start=22125500"
-      Get("/" + OnfhirConfig.baseUri + "/" + "MolecularSequence" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "MolecularSequence" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 0, Some(query))
       }
       //If number is given in exponential, it should  match 22125450 - 22125550
       query =  s"?variant-start=221255e2"
-      Get("/" + OnfhirConfig.baseUri + "/" + "MolecularSequence" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "MolecularSequence" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "RiskAssessment", 1, Some(query))
@@ -1173,7 +1173,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
     "handle uri type search parameters" in {
       //Test exact url match
       var query = "?url=http://example.org/ActivityDefinition/administer-zika-virus-exposure-assessment"
-      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "ActivityDefinition", 1, Some(query))
@@ -1181,34 +1181,34 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //Should be case sensitive
       query = "?url=http://example.org/ActivityDefinition/Administer-zika-virus-exposure-assessment"
-      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "ActivityDefinition", 0, Some(query))
       }
       //Test below
       query = "?url:below=http://example.org"
-      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "ActivityDefinition", 2, Some(query))
       }
       query = "?url:below=http://example.org/Activity"
-      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "ActivityDefinition", 0, Some(query))
       }
       //Test above
       query = "?url:above=http://example.org/ActivityDefinition/administer-zika-virus-exposure-assessment/_history/5"
-      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "ActivityDefinition", 2, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(actdefId, actdef2Id)
       }
       query = "?url=http://example.org/ActivityDefinition/administer-zika-virus-exposure-assessment|1"
-      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "ActivityDefinition", 1, Some(query))
@@ -1219,7 +1219,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
     "handle composite type search parameters" in {
       //No common path between parameters
       var query = "?code-value-quantity=http://loinc.org|718-7$gt7.3|http://unitsofmeasure.org|g/dL"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Observation" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Observation" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "Observation", 1, Some(query))
@@ -1227,7 +1227,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //multiple paths
       query = "?combo-code-value-quantity=http://loinc.org|8480-6$gt108"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Observation" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Observation" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "Observation", 1, Some(query))
@@ -1235,7 +1235,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
       //common paths
       query = "?component-code-value-quantity=http://loinc.org|8480-6$gt108|http://unitsofmeasure.org|mm[Hg]"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Observation" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Observation" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "Observation", 1, Some(query))
@@ -1246,14 +1246,14 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
     "handle a parameter which has restrictions on path" in {
       //depends-on also checks type of relation
       var query = s"?depends-on=https://www.cdc.gov/zika/hc-providers/pregnant-woman.html"
-      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "ActivityDefinition", 0, Some(query))
       }
 
       query = s"?depends-on=Questionnaire/zika-virus-exposure-assessment"
-      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "ActivityDefinition" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "ActivityDefinition", 2, Some(query))
@@ -1264,14 +1264,14 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
   "FHIR Compartment Search endpoint" should {
     "handle compartment search" in {
       val query = "?code=85354-9"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Patient/example/Observation" +  query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient/example/Observation" +  query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "Observation", 2, Some(query))
         (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]].toSet === Set(obsBpId, obsBp2Id)
       }
 
-      Get("/" + OnfhirConfig.baseUri + "/" + "Patient/example22/Observation" +  query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient/example22/Observation" +  query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "Observation", 0, Some(query))
@@ -1280,7 +1280,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
 
     "handle compartment search for all resources in the compartment" in {
       val query = "?_sort=-_lastUpdated"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Patient/example/*" +  query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient/example/*" +  query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "", 7, Some(query))
@@ -1293,7 +1293,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
 
     "handle compartment search for some resource types in the compartment" in {
       val query = "?_type=RiskAssessment,MolecularSequence&_sort=-_lastUpdated"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Patient/example/*" +  query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient/example/*" +  query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "", 3, Some(query))
@@ -1307,7 +1307,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
   "FHIR System Level Search endpoint" should {
     "handle search on multiple resource types without any query" in {
       val query = "?_type=Observation,RiskAssessment"
-      Get("/" + OnfhirConfig.baseUri + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "", 14, Some(query))
@@ -1318,7 +1318,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
     }
     "handle search on multiple resource types with a common parameter" in {
       val query="?_type=Observation,RiskAssessment&date=ge2015"
-      Get("/" + OnfhirConfig.baseUri + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "", 4, Some(query))
@@ -1329,7 +1329,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
     }
     "handle search on multiple resource types with sorting on a common parameter" in {
       var query="?_type=Observation,RiskAssessment&date=ge2015&_sort=-_lastUpdated"
-      Get("/" + OnfhirConfig.baseUri + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "", 4, Some(query))
@@ -1342,7 +1342,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
 
       query="?_type=Observation,RiskAssessment&date=ge2015&_sort=date"
-      Get("/" + OnfhirConfig.baseUri + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "", 4, Some(query))
@@ -1357,7 +1357,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
 
     "handle search on multiple resource types with paging" in {
       val query = "?_type=Observation,RiskAssessment&date=ge2015&_sort=-_lastUpdated&_count=2&_page=2"
-      Get("/" + OnfhirConfig.baseUri + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "", 4, Some(query))
@@ -1369,13 +1369,13 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
 
     "reject search on multiple types if query parameter is not common" in {
       val query="?_type=Observation,RiskAssessment&device=Device/123"
-      Get("/" + OnfhirConfig.baseUri + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + query) ~> fhirRoute ~> check {
         status === BadRequest
       }
     }
     "reject search on multiple types if sorting parameter is not common" in {
       val query="?_type=Observation,RiskAssessment&_sort=device"
-      Get("/" + OnfhirConfig.baseUri + query) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + query) ~> fhirRoute ~> check {
         status === BadRequest
       }
     }

@@ -46,13 +46,14 @@ trait FHIREndpoint
   /**
     * Comnination of all routes for a FHIR server applying the common directives
     */
-  val routes =
+  val fhirRoute =
     // logging requests and responses; enabled when necessary for debugging
     //logRequestResponse("REST API", Logging.InfoLevel) {
+    pathPrefix(OnfhirConfig.baseUri) {
       corsHandler {
         parameters(FHIR_HTTP_OPTIONS.FORMAT.?) { format: Option[String] =>
-          optionalHeaderValueByType[Accept](()) { acceptHeader:Option[Accept] =>
-            optionalHeaderValueByType[`Content-Type`](()) { contentType:Option[`Content-Type`] =>
+          optionalHeaderValueByType[Accept](()) { acceptHeader: Option[Accept] =>
+            optionalHeaderValueByType[`Content-Type`](()) { contentType: Option[`Content-Type`] =>
               optionalHeaderValueByType[`X-Forwarded-For`](()) { xForwardedFor =>
                 optionalHeaderValueByType[`X-Forwarded-Host`](()) { xForwardedHost =>
                   optionalHeaderValueByName("X-Intermediary") { xIntermediary =>
@@ -72,7 +73,7 @@ trait FHIREndpoint
                                   xForwardedFor = xForwardedFor,
                                   xForwardedHost = xForwardedHost,
                                   xIntermediary = xIntermediary
-                                ).setId(xRequestId)//Set the identifier of the request
+                                ).setId(xRequestId) //Set the identifier of the request
                               //Resolve Token/Auth/Authz context
                               AuthManager.authenticate() { authContext =>
                                 //Audit the interaction when result is available
@@ -106,5 +107,5 @@ trait FHIREndpoint
           }
         }
       }
-    //}
+    }
 }

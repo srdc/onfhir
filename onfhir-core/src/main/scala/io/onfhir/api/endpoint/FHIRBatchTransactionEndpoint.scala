@@ -19,9 +19,8 @@ trait FHIRBatchTransactionEndpoint {
   // to entity(as[String]) the problem dissapears.
   // Route definition of a bundle request
   def batchRoute(fhirRequest: FHIRRequest, authContext:(AuthContext, Option[AuthzContext])):Route = {
-    post {
-      pathPrefix(OnfhirConfig.baseUri) {
-        pathEndOrSingleSlash {
+    pathEndOrSingleSlash {
+      post {
           optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { prefer =>
             entity(as[Resource]) { resource =>
               //Set the bundle into the request
@@ -35,7 +34,6 @@ trait FHIRBatchTransactionEndpoint {
               }
             }
           }
-        }
       }
     }
   }

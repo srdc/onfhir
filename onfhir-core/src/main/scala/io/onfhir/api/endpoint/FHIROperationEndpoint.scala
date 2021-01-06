@@ -34,7 +34,7 @@ trait FHIROperationEndpoint {
             */
           case "system" =>
             operationMethod {
-              pathPrefix(OnfhirConfig.baseUri / ("$" + operationConf.name)) {
+              pathPrefix(("$" + operationConf.name)) {
                 finalizingRoute(fhirRequest, authContext, operationConf)
               }
             }
@@ -45,7 +45,7 @@ trait FHIROperationEndpoint {
             //If the operation is defined for all Resources
             if (operationConf.resources.contains("Resource")) {
               operationMethod {
-                pathPrefix(OnfhirConfig.baseUri / Segment / ("$" + operationConf.name)) { resourceType =>
+                pathPrefix(Segment / ("$" + operationConf.name)) { resourceType =>
                   finalizingRoute(fhirRequest, authContext, operationConf, Some(resourceType))
                 }
               }
@@ -53,7 +53,7 @@ trait FHIROperationEndpoint {
               //Otherwise construct for only those Resources
               val typeRoutes: Seq[Route] = operationConf.resources.toSeq.map(rs => {
                 operationMethod {
-                  pathPrefix(OnfhirConfig.baseUri / rs / ("$" + operationConf.name)) {
+                  pathPrefix(rs / ("$" + operationConf.name)) {
                     finalizingRoute(fhirRequest, authContext, operationConf, Some(rs))
                   }
                 }
@@ -68,7 +68,7 @@ trait FHIROperationEndpoint {
           case "instance" =>
             if (operationConf.resources.isEmpty || operationConf.resources.contains("Resource")) {
               operationMethod {
-                pathPrefix(OnfhirConfig.baseUri / Segment / Segment / ("$" + operationConf.name)) { (resourceType, resourceId) =>
+                pathPrefix(Segment / Segment / ("$" + operationConf.name)) { (resourceType, resourceId) =>
                   finalizingRoute(fhirRequest, authContext, operationConf, Some(resourceType), Some(resourceId))
                 }
               }
@@ -76,7 +76,7 @@ trait FHIROperationEndpoint {
               //Otherwise construct for only those Resources
               val instanceRoutes: Seq[Route] = operationConf.resources.toSeq.map(rs => {
                 operationMethod {
-                  pathPrefix(OnfhirConfig.baseUri / rs / Segment / ("$" + operationConf.name)) { resourceId =>
+                  pathPrefix(rs / Segment / ("$" + operationConf.name)) { resourceId =>
                     finalizingRoute(fhirRequest, authContext, operationConf, Some(rs), Some(resourceId))
                   }
                 }

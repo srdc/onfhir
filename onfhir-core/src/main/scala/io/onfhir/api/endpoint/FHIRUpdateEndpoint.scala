@@ -25,7 +25,7 @@ trait FHIRUpdateEndpoint {
       optionalHeaderValueByType[`If-Match`](()) { ifMatch => //for version-aware updates
         optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { prefer =>
           //PUT [base]/[type]/[id] {?_format=[mime-type]}  <-----
-          pathPrefix(OnfhirConfig.baseUri / Segment / Segment) { (_type, _id) =>
+          pathPrefix(Segment / Segment) { (_type, _id) =>
             pathEndOrSingleSlash {
               //Initialize the FHIR request object
               fhirRequest.initializeUpdateRequest(_type, Some(_id), ifMatch, prefer)
@@ -43,7 +43,7 @@ trait FHIRUpdateEndpoint {
             }
           } ~
             //PUT [base]/[type]/?[search parameters] <-----
-            pathPrefix(OnfhirConfig.baseUri / Segment) { _type =>
+            pathPrefix(Segment) { _type =>
               pathEndOrSingleSlash {
                 //Initialize the FHIR request object
                 fhirRequest.initializeUpdateRequest(_type, None, ifMatch, prefer)

@@ -8,18 +8,17 @@ import akka.http.scaladsl.Http
 import org.slf4j.{Logger, LoggerFactory}
 import akka.http.scaladsl.server.{HttpApp, Route}
 import akka.http.scaladsl.settings.ServerSettings
-import io.onfhir.api.endpoint.{FHIREndpoint, OnFhirEndpoint}
+import io.onfhir.api.endpoint.{FHIREndpoint, OnFhirEndpoint, OnFhirInternalEndpoint}
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.audit.AuditManager
 import io.onfhir.authz._
 import io.onfhir.config.{FhirConfigurationManager, IFhirVersionConfigurator, OnfhirConfig, SSLConfig}
-
 import io.onfhir.db.{DBConflictManager, EmbeddedMongo}
 import io.onfhir.event.{FhirDataEvent, FhirEventBus, FhirEventSubscription}
 import io.onfhir.event.kafka.KafkaEventProducer
 
 import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
-import scala.util.{Try}
+import scala.util.Try
 import scala.io.StdIn
 
 /**
@@ -31,7 +30,8 @@ import scala.io.StdIn
   * @param customAuthorizer      Module to handle authorization with a custom protocol
   * @param customTokenResolver   Module to handle access token resolution with a custom way
   * @param customAuditHandler    Module to handle auditing with a custom strategy
-  * @param externalRoutes        External non-fhir routes for the server
+  * @param externalRoutes        External non-fhir routes for the server that uses marshalling and authentication
+  * @param cdsHooksRoute         CDS-Hooks compliant CDS route (using onfhir-cds)
   */
 class Onfhir(
               val fhirConfigurator:IFhirVersionConfigurator,
@@ -39,7 +39,8 @@ class Onfhir(
               val customAuthorizer:Option[IAuthorizer],
               val customTokenResolver:Option[ITokenResolver],
               val customAuditHandler:Option[ICustomAuditHandler],
-              val externalRoutes:Seq[(FHIRRequest, (AuthContext, Option[AuthzContext])) => Route]
+              val externalRoutes:Seq[(FHIRRequest, (AuthContext, Option[AuthzContext])) => Route],
+              val cdsHooksRoute:Option[Route]
             ) extends SSLConfig {
 
   private val logger:Logger = LoggerFactory.getLogger(this.getClass)
@@ -47,7 +48,7 @@ class Onfhir(
   /**
     * Akka HTTP rest server for FHIR endpoint
     */
-  private object FhirServer extends HttpApp with FHIREndpoint {
+  private object FhirServer extends HttpApp with OnFhirEndpoint {
     /**
       * Callback for server shutdown
       * @param attempt
@@ -85,11 +86,11 @@ class Onfhir(
     override def postHttpBinding(binding: Http.ServerBinding) = {
       logger.info("OnFhir FHIR server started on host {} and port {}", OnfhirConfig.serverHost, OnfhirConfig.serverPort)
       if(OnfhirConfig.internalApiActive)
-        OnFhirServer.startServer(OnfhirConfig.serverHost, OnfhirConfig.internalApiPort, ServerSettings(OnfhirConfig.config).withVerboseErrorMessages(true), Onfhir.actorSystem)
+        OnFhirInternalServer.startServer(OnfhirConfig.serverHost, OnfhirConfig.internalApiPort, ServerSettings(OnfhirConfig.config).withVerboseErrorMessages(true), Onfhir.actorSystem)
     }
   }
 
-  private object OnFhirServer extends HttpApp with OnFhirEndpoint {
+  private object OnFhirInternalServer extends HttpApp with OnFhirInternalEndpoint {
     override def postServerShutdown(attempt: Try[Done], system: ActorSystem): Unit = {
       logger.info("Closing OnFhir internal server...")
     }
@@ -184,6 +185,7 @@ object Onfhir {
     * @param customTokenResolver  Module to handle access token resolution with a custom way, if not supplied decided based on configurations
     * @param customAuditHandler   Module to handle auditing with a custom strategy, if not supplied decided based on configurations
     * @param externalRoutes       External non-fhir routes for the server
+    * @param cdsRoute             CDS-Hooks compliant CDS route (using onfhir-cds and repository together)
     * @return
     */
   def apply(
@@ -192,10 +194,12 @@ object Onfhir {
              customAuthorizer:Option[IAuthorizer] = None,
              customTokenResolver:Option[ITokenResolver] = None,
              customAuditHandler:Option[ICustomAuditHandler] = None,
-             externalRoutes:Seq[(FHIRRequest, (AuthContext, Option[AuthzContext])) => Route] = Nil): Onfhir = {
+             externalRoutes:Seq[(FHIRRequest, (AuthContext, Option[AuthzContext])) => Route] = Nil,
+             cdsRoute:Option[Route] = None
+           ): Onfhir = {
 
     if(_instance == null)
-      _instance = new Onfhir(fhirConfigurator, fhirOperationImplms, customAuthorizer, customTokenResolver,customAuditHandler,externalRoutes)
+      _instance = new Onfhir(fhirConfigurator, fhirOperationImplms, customAuthorizer, customTokenResolver,customAuditHandler,externalRoutes, cdsRoute)
     _instance
   }
 }

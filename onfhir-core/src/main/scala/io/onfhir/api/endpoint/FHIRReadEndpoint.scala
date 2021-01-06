@@ -24,7 +24,7 @@ trait FHIRReadEndpoint {
   def readRoute(fhirRequest: FHIRRequest, authContext:(AuthContext, Option[AuthzContext])): Route = {
     (get | head) {
       //GET [base]/metadata -> Return the conformance statement of the server configuration
-      pathPrefix(OnfhirConfig.baseUri / "metadata") {
+      pathPrefix("metadata") {
         pathEndOrSingleSlash {
           complete {
             fhirRequest.initializeCapabilitiesRequest()
@@ -33,7 +33,7 @@ trait FHIRReadEndpoint {
         }
       } ~
         //GET [base]/[type]/[id] {?_format=[mime-type]}
-        pathPrefix(OnfhirConfig.baseUri / Segment / Segment) { (_type, _id) =>
+        pathPrefix(Segment / Segment) { (_type, _id) =>
           pathEndOrSingleSlash {
             parameters(FHIR_SEARCH_RESULT_PARAMETERS.SUMMARY.?) { summary =>
               parameters(FHIR_SEARCH_RESULT_PARAMETERS.ELEMENTS.?) { elements =>
@@ -55,7 +55,7 @@ trait FHIRReadEndpoint {
           }
         } ~
         //GET [base]/[type]/[id]/_history/[vid] {?_format=[mime-type]}
-        pathPrefix(OnfhirConfig.baseUri / Segment / Segment / FHIR_HTTP_OPTIONS.HISTORY / Segment) { (_type, _id, _vid) =>
+        pathPrefix(Segment / Segment / FHIR_HTTP_OPTIONS.HISTORY / Segment) { (_type, _id, _vid) =>
           pathEndOrSingleSlash {
             //Create the FHIR request object
             fhirRequest.initializeVReadRequest(_type, _id, _vid)

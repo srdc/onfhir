@@ -25,7 +25,7 @@ trait FHIRSearchEndpoint {
   def searchRoute(fhirRequest: FHIRRequest, authContext:(AuthContext, Option[AuthzContext])):Route = {
     (get | head) {
         //GET [base]/[type]{?[parameters]{&_format=[mime-type]}}
-        pathPrefix(OnfhirConfig.baseUri / Segment) { _type =>
+        pathPrefix(Segment) { _type =>
           pathEndOrSingleSlash {
             optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { preferHeader =>
               //Initialize the FHIR request object
@@ -46,7 +46,7 @@ trait FHIRSearchEndpoint {
         }
       } ~ post {
         //POST  [base]/[type]/_search{?[parameters]{&_format=[mime-type]}}
-        pathPrefix(OnfhirConfig.baseUri / Segment / FHIR_HTTP_OPTIONS.SEARCH) { _type =>
+        pathPrefix(Segment / FHIR_HTTP_OPTIONS.SEARCH) { _type =>
           pathEndOrSingleSlash {
             optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { preferHeader =>
               //Create the FHIR request object
@@ -68,7 +68,6 @@ trait FHIRSearchEndpoint {
         }
       } ~ (get | head) {
         //GET [base]{?_type=[resource-types][parameters]{&_format=[mime-type]}}
-        pathPrefix(OnfhirConfig.baseUri) {
           pathEndOrSingleSlash {
             optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { preferHeader =>
               //Initialize the FHIR request object
@@ -86,7 +85,6 @@ trait FHIRSearchEndpoint {
               }
             }
           }
-        }
       }
   }
 }

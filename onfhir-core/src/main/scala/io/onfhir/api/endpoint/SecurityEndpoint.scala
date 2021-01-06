@@ -12,7 +12,7 @@ trait SecurityEndpoint {
   val securityRoute:Route =
     get {
       //Returning our JWKSet
-      path(OnfhirConfig.baseUri / "jwks") {
+      path("jwks") {
         //TODO
         //respondWithMediaType(AuthzConfig.JWKSET_MEDIA_TYPE) {
         complete {

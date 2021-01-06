@@ -34,7 +34,7 @@ class FHIRBatchTransactionEndpointTest extends OnFhirTest with FHIREndpoint {
 
   "FHIR Batch Endpoint" should {
     "handle batch request" in {
-      Post("/" + OnfhirConfig.baseUri , HttpEntity(batch1)) ~> routes ~> check {
+      Post("/" + OnfhirConfig.baseUri , HttpEntity(batch1)) ~> fhirRoute ~> check {
         eventually(status === OK)
         val response = responseAs[Resource]
         FhirPathEvaluator().evaluateString("type", response).head mustEqual "batch-response"
@@ -82,7 +82,7 @@ class FHIRBatchTransactionEndpointTest extends OnFhirTest with FHIREndpoint {
             ").exists()", response)
       }
 
-      Post("/" + OnfhirConfig.baseUri , HttpEntity(batch2)) ~> routes ~> check {
+      Post("/" + OnfhirConfig.baseUri , HttpEntity(batch2)) ~> fhirRoute ~> check {
         eventually(status === OK)
         val response = responseAs[Resource]
         //Check patient deletion
@@ -155,7 +155,7 @@ class FHIRBatchTransactionEndpointTest extends OnFhirTest with FHIREndpoint {
 
   "FHIR Transaction Endpoint" should {
     "handle transaction with inter dependencies" in {
-      Post("/" + OnfhirConfig.baseUri , HttpEntity(transaction1)) ~> routes ~> check {
+      Post("/" + OnfhirConfig.baseUri , HttpEntity(transaction1)) ~> fhirRoute ~> check {
         eventually(status === OK)
         val response = responseAs[Resource]
         FhirPathEvaluator().evaluateString("type", response).head mustEqual "transaction-response"
@@ -184,7 +184,7 @@ class FHIRBatchTransactionEndpointTest extends OnFhirTest with FHIREndpoint {
     }
 
     "reject transaction if there is error" in {
-      Post("/" + OnfhirConfig.baseUri , HttpEntity(transaction2)) ~> routes ~> check {
+      Post("/" + OnfhirConfig.baseUri , HttpEntity(transaction2)) ~> fhirRoute ~> check {
         eventually(status === BadRequest)
       }
     }

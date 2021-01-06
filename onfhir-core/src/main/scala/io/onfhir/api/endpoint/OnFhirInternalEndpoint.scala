@@ -13,7 +13,7 @@ import io.onfhir.util.InternalJsonMarshallers._
 trait OnFhirInternalEndpoint {
 
 
-  val internalRoute:Route = {
+  val routes:Route = {
       authenticateOAuth2[Done]("onfhir-internal", AuthManager.authenticateForInternalApi) {_ =>
         pathPrefix("onfhir" / "internal") {
           //Subscription handling

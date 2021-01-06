@@ -39,22 +39,22 @@ class FHIRHistoryEndpointTest extends OnFhirTest with FHIREndpoint {
       var patientResource = ""
       var lastModifiedCreate = ""
       var lastModifiedUpdate = ""
-      Post("/" + OnfhirConfig.baseUri + "/" + resourceType, HttpEntity(patient)) ~> routes ~> check {
+      Post("/" + OnfhirConfig.baseUri + "/" + resourceType, HttpEntity(patient)) ~> fhirRoute ~> check {
         status === Created
         val resource = responseAs[Resource]
         rid = FHIRUtil.extractIdFromResource(resource)
         lastModifiedCreate = FHIRUtil.extractValueOptionByPath[String](resource, "meta.lastUpdated").get
         patientResource = resource.toJson
       }
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + rid, HttpEntity(patientResource)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + rid, HttpEntity(patientResource)) ~> fhirRoute ~> check {
         status === OK
         val resource = responseAs[Resource]
         lastModifiedUpdate = FHIRUtil.extractValueOptionByPath[String](resource, "meta.lastUpdated").get
       }
-      Delete("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + rid) ~> routes ~> check {
+      Delete("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + rid) ~> fhirRoute ~> check {
         status === NoContent
       }
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + rid + "/_history") ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + rid + "/_history") ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         (bundle \ "type").extractOpt[String] must beSome("history")
@@ -82,7 +82,7 @@ class FHIRHistoryEndpointTest extends OnFhirTest with FHIREndpoint {
         (deleteEntry \ "response" \ "etag").extractOpt[String] must beSome("W/\"3\"")
       }
       //Handle paging
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + rid + "/_history?_page=2&_count=2") ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + rid + "/_history?_page=2&_count=2") ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         (bundle \ "type").extractOpt[String] must beSome("history")
@@ -96,10 +96,10 @@ class FHIRHistoryEndpointTest extends OnFhirTest with FHIREndpoint {
 
 
     "return history of resource type" in {
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient)) ~> fhirRoute ~> check {
         status === Created
       }
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/_history") ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/_history") ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         (bundle \ "type").extractOpt[String] must beSome("history")
@@ -112,8 +112,8 @@ class FHIRHistoryEndpointTest extends OnFhirTest with FHIREndpoint {
     "honor since parameter" in {
       Thread.sleep(1000)
       val now=DateTime.now.toIsoDateTimeString
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient)) ~> routes ~> check(())
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId + "/_history?_since="+now) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient)) ~> fhirRoute ~> check(())
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId + "/_history?_since="+now) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         (bundle \ "type").extractOpt[String] must beSome("history")
@@ -127,10 +127,10 @@ class FHIRHistoryEndpointTest extends OnFhirTest with FHIREndpoint {
       Thread.sleep(2000)
       val now=DateTime.now.toIsoDateTimeString
       Thread.sleep(1000)
-      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient)) ~> routes ~> check {
+      Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId, HttpEntity(patient)) ~> fhirRoute ~> check {
         status == OK
       }
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType  + "/_history?_at="+now) ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType  + "/_history?_at="+now) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
         (bundle \ "type").extractOpt[String] must beSome("history")
@@ -146,24 +146,24 @@ class FHIRHistoryEndpointTest extends OnFhirTest with FHIREndpoint {
 
 
     "return 404 Not Found when there is no resource with given id" in{
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + "11111" + "/_history") ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + "11111" + "/_history") ~> fhirRoute ~> check {
         status === NotFound
       }
     }
 
     "return 404 Not Found when there is no resource with given type" in{
-      Get("/" + OnfhirConfig.baseUri + "/" + "Pat" + "/_history") ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + "Pat" + "/_history") ~> fhirRoute ~> check {
         status === NotFound
         responseAs[String] must contain("is not supported")
       }
     }
 
     "reject history service for invalid id" in {
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId + "+" +"/_history") ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId + "+" +"/_history") ~> fhirRoute ~> check {
         status === BadRequest
         responseAs[String] must contain("Invalid identifier")
       }
-      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId + "/_history/3+") ~> routes ~> check {
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId + "/_history/3+") ~> fhirRoute ~> check {
         status === BadRequest
         responseAs[String] must contain("Invalid identifier")
       }

@@ -8,7 +8,7 @@ import io.onfhir.api.DEFAULT_IMPLEMENTED_FHIR_OPERATIONS
   * Created by tuncay on 11/14/2016.
   * Central OnFhir configurations defining FHIR server capabilities
   */
-object FhirConfigurationManager {
+object FhirConfigurationManager extends IFhirConfigurationManager {
   protected val logger:Logger = LoggerFactory.getLogger(this.getClass)
   //FHIR capabilities configurations
   var fhirConfig:FhirConfig = _
@@ -54,4 +54,32 @@ object FhirConfigurationManager {
     logger.info("** Max Memory:   " + runtime.maxMemory / mb + " MB")
     logger.info("** Available Processors:" + runtime.availableProcessors())
   }
+
+  /**
+   * Return FHIR Configuration for onFhir
+   *
+   * @return
+   */
+  override def getFhirConfig: FhirConfig = fhirConfig
+
+  /**
+   * Return FHIR content validator for onFhir
+   *
+   * @return
+   */
+  override def getFhirValidator: IFhirResourceValidator = fhirValidator
+
+  /**
+   * Return terminologu validator for onFhir
+   *
+   * @return
+   */
+override def getFhirTerminologyValidator: IFhirTerminologyValidator = fhirTerminologyValidator
+
+  /**
+   * Return audit creator for onFhir
+   *
+   * @return
+   */
+  override def getFhirAuditCreator: IFhirAuditCreator = fhirAuditCreator
 }
