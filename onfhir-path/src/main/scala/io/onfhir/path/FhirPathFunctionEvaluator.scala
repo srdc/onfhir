@@ -662,4 +662,14 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     Seq(FhirPathBoolean(codingMatch))
   }
 
+  /**
+   * If the current expression returns Nil, then evaluates the else expression, otherwise return current
+   */
+  def orElse(elseExpr:ExpressionContext):Seq[FhirPathResult] = {
+    if(current.isEmpty)
+      new FhirPathExpressionEvaluator(context, current).visit(elseExpr)
+    else
+      current
+  }
+
 }
