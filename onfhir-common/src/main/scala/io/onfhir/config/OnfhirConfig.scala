@@ -1,13 +1,11 @@
 package io.onfhir.config
 
 import java.time.Duration
-
 import com.typesafe.config.ConfigFactory
-
-import io.onfhir.api.{FHIR_VALIDATION_ALTERNATIVES, DEFAULT_FHIR_VERSION, FHIR_HTTP_OPTIONS}
+import io.onfhir.api.{DEFAULT_FHIR_VERSION, FHIR_HTTP_OPTIONS, FHIR_VALIDATION_ALTERNATIVES}
 
 import scala.collection.JavaConverters._
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 /**
   * OnFhir application configurations
@@ -70,7 +68,14 @@ object OnfhirConfig {
   lazy val mongoEmbedded: Boolean = Try(config.getBoolean("mongodb.embedded")).getOrElse(false)
 
   /** Database host name/address and ports. */
-  lazy val mongodbHosts:Seq[String] = Try(config.getStringList("mongodb.host")).map(l => l.asScala).getOrElse(Seq("localhost"))
+  lazy val mongodbHosts:Seq[String] = {
+    Try(config.getStringList("mongodb.host").asScala) match {
+      case Success(list) => list
+      case Failure(_) => {
+        Try(config.getString("mongodb.host").split(',').toSeq).getOrElse(Seq("localhost"))
+      }
+    }
+  }
 
   /** Database host port number. */
   //lazy val mongodbPort = Try(config.getInt("mongodb.port")).getOrElse(27017)
