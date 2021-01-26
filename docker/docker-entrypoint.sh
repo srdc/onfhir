@@ -41,10 +41,16 @@ if [ ! -z "$LOGBACK_CONF_FILE" ]; then
     JAVA_CMD+="-Dlogback.configurationFile=$LOGBACK_CONF_FILE "
 fi
 
-# Configure MongoDB Host name
-#if [ ! -z "$DB_HOST" ]; then
-#    JAVA_CMD+="-Dmongodb.host=['$DB_HOST'] "
-#fi
+# Configure MongoDB
+if [ ! -z "$DB_EMBEDDED" ]; then
+    JAVA_CMD+="-Dmongodb.embedded=$DB_EMBEDDED "
+fi
+if [ ! -z "$DB_HOST" ]; then
+    JAVA_CMD+="-Dmongodb.host=$DB_HOST "
+fi
+if [ ! -z "$DB_NAME" ]; then
+    JAVA_CMD+="-Dmongodb.db=$DB_NAME "
+fi
 
 # Configure Auditing
 if [ ! -z "$AUDIT_SERVER_ROOT_URL" ]; then
