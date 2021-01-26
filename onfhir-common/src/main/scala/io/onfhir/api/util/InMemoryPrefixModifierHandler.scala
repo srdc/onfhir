@@ -81,7 +81,7 @@ object InMemoryPrefixModifierHandler {
   def tokenModifierHandler(systemPath:String, codePath:String, system:Option[String], code:Option[String], modifier:String, element:JObject):Boolean = {
     modifier match {
       //Without modifier
-      case "" =>
+      case "" | FHIR_PREFIXES_MODIFIERS.NOT =>
         handleTokenCodeSystemQuery(systemPath, codePath, system, code, element)
       case FHIR_PREFIXES_MODIFIERS.IN | FHIR_PREFIXES_MODIFIERS.NOT_IN | FHIR_PREFIXES_MODIFIERS.BELOW | FHIR_PREFIXES_MODIFIERS.ABOVE =>
         throw new UnsupportedParameterException("Modifier is not supported by onFhir.io system yet!")
