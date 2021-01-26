@@ -1278,32 +1278,33 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
     }
 
-    "handle compartment search for all resources in the compartment" in {
-      val query = "?_sort=-_lastUpdated"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Patient/example/*" +  query) ~> fhirRoute ~> check {
-        status === OK
-        val bundle = responseAs[Resource]
-        checkSearchResult(bundle, "", 7, Some(query))
-        val rtypes = (bundle \ "entry" \ "resource" \ "resourceType").extract[Seq[String]]
-        rtypes.count(_ == "Observation") mustEqual 4
-        rtypes.count(_ == "RiskAssessment") mustEqual 2
-        rtypes.count(_ == "MolecularSequence") mustEqual 1
-      }
-    }
+//    "handle compartment search for all resources in the compartment" in {
+//      val query = "?_sort=-_lastUpdated"
+//      Get("/" + OnfhirConfig.baseUri + "/" + "Patient/example/*" +  query) ~> fhirRoute ~> check {
+//        status === OK
+//        val bundle = responseAs[Resource]
+//        checkSearchResult(bundle, "", 7, Some(query))
+//        val rtypes = (bundle \ "entry" \ "resource" \ "resourceType").extract[Seq[String]]
+//        rtypes.count(_ == "Observation") mustEqual 4
+//        rtypes.count(_ == "RiskAssessment") mustEqual 2
+//        rtypes.count(_ == "MolecularSequence") mustEqual 1
+//      }
+//    }
+//
+//    "handle compartment search for some resource types in the compartment" in {
+//      val query = "?_type=RiskAssessment,MolecularSequence&_sort=-_lastUpdated"
+//      Get("/" + OnfhirConfig.baseUri + "/" + "Patient/example/*" +  query) ~> fhirRoute ~> check {
+//        status === OK
+//        val bundle = responseAs[Resource]
+//        checkSearchResult(bundle, "", 3, Some(query))
+//        val rtypes = (bundle \ "entry" \ "resource" \ "resourceType").extract[Seq[String]]
+//        rtypes.count(_ == "RiskAssessment") mustEqual 2
+//        rtypes.count(_ == "MolecularSequence") mustEqual 1
+//      }
+//    }
 
-    "handle compartment search for some resource types in the compartment" in {
-      val query = "?_type=RiskAssessment,MolecularSequence&_sort=-_lastUpdated"
-      Get("/" + OnfhirConfig.baseUri + "/" + "Patient/example/*" +  query) ~> fhirRoute ~> check {
-        status === OK
-        val bundle = responseAs[Resource]
-        checkSearchResult(bundle, "", 3, Some(query))
-        val rtypes = (bundle \ "entry" \ "resource" \ "resourceType").extract[Seq[String]]
-        rtypes.count(_ == "RiskAssessment") mustEqual 2
-        rtypes.count(_ == "MolecularSequence") mustEqual 1
-      }
-    }
   }
-
+  /*
   "FHIR System Level Search endpoint" should {
     "handle search on multiple resource types without any query" in {
       val query = "?_type=Observation,RiskAssessment"
@@ -1380,4 +1381,6 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       }
     }
   }
+  */
+
 }
