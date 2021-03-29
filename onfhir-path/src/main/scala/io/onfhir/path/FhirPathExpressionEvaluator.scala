@@ -18,7 +18,7 @@ import io.onfhir.config.FhirConfigurationManager.fhirConfig
   */
 class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPathResult], targetType:Option[String] = None) extends FhirPathExprBaseVisitor[Seq[FhirPathResult]] {
 
-  final val typeFunctions = Set("as", "is", "ofType")
+  final val typeFunctions = Set("as", "ofType")
 
   /**
     * Handle all literals
@@ -421,7 +421,8 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
                 throw new FhirPathException(s"Invalid function call $fname, it expects a single parameter which is the FHIR type identifier...")
               val fhirType = params.head.getText
               //Evaluate the parent with the target type
-              new FhirPathExpressionEvaluator(context, current, Some(fhirType)).visit(ctx.expression())
+              new FhirPathExpressionEvaluator(context, current, Some(fhirType))
+                .visit(ctx.expression())
             } else {
             //Otherwise evaluate left expression with the current context
               visit(ctx.expression())
