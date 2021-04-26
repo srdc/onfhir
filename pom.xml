@@ -120,7 +120,7 @@
         <specs2.version>4.3.1</specs2.version>
         <nimbus-jose.version>7.9</nimbus-jose.version>
         <nimbus-oidc.version>5.22</nimbus-oidc.version>
-        <apache-commons-io.version>2.6</apache-commons-io.version>
+        <apache-commons-io.version>2.7</apache-commons-io.version>
 
         <!-- release plugin versions -->
         <version.plugin.source>3.2.1</version.plugin.source>
