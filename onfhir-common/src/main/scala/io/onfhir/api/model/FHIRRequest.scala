@@ -264,7 +264,12 @@ case class FHIRRequest(
   def initializeTransactionOrBatchRequest(resource: Resource): Unit = {
     this.interaction = (resource \ FHIR_COMMON_FIELDS.TYPE).extractOpt[String].getOrElse("unknown")
     this.resource = Some(resource)
-    this.childRequests = BundleRequestParser.parseBundleRequest(resource)
+    this.childRequests =
+      if(interaction == FHIR_BUNDLE_TYPES.DOCUMENT) {
+        this.interaction = FHIR_INTERACTIONS.TRANSACTION
+        BundleRequestParser.parseBundleDocumentRequest(resource)
+      } else
+        BundleRequestParser.parseBundleRequest(resource)
   }
 
   /**

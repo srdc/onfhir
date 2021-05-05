@@ -758,7 +758,10 @@ object FHIRUtil {
     */
   def extractReferences(refPath:String, resource: Resource):Seq[String] = {
       applySearchParameterPath(refPath, resource)
-        .flatMap(refObj => (refObj \ FHIR_COMMON_FIELDS.REFERENCE).extractOpt[String])
+        .flatMap {
+          case o: JObject => (o \ FHIR_COMMON_FIELDS.REFERENCE).extractOpt[String].toSeq
+          case a:JArray => (a \ FHIR_COMMON_FIELDS.REFERENCE).extract[Seq[String]]
+        }
   }
 
   /**
@@ -829,7 +832,8 @@ object FHIRUtil {
           val url = parts.dropRight(2).mkString("/")
           (Some(url), rtype, rid, None)
         }
-      case _ => throw new Exception("Invalid reference value")
+      case _ =>
+        throw new Exception("Invalid reference value")
     }
   }
 

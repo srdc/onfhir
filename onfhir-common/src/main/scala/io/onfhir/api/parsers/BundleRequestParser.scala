@@ -6,6 +6,7 @@ import io.onfhir.exception._
 import io.onfhir.api.{FHIR_BUNDLE_FIELDS, FHIR_HTTP_OPTIONS, FHIR_INTERACTIONS, FHIR_METHOD_NAMES}
 import io.onfhir.api.Resource
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue}
+import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.OnfhirConfig
 import io.onfhir.util.DateTimeUtil
 import io.onfhir.util.JsonFormatter._
@@ -52,6 +53,49 @@ object BundleRequestParser {
             Some(s"Invalid bundle request, please check the sytax of FHIR Bundle"),
             Nil
           )))
+    }
+  }
+
+  /**
+   * Parse a document bundle to create child requests for creating document entries as a transaction
+   * @param bundle    Document bundle content
+   * @param prefer
+   * @return
+   */
+  def parseBundleDocumentRequest(bundle:Resource, prefer:Option[String] = None):Seq[FHIRRequest] = {
+    //Get the entries
+    (bundle \ FHIR_BUNDLE_FIELDS.ENTRY)
+      .extractOpt[JArray]
+      .map(_.arr.toSeq).getOrElse(Nil)
+      .map(entry => {
+        parseBundleDocumentRequestEntry(entry.asInstanceOf[JObject])
+      })
+  }
+
+  /**
+   * Parse an entry in a document bundle
+   * @param entry
+   * @return
+   */
+  private def parseBundleDocumentRequestEntry(entry:Resource):FHIRRequest = {
+    //Parse the entry
+    val fullUrl = (entry \  FHIR_BUNDLE_FIELDS.FULL_URL).extractOpt[String].filter(_.startsWith("urn:uuid:"))
+    //Get the resource
+    val resource = (entry \ FHIR_BUNDLE_FIELDS.RESOURCE).extractOpt[JObject].getOrElse(JObject())
+    //Get resource type and resource id
+    val resourceType = FHIRUtil.extractValue[String](resource, "resourceType")
+    val resourceIdOpt = FHIRUtil.extractValueOption[String](resource, "id")
+    resourceIdOpt match {
+      case None =>
+        val fhirRequest = FHIRRequest(interaction = FHIR_INTERACTIONS.CREATE, requestUri = "/" + resourceType)
+        fhirRequest.initializeCreateRequest(resourceType, None, None)
+        fhirRequest.resource = Some(resource)
+        fhirRequest.setId(fullUrl)
+      case Some(rid) =>
+        val fhirRequest = FHIRRequest(interaction = FHIR_INTERACTIONS.UPDATE, requestUri = "/" + resourceType + "/" + rid)
+        fhirRequest.initializeUpdateRequest(resourceType, Some(rid), None, None)
+        fhirRequest.resource = Some(resource)
+        fhirRequest.setId(fullUrl)
     }
   }
 

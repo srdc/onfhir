@@ -11,6 +11,8 @@ import io.onfhir.api.util.FHIRUtil
 import io.onfhir.db.ResourceManager
 import io.onfhir.exception.InternalServerException
 import io.onfhir.util.JsonFormatter.formats
+import org.json4s.JString
+import org.json4s.JsonAST.{JField, JObject, JValue}
 import org.json4s.JsonDSL._
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -43,15 +45,18 @@ class DocumentOperationHandler extends FHIROperationHandlerService {
       SEARCHPARAM_INCLUDE -> List("*")
     ))
 
+    new FHIRSearchService()
+      .searchAndReturnBundle(RESOURCE_COMPOSITION, searchParams) map { bundle =>
 
+      // Convert bundle type to document and eliminate other elements
+      var result:JValue = JObject(
+        (bundle.obj
+          .filter(f => f._1 == FHIR_COMMON_FIELDS.ID || f._1 == FHIR_COMMON_FIELDS.RESOURCE_TYPE || f._1 == FHIR_COMMON_FIELDS.ENTRY) :+
+            (FHIR_COMMON_FIELDS.TYPE -> JString(FHIR_BUNDLE_TYPES.DOCUMENT)))
+          .sortWith((s1, _) => s1._1 == FHIR_COMMON_FIELDS.RESOURCE_TYPE || s1._1 == FHIR_COMMON_FIELDS.ID || s1._1 == FHIR_COMMON_FIELDS.TYPE)
+      )
 
-    new FHIRSearchService().searchAndReturnBundle(RESOURCE_COMPOSITION, searchParams) map { bundle =>
-
-      var result = bundle
-      //Type of the bundle
-      result = result ~ (FHIR_COMMON_FIELDS.TYPE -> FHIR_BUNDLE_TYPES.DOCUMENT)
-
-      result.transformField {
+      result = result.transformField {
         case (FHIR_COMMON_FIELDS.ENTRY, entry) =>
           (FHIR_COMMON_FIELDS.ENTRY ->
             entry.removeField {
@@ -61,26 +66,22 @@ class DocumentOperationHandler extends FHIROperationHandlerService {
           )
       }
 
-      /*
-      bundle("type") = FHIR_BUNDLE_TYPES.DOCUMENT
-      bundle("entry").asInstanceOf[Seq[Resource]] map { entry =>
-        entry.remove("search")
-      }*/
-
       val persist = operationRequest.extractParamValue[String]("persist")
 
       val generatedBundle = persist match {
         case Some("true") =>
-          ResourceManager.createResource((bundle \ "resourceType").extract[String], result, generatedId = (result \ "id").extractOpt[String])
+          ResourceManager.createResource((bundle \ "resourceType").extract[String], result.asInstanceOf[JObject], generatedId = (result \ "id").extractOpt[String])
           bundle
         case _ => {
           val newVersion = 1L //new version is always 1 for create operation
           val lastModified = Instant.now()
-          val newBundle = FHIRUtil.populateResourceWithMeta(result, (result \ "id").extractOpt[String], newVersion, lastModified)
-          //newBundle.put(FHIR_EXTRA_FIELDS.STATUS_CODE, "")
-          newBundle ~ (FHIR_EXTRA_FIELDS.STATUS_CODE, "")
-        }
+          val newBundle =
+            FHIRUtil
+              .populateResourceWithMeta(result.asInstanceOf[JObject], (result \ "id").extractOpt[String], newVersion, lastModified)
+              .removeField(_._1 == FHIR_EXTRA_FIELDS.STATUS_CODE)
 
+         newBundle.asInstanceOf[JObject]
+        }
       }
 
       val opResponse = new FHIROperationResponse(StatusCodes.OK)

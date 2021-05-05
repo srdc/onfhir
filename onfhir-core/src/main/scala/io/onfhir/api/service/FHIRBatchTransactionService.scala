@@ -54,7 +54,7 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
     // Process request according to the bundle
     fhirRequest.interaction match {
       case FHIR_BUNDLE_TYPES.BATCH => performBatchRequest(fhirRequest, authzContext)
-      case FHIR_BUNDLE_TYPES.TRANSACTION => performTransactionRequest(fhirRequest, authzContext)
+      case FHIR_BUNDLE_TYPES.TRANSACTION | FHIR_BUNDLE_TYPES.DOCUMENT => performTransactionRequest(fhirRequest, authzContext)
       case anyType => throw new NotFoundException(Seq(
         OutcomeIssue(
           FHIRResponse.SEVERITY_CODES.ERROR, //fatal
@@ -493,12 +493,18 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
           case FHIR_INTERACTIONS.UPDATE =>
             //If it is a conditional update and they give a uuid
             if (fullUrl.isDefined && fhirRequest.resourceId.isEmpty) {
-              getResourceIdForConditionalUpdate(fhirRequest).map(_.map(rid => {
+              getResourceIdForConditionalUpdate(fhirRequest)
+                .map(_.map(rid => {
                 val newReference = fhirRequest.resourceType.get + "/" + rid
                 (fullUrl.get, newReference)
               }))
-            } else Future.apply(None)
-          case _ => Future.apply(None)
+            } else if (fullUrl.isDefined && fhirRequest.resourceId.isDefined)  {
+              val newReference = fhirRequest.resourceType.get + "/" + fhirRequest.resourceId.get
+              Future.apply(Some((fullUrl.get, newReference)))
+            } else
+              Future.apply(None)
+          case _ =>
+            Future.apply(None)
         }
       }
     ).map(_.flatten)
