@@ -20,6 +20,8 @@ import org.json4s.JsonAST.{JNothing, JObject, JValue}
 import org.json4s.JsonDSL._
 import org.json4s.{JsonAST, _}
 
+import scala.util.Try
+
 object FHIRUtil {
 
   /**
@@ -779,8 +781,19 @@ object FHIRUtil {
       }
   }
 
+  /**
+   * Parse FHIR canonical value and return FhirCanonicalReference if it is full url and canonical or FhirLiteralReference
+   * if it is a local reference
+   * @param v   Value of element
+   * @return
+   */
   def parseCanonicalRef(v:JValue):FhirCanonicalReference = {
-    parseCanonicalReference(v.extract[String])
+    val canonicalUrl = v.extract[String]
+    parseCanonicalReference(canonicalUrl)
+      /*.getOrElse({
+        val (url, rtype, rid, version) = parseReferenceValue(canonicalUrl)
+        FhirLiteralReference(url, rtype, rid, version)
+      })*/
   }
 
   /**

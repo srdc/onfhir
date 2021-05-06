@@ -55,6 +55,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
 
   val questionnaire =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Questionnaire/q.json")).mkString
   val questionnaireResponse =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/QuestionnaireResponse/qr.json")).mkString
+  val questionnaireResponse2 =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/QuestionnaireResponse/qr2.json")).mkString
 
   val patientLinked1 =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-linked1.json")).mkString
   val patientLinked2 =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-linked2.json")).mkString
@@ -1295,8 +1296,11 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
       Put("/" + OnfhirConfig.baseUri + "/" + "QuestionnaireResponse" + "/" + "gcsr", HttpEntity(questionnaireResponse)) ~> fhirRoute ~> check {
         status === Created
       }
+      Put("/" + OnfhirConfig.baseUri + "/" + "QuestionnaireResponse" + "/" + "gcsr2", HttpEntity(questionnaireResponse2)) ~> fhirRoute ~> check {
+        status === Created
+      }
       //Query on CodeableConcept with only code and include
-      val query = "?_include=QuestionnaireResponse:questionnaire"
+      var query = "?_id=gcsr&_include=QuestionnaireResponse:questionnaire"
       Get("/" + OnfhirConfig.baseUri + "/" + "QuestionnaireResponse" + query) ~> fhirRoute ~> check {
         status === OK
         val bundle = responseAs[Resource]
@@ -1309,7 +1313,35 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
           .filter(e => (e \ "search" \ "mode").extract[String] == "include" )
           .map(e => (e \ "resource" \ "id").extract[String]) must be_==(Seq("gcs"))
       }
-    }
+
+      query = "?_id=gcsr2&_include=QuestionnaireResponse:questionnaire"
+      Get("/" + OnfhirConfig.baseUri + "/" + "QuestionnaireResponse" + query) ~> fhirRoute ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, resourceType, 1, Some(query))
+        (bundle \ "entry").asInstanceOf[JArray].arr
+          .filter(e => (e \ "search" \ "mode").extract[String] == "match" )
+          .map(e => (e \ "resource" \ "id").extract[String]) must be_==(Seq("gcsr2"))
+
+        (bundle \ "entry").asInstanceOf[JArray].arr
+          .filter(e => (e \ "search" \ "mode").extract[String] == "include" )
+          .map(e => (e \ "resource" \ "id").extract[String]) must be_==(Seq("gcs"))
+      }
+
+      query = "?_include=QuestionnaireResponse:questionnaire"
+      Get("/" + OnfhirConfig.baseUri + "/" + "QuestionnaireResponse" + query) ~> fhirRoute ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, resourceType, 2, Some(query))
+        (bundle \ "entry").asInstanceOf[JArray].arr
+          .filter(e => (e \ "search" \ "mode").extract[String] == "match" )
+          .map(e => (e \ "resource" \ "id").extract[String]).toSet must be_==(Set("gcsr","gcsr2"))
+
+        (bundle \ "entry").asInstanceOf[JArray].arr
+          .filter(e => (e \ "search" \ "mode").extract[String] == "include" )
+          .map(e => (e \ "resource" \ "id").extract[String]) must be_==(Seq("gcs"))
+      }
+  }
 
     "handle include parameter (with iteration) on reference" in {
       Put("/" + OnfhirConfig.baseUri + "/" + "Patient" + "/" + "link1", HttpEntity(patientLinked1)) ~> fhirRoute ~> check {

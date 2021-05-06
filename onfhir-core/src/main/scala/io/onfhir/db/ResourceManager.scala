@@ -20,6 +20,7 @@ import org.json4s.JsonAST.JValue
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 
 
 /**
@@ -581,8 +582,16 @@ object ResourceManager {
    * @return
    */
   private def searchForIncludeSet(rtype:String, includeSet:Set[FhirReference]):Future[Seq[Resource]] = {
-    val canonicalReferences = includeSet.filter(_.isInstanceOf[FhirCanonicalReference]).map(_.asInstanceOf[FhirCanonicalReference])
-    val literalReferences = includeSet.filter(_.isInstanceOf[FhirLiteralReference]).map(_.asInstanceOf[FhirLiteralReference])
+    var canonicalReferences =
+      includeSet
+        .filter(_.isInstanceOf[FhirCanonicalReference])
+        .map(_.asInstanceOf[FhirCanonicalReference])
+
+    val literalReferences =
+      includeSet.filter(_.isInstanceOf[FhirLiteralReference]).map(_.asInstanceOf[FhirLiteralReference]) ++
+        canonicalReferences.filter(_.url == "").map(cr => FhirLiteralReference(None, cr.rtype, cr.rid, None)) //Add canonical ones that are literal references
+    //Remove the ones that are not actually canonical url
+    canonicalReferences = canonicalReferences.filterNot(_.url == "")
 
     val resolvedCanonicalRefs =
       if(canonicalReferences.nonEmpty)
@@ -599,10 +608,15 @@ object ResourceManager {
     for{
       nrefs <-  resolvedCanonicalRefs
       crefs <-  resolvedLiteralrefs
-    } yield nrefs ++ crefs
+    } yield getDistinctResources(nrefs ++ crefs)
   }
 
-
+  def getDistinctResources(resources:Seq[Resource]):Seq[Resource] = {
+    resources
+      .map(r => (FHIRUtil.extractIdFromResource(r), FHIRUtil.extractVersionFromResource(r)) -> r)
+      .groupBy(_._1)
+      .values.map(_.head._2).toSeq
+  }
 
   /**
    * Search with given canonical urls
@@ -679,7 +693,6 @@ object ResourceManager {
               None
           })
 
-
         refPathAndTargetType match {
           case None => Nil
           //If target type is a reference
@@ -713,10 +726,16 @@ object ResourceManager {
                   FHIRUtil
                     .applySearchParameterPath(refPath, mresource._2)
                     .map(v => FHIRUtil.parseCanonicalRef(v))
-                    .filter(cr => targetResourceType.forall(_ == cr.rtype))
-                    .filterNot(cr => allResources.getOrElse(cr.rtype, Nil).flatMap(_._3).contains(cr.getUrl()))
+                    .filter {
+                      case cr:FhirCanonicalReference => targetResourceType.forall(_ == cr.rtype)
+                    }
+                    .filterNot {
+                      case cr:FhirCanonicalReference => allResources.getOrElse(cr.rtype, Nil).flatMap(_._3).contains(cr.getUrl())
+                    }
                 )
-                .map(cr => cr.rtype -> cr)
+                .map {
+                  case cr:FhirCanonicalReference => cr.rtype -> cr
+                }
                 .toSet
 
             resourcesToInclude
