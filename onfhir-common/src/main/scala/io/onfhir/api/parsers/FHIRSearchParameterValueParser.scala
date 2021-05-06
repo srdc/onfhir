@@ -320,17 +320,20 @@ object FHIRSearchParameterValueParser {
         val (inclusionType, iteration) = presult.get
 
         //Parse the actual part to find resource type to join, paramter for joining and target type of reference to join
-        val (joinedResourceType, joinedParam, targetType) = valueExpr.split(":")  match {
-          case Array("*") if inclusionType == FHIR_SEARCH_RESULT_PARAMETERS.INCLUDE => (rtype, "*", None) //include all references, in the given resource type
-          case Array(prtype, paramName) => (prtype, paramName, None)
-          case Array(prtype, paramName, tType) => (prtype ,paramName, Some(tType))
-          case _ => throw new InvalidParameterException("Invalid usage of _include or _revinclude parameter, please check https://www.hl7.org/fhir/search.html#include")
-        }
+        val (joinedResourceType, joinedParam, targetType) =
+          valueExpr.split(":")  match {
+            case Array("*") if inclusionType == FHIR_SEARCH_RESULT_PARAMETERS.INCLUDE => (rtype, "*", None) //include all references, in the given resource type
+            case Array(prtype, paramName) => (prtype, paramName, None)
+            case Array(prtype, paramName, tType) => (prtype ,paramName, Some(tType))
+            case _ => throw new InvalidParameterException("Invalid usage of _include or _revinclude parameter, please check https://www.hl7.org/fhir/search.html#include")
+          }
 
         //Check if given _include or _revinclude supported for resource type
         if(
-          inclusionType == FHIR_SEARCH_RESULT_PARAMETERS.INCLUDE && joinedParam!= "*" && !fhirConfig.resourceConfigurations(rtype).searchInclude.exists(_.contains(joinedParam)) ||
-            inclusionType == FHIR_SEARCH_RESULT_PARAMETERS.REVINCLUDE && joinedParam!= "*" && !fhirConfig.resourceConfigurations(rtype).searchRevInclude.exists(_.contains(joinedResourceType + ":" + joinedParam))
+          inclusionType == FHIR_SEARCH_RESULT_PARAMETERS.INCLUDE && joinedParam!= "*" &&
+            !fhirConfig.resourceConfigurations(joinedResourceType).searchInclude.contains(s"$joinedResourceType.$joinedParam") || //this include should be listed in Capability statement (e.g. Observation.subject)
+            inclusionType == FHIR_SEARCH_RESULT_PARAMETERS.REVINCLUDE && joinedParam!= "*" &&
+              !fhirConfig.resourceConfigurations(targetType.getOrElse(rtype)).searchRevInclude.contains(s"$joinedResourceType.$joinedParam")
         )
           throw new UnsupportedParameterException(s"Search parameter _include or _revinclude is not supported for $valueExpr on resource type $rtype ! Please check conformance statement of server!")
 
@@ -341,18 +344,18 @@ object FHIRSearchParameterValueParser {
             case (FHIR_SEARCH_RESULT_PARAMETERS.INCLUDE, "*") =>
               fhirConfig.resourceConfigurations(rtype)
                 .searchInclude.toSeq //Get all supported includes
-                .map(p => joinedResourceType -> p.split("\\.").last) // Parse and get the last e.g. CarePlan.goal -> goal
+                .map(p => joinedResourceType -> p.split('.').last) // Parse and get the last e.g. CarePlan.goal -> goal
             case (FHIR_SEARCH_RESULT_PARAMETERS.REVINCLUDE, "*") =>
               fhirConfig.resourceConfigurations(rtype)
                 .searchRevInclude.toSeq //Get all supported reverse includes
-                .map(_.split(":")) //Parse them e.g. AllergyIntolerance:patient
+                .map(_.split('.')) //Parse them e.g. AllergyIntolerance:patient
                 .map(s => s.head -> s.last)
             case _ =>
               Seq(joinedResourceType -> joinedParam)
           }
 
         // Return the parsed param
-        Parameter(FHIR_PARAMETER_CATEGORIES.RESULT, targetType.getOrElse(""), presult.get._1, joins, presult.get._2)
+        Parameter(FHIR_PARAMETER_CATEGORIES.RESULT, targetType.getOrElse(""), inclusionType, joins, iteration)
 
       //_total parameter is ignored, we always return the total
       case FHIR_SEARCH_RESULT_PARAMETERS.TOTAL =>

@@ -463,7 +463,6 @@ object SearchUtil {
             val (canonicalUrl, canonicalVersion) = FHIRUtil.parseCanonicalValue(reference)
             canonicalVersion match{
               case None => //Otherwise should match any version
-
                 regex(FHIRUtil.normalizeElementPath(path), "\\A" + FHIRUtil.escapeCharacters(canonicalUrl) + "(\\|[0-9]+(\\.[0-9]*)*)?$")
               case Some(_) => // Exact match if version exist
                 Filters.eq(FHIRUtil.normalizeElementPath(path), reference)
@@ -540,5 +539,24 @@ object SearchUtil {
     })
 
     query
+  }
+
+  /**
+   * Construct the query to search resources with canonical urls and versions
+   * @param urlAndVersions  List of url and versions
+   * @return
+   */
+  def canonicalRefQuery(urlAndVersions:Seq[(String, Option[String])]):Bson = {
+    if(urlAndVersions.forall(_._2.isEmpty))
+      in(FHIR_COMMON_FIELDS.URL, urlAndVersions.map(_._1).distinct:_*)
+    else {
+      urlAndVersions.map {
+        case (url, None) => Filters.eq(FHIR_COMMON_FIELDS.URL, url)
+        case (url, Some(v)) => and(Filters.eq(FHIR_COMMON_FIELDS.URL, url), Filters.eq(FHIR_COMMON_FIELDS.VERSION, v))
+      } match {
+        case Seq(s) => s
+        case oth => or(oth:_*)
+      }
+    }
   }
 }

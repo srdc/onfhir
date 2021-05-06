@@ -4,8 +4,9 @@ import java.time.{Instant, LocalDate}
 import java.util.concurrent.TimeUnit
 
 import akka.actor.ActorSystem
+import akka.http.javadsl.model.headers.IfMatch
 import akka.http.scaladsl.model.HttpEntity
-import akka.http.scaladsl.model.headers.RawHeader
+import akka.http.scaladsl.model.headers.{EntityTag, EntityTagRange, RawHeader}
 import akka.http.scaladsl.testkit.RouteTestTimeout
 import io.onfhir.OnFhirTest
 import io.onfhir.config.OnfhirConfig
@@ -51,6 +52,16 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
   val breastCancerRisk2 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/RiskAssessment/breastcancer2.json")).mkString
 
   val molseq = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/MolecularSequence/molecular-sequence.json")).mkString
+
+  val questionnaire =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Questionnaire/q.json")).mkString
+  val questionnaireResponse =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/QuestionnaireResponse/qr.json")).mkString
+
+  val patientLinked1 =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-linked1.json")).mkString
+  val patientLinked2 =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-linked2.json")).mkString
+  val patientLinked3 =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-linked3.json")).mkString
+
+  val practitioner =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Practitioner/practitioner.json")).mkString
+
 
   val resourceType = "Observation"
   val obsGlucoseId = "obsglucose"
@@ -1259,6 +1270,126 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
         checkSearchResult(bundle, "ActivityDefinition", 2, Some(query))
       }
     }
+
+    "handle include parameter (no iteration) on reference" in {
+      //Query on CodeableConcept with only code and include
+      val query = "?code=15074-8&_include=Observation:patient"
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, resourceType, 1, Some(query))
+        (bundle \ "entry").asInstanceOf[JArray].arr
+          .filter(e => (e \ "search" \ "mode").extract[String] == "match" )
+          .map(e => (e \ "resource" \ "id").extract[String]) must be_==(Seq(obsGlucoseId))
+
+        (bundle \ "entry").asInstanceOf[JArray].arr
+          .filter(e => (e \ "search" \ "mode").extract[String] == "include" )
+          .map(e => (e \ "resource" \ "id").extract[String]) must be_==(Seq(patientId))
+      }
+    }
+
+    "handle include parameter (no iteration) on canonical" in {
+      Put("/" + OnfhirConfig.baseUri + "/" + "Questionnaire" + "/" + "gcs", HttpEntity(questionnaire)) ~> fhirRoute ~> check {
+        status === Created
+      }
+      Put("/" + OnfhirConfig.baseUri + "/" + "QuestionnaireResponse" + "/" + "gcsr", HttpEntity(questionnaireResponse)) ~> fhirRoute ~> check {
+        status === Created
+      }
+      //Query on CodeableConcept with only code and include
+      val query = "?_include=QuestionnaireResponse:questionnaire"
+      Get("/" + OnfhirConfig.baseUri + "/" + "QuestionnaireResponse" + query) ~> fhirRoute ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, resourceType, 1, Some(query))
+        (bundle \ "entry").asInstanceOf[JArray].arr
+          .filter(e => (e \ "search" \ "mode").extract[String] == "match" )
+          .map(e => (e \ "resource" \ "id").extract[String]) must be_==(Seq("gcsr"))
+
+        (bundle \ "entry").asInstanceOf[JArray].arr
+          .filter(e => (e \ "search" \ "mode").extract[String] == "include" )
+          .map(e => (e \ "resource" \ "id").extract[String]) must be_==(Seq("gcs"))
+      }
+    }
+
+    "handle include parameter (with iteration) on reference" in {
+      Put("/" + OnfhirConfig.baseUri + "/" + "Patient" + "/" + "link1", HttpEntity(patientLinked1)) ~> fhirRoute ~> check {
+        status === Created
+      }
+      Put("/" + OnfhirConfig.baseUri + "/" + "Patient" + "/" + "link2", HttpEntity(patientLinked2)) ~> fhirRoute ~> check {
+        status === Created
+      }
+      Put("/" + OnfhirConfig.baseUri + "/" + "Patient" + "/" + "link3", HttpEntity(patientLinked3)) ~> fhirRoute ~> check {
+        status === Created
+      }
+      //Query on CodeableConcept with only code and include
+      val query = "?code=15074-8&_include=Observation:patient&_include:iterate=Patient:link"
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, resourceType, 1, Some(query))
+        (bundle \ "entry").asInstanceOf[JArray].arr
+          .filter(e => (e \ "search" \ "mode").extract[String] == "match" )
+          .map(e => (e \ "resource" \ "id").extract[String]) must be_==(Seq(obsGlucoseId))
+
+        (bundle \ "entry").asInstanceOf[JArray].arr
+          .count(e => (e \ "search" \ "mode").extract[String] == "include") === 4
+
+        (bundle \ "entry").asInstanceOf[JArray].arr
+          .filter(e => (e \ "search" \ "mode").extract[String] == "include" )
+          .map(e => (e \ "resource" \ "id").extract[String]).toSet must be_==(Set(patientId, "link1", "link2", "link3"))
+      }
+    }
+
+    "handle include parameter on reference with *" in {
+      Put("/" + OnfhirConfig.baseUri + "/" + "Practitioner" + "/" + "pr1", HttpEntity(practitioner)).withHeaders(IfMatch.create(EntityTagRange.apply(EntityTag.apply("0", true)))) ~> fhirRoute ~> check {
+        status === Created
+      }
+      val query = "?code=15074-8&_include=Observation:*"
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, resourceType, 1, Some(query))
+        (bundle \ "entry").asInstanceOf[JArray].arr
+          .filter(e => (e \ "search" \ "mode").extract[String] == "match" )
+          .map(e => (e \ "resource" \ "id").extract[String]) must be_==(Seq(obsGlucoseId))
+        (bundle \ "entry").asInstanceOf[JArray].arr
+          .filter(e => (e \ "search" \ "mode").extract[String] == "include" )
+          .map(e => (e \ "resource" \ "id").extract[String]).toSet must be_==(Set(patientId, "pr1"))
+      }
+    }
+
+    "handle _revinclude parameter (no iteration) on reference" in {
+      val query = "?_id=example&_revinclude=Observation:patient"
+      Get("/" + OnfhirConfig.baseUri + "/" + "Patient" + query) ~> fhirRoute ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, resourceType, 1, Some(query))
+        (bundle \ "entry").asInstanceOf[JArray].arr
+          .filter(e => (e \ "search" \ "mode").extract[String] == "match" )
+          .map(e => (e \ "resource" \ "id").extract[String]) must be_==(Seq(patientId))
+
+        (bundle \ "entry").asInstanceOf[JArray].arr
+          .filter(e => (e \ "search" \ "mode").extract[String] == "include" )
+          .map(e => (e \ "resource" \ "id").extract[String]).toSet must be_==(Set(obsGlucoseId, obsCholesterolId, obsBpId, obsBp2Id))
+      }
+    }
+
+    "handle _revinclude parameter (no iteration) on canonical" in {
+      val query = "?_revinclude=QuestionnaireResponse:questionnaire"
+      Get("/" + OnfhirConfig.baseUri + "/" + "Questionnaire" + query) ~> fhirRoute ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, resourceType, 1, Some(query))
+        (bundle \ "entry").asInstanceOf[JArray].arr
+          .filter(e => (e \ "search" \ "mode").extract[String] == "match" )
+          .map(e => (e \ "resource" \ "id").extract[String]) must be_==(Seq("gcs"))
+
+        (bundle \ "entry").asInstanceOf[JArray].arr
+          .filter(e => (e \ "search" \ "mode").extract[String] == "include" )
+          .map(e => (e \ "resource" \ "id").extract[String]).toSet must be_==(Set("gcsr"))
+      }
+    }
+
   }
 
   "FHIR Compartment Search endpoint" should {
@@ -1302,9 +1433,8 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
 //        rtypes.count(_ == "MolecularSequence") mustEqual 1
 //      }
 //    }
-
   }
-  /*
+/* THIS PART IS COMMENTED OUT AS system level search requires Mongo 4.4 and embedded mongo does not have it yet
   "FHIR System Level Search endpoint" should {
     "handle search on multiple resource types without any query" in {
       val query = "?_type=Observation,RiskAssessment"
@@ -1380,7 +1510,7 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
         status === BadRequest
       }
     }
-  }
-  */
+  }*/
+
 
 }

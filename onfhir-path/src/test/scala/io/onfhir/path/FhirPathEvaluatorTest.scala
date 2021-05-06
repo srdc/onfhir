@@ -604,9 +604,6 @@ class FhirPathEvaluatorTest extends Specification {
       var result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.getPeriod(start, @2020-09-07T10:00:00Z, 'years')", observation).head.toLong
       result mustEqual 7
 
-      result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.getPeriod(start, now(), 'years')", observation).head.toLong
-      result mustEqual 7
-
       result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.getPeriod(start, @2013-08-07T10:00:00Z, 'months')", observation).head.toLong
       result mustEqual 4
 

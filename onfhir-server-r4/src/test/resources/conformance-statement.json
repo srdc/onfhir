@@ -1635,6 +1635,286 @@
               "type" : "date",
               "documentation" : "Reach goal on or before"
             }]
+        },
+        {
+          "type" : "Questionnaire",
+          "profile" : "http://hl7.org/fhir/StructureDefinition/Questionnaire",
+          "interaction" : [{
+            "code" : "read",
+            "documentation" : "Implemented per the specification (or Insert other doco here)"
+          },
+            {
+              "code" : "vread",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "update",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "delete",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "history-instance",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "history-type",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "create",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "search-type",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            }],
+          "conditionalCreate" : true,
+          "conditionalUpdate" : true,
+          "conditionalDelete" : "multiple",
+          "referencePolicy" : ["literal",
+            "logical"],
+          "searchRevInclude" : ["CarePlan.instantiates-canonical",
+            "Communication.instantiates-canonical",
+            "FamilyMemberHistory.instantiates-canonical",
+            "PlanDefinition.definition",
+            "Procedure.instantiates-canonical",
+            "QuestionnaireResponse.questionnaire"],
+          "searchParam" : [{
+            "name" : "date",
+            "definition" : "http://hl7.org/fhir/SearchParameter/Questionnaire-date",
+            "type" : "date",
+            "documentation" : "The questionnaire publication date"
+          },
+            {
+              "name" : "identifier",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Questionnaire-identifier",
+              "type" : "token",
+              "documentation" : "External identifier for the questionnaire"
+            },
+            {
+              "name" : "code",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Questionnaire-code",
+              "type" : "token",
+              "documentation" : "A code that corresponds to one of its items in the questionnaire"
+            },
+            {
+              "name" : "context-type-value",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Questionnaire-context-type-value",
+              "type" : "composite",
+              "documentation" : "A use context type and value assigned to the questionnaire"
+            },
+            {
+              "name" : "jurisdiction",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Questionnaire-jurisdiction",
+              "type" : "token",
+              "documentation" : "Intended jurisdiction for the questionnaire"
+            },
+            {
+              "name" : "description",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Questionnaire-description",
+              "type" : "string",
+              "documentation" : "The description of the questionnaire"
+            },
+            {
+              "name" : "context-type",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Questionnaire-context-type",
+              "type" : "token",
+              "documentation" : "A type of use context assigned to the questionnaire"
+            },
+            {
+              "name" : "title",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Questionnaire-title",
+              "type" : "string",
+              "documentation" : "The human-friendly name of the questionnaire"
+            },
+            {
+              "name" : "version",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Questionnaire-version",
+              "type" : "token",
+              "documentation" : "The business version of the questionnaire"
+            },
+            {
+              "name" : "url",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Questionnaire-url",
+              "type" : "uri",
+              "documentation" : "The uri that identifies the questionnaire"
+            },
+            {
+              "name" : "context-quantity",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Questionnaire-context-quantity",
+              "type" : "quantity",
+              "documentation" : "A quantity- or range-valued use context assigned to the questionnaire"
+            },
+            {
+              "name" : "effective",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Questionnaire-effective",
+              "type" : "date",
+              "documentation" : "The time during which the questionnaire is intended to be in use"
+            },
+            {
+              "name" : "subject-type",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Questionnaire-subject-type",
+              "type" : "token",
+              "documentation" : "Resource that can be subject of QuestionnaireResponse"
+            },
+            {
+              "name" : "name",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Questionnaire-name",
+              "type" : "string",
+              "documentation" : "Computationally friendly name of the questionnaire"
+            },
+            {
+              "name" : "context",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Questionnaire-context",
+              "type" : "token",
+              "documentation" : "A use context assigned to the questionnaire"
+            },
+            {
+              "name" : "publisher",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Questionnaire-publisher",
+              "type" : "string",
+              "documentation" : "Name of the publisher of the questionnaire"
+            },
+            {
+              "name" : "definition",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Questionnaire-definition",
+              "type" : "uri",
+              "documentation" : "ElementDefinition - details for the item"
+            },
+            {
+              "name" : "context-type-quantity",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Questionnaire-context-type-quantity",
+              "type" : "composite",
+              "documentation" : "A use context type and quantity- or range-based value assigned to the questionnaire"
+            },
+            {
+              "name" : "status",
+              "definition" : "http://hl7.org/fhir/SearchParameter/Questionnaire-status",
+              "type" : "token",
+              "documentation" : "The current status of the questionnaire"
+            }]
+        },
+        {
+          "type" : "QuestionnaireResponse",
+          "profile" : "http://hl7.org/fhir/StructureDefinition/QuestionnaireResponse",
+          "interaction" : [{
+            "code" : "read",
+            "documentation" : "Implemented per the specification (or Insert other doco here)"
+          },
+            {
+              "code" : "vread",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "update",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "delete",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "history-instance",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "history-type",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "create",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            },
+            {
+              "code" : "search-type",
+              "documentation" : "Implemented per the specification (or Insert other doco here)"
+            }],
+          "conditionalCreate" : true,
+          "conditionalUpdate" : true,
+          "conditionalDelete" : "multiple",
+          "referencePolicy" : ["literal",
+            "logical"],
+          "searchInclude" : ["QuestionnaireResponse.questionnaire",
+            "QuestionnaireResponse.based-on",
+            "QuestionnaireResponse.subject",
+            "QuestionnaireResponse.author",
+            "QuestionnaireResponse.patient",
+            "QuestionnaireResponse.part-of",
+            "QuestionnaireResponse.encounter",
+            "QuestionnaireResponse.source"],
+          "searchRevInclude" : ["ClinicalImpression.investigation",
+            "Consent.source-reference",
+            "Observation.derived-from",
+            "Observation.has-member"],
+          "searchParam" : [{
+            "name" : "authored",
+            "definition" : "http://hl7.org/fhir/SearchParameter/QuestionnaireResponse-authored",
+            "type" : "date",
+            "documentation" : "When the questionnaire response was last changed"
+          },
+            {
+              "name" : "identifier",
+              "definition" : "http://hl7.org/fhir/SearchParameter/QuestionnaireResponse-identifier",
+              "type" : "token",
+              "documentation" : "The unique identifier for the questionnaire response"
+            },
+            {
+              "name" : "questionnaire",
+              "definition" : "http://hl7.org/fhir/SearchParameter/QuestionnaireResponse-questionnaire",
+              "type" : "reference",
+              "documentation" : "The questionnaire the answers are provided for"
+            },
+            {
+              "name" : "based-on",
+              "definition" : "http://hl7.org/fhir/SearchParameter/QuestionnaireResponse-based-on",
+              "type" : "reference",
+              "documentation" : "Plan/proposal/order fulfilled by this questionnaire response"
+            },
+            {
+              "name" : "subject",
+              "definition" : "http://hl7.org/fhir/SearchParameter/QuestionnaireResponse-subject",
+              "type" : "reference",
+              "documentation" : "The subject of the questionnaire response"
+            },
+            {
+              "name" : "author",
+              "definition" : "http://hl7.org/fhir/SearchParameter/QuestionnaireResponse-author",
+              "type" : "reference",
+              "documentation" : "The author of the questionnaire response"
+            },
+            {
+              "name" : "patient",
+              "definition" : "http://hl7.org/fhir/SearchParameter/QuestionnaireResponse-patient",
+              "type" : "reference",
+              "documentation" : "The patient that is the subject of the questionnaire response"
+            },
+            {
+              "name" : "part-of",
+              "definition" : "http://hl7.org/fhir/SearchParameter/QuestionnaireResponse-part-of",
+              "type" : "reference",
+              "documentation" : "Procedure or observation this questionnaire response was performed as a part of"
+            },
+            {
+              "name" : "encounter",
+              "definition" : "http://hl7.org/fhir/SearchParameter/QuestionnaireResponse-encounter",
+              "type" : "reference",
+              "documentation" : "Encounter associated with the questionnaire response"
+            },
+            {
+              "name" : "source",
+              "definition" : "http://hl7.org/fhir/SearchParameter/QuestionnaireResponse-source",
+              "type" : "reference",
+              "documentation" : "The individual providing the information reflected in the questionnaire respose"
+            },
+            {
+              "name" : "status",
+              "definition" : "http://hl7.org/fhir/SearchParameter/QuestionnaireResponse-status",
+              "type" : "token",
+              "documentation" : "The status of the questionnaire response"
+            }]
         }
       ],
       "interaction" : [

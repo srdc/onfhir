@@ -761,7 +761,26 @@ object FHIRUtil {
         .flatMap {
           case o: JObject => (o \ FHIR_COMMON_FIELDS.REFERENCE).extractOpt[String].toSeq
           case a:JArray => (a \ FHIR_COMMON_FIELDS.REFERENCE).extract[Seq[String]]
+          case _ => Nil
         }
+  }
+
+  /**
+   * Extract FHIR canonical reference values from a resource
+   * @param refPath Path to the reference element e.g. QuestionnaireResponse.questionnaire
+   * @param resource  Resource content
+   * @return  Canonical reference e.g. http://example.com/ValueSet/x
+   */
+  def extractCanonicals(refPath:String, resource:Resource):Seq[String] = {
+    applySearchParameterPath(refPath, resource)
+      .flatMap {
+        case c:JString => Seq(c.s)
+        case a:JArray => a.extract[Seq[String]]
+      }
+  }
+
+  def parseCanonicalRef(v:JValue):FhirCanonicalReference = {
+    parseCanonicalReference(v.extract[String])
   }
 
   /**
@@ -793,7 +812,7 @@ object FHIRUtil {
         FHIRUtil.extractValueOption[String](obj, FHIR_COMMON_FIELDS.REFERENCE) match {
           case Some(fhirReferenceUrl) if fhirReferenceUrl.startsWith("#") => FhirInternalReference(fhirReferenceUrl.drop(1))
           case Some(fhirReferenceUrl) if !fhirReferenceUrl.startsWith("#") =>
-            var r = parseReferenceValue(fhirReferenceUrl)
+            val r = parseReferenceValue(fhirReferenceUrl)
             FhirLiteralReference(r._1, r._2, r._3, r._4)
           case None =>
             val referencedResourceType = FHIRUtil.extractValueOption[String](obj, FHIR_COMMON_FIELDS.TYPE)

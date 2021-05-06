@@ -5,16 +5,16 @@ import java.time.Instant
 import akka.http.scaladsl.model.{DateTime, StatusCode, StatusCodes}
 import io.onfhir.Onfhir
 import io.onfhir.api._
-import io.onfhir.api.model.Parameter
+import io.onfhir.api.model.{FhirCanonicalReference, FhirLiteralReference, FhirReference, Parameter}
 import io.onfhir.api.parsers.FHIRResultParameterResolver
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
-import io.onfhir.config.{FhirConfigurationManager, OnfhirConfig, SearchParameterConf}
+import io.onfhir.config.OnfhirConfig
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.conversions.Bson
 import io.onfhir.db.BsonTransformer._
 import io.onfhir.event.{FhirEventBus, ResourceCreated, ResourceDeleted, ResourceUpdated}
-import io.onfhir.exception.{BadRequestException, InternalServerException, UnsupportedParameterException}
+import io.onfhir.exception.UnsupportedParameterException
 import io.onfhir.util.DateTimeUtil
 import org.json4s.JsonAST.JValue
 import org.slf4j.{Logger, LoggerFactory}
@@ -275,7 +275,6 @@ object ResourceManager {
 
     //other result parameters are ignored as they are not relevant
 
-
     //Now others are query parameters
     val queryParams = parameters.filter(_.paramCategory !=  FHIR_PARAMETER_CATEGORIES.RESULT)
 
@@ -290,7 +289,7 @@ object ResourceManager {
           sortingParams
             .map(sp => fhirConfig.findSupportedSearchParameter(rtype, sp) match {
               case None =>
-                throw new UnsupportedParameterException(s"Search parameter ${sp} is not supported for resource type $rtype, or you can not use it for sorting! Check conformance statement of server!")
+                throw new UnsupportedParameterException(s"Search parameter $sp is not supported for resource type $rtype, or you can not use it for sorting! Check conformance statement of server!")
               case Some(spConf) =>
                 spConf.pname ->
                   spConf
@@ -308,7 +307,7 @@ object ResourceManager {
           .map(gbyp =>
             fhirConfig.findSupportedSearchParameter(rtype, gbyp) match {
               case None =>
-                throw new UnsupportedParameterException(s"Search parameter ${gbyp} is not supported for resource type $rtype, or you can not use it for grouping! Check conformance statement of server!")
+                throw new UnsupportedParameterException(s"Search parameter $gbyp is not supported for resource type $rtype, or you can not use it for grouping! Check conformance statement of server!")
               case Some(gbypConf) => gbypConf
             }
           )
@@ -451,18 +450,39 @@ object ResourceManager {
     * @param revIncludeParams     Parsed FHIR _revinclude parameters
     * @return Linked resources
     */
-  private def handleRevIncludes(rtype:String, matchedResources:Seq[Resource],revIncludeParams:List[Parameter])(implicit transactionSession: Option[TransactionSession] = None):Future[Seq[Resource]] = {
-    val matchedResourceReferences = matchedResources.map(mr => rtype + "/"+FHIRUtil.extractIdFromResource(mr))
-    Future.sequence(
-      revIncludeParams.map( p => {
-        val (linkedResourceType, linkParam) = p.valuePrefixList.head
-        val searchParameterConf = fhirConfig.findSupportedSearchParameter(linkedResourceType, linkParam).get
-        val query = ResourceQueryBuilder.constructQueryForRevInclude(matchedResourceReferences, searchParameterConf)
-        DocumentManager
-          .searchDocuments(linkedResourceType, Some(query))
-          .map(_.map(_.fromBson))
-      })
-    ).map(_.flatten)
+  private def handleRevIncludes(rtype:String, matchedResources:Seq[Resource], revIncludeParams:List[Parameter])(implicit transactionSession: Option[TransactionSession] = None):Future[Seq[Resource]] = {
+    //TODO handle :iterate
+    //Reference to matched resources and optionally their canonical urls and version
+    val matchedResourceReferences:Seq[(String, Option[String], Option[String])] =
+        matchedResources.map(mr =>
+          (
+            rtype + "/"+FHIRUtil.extractIdFromResource(mr),
+            FHIRUtil.extractValueOption[String](mr, FHIR_COMMON_FIELDS.URL),
+            FHIRUtil.extractValueOption[String](mr, FHIR_COMMON_FIELDS.VERSION)
+          )
+        )
+    Future.sequence( {
+      val linkedResourcesAndParams:Seq[(String, String)] =
+        revIncludeParams
+          .flatMap( p => p.valuePrefixList.head match {
+            case (linkedResourceType, "*") =>
+              fhirConfig.resourceQueryParameters
+                .get(linkedResourceType).map(_.toSeq).getOrElse(Nil)
+                .filter(sp => sp._2.ptype == FHIR_PARAMETER_TYPES.REFERENCE)
+                .map(p => linkedResourceType -> p._1)
+            case (linkedResourceType, linkParam) =>
+              Seq(linkedResourceType -> linkParam)
+          })
+
+      linkedResourcesAndParams.map {
+        case (linkedResourceType, linkParam) =>
+          val searchParameterConf = fhirConfig.findSupportedSearchParameter(linkedResourceType, linkParam).get
+          val query = ResourceQueryBuilder.constructQueryForRevInclude(matchedResourceReferences, searchParameterConf)
+          DocumentManager
+            .searchDocuments(linkedResourceType, Some(query))
+            .map(_.map(_.fromBson))
+      }
+    } ).map(_.flatten)
   }
 
 
@@ -474,70 +494,174 @@ object ResourceManager {
     * @return Included resources
     */
   private def handleIncludes(rtype:String, matchedResources:Seq[Resource], includeParams:List[Parameter])(implicit transactionSession: Option[TransactionSession] = None):Future[Seq[Resource]] = {
-    val matchedResourceMap =
+    val matchedResourceMap = Map(rtype ->
       matchedResources
-        .map(mr => (rtype -> FHIRUtil.extractIdFromResource(mr)) -> mr).toMap
+        .map(mr => extractIdVersionIdAndCanonicalUrl(mr))
+    )
 
     //Execute iterations
-    executeIncludeIteration(rtype, matchedResourceMap.keySet, matchedResources, includeParams)
+    executeIncludeIteration(rtype, matchedResourceMap, matchedResources, includeParams)
   }
 
   /**
     * Recuresivly handle _include iterates
     * @param rtype          Resource type
-    * @param allResources   All resources compiled until now
+    * @param allResources   All resources compiled until now (Resource type, resource id, canonical url)
     * @param newResources   new resources returned at the last iteration
     * @param includeParams  Include parameters
     * @return
     */
-  private def executeIncludeIteration(rtype:String, allResources:Set[(String,String)], newResources:Seq[Resource], includeParams:List[Parameter])(implicit transactionSession: Option[TransactionSession] = None):Future[Seq[Resource]] = {
+  private def executeIncludeIteration(rtype:String, allResources:Map[String,Seq[(String, Long, Option[String])]], newResources:Seq[Resource], includeParams:List[Parameter])(implicit transactionSession: Option[TransactionSession] = None):Future[Seq[Resource]] = {
     val newResourceMap =
        newResources
         .map(mr => (rtype -> FHIRUtil.extractIdFromResource(mr)) -> mr).toMap
     //First execute single iteration includes (include without :iterate
-    val includes:Map[String, Set[String]] =   //ResourceType -> Set(Rids) to include
+    val includes:Map[String, Set[FhirReference]] =   //ResourceType -> References to include
       includeParams
         .filter(_.valuePrefixList.head._1 == rtype) //Filter related include params
-        .map(p => findIncludeResources(allResources, newResourceMap, p))
-        .reduce((s1,s2) => s1 ++ s2)
-        .groupBy(_._1).map(g => g._1 -> g._2.map(_._2))
+        .flatMap(p => findIncludeResources(allResources, newResourceMap, p))
+        .groupBy(_._1)
+        .map(g => g._1 -> g._2.map(_._2).toSet)
+
     //If there is nothing to include, return
     if(includes.isEmpty)
       return Future.apply(Seq.empty)
     //Retrieve the resources
-    val fincludedResources =
+    val fincludedResources:Future[Seq[(String, Seq[Resource])]] =
       Future.sequence(
-        includes
-          .map(includeSet =>
-            DocumentManager.searchDocuments(includeSet._1, Some(DocumentManager.ridsQuery(includeSet._2)))
-              .map(r => includeSet._1 -> r) //Query each resource type with given ids
-          )
-      ).map(_.map(r => r._1 -> r._2.map(_.fromBson))) //Convert them to resources
+        includes.map {
+          case (rtype, includeSet) =>
+            searchForIncludeSet(rtype, includeSet)
+              .map(r => rtype -> r)
+        }.toSeq
+      ) //Convert them to resources
 
     //Now we go on iterated include params
     val iteratedIncludeParams = includeParams.filter(_.suffix == ":iterate")
     fincludedResources flatMap (includedResources => {
       //If there is no include, or no parameter with iterate
       if(includedResources.isEmpty || iteratedIncludeParams.isEmpty)
-        Future.apply(includedResources.toSeq.flatMap(_._2))
+        Future.apply(includedResources.flatMap(_._2))
       else {
-        val newAllResources = allResources ++ includedResources.flatMap(ir => ir._2.map(r => ir._1 -> FHIRUtil.extractIdFromResource(r))).toSet
+        val newIncludedResources = includedResources.toMap.mapValues(ir => ir.map(r => extractIdVersionIdAndCanonicalUrl(r)))
+        val newAllResources = mergeAllResources(allResources,newIncludedResources)
         Future.sequence(
           //Run iteration recursively for each ResourceType, run iterations only on new resources
           includedResources.map(ir => executeIncludeIteration(ir._1, newAllResources, ir._2, iteratedIncludeParams))
-        ).map(includedResources.toSeq.flatMap(_._2) ++ _.flatten) //And merge all included resources
+        ).map(includedResources.flatMap(_._2) ++ _.flatten) //And merge all included resources
       }
     })
+  }
+
+  /**
+   * Merge resources
+   * @param allResources  All resources until now (resource type -> Seq(rid, version, canonical url))
+   * @param newResources  New resources included
+   * @return
+   */
+  private def mergeAllResources(allResources:Map[String,Seq[(String, Long, Option[String])]], newResources:Map[String,Seq[(String, Long, Option[String])]]) = {
+    (allResources.toSeq ++ newResources.toSeq)
+      .groupBy(_._1)
+      .mapValues(_.flatMap(_._2))
+  }
+
+  /**
+   * Extract id, version id and optional url of the resource
+   * @param mr  Matched/included resource
+   * @return
+   */
+  private def extractIdVersionIdAndCanonicalUrl(mr:Resource) =
+    (FHIRUtil.extractIdFromResource(mr), FHIRUtil.extractVersionFromResource(mr), FHIRUtil.extractValueOption[String](mr, FHIR_COMMON_FIELDS.URL))
+
+
+  /**
+   * Search resources with given ids or canonical urls
+   * @param rtype       Resource type
+   * @param includeSet  Set of ids and/or canonical urls
+   * @return
+   */
+  private def searchForIncludeSet(rtype:String, includeSet:Set[FhirReference]):Future[Seq[Resource]] = {
+    val canonicalReferences = includeSet.filter(_.isInstanceOf[FhirCanonicalReference]).map(_.asInstanceOf[FhirCanonicalReference])
+    val literalReferences = includeSet.filter(_.isInstanceOf[FhirLiteralReference]).map(_.asInstanceOf[FhirLiteralReference])
+
+    val resolvedCanonicalRefs =
+      if(canonicalReferences.nonEmpty)
+        resolveCanonicalReferences(rtype, canonicalReferences)
+      else
+        Future.apply(Nil)
+
+    val resolvedLiteralrefs =
+      if(literalReferences.nonEmpty)
+        resolveLiteralReferences(rtype, literalReferences)
+      else
+        Future.apply(Nil)
+
+    for{
+      nrefs <-  resolvedCanonicalRefs
+      crefs <-  resolvedLiteralrefs
+    } yield nrefs ++ crefs
+  }
+
+
+
+  /**
+   * Search with given canonical urls
+   * @param rtype           Resource type to search e.g. QuestionnaireResponse
+   * @param canonicalRefs   Canonical urls to search on url and version e.g. http://example.com/Questionnaire/cgs|1.0
+   * @return
+   */
+  private def resolveCanonicalReferences(rtype:String, canonicalRefs:Set[FhirCanonicalReference]):Future[Seq[Resource]] = {
+    val canonicalQuery = SearchUtil.canonicalRefQuery(canonicalRefs.map(cr => cr.getUrl() -> cr.version).toSeq)
+    DocumentManager.searchDocuments(rtype, Some(canonicalQuery))
+      .map(_.map(_.fromBson))
+      .map(rs =>
+        //Get the latest version of resource for each url (this is required when no version is given in canonical URL)
+        rs
+          .groupBy(FHIRUtil.extractValue[String](_, FHIR_COMMON_FIELDS.URL))
+          .mapValues(_.sortBy(FHIRUtil.extractValue[String](_, FHIR_COMMON_FIELDS.VERSION).last))
+          .values.flatten.toSeq
+      )
+  }
+
+  /**
+   * Resolve literal references all together for given resource type
+   * @param rtype         Resource type
+   * @param literalRefs   Referred resources
+   * @return
+   */
+  private def resolveLiteralReferences(rtype:String, literalRefs:Set[FhirLiteralReference]):Future[Seq[Resource]] = {
+    val literalReferencesWithVersion = literalRefs.filter(_.version.isDefined)
+    val literalReferencesWithoutVersion = literalRefs.filter(_.version.isEmpty)
+
+    val resolvedResourcesWithoutVersion =
+      if(literalReferencesWithoutVersion.nonEmpty)
+        getResourcesWithIds(rtype, literalReferencesWithoutVersion.map(lr => lr.rid))
+      else
+        Future.apply(Nil)
+
+    val resolvedResourcesWithVersion =
+      if(literalReferencesWithVersion.nonEmpty)
+        Future.sequence(
+          literalReferencesWithVersion.toSeq.map(lr => getResource(rtype, lr.rid, lr.version))
+        ).map(_.flatten)
+      else
+        Future.apply(Nil)
+
+    for{
+      nrefs <-  resolvedResourcesWithoutVersion
+      crefs <-  resolvedResourcesWithVersion
+    } yield nrefs ++ crefs
   }
 
 
   /**
     * Find to be included resources based on the matched resources and the _include parameter
+    * @param allResources     All resources included until now (Resource Type, Resource id, Version Id, Canonical Url)
     * @param matchedResources Matched Resources (Resource Type, Rid) -> Resource content
     * @param parameter Parsed _include parameter
     * @return Set of included resources as ResourceType and Rid
     */
-  private def findIncludeResources(allResources:Set[(String,String)], matchedResources:Map[(String, String), Resource], parameter: Parameter):Set[(String, String)] = {
+  private def findIncludeResources(allResources:Map[String,Seq[(String, Long, Option[String])]], matchedResources:Map[(String, String), Resource], parameter: Parameter):Set[(String, FhirReference)] = {
     //Target resource type to include
     val targetResourceType = if(parameter.paramType == "") None else Some(parameter.paramType)
 
@@ -546,30 +670,57 @@ object ResourceManager {
       case (includeResourceType, includeParam) =>
         //Find parameter configuration
         val refParamConf = fhirConfig.findSupportedSearchParameter(includeResourceType, includeParam)
-        //Find the path to the FHIR Reference elements
-        val refPath:Option[String] =
+        //Find the path to the FHIR Reference elements and its target type (either Reference or canonical)
+        val refPathAndTargetType:Option[(String,String)] =
           refParamConf.flatMap(pconf => {
             if (targetResourceType.forall(t => pconf.targets.contains(t) || pconf.targets.contains(FHIR_DATA_TYPES.RESOURCE)))
-              Some(pconf.extractElementPaths().head)
+              Some(pconf.extractElementPaths().head -> pconf.targetTypes.head)
             else
               None
           })
 
-        if(refPath.isDefined) {
-          //Extract type and ids
-          val resourcesToInclude =
-            matchedResources
-              .filter(_._1._1 == includeResourceType) //Only evaluate the resources with the specified type
-              .flatMap(mresource => FHIRUtil.extractReferences(refPath.get, mresource._2)) //Extract Reference values
-              .toSet
-              .map(refValue => FHIRUtil.parseReferenceValue(refValue)) //Parse the reference values
-              .filter(_._1.forall(_ == OnfhirConfig.fhirRootUrl)) //Only get the ones that are persistent inside our repository
-              .filter(pref => targetResourceType.forall(_ == pref._2)) //Only get the ones that are compliant with expected target type
-              .map(pref => pref._2 -> pref._3) //only get ResourceType and Rid
-              .diff(allResources) //take difference with existent ones
 
-          resourcesToInclude
-        } else Seq.empty
+        refPathAndTargetType match {
+          case None => Nil
+          //If target type is a reference
+          case Some((refPath, FHIR_DATA_TYPES.REFERENCE)) =>
+            //Extract type and ids
+            val resourcesToInclude =
+              matchedResources
+                .filter(_._1._1 == includeResourceType) //Only evaluate the resources with the specified type
+                .flatMap(mresource =>
+                    FHIRUtil
+                      .applySearchParameterPath(refPath, mresource._2)//Extract Reference values
+                      .map(FHIRUtil.parseReference)  //Parse the literal or contained resource reference
+                      .filter(_.isInstanceOf[FhirLiteralReference])
+                      .map(_.asInstanceOf[FhirLiteralReference])
+                )
+                .filter(flr => flr.url.forall(_ == OnfhirConfig.fhirRootUrl)) //Only get the ones that are persistent inside our repository for now
+                .map(_.copy(url = None)) //clear url so that when converted to Set we really have unique references
+                .toSet
+                .filter(flr => targetResourceType.forall(_ == flr.rtype)) //Only get the ones that are compliant with expected target type
+                .filter(flr => !allResources.getOrElse(flr.rtype, Nil).exists(ar => ar._1 == flr.rid && flr.version.forall(_ == ar._2.toString))) //take difference with existent ones
+                .map(flr => flr.rtype -> flr)
+
+            resourcesToInclude
+          //If target type of search parameter is canonical
+          case Some((refPath,FHIR_DATA_TYPES.CANONICAL)) =>
+            //Extract type and urls
+            val resourcesToInclude =
+              matchedResources
+                .filter(_._1._1 == includeResourceType)
+                .flatMap(mresource =>
+                  FHIRUtil
+                    .applySearchParameterPath(refPath, mresource._2)
+                    .map(v => FHIRUtil.parseCanonicalRef(v))
+                    .filter(cr => targetResourceType.forall(_ == cr.rtype))
+                    .filterNot(cr => allResources.getOrElse(cr.rtype, Nil).flatMap(_._3).contains(cr.getUrl()))
+                )
+                .map(cr => cr.rtype -> cr)
+                .toSet
+
+            resourcesToInclude
+        }
     }.toSet
   }
 
@@ -931,7 +1082,7 @@ object ResourceManager {
     //3) persist the resource
     DocumentManager
       .insertDocument(rtype, Document(populatedResource.toBson))
-      .map( c => resourceCreated(rtype, newId, resourceWithMeta)) //trigger the event
+      .map( _ => resourceCreated(rtype, newId, resourceWithMeta)) //trigger the event
       .map( _ =>
         (newId, newVersion, DateTimeUtil.instantToDateTime(lastModified), resourceWithMeta)
       )
@@ -995,7 +1146,7 @@ object ResourceManager {
     * @param previousVersion Previous version of the document together with version id
     * @param wasDeleted If previously, this was deleted resource
     * @param silentEvent  If true, ResourceUpdate event is not triggered (used internally)
-    * @param transactionSession
+    * @param transactionSession Transcation session
     * @return
     */
   def updateResource(rtype:String, rid:String, resource:Resource, previousVersion:(Long, Resource), wasDeleted :Boolean = false, silentEvent:Boolean = false)(implicit transactionSession: Option[TransactionSession] = None):Future[(Long, DateTime, Resource)] = {
@@ -1030,7 +1181,7 @@ object ResourceManager {
       )
     else
       fop
-        .map( c => resourceUpdated(rtype, rid, resourceWithMeta, FHIRUtil.clearExtraFields(previousVersion._2))) //trigger the event
+        .map( _ => resourceUpdated(rtype, rid, resourceWithMeta, FHIRUtil.clearExtraFields(previousVersion._2))) //trigger the event
         .map( _ =>
           (newVersion, DateTimeUtil.instantToDateTime(lastModified), resourceWithMeta)
         )

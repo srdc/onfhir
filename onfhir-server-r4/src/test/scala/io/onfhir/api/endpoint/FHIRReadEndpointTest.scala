@@ -125,7 +125,7 @@ class FHIRReadEndpointTest extends OnFhirTest with FHIREndpoint {
         .withHeaders(List(`If-None-Match`(EntityTag("1", weak = true)))) ~> fhirRoute ~> check {
         status === OK
         val resource  = responseAs[Resource]
-        resource.obj.length === 15
+        resource.obj.length === 16
         checkIdAndMeta(resource, resourceId, "2")
         checkHeaders(resource, resourceType, resourceId, "2")
       }
@@ -140,7 +140,7 @@ class FHIRReadEndpointTest extends OnFhirTest with FHIREndpoint {
         .withHeaders(List(`If-Modified-Since`(DateTime.now - 1000 * 60 /*1 minute before*/))) ~> fhirRoute ~> check {
         status === OK
         val resource  = responseAs[Resource]
-        resource.obj.length === 15
+        resource.obj.length === 16
         checkIdAndMeta(resource, resourceId, "2")
         checkHeaders(resource, resourceType, resourceId, "2")
       }
@@ -189,7 +189,7 @@ class FHIRReadEndpointTest extends OnFhirTest with FHIREndpoint {
         //This is a summary parameter
         (resource \ "identifier") !== JNothing
 
-        resource.obj.length === 11
+        resource.obj.length === 12
       }
       Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId + "?_summary=data") ~> fhirRoute ~> check {
         status === OK
@@ -201,7 +201,7 @@ class FHIRReadEndpointTest extends OnFhirTest with FHIREndpoint {
         (resource \ FHIR_COMMON_FIELDS.META \ FHIR_COMMON_FIELDS.TAG \ FHIR_COMMON_FIELDS.SYSTEM).extract[Seq[String]] must contain(FhirConfigurationManager.fhirConfig.FHIR_SUMMARIZATION_INDICATOR_CODE_SYSTEM)
 
         //Only remove text element
-        resource.obj.length === 14
+        resource.obj.length === 15
         (resource \ "text")  === JNothing
       }
       Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId + "?_summary=text") ~> fhirRoute ~> check {
@@ -224,7 +224,7 @@ class FHIRReadEndpointTest extends OnFhirTest with FHIREndpoint {
         checkHeaders(resource, resourceType, resourceId, "4")
 
         (resource \ FHIR_COMMON_FIELDS.META \ FHIR_COMMON_FIELDS.TAG \ FHIR_COMMON_FIELDS.CODE).extract[Seq[String]] must(not(contain("SUBSETTED")))
-        resource.obj.length === 15
+        resource.obj.length === 16
       }
       Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId + "?_summary=invalid") ~> fhirRoute ~> check {
         status === BadRequest

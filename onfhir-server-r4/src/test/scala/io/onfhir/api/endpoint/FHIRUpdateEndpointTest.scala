@@ -151,7 +151,7 @@ class FHIRUpdateEndpointTest extends OnFhirTest with FHIREndpoint {
         val response = responseAs[Resource]
         checkIdAndMeta(response, resourceId, "8")
         checkHeaders(response, resourceType, resourceId, "8")
-        response.obj.length === 15
+        response.obj.length === 16
       }
 
       //Should return empty body

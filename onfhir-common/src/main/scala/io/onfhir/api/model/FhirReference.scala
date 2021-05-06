@@ -1,5 +1,7 @@
 package io.onfhir.api.model
 
+import io.onfhir.api.Resource
+
 abstract class FhirReference {
   def getReference():String
 }
@@ -45,6 +47,12 @@ case class FhirCanonicalReference(url:String, rtype:String, rid:String, version:
  */
 case class FhirInternalReference(ref:String) extends FhirReference {
   def getReference():String = s"#$ref"
+
+  /**
+   * Resolved resource (its type and content)
+   */
+  var resolvedResource:Option[(String, Resource)] = None
+
 }
 
 case class FhirUUIDReference(uuid:String)extends FhirReference {

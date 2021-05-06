@@ -2,7 +2,7 @@ package io.onfhir.db
 
 import com.typesafe.scalalogging.Logger
 import de.flapdoodle.embed.mongo.{MongodExecutable, MongodStarter}
-import de.flapdoodle.embed.mongo.config.{IMongodConfig, MongodConfigBuilder, Net, Storage}
+import de.flapdoodle.embed.mongo.config.{MongodConfig, Net, Storage}
 import de.flapdoodle.embed.mongo.distribution.Version
 import de.flapdoodle.embed.process.runtime.Network
 
@@ -19,11 +19,13 @@ object EmbeddedMongo {
 
   def start(appName:String, host: String, port: Int): Unit = {
 
-    val conf: IMongodConfig = new MongodConfigBuilder()
-      .version(Version.Main.PRODUCTION)
-      .replication(new Storage(s"./${appName.filterNot(_.isWhitespace)}${FOLDER_EXT}",null,0))
-      .net(new Net(host, port, Network.localhostIsIPv6()))
-      .build()
+    val conf: MongodConfig =
+      MongodConfig
+        .builder()
+        .version(Version.Main.PRODUCTION)
+        .replication(new Storage(s"./${appName.filterNot(_.isWhitespace)}${FOLDER_EXT}",null,0))
+        .net(new Net(host, port, Network.localhostIsIPv6()))
+        .build()
 
     mongodExecutable = MongodStarter.getDefaultInstance.prepare(conf)
 

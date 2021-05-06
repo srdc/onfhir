@@ -224,17 +224,34 @@ object ResourceQueryBuilder {
 
   /**
     * Build a revInclude query
-    * @param revIncludeReferences References of the resources that are the result of main query e.g. Goal/234234324
+    * @param revIncludeReferences References of the resources, and optionally canonical url and versions that are the result of main query e.g. Goal/234234324 or (Questionnaire/5, http://example.com/Questionnaire/cgs, v1.0)
     * @param parameterConf Parameter configuration for the revInclude parameter
     * @return
     */
-  def constructQueryForRevInclude(revIncludeReferences:Seq[String], parameterConf: SearchParameterConf):Bson = {
-    val queries = parameterConf.paths.map {
-      case normalPath: String =>
-        val queries = revIncludeReferences.map(revIncludeRef =>
-          SearchUtil.typeHandlerFunction(FHIR_PARAMETER_TYPES.REFERENCE)(revIncludeRef, "", normalPath, FHIR_DATA_TYPES.REFERENCE, Nil)
-        )
-        if(queries.length > 1) or(queries:_*) else queries.head
+  def constructQueryForRevInclude(revIncludeReferences:Seq[(String, Option[String], Option[String])], parameterConf: SearchParameterConf):Bson = {
+    val queries = {
+      parameterConf.targetTypes.head match {
+        case FHIR_DATA_TYPES.REFERENCE =>
+          parameterConf.paths.map {
+            case normalPath: String =>
+              val queries = revIncludeReferences.map(revIncludeRef =>
+                SearchUtil.typeHandlerFunction(FHIR_PARAMETER_TYPES.REFERENCE)(revIncludeRef._1, "", normalPath, FHIR_DATA_TYPES.REFERENCE, Nil)
+              )
+              if(queries.length > 1) or(queries:_*) else queries.head
+          }
+        case FHIR_DATA_TYPES.CANONICAL =>
+          parameterConf.paths.map {
+            case normalPath: String =>
+              val queries =
+                revIncludeReferences
+                  .filter(r => r._2.isDefined)
+                  .map(revIncludeRef => {
+                    val canonicalQuery = revIncludeRef._2.get + revIncludeRef._3.map(v => s"|$v").getOrElse("")
+                    SearchUtil.typeHandlerFunction(FHIR_PARAMETER_TYPES.REFERENCE)(canonicalQuery, "", normalPath, FHIR_DATA_TYPES.CANONICAL, Nil)
+                  })
+              if(queries.length > 1) or(queries:_*) else queries.head
+          }
+      }
     }
 
     //Merge queries with or (for multiple paths parameters)
