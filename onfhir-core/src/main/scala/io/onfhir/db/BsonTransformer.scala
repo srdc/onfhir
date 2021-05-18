@@ -187,8 +187,8 @@ object BsonTransformer{
     field match {
       //To prevent parsing an id resembling a year as date
       case FHIR_COMMON_FIELDS.ID | FHIR_COMMON_FIELDS.CODE => BsonString(value)
-      //For literal reference, we parse the reference and set individual parts of the uri (Ignore the ones with internal references)
-      case FHIR_COMMON_FIELDS.REFERENCE if !value.startsWith("#") =>
+      //For literal reference, we parse the reference and set individual parts of the uri (Ignore the ones with internal references or with urn:uuid pattern)
+      case FHIR_COMMON_FIELDS.REFERENCE if !value.startsWith("#") && !value.startsWith("urn:uuid:") =>
         val (url, rtype, rid, version) = FHIRUtil.parseReferenceValue(value)
         BsonDocument(
           Seq(
