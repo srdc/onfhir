@@ -747,8 +747,15 @@ object FHIRUtil {
 
     result match {
       case JNothing => Nil
-      case org.json4s.JsonAST.JArray(arr) => arr
+      case a:org.json4s.JsonAST.JArray => flattenJArray(a)
       case _ => Seq(result)
+    }
+  }
+
+  private def flattenJArray(a:JArray):Seq[JValue] = {
+    a.arr.flatMap {
+      case sa:JArray => flattenJArray(sa)
+      case o => Seq(o)
     }
   }
 
