@@ -8,8 +8,10 @@ import io.onfhir.api.model.{FHIROperationRequest, FHIROperationResponse}
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.service.{FHIRCreateService, FHIROperationHandlerService, FHIRSearchService}
 import io.onfhir.api.util.FHIRUtil
+import io.onfhir.config.OnfhirConfig
 import io.onfhir.db.ResourceManager
 import io.onfhir.exception.InternalServerException
+import io.onfhir.util.DateTimeUtil
 import io.onfhir.util.JsonFormatter.formats
 import org.json4s.JString
 import org.json4s.JsonAST.{JField, JObject, JValue}
@@ -65,13 +67,21 @@ class DocumentOperationHandler extends FHIROperationHandlerService {
             }
           )
       }
+      //Add document time and identifier
+      result = result merge JObject(
+          "timestamp" -> JString(DateTimeUtil.serializeInstant(Instant.now())),
+          "identifier" -> JObject(
+            "system" -> JString(OnfhirConfig.fhirRootUrl),
+            "value" -> JString(FHIRUtil.generateResourceId())
+          )
+        )
 
-      val persist = operationRequest.extractParamValue[String]("persist")
+      val persist = operationRequest.extractParamValue[Boolean]("persist")
 
       val generatedBundle = persist match {
-        case Some("true") =>
+        case Some(true) =>
           ResourceManager.createResource((bundle \ "resourceType").extract[String], result.asInstanceOf[JObject], generatedId = (result \ "id").extractOpt[String])
-          bundle
+          result.asInstanceOf[JObject]
         case _ => {
           val newVersion = 1L //new version is always 1 for create operation
           val lastModified = Instant.now()
