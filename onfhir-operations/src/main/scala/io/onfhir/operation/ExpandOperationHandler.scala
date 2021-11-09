@@ -31,6 +31,7 @@ class ExpandOperationHandler extends FHIROperationHandlerService {
   final val SEARCHPARAM_ID: String = "_id"
   final val SEARCHPARAM_URL: String = "url"
   final val EXPAND_PARAM_FILTER: String = "filter"
+  final val EXPAND_PARAM_LANGUAGE: String = "displayLanguage"
 
   /**
     * Execute the operation and prepare the output parameters for the operation
@@ -107,89 +108,27 @@ class ExpandOperationHandler extends FHIROperationHandlerService {
         fhirResponse.setResponse(resultingResource)
         fhirResponse
     }
-/*
-    // Build the query from common and resource specific parameters
-    val query = ResourceQueryBuilder.buildCompleteQuery(RESOURCE_VALUESET, searchParams)
-
-    // Search the resources
-    val searchFuture = ResourceManager.searchDocument(RESOURCE_VALUESET, query, Config.fhirDefaultPageCount.toInt, 1, searchParams)
-
-    // Count the resources for the query (without paging)
-    val countFuture = ResourceManager.resourceCount(RESOURCE_VALUESET, query)
-
-    // Run these queries simultaneously
-    val aggregatedFutures = for {
-      document <- searchFuture
-      total <- countFuture
-    } yield (total, document)
-
-    aggregatedFutures map { futures =>
-      val totalCount = futures._1
-      val resources = futures._2._1 //actual matched documents
-
-      // 1) ValueSet not found - return 404
-      if (totalCount < 1) {
-        logger.debug("resource not found, return 404 NotFound...")
-        throw new NotFoundException(Seq(
-          OutcomeIssue(
-            ResultSeverityEnum.INFORMATION.getCode,
-            FHIRResponse.OUTCOME_CODES.INFORMATIONAL,
-            None,
-            if (searchParams.get(SEARCHPARAM_ID).isDefined)
-              Some(s"Resource with type '${RESOURCE_VALUESET}', id '${searchParams.get(SEARCHPARAM_ID).get.head.value}' not found...")
-            else
-              Some(s"Resource with type '${RESOURCE_VALUESET}' not found...")
-            ,
-            Nil
-          )
-        ))
-      }
-      // 2) ValueSet located
-      else {
-        // TODO: In case a ValueSet is queried with 'url', there can be multiple matching ValueSets (there shall not be!). But for the moment, we are just returning the first
-        val document = resources.head
-        val currentVersion = FHIRUtil.extractVersionIdFromBson(document)
-        val id = FHIRUtil.extractIdFromBson(document)
-        val location = Uri(FHIRUtil.resourceLocationWithVersion(RESOURCE_VALUESET, id, currentVersion))
-        val lastModified = DateTime(FHIRUtil.extractLastUpdateTimeFromBson(document))
-
-        // 2.1) convert bson into regular map format
-        val resource = FHIRUtil.clearExtraFields(document).fromBson
-
-        val resultingResource = buildExpansion(resource, operationRequest)
-
-        // 2.2) return the ValueSet
-        logger.debug("resource found, returning...")
-        val fhirResponse = new FHIROperationResponse(
-          StatusCodes.OK, //HTTP Status code
-          Some(location),
-          Some(lastModified), //HTTP Last-Modified header
-          Some(currentVersion)) //HTTP Etag header
-
-        fhirResponse.setResponse(resultingResource)
-        fhirResponse
-      }
-    }*/
   }
 
   def buildExpansion(valueSet:Resource, operationRequest: FHIROperationRequest):Resource = {
     val compose = (valueSet \ VALUESET_COMPOSE).extractOrElse(JObject())
 
     val filterKeys: Seq[String] = operationRequest.extractParamValue[String](EXPAND_PARAM_FILTER).getOrElse("").split(",")
-
+    val language: Option[String] = operationRequest.extractParamValue[String](EXPAND_PARAM_LANGUAGE)
 
     // 1) First, filter all the matching concepts
     val matchingList:Seq[JObject] = compose \ "include" match {
       case includes:JArray => includes.arr.flatMap(include => {
         include \ "concept" match {
           case concepts:JArray => concepts.arr.flatMap(concept => {
-             if(containsAll(concept, filterKeys)){
+            val filteredConcept = filterConcept(concept, filterKeys, language)
+             if(filteredConcept.nonEmpty){
                var matching = JObject()
                (include \ "system").extractOpt[String].foreach(s => {matching = matching ~ ("system" -> s)})
                (include \ "version").extractOpt[String].foreach(v => {matching = matching ~ ("version" -> v)})
-               (concept \ "code").extractOpt[String].foreach(c => {matching = matching ~ ("code" -> c)})
-               (concept \ "display").extractOpt[String].foreach(d => {matching = matching ~ ("display" -> d)})
-               (concept \ "extension").extractOpt[JArray].foreach(arr => {matching = matching ~ ("extension" -> arr)})
+               (filteredConcept.get \ "code").extractOpt[String].foreach(c => {matching = matching ~ ("code" -> c)})
+               (filteredConcept.get \ "display").extractOpt[String].foreach(d => {matching = matching ~ ("display" -> d)})
+               (filteredConcept.get \ "extension").extractOpt[JArray].foreach(arr => {matching = matching ~ ("extension" -> arr)})
                Some(matching)
              } else None
           })
@@ -199,32 +138,11 @@ class ExpandOperationHandler extends FHIROperationHandlerService {
       case _ => Nil
     }
 
-    /*val matchingList = ListBuffer[mutable.LinkedHashMap[String, Any]]()
-    // 1) First, filter all the matching concepts
-    if(compose.contains("include")) {
-      compose("include").asInstanceOf[ListBuffer[Resource]] foreach { include =>
-        if(include.contains("concept")) {
-          include("concept").asInstanceOf[ListBuffer[Resource]] foreach { concept =>
-            if (containsAll(concept, filterKeys)) {
-              val matching = mutable.LinkedHashMap[String, Any]()
-              if (include.contains("system")) matching("system") = include("system")
-              if (include.contains("version")) matching("version") = include("version")
-              if (concept.contains("code")) matching("code") = concept("code")
-              if (concept.contains("extension")) matching("extension") = concept("extension")
-              if (concept.contains("display")) matching("display") = concept("display")
-              matchingList.append(matching)
-            }
-          }
-        }
-      }
-    }*/
-
     var resultValueSet = valueSet
     // 2) If there is any matching, then create an expansion
     if(matchingList.nonEmpty) {
       // 2.1) First, remove if any expansion exists in the full ValueSet
       resultValueSet = resultValueSet.removeField(_._1 == VALUESET_EXPANSION).asInstanceOf[JObject]
-      //valueSet.remove(VALUESET_EXPANSION)
 
       // 2.2) Then create the new expansion
       val expansion =
@@ -234,13 +152,6 @@ class ExpandOperationHandler extends FHIROperationHandlerService {
           ("contains" -> matchingList)
 
       resultValueSet = resultValueSet ~ (VALUESET_EXPANSION -> expansion)
-
-      /*val expansion = mutable.LinkedHashMap[String, Any]()
-      expansion.put("identifier", UUID.randomUUID().toString)
-      expansion.put("timestamp", DateTime.now.toIsoDateTimeString + "Z")
-      expansion.put("total", matchingList.size)
-      expansion.put("contains", matchingList)
-      valueSet.put(VALUESET_EXPANSION, expansion)*/
     }
 
     // In any case, remove the compose element completely
@@ -249,14 +160,34 @@ class ExpandOperationHandler extends FHIROperationHandlerService {
     resultValueSet
   }
 
-  def containsAll(input:JValue, keys:Seq[String]): Boolean = {
+  def filterConcept(input:JValue, keys:Seq[String], language: Option[String]): Option[JObject] = {
+
+    var output = JObject()
+    (input \ "code").extractOpt[String].foreach(c => {output = output ~ ("code" -> c)})
+    (input \ "display").extractOpt[String].foreach(d => {output = output ~ ("display" -> d)})
+    (input \ "extension").extractOpt[JArray].foreach(arr => {output = output ~ ("extension" -> arr)})
+
+    // If there is a language filter, update the display attribute accordingly
+    if (language.nonEmpty) {
+      val newDisplay: Option[String] = input \ "designation" match {
+        case designations: JArray => designations.arr.filter(designation => {
+          (designation \ "language").extractOpt[String].getOrElse("").equals(language.get)
+        }).map(designation => (designation \ "value").extractOpt[String].get).headOption
+        case _ => None
+      }
+
+      if (newDisplay.nonEmpty) {
+        output = output.removeField(_._1 == "display").asInstanceOf[JObject]
+        output = output ~ ("display" -> newDisplay.get)
+      }
+    }
 
     keys foreach (key =>
-      if(!((input \ "display").extractOpt[String].getOrElse("").toLowerCase.contains(key.toLowerCase) ||
-        (input \ "code").extractOpt[String].getOrElse("").toLowerCase.contains(key.toLowerCase)))
-        return false
+      if(!((output \ "display").extractOpt[String].getOrElse("").toLowerCase.contains(key.toLowerCase) ||
+        (output \ "code").extractOpt[String].getOrElse("").toLowerCase.contains(key.toLowerCase)))
+        return None
     )
-    true
+    Some(output)
   }
 
 }
