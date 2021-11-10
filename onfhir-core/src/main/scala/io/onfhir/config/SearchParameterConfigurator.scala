@@ -372,10 +372,12 @@ object SearchParameterConfigurator extends RegexParsers {
       .split('|')
       .map(_.trim)
       .map(e => parsePathExpression(e))
-      .filter(p => p._1.startsWith(resourceType+".") || p._1.head.isLower)
+      .filter(p => p._1.startsWith(FHIR_DATA_TYPES.RESOURCE+".") || p._1.startsWith(resourceType+".") || p._1.head.isLower)
       .map(p =>
         if(p._1.head.isLower)
           p
+        else if(p._1.startsWith(FHIR_DATA_TYPES.RESOURCE+"."))
+          p._1.drop(FHIR_DATA_TYPES.RESOURCE.length+1) -> p._2
         else
           p._1.drop(resourceType.length+1) -> p._2
       )
@@ -531,7 +533,7 @@ object SearchParameterConfigurator extends RegexParsers {
     parseAll(xpathMultiplePath, xpath.replace("&#39;","'")) match {
       case Success(result, _) =>
         result
-          .filter(r => r.head._1 == resourceType) //Only xpaths related to this resource type
+          .filter(r => r.head._1 == resourceType || r.head._1 == FHIR_DATA_TYPES.RESOURCE) //Only xpaths related to this resource type or define in generic way
           .map(r => {
             val paths =  r.drop(1) //drop the resource type part
             val finalPath = paths.map(_._1).mkString(".")
