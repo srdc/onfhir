@@ -32,20 +32,49 @@
                     </archive>
                 </configuration>
             </plugin>
-            <!--Generate standalone executable jar-->
+            <!-- Generates an executable uber-jar with Maven, containing all dependencies. -->
             <plugin>
-                <groupId>com.jolira</groupId>
-                <artifactId>onejar-maven-plugin</artifactId>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
                 <executions>
                     <execution>
-                        <configuration>
-                            <filename>onfhir-server-standalone.jar</filename>
-                            <mainClass>io.onfhir.r5.Boot</mainClass>
-                            <attachToBuild>true</attachToBuild>
-                        </configuration>
+                        <id>make-assembly</id>
+                        <phase>package</phase>
                         <goals>
-                            <goal>one-jar</goal>
+                            <goal>shade</goal>
                         </goals>
+                        <configuration>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                        <exclude>META-INF/log4j-provider.properties</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                            <finalName>onfhir-server-standalone</finalName>
+                            <transformers>
+                                <!-- add Main-Class to manifest file -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>io.onfhir.r5.Boot</mainClass>
+                                </transformer>
+
+                                <!-- Append application.conf to jar configurations-->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                                    <resource>application.conf</resource>
+                                </transformer>
+
+                                <!-- Append reference.conf to jar configurations for Akka to run -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                                    <resource>reference.conf</resource>
+                                </transformer>
+
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -60,7 +89,7 @@
                             <targetPath>/</targetPath>
                             <directory>${project.build.directory}</directory>
                             <!-- Put the standalone jar since it will be run by Docker engine -->
-                            <include>onfhir-standalone.jar</include>
+                            <include>onfhir-server-standalone.jar</include>
                         </resource>
                     </resources>
                 </configuration>
