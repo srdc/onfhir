@@ -267,18 +267,22 @@ object PrefixModifierHandler {
         val regularExpressionValue = FHIRUtil.escapeCharacters(uri) + "("+ FHIRUtil.escapeCharacters("/")+".*)*"
         // Match at the beginning of the uri
         regex(path, "\\A" + regularExpressionValue + "$")
-      case "" =>
+      case _ =>
         //If this is a query on  Canonical URLs of the conformance and knowledge resources (e.g. StructureDefinition, ValueSet, PlanDefinition etc) and a version part is given |[version]
-        if(path == "url" && uri.contains("|")){
-          val canonicalRef = Try(FHIRUtil.parseCanonicalReference(uri)).toOption
-          if(canonicalRef.exists(_.version.isDefined))
-            and(equal(path, canonicalRef.get.getUrl()), equal("version", canonicalRef.get.version.get))
-          else
+        var finalQuery =
+          if(path == "url" && uri.contains("|")){
+            val canonicalRef = Try(FHIRUtil.parseCanonicalReference(uri)).toOption
+            if(canonicalRef.exists(_.version.isDefined))
+              and(equal(path, canonicalRef.get.getUrl()), equal("version", canonicalRef.get.version.get))
+            else
+              equal(path, uri)
+          } else {
+            // Exact match
             equal(path, uri)
-        } else {
-          // Exact match
-          equal(path, uri)
-        }
+          }
+        if(modifier == FHIR_PREFIXES_MODIFIERS.NOT)
+          finalQuery = not(finalQuery)
+        finalQuery
       case other =>
         throw new InvalidParameterException(s"Modifier $other is not supported for FHIR uri queries!")
     }

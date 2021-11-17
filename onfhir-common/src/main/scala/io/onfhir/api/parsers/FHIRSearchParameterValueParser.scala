@@ -92,7 +92,7 @@ object FHIRSearchParameterValueParser {
     override def dataType:Parser[String]  = uri | boolean | code
 
     /* Prefixes and Suffixes for URI type */
-    override def suffixes:Parser[String]  =   """(:(missing|below|above))|$""".r ^^ {_.toString}
+    override def suffixes:Parser[String]  =   """(:(missing|below|above|not))|$""".r ^^ {_.toString}
     override def prefixes:Parser[String]  = """""".r
 
     def parseUriName:Parser[(String, String)] = parseName
