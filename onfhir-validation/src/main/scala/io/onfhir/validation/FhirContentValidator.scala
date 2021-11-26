@@ -93,7 +93,7 @@ class FhirContentValidator(fhirConfig:FhirConfig, profileUrl:String, referenceRe
           extractFieldNameAndDataType(field, allRestrictions) match {
             //If there is no definition for the element, return error
             case None =>
-              if(!isAllAbstract || forceRecognitionOfElementsEvenForAbstractChain)
+              if(!isAllAbstract || resourceElementRestrictions.nonEmpty || forceRecognitionOfElementsEvenForAbstractChain)
                 FhirContentValidator.convertToOutcomeIssue(FHIRUtil.mergeElementPath(parentPath, field), Seq(ConstraintFailure(s"Unrecognized element '${FHIRUtil.mergeElementPath(parentPath, field)}' !")))
               else //If we are validating against an abstract chain just ignore unknown elements
                 Nil
