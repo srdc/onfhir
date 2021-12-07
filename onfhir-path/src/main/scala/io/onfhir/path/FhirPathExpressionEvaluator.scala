@@ -101,7 +101,11 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
           //The field can be a multi valued so we should check if there is a field starting with the path
           case Nil if targetType.isEmpty =>
             r.asInstanceOf[FhirPathComplex].json.obj
-              .find(f => f._1.startsWith(pathName) && f._1.length > pathName.length && f._1.drop(pathName.length).head.isUpper)
+              .find(f =>
+                  f._1.startsWith(pathName) && //If element name starts with path
+                  !f._1.startsWith(pathName+"Value") && //Not include the exception case in elementDefinition e.g. maxValueQuantity
+                  f._1.length > pathName.length &&  //If element has longer name
+                  f._1.drop(pathName.length).head.isUpper)  //and if element is actually multi type FHIR element e.g. valueQuantity, valueCodeableConcept
               .map(f => FhirPathValueTransformer.transform(f._2))
               .getOrElse(Nil) //If not found still return nil
           //Oth
