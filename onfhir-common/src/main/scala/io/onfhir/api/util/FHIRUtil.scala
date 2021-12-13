@@ -12,6 +12,7 @@ import io.onfhir.config.{OnfhirConfig, OperationParamDef}
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRMultiOperationParam, FHIROperationParam, FHIRResponse, FHIRSimpleOperationParam, FhirCanonicalReference, FhirInternalReference, FhirLiteralReference, FhirLogicalReference, FhirReference, Parameter}
 import io.onfhir.api.parsers.FHIRResultParameterResolver
+import io.onfhir.api.util.FHIRUtil.fhiResourceUrlRegex
 import io.onfhir.util.JsonFormatter.formats
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
 import io.onfhir.exception.InvalidParameterException
@@ -23,6 +24,11 @@ import org.json4s.{JsonAST, _}
 import scala.util.Try
 
 object FHIRUtil {
+  /**
+   * Regular expression for FHIR RESTfull resource url
+   */
+
+  private val fhiResourceUrlRegex = """((http|https):\/\/([A-Za-z0-9\-\\\.\:\%\$]*\/)+)?([A-Za-z]+)\/([A-Za-z0-9\-\.]{1,64})(\/_history\/([A-Za-z0-9\-\.]{1,64}))?""".r("rootUrl", "protocol", "other", "rtype", "rid", "allHistory", "version")
 
   /**
     * Generates a random identifier according to FHIR id rules with given minimum length
@@ -54,6 +60,18 @@ object FHIRUtil {
     */
   def resourceLocationWithVersion(_type: String, _id: String, _vid: Long): String = {
     OnfhirConfig.fhirRootUrl + "/" + _type + "/" + _id + "/" + FHIR_HTTP_OPTIONS.HISTORY + "/" + _vid
+  }
+
+  /**
+   * Try to parse a URL as a Restfull FHIR resource url
+   * @param url Given url
+   * @return Tuple of  (Optional root url, resource type, resource id, and option version id)
+   */
+  def parseRestfullFhirResourceUrl(url:String):Option[(Option[String], String, String, Option[String])] = {
+    url match {
+      case fhiResourceUrlRegex(rootUrl, _, _, rtype, rid, _, version) => Some(Option(rootUrl).map(_.dropRight(1)), rtype, rid, Option(version))
+      case _ => None
+    }
   }
 
   /**
@@ -559,6 +577,10 @@ object FHIRUtil {
     (resource \ FHIR_COMMON_FIELDS.RESOURCE_TYPE).extract[String] ->
     (resource \ FHIR_COMMON_FIELDS.ID).extract[String]
 
+  def extractResourceType(resource:Resource):String = {
+    (resource \ FHIR_COMMON_FIELDS.RESOURCE_TYPE).extract[String]
+  }
+
   def extractValue[T](resource: Resource, elementName:String)(implicit m:Manifest[T]):T = {
     (resource \ elementName).extract[T]
   }
@@ -584,10 +606,24 @@ object FHIRUtil {
     * @return
     */
   def extractValueOptionByPath[T](resource: Resource, path:String)(implicit m:Manifest[T]):Option[T] = {
+    def parsePathItem(pitem:String):(String, Seq[Int]) = {
+      if(pitem.last == ']'){
+        val parts = pitem.split('[')
+        parts.head -> parts.tail.map(_.dropRight(1).toInt)
+      } else
+        pitem -> Nil
+    }
+
     val result =
       path
         .split('.')
-        .foldLeft(resource.asInstanceOf[JValue])((v, i) =>  v \ i)
+        .foldLeft(resource.asInstanceOf[JValue])((v, i) =>
+            parsePathItem(i) match {
+              case (p, Nil) => (v \ i)
+              case (p, Seq(arrInd)) => (v \ i)(arrInd)
+              case (p, oth) => oth.foldLeft(v \ i)((c, a) => c (a))
+            }
+          )
 
     result.extractOpt[T]
   }

@@ -10,6 +10,8 @@ import org.json4s.JsonAST.{JArray, JObject, JValue}
 import org.json4s.JsonDSL._
 import org.json4s._
 
+import scala.concurrent.ExecutionContext.Implicits.global
+
 /**
  * FHIR Path Patch operation definitions
  */

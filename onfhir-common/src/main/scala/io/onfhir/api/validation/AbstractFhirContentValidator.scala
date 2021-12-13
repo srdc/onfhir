@@ -6,6 +6,7 @@ import io.onfhir.config.FhirConfig
 import org.json4s.JsonAST.{JObject, JValue}
 
 import scala.collection.mutable
+import scala.concurrent.Future
 
 abstract class AbstractFhirContentValidator(val fhirConfig:FhirConfig, val profileUrl:String, val referenceResolver:Option[IReferenceResolver]) {
   //Chain of profiles for this profile, where parents are on the right in hierarchy order e.g. MyObservation2 -> MyObservation -> Observation -> DomainResource -> Resource
@@ -35,7 +36,7 @@ abstract class AbstractFhirContentValidator(val fhirConfig:FhirConfig, val profi
    * @param value   JSON FHIR content (a resource or contents of complex element)
    * @return
    */
-  def validateComplexContent(value: JObject): Seq[OutcomeIssue]
+  def validateComplexContent(value: JObject): Future[Seq[OutcomeIssue]]
 
   /**
    * Validate FHIR JSON content according to given profile chain with extra element restrictions
@@ -49,7 +50,7 @@ abstract class AbstractFhirContentValidator(val fhirConfig:FhirConfig, val profi
    *                                                        returning issues for unrecognized elements
    * @return
    */
-  def validateComplexContentAgainstProfile(profileChain: Seq[ProfileRestrictions], value: JObject, parentPath: Option[String], resourceElementRestrictions: Seq[Seq[(String, ElementRestrictions)]] = Nil, forceRecognitionOfElementsEvenForAbstractChain:Boolean = false): Seq[OutcomeIssue]
+  def validateComplexContentAgainstProfile(profileChain: Seq[ProfileRestrictions], value: JObject, parentPath: Option[String], resourceElementRestrictions: Seq[Seq[(String, ElementRestrictions)]] = Nil, forceRecognitionOfElementsEvenForAbstractChain:Boolean = false): Future[Seq[OutcomeIssue]]
 
   /**
    * Find profile with the given URL

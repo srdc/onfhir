@@ -11,6 +11,10 @@ import io.onfhir.validation.{FhirContentValidator, FhirTerminologyValidator, Ref
 import org.json4s.Extraction
 import io.onfhir.api._
 
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration.DurationInt
+
 /**
  * Configuration of FHIR related capabilites based on foundation resources provided (CapabilityStatement, StructureDefinition, etc)
  */
@@ -546,7 +550,7 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
         case None => throw new InitializationException(s"All infrastructure resources used for onFhir configuration shoud have a url!")
         case Some(url) =>
           val fhirContentValidator = FhirContentValidator.apply(baseFhirConfig, s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/$rtype", new ReferenceResolver(baseFhirConfig, resource))
-          url ->  fhirContentValidator.validateComplexContent(resource)
+          url ->  Await.result(fhirContentValidator.validateComplexContent(resource), 1 minutes)
       }
     )
     val resourcesWithProblems = issuesForEachResource.filter(rIssues => rIssues._2.exists(i => i.isError))

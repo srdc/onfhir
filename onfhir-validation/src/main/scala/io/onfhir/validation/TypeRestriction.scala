@@ -9,6 +9,9 @@ import io.onfhir.api.validation.{AbstractFhirContentValidator, ConstraintFailure
 import io.onfhir.config.OnfhirConfig
 import org.json4s.JsonAST.{JObject, JString, JValue}
 import io.onfhir.util.JsonFormatter.formats
+
+import scala.concurrent.Await
+import scala.concurrent.duration.DurationInt
 /**
  * Restriction on the type of an element
  *
@@ -43,7 +46,8 @@ case class TypeRestriction(dataTypesAndProfiles:Seq[(String, Seq[String])]) exte
         )
         //It should match with one of the profiles
         allProfiles.exists(profile =>
-          !fhirContentValidator.validateComplexContentAgainstProfile(fhirContentValidator.fhirConfig.findProfileChain(profile),jobj, None).exists(_.severity == FHIRResponse.SEVERITY_CODES.ERROR)
+          !Await.result(fhirContentValidator.validateComplexContentAgainstProfile(fhirContentValidator.fhirConfig.findProfileChain(profile),jobj, None), 1 minutes)
+              .exists(_.severity == FHIRResponse.SEVERITY_CODES.ERROR)
         )
       //Primitive
       case oth =>

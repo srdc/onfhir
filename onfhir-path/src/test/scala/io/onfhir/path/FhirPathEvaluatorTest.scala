@@ -11,6 +11,8 @@ import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
 
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.io.Source
 
 @RunWith(classOf[JUnitRunner])
@@ -533,8 +535,9 @@ class FhirPathEvaluatorTest extends Specification {
     "evaluate special functions" in {
       var referenceResolver: IReferenceResolver = new IReferenceResolver {
         override val resource: Resource = JObject()
-        override val bundle: Option[(String, Resource)] = None
-        override def resolveReference(reference: FhirReference): Option[Resource] = {
+        override val bundle: Option[(Option[String], Resource)]= None
+        override def resolveReference(reference: FhirReference): Future[Option[Resource]] = {
+           Future.apply(
            reference match {
              case FhirLiteralReference(url, "Patient", rid, version) =>
                Some(Source.fromInputStream(getClass.getResourceAsStream("/patient.json")).mkString.parseJson)
@@ -544,9 +547,10 @@ class FhirPathEvaluatorTest extends Specification {
              case _ =>
                None
            }
+           )
         }
-        override def isReferencedResourceExist(reference: FhirReference, profiles: Set[String]): Boolean = {
-          true
+        override def isReferencedResourceExist(reference: FhirReference, profiles: Set[String]): Future[Boolean] = {
+          Future.apply(true)
         }
       }
 

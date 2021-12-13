@@ -10,6 +10,8 @@ import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
 import org.apache.commons.lang3.StringEscapeUtils
 import org.json4s.JsonAST.JObject
 
+import scala.concurrent.Await
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.util.Try
 
 class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPathResult]) {
@@ -51,7 +53,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     }
 
     fhirReferences
-      .flatMap(fr => context.referenceResolver.flatMap(rr => rr.resolveReference(fr)))
+      .flatMap(fr => context.referenceResolver.flatMap(rr => Await.result(rr.resolveReference(fr), 1 minutes) ))
       .map(FhirPathComplex)
   }
 
