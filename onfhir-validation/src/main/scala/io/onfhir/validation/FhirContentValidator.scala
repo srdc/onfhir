@@ -37,7 +37,7 @@ class FhirContentValidator(
                           )(implicit val ec:ExecutionContext) extends AbstractFhirContentValidator(fhirConfig, profileUrl, referenceResolver) {
   protected val logger: Logger = LoggerFactory.getLogger(this.getClass)
   //Temporary store of bundle content for bundle validations
-  private var bundle:Option[Resource] = _
+  private var bundle:Option[Resource] = None
   /**
    * Validate a complex FHIR content; a resource or element corresponding to a data type
    *
