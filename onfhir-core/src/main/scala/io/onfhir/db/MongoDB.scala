@@ -1,18 +1,15 @@
 package io.onfhir.db
 
-import java.time.temporal.ChronoUnit
-import java.util.concurrent.TimeUnit
-
-import com.mongodb.connection.{ClusterConnectionMode, ClusterType}
-import org.mongodb.scala.{ClientSession, MongoClient, MongoClientSettings, MongoCollection, MongoCredential, MongoDatabase, Observable, ReadConcern, ReadPreference, ServerAddress, TransactionOptions, WriteConcern}
+import com.mongodb.connection.ClusterConnectionMode
 import io.onfhir.Onfhir
 import io.onfhir.config.OnfhirConfig
 import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.connection.{ClusterSettings, ConnectionPoolSettings, ServerSettings}
+import org.mongodb.scala.connection.{ClusterSettings, ConnectionPoolSettings}
+import org.mongodb.scala.{ClientSession, MongoClient, MongoClientSettings, MongoCollection, MongoCredential, MongoDatabase, Observable, ReadConcern, ReadPreference, ServerAddress, TransactionOptions, WriteConcern}
 
+import java.util.concurrent.TimeUnit
 import scala.collection.JavaConverters._
 import scala.concurrent.Future
-import scala.util.Try
 
 /**
   * MongoDB client object

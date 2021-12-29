@@ -99,7 +99,7 @@
         <maven.compiler.target>11</maven.compiler.target>
 
         <!-- plugin versions -->
-        <scala.maven.plugin.version>4.1.1</scala.maven.plugin.version>
+        <scala.maven.plugin.version>4.5.6</scala.maven.plugin.version>
         <jar.plugin.version>3.1.0</jar.plugin.version>
         <maven-shade-plugin.version>3.2.4</maven-shade-plugin.version>
         <surefire.plugin.version>2.19.1</surefire.plugin.version>
@@ -112,7 +112,7 @@
         <akka-http.version>10.2.0</akka-http.version>
         <akka.version>2.6.8</akka.version>
         <mongodb.scala.version>2.9.0</mongodb.scala.version>
-        <mongo.embedded.version>3.0.0</mongo.embedded.version>
+        <mongo.embedded.version>3.2.4</mongo.embedded.version>
         <json4s.version>3.6.10</json4s.version>
         <logback.version>1.2.3</logback.version>
         <kafka.version>1.1.0</kafka.version>

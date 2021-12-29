@@ -56,9 +56,6 @@ class Onfhir(
       */
     override def postServerShutdown(attempt: Try[Done], system: ActorSystem): Unit = {
       logger.info("Closing OnFhir server...")
-      if (OnfhirConfig.mongoEmbedded) {
-        EmbeddedMongo.stop()
-      }
       implicit val executionContext = Onfhir.actorSystem.dispatcher
       Onfhir.actorSystem.terminate().map( _ => System.exit(0))
     }
@@ -73,6 +70,9 @@ class Onfhir(
       val promise = Promise[Done]()
       sys.addShutdownHook {
         promise.trySuccess(Done)
+        if (OnfhirConfig.mongoEmbedded) {
+          EmbeddedMongo.stop()
+        }
       }
       Future {
         blocking {

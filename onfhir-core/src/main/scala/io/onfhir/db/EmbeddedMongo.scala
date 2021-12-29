@@ -19,6 +19,8 @@ object EmbeddedMongo {
 
   def start(appName:String, host: String, port: Int): Unit = {
 
+    logger.info("Starting an Embedded Mongo instance on {}:{}", host, port)
+
     val conf: MongodConfig =
       MongodConfig
         .builder()
