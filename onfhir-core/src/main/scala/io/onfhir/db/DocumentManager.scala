@@ -21,7 +21,7 @@ import io.onfhir.api.model.{FHIRResponse, OutcomeIssue}
 import io.onfhir.util.DateTimeUtil
 import org.bson.BsonValue
 import org.json4s.JValue
-import org.mongodb.scala.model.{Accumulators, Aggregates, BsonField, BulkWriteOptions, Filters, Projections, UpdateOptions, Updates}
+import org.mongodb.scala.model.{Accumulators, Aggregates, BsonField, BulkWriteOptions, Filters, Projections, Sorts, UpdateOptions, Updates}
 import org.mongodb.scala.{Completed, FindObservable, MongoCollection, bson}
 
 import scala.collection.JavaConverters._
@@ -316,14 +316,18 @@ object DocumentManager {
     aggregations.append(paramsWithAlternativeSorting.map(sp => addFieldAggregationForParamWithAlternativeSorting(sp)) : _*)
 
     //Add sorting aggregations
-    sortingPaths.foreach(sp => sp._3.length match {
-      //For single alternative path, sort it
-      case 1 =>
-        aggregations.append(Aggregates.sort( if(sp._2 > 0) ascending(sp._3.head) else descending(sp._3.head)))
-      //For multiple alternatives, sort against the added field which is based on parameter name
-      case _ =>
-        aggregations.append(Aggregates.sort( if(sp._2 > 0) ascending(s"__sort_${sp._1}") else descending(s"__sort_${sp._1}")))
-    })
+    val sorts =
+      sortingPaths.map(sp => sp._3.length match {
+        //For single alternative path, sort it
+        case 1 =>
+          if(sp._2 > 0) ascending(sp._3.head) else descending(sp._3.head)
+        //For multiple alternatives, sort against the added field which is based on parameter name
+        case _ =>
+          if(sp._2 > 0) ascending(s"__sort_${sp._1}") else descending(s"__sort_${sp._1}")
+      })
+    if(sorts.nonEmpty)
+      aggregations.append(Aggregates.sort(Sorts.orderBy(sorts:_*)))
+
 
     //Handle paging parameters
     if(count != -1){

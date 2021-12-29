@@ -189,7 +189,7 @@
                             <include>**/*Suite.*</include>
                         </includes>
                         <runOrder>alphabetical</runOrder>
-                        <reuseForks>false</reuseForks>
+                        <reuseForks>true</reuseForks>
                         <forkCount>1</forkCount>
                     </configuration>
                 </plugin>
