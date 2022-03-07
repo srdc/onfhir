@@ -113,7 +113,7 @@
         <akka.version>2.6.8</akka.version>
         <mongodb.scala.version>2.9.0</mongodb.scala.version>
         <mongo.embedded.version>3.2.4</mongo.embedded.version>
-        <json4s.version>3.6.10</json4s.version>
+        <json4s.version>4.0.3</json4s.version>
         <logback.version>1.2.10</logback.version>
         <kafka.version>1.1.0</kafka.version>
         <config.version>1.3.3</config.version>
@@ -296,7 +296,7 @@
             </dependency>
             <dependency>
                 <groupId>org.scala-lang.modules</groupId>
-                <artifactId>scala-parser-combinators_2.12</artifactId>
+                <artifactId>scala-parser-combinators_${scala.binary.version}</artifactId>
                 <version>${scala.pcombinators}</version>
             </dependency>
 
@@ -343,25 +343,25 @@
             <!-- Akka HTTP Suite -->
             <dependency>
                 <groupId>com.typesafe.akka</groupId>
-                <artifactId>akka-http-core_2.12</artifactId>
+                <artifactId>akka-http-core_${scala.binary.version}</artifactId>
                 <version>${akka-http.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.typesafe.akka</groupId>
-                <artifactId>akka-http_2.12</artifactId>
+                <artifactId>akka-http_${scala.binary.version}</artifactId>
                 <version>${akka-http.version}</version>
             </dependency>
 
             <!-- Caching purposes-->
             <dependency>
                 <groupId>com.typesafe.akka</groupId>
-                <artifactId>akka-http-caching_2.12</artifactId>
+                <artifactId>akka-http-caching_${scala.binary.version}</artifactId>
                 <version>${akka-http.version}</version>
             </dependency>
             <!-- Testkit for Akka Http-->
             <dependency>
                 <groupId>com.typesafe.akka</groupId>
-                <artifactId>akka-http-testkit_2.12</artifactId>
+                <artifactId>akka-http-testkit_${scala.binary.version}</artifactId>
                 <version>${akka-http.version}</version>
                 <scope>test</scope>
             </dependency>
@@ -369,29 +369,29 @@
             <!-- Akka and Akka Streaming -->
             <dependency>
                 <groupId>com.typesafe.akka</groupId>
-                <artifactId>akka-actor_2.12</artifactId>
+                <artifactId>akka-actor_${scala.binary.version}</artifactId>
                 <version>${akka.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.typesafe.akka</groupId>
-                <artifactId>akka-stream_2.12</artifactId>
+                <artifactId>akka-stream_${scala.binary.version}</artifactId>
                 <version>${akka.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.typesafe.akka</groupId>
-                <artifactId>akka-slf4j_2.12</artifactId>
+                <artifactId>akka-slf4j_${scala.binary.version}</artifactId>
                 <version>${akka.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.typesafe.akka</groupId>
-                <artifactId>akka-testkit_2.12</artifactId>
+                <artifactId>akka-testkit_${scala.binary.version}</artifactId>
                 <version>${akka.version}</version>
             </dependency>
 
             <!-- MongoDB Driver -->
             <dependency>
                 <groupId>org.mongodb.scala</groupId>
-                <artifactId>mongo-scala-driver_2.12</artifactId>
+                <artifactId>mongo-scala-driver_${scala.binary.version}</artifactId>
                 <version>${mongodb.scala.version}</version>
             </dependency>
 
@@ -443,7 +443,7 @@
             <!-- Apache Kafka -->
             <dependency>
                 <groupId>org.apache.kafka</groupId>
-                <artifactId>kafka_2.12</artifactId>
+                <artifactId>kafka_${scala.binary.version}</artifactId>
                 <version>${kafka.version}</version>
                 <exclusions>
                     <exclusion>
@@ -475,14 +475,14 @@
             <!-- Unit Testing -->
             <dependency>
                 <groupId>org.specs2</groupId>
-                <artifactId>specs2-core_2.12</artifactId>
+                <artifactId>specs2-core_${scala.binary.version}</artifactId>
                 <version>${specs2.version}</version>
                 <scope>provided</scope>
             </dependency>
 
             <dependency>
                 <groupId>org.specs2</groupId>
-                <artifactId>specs2-junit_2.12</artifactId>
+                <artifactId>specs2-junit_${scala.binary.version}</artifactId>
                 <version>${specs2.version}</version>
                 <scope>provided</scope>
             </dependency>

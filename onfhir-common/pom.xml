@@ -36,25 +36,25 @@
         </dependency>
         <dependency>
             <groupId>org.scala-lang.modules</groupId>
-            <artifactId>scala-parser-combinators_2.12</artifactId>
+            <artifactId>scala-parser-combinators_${scala.binary.version}</artifactId>
         </dependency>
         <!-- Akka  Http Core for headers, etc -->
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-http-core_2.12</artifactId>
+            <artifactId>akka-http-core_${scala.binary.version}</artifactId>
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-http_2.12</artifactId>
+            <artifactId>akka-http_${scala.binary.version}</artifactId>
         </dependency>
         <!-- Akka and Akka Streaming -->
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-actor_2.12</artifactId>
+            <artifactId>akka-actor_${scala.binary.version}</artifactId>
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-stream_2.12</artifactId>
+            <artifactId>akka-stream_${scala.binary.version}</artifactId>
         </dependency>
         <!-- JSON Utilities -->
         <dependency>
@@ -103,13 +103,13 @@
         <!-- Unit Testing -->
         <dependency>
             <groupId>org.specs2</groupId>
-            <artifactId>specs2-core_2.12</artifactId>
+            <artifactId>specs2-core_${scala.binary.version}</artifactId>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.specs2</groupId>
-            <artifactId>specs2-junit_2.12</artifactId>
+            <artifactId>specs2-junit_${scala.binary.version}</artifactId>
             <scope>provided</scope>
         </dependency>
     </dependencies>

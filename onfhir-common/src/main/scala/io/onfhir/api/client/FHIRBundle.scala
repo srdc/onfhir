@@ -31,6 +31,8 @@ abstract class FHIRPaginatedBundle(bundle:Resource, val request:FhirRequestBuild
     case _ => Map.empty
   }
 
+  def getLastPage():Long = links.get("last").flatMap(l => Uri(l).query().get("_page")).map(_.toLong).getOrElse(0L)
+
   /**
    * If search set has next page
    * @return
@@ -54,7 +56,7 @@ class FHIRSearchSetBundle(bundle:Resource, override val request:FhirSearchReques
   /**
    * Search results
    */
-  val searchResults:Seq[JObject] =
+  var searchResults:Seq[JObject] =
     entries
       .filter(entry => FHIRUtil.extractValueOptionByPath[String](entry, "search.mode").contains("match"))
       .flatMap(getResourceFromEntry)
@@ -62,13 +64,18 @@ class FHIRSearchSetBundle(bundle:Resource, override val request:FhirSearchReques
   /**
    * Included results indexed with reference url e.g. Observation/653351 -> resource
    */
-  val includedResults:Map[String, Resource] =
+  var includedResults:Map[String, Resource] =
     entries
       .filter(entry => FHIRUtil.extractValueOptionByPath[String](entry, "search.mode").contains("include"))
       .flatMap(getResourceFromEntry)
       .map(r => FHIRUtil.getReference(r) -> r)
       .toMap
 
+  def mergeResults(other:FHIRSearchSetBundle):FHIRSearchSetBundle = {
+    searchResults = searchResults ++ other.searchResults
+    includedResults = includedResults ++ other.includedResults
+    this
+  }
 
   /**
    * Use when there are multi type results in search set

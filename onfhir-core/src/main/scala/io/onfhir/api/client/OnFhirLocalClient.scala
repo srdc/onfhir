@@ -39,11 +39,11 @@ object OnFhirLocalClient extends BaseFhirClient {
     bundle match {
       case s:FHIRSearchSetBundle =>
         val baseRequest = s.request
-        baseRequest.page = Some(baseRequest.page.getOrElse(1) + 1)
+        baseRequest.page = Some(baseRequest.page.getOrElse(1L) + 1)
         baseRequest.executeAndReturnBundle().map(_.asInstanceOf[T])
       case h:FHIRHistoryBundle =>
         val baseRequest = h.request
-        baseRequest.page = Some(baseRequest.page.getOrElse(1) + 1)
+        baseRequest.page = Some(baseRequest.page.getOrElse(1L) + 1)
         baseRequest.executeAndReturnBundle().map(_.asInstanceOf[T])
     }
   }

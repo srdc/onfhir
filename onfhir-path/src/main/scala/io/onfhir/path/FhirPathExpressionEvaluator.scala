@@ -138,7 +138,7 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
     *     */
   override def visitPolarityExpression(ctx: FhirPathExprParser.PolarityExpressionContext): Seq[FhirPathResult] = {
     val result = visit(ctx.expression())
-    if(result.length != 1 && !(result.head.isInstanceOf[FhirPathNumber] | result.head.isInstanceOf[FhirPathNumber]))
+    if(result.length != 1 || !result.head.isInstanceOf[FhirPathNumber])
       throw new FhirPathException(s"Unary operators '+' and '-' can be used only on number values, at ${ctx.expression().getText}!!!")
 
     ctx.getRuleContext().getChild(0).getText match {

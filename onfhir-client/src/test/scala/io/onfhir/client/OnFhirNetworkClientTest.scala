@@ -168,6 +168,18 @@ object OnFhirNetworkClientTest extends Specification {
       bundle.map(_.total) must beSome(1L).await
     }
 
+    "should help searching resources - getting merged results" in {
+      var bundle:FHIRSearchSetBundle =
+        Await.result(
+          onFhirClient
+            .search("Patient", count = 1)
+            .where("gender", "male")
+            .executeAndMergeBundle(), 3 seconds)
+
+      bundle.total must beSome(3L)
+      bundle.searchResults.length mustEqual(3)
+    }
+
     "should help patching a resource" in {
       var resource:Future[Resource] =
         onFhirClient

@@ -46,7 +46,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   def resolve():Seq[FhirPathResult] = {
-    var fhirReferences = current.map {
+    val fhirReferences = current.map {
       case FhirPathString(uri) => FHIRUtil.parseCanonicalReference(uri)
       case FhirPathComplex(o) => FHIRUtil.parseReference(o)
       case _ => throw new FhirPathException("Invalid function call 'resolve', it should be called on a canonical value or FHIR reference!")
@@ -67,7 +67,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     if(url.length != 1 || !url.head.isInstanceOf[FhirPathString])
       throw new FhirPathException(s"Invalid function call 'extension', expression ${urlExp.getText} does not return a url!")
 
-    val expr = FhirPathEvaluator().parse(s"extension.where(url = '${url.head.asInstanceOf[FhirPathString].s}')")
+    val expr = FhirPathEvaluator.parse(s"extension.where(url = '${url.head.asInstanceOf[FhirPathString].s}')")
 
     var result = new FhirPathExpressionEvaluator(context, current).visit(expr)
     result
@@ -501,52 +501,151 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * Extra aggregation functions
    */
 
+  /**
+   * Sum of the input numeric values, 0 if input list is empty
+   * @return
+   */
+  def sum():Seq[FhirPathResult] = {
+    if(current.exists(!_.isInstanceOf[FhirPathNumber]))
+      throw new FhirPathException(s"Invalid function call 'sum', one of the input values is not a numeric value!")
+
+    current match {
+      case Nil => Seq(FhirPathNumber(0))
+      case oth =>
+        Seq(
+          oth
+          .map(_.asInstanceOf[FhirPathNumber])
+          .reduce((n1, n2) => n1 + n2)
+        )
+    }
+  }
+
+  /**
+   * Sum of the values after executing the expression on given input values
+   * @param expr Expression to calculate the sum
+   * @return
+   */
   def sum(expr:ExpressionContext):Seq[FhirPathResult] = {
     val results = current.map(c => {
       val result = new FhirPathExpressionEvaluator(context, Seq(c)).visit(expr)
       if(result.length > 1 || result.headOption.exists(!_.isInstanceOf[FhirPathNumber]))
-        throw new FhirPathException(s"Invalid function call 'sum', the expression ${expr.getText} does not return a single FhirPathNumber or Nil!")
+        throw new FhirPathException(s"Invalid function call 'sum', the expression ${expr.getText} does not return a single numeric value or Nil!")
       result.headOption.map(_.asInstanceOf[FhirPathNumber]).getOrElse(FhirPathNumber(0))
     })
 
-    Seq(results.reduce((r1, r2) => r1 + r2))
+    if(results.isEmpty)
+      Seq(FhirPathNumber(0))
+    else
+      Seq(results.reduce((r1, r2) => r1 + r2))
   }
 
+  /**
+   * Getting the average of given expression that returns a numeric value
+   * @param expr
+   * @return
+   */
   def avg(expr:ExpressionContext):Seq[FhirPathResult] = {
     if(current.isEmpty)
-      throw new FhirPathException(s"Invalid function call 'avg' on Nil!")
-
-     Seq(sum(expr).head.asInstanceOf[FhirPathNumber] / FhirPathNumber(current.length))
+      Nil
+    else
+      Seq(sum(expr).head.asInstanceOf[FhirPathNumber] / FhirPathNumber(current.length))
   }
 
+  /**
+   * Average of the input numeric values
+   * @return
+   */
+  def avg():Seq[FhirPathResult] = {
+    if(current.exists(!_.isInstanceOf[FhirPathNumber]))
+      throw new FhirPathException(s"Invalid function call 'avg' on non numeric content!")
+    if(current.isEmpty)
+      Nil
+    else
+      Seq(current
+        .map(_.asInstanceOf[FhirPathNumber])
+        .reduce((n1, n2) => n1 + n2) / FhirPathNumber(current.length))
+  }
+
+  /**
+   * Get the minimum of the input comparable values (numeric, dateTime
+   * @return
+   */
+  def min():Seq[FhirPathResult] = {
+    if(current.exists(c => c.isInstanceOf[FhirPathComplex] || c.isInstanceOf[FhirPathBoolean]))
+      throw new FhirPathException(s"Invalid function call 'min' on non comparable values!")
+    if(current.map(_.getClass.getName).toSet.size > 1)
+      throw new FhirPathException(s"Invalid function call 'min', all compared values should be in same type!")
+
+
+    if(current.isEmpty)
+      Nil
+    else {
+      type T = FhirPathResult with Ordered[FhirPathResult]
+      Seq(current.map(_.asInstanceOf[T]).reduce((r1,r2) => if(r1<r2) r1 else r2))
+    }
+  }
+
+  /**
+   * Getting the minimum of given expression that returns a comparable value
+   * @param expr  Expression to calculate
+   * @return
+   */
   def min(expr:ExpressionContext):Seq[FhirPathResult] = {
-    val results = current
-      .flatMap(c => {
-        val result = new FhirPathExpressionEvaluator(context, Seq(c)).visit(expr)
-        if (result.length > 1)
-          throw new FhirPathException(s"Invalid function call 'min', the expression ${expr.getText} does not return a single FhirPathNumber or Nil!")
-        result.headOption.map(_.asInstanceOf[FhirPathNumber])
-      })
+    val results =
+      current
+        .flatMap(c => {
+          val result = new FhirPathExpressionEvaluator(context, Seq(c)).visit(expr)
+          if (result.length > 1)
+            throw new FhirPathException(s"Invalid function call 'min', the expression ${expr.getText} does not return a single value or Nil!")
+          result.headOption
+        })
 
     if(results.isEmpty)
       Nil
-    else
-      Seq(results.reduce((r1,r2) => if(r1<r2) r1 else r2))
+    else {
+      type T = FhirPathResult with Ordered[FhirPathResult]
+      Seq(results.map(_.asInstanceOf[T]).reduce((r1,r2) => if(r1<r2) r1 else r2))
+    }
   }
 
+  /**
+   * Getting the maximum of given expression that returns a comparable value
+   * @param expr  Expression to calculate
+   * @return
+   */
   def max(expr:ExpressionContext):Seq[FhirPathResult] = {
     val results = current
       .flatMap(c => {
         val result = new FhirPathExpressionEvaluator(context, Seq(c)).visit(expr)
         if (result.length > 1)
-          throw new FhirPathException(s"Invalid function call 'min', the expression ${expr.getText} does not return a single FhirPathNumber or Nil!")
-        result.headOption.map(_.asInstanceOf[FhirPathNumber])
+          throw new FhirPathException(s"Invalid function call 'min', the expression ${expr.getText} does not return a single value or Nil!")
+        result.headOption
       })
 
     if(results.isEmpty)
       Nil
-    else
-      Seq(results.reduce((r1,r2) => if(r1>r2) r1 else r2))
+    else {
+      type T = FhirPathResult with Ordered[FhirPathResult]
+      Seq(results.map(_.asInstanceOf[T]).reduce((r1,r2) => if(r1>r2) r1 else r2))
+    }
+  }
+
+  /**
+   * Getting the maximum of given input values
+   * @return
+   */
+  def max():Seq[FhirPathResult] = {
+    if(current.exists(c => c.isInstanceOf[FhirPathComplex] || c.isInstanceOf[FhirPathBoolean]))
+      throw new FhirPathException(s"Invalid function call 'max' on non comparable values!")
+    if(current.map(_.getClass.getName).toSet.size > 1)
+      throw new FhirPathException(s"Invalid function call 'max', all compared values should be in same type!")
+
+    if(current.isEmpty)
+      Nil
+    else {
+      type T = FhirPathResult with Ordered[FhirPathResult]
+      Seq(current.map(_.asInstanceOf[T]).reduce((r1,r2) => if(r1>r2) r1 else r2))
+    }
   }
 
   def groupBy(groupByExpr:ExpressionContext, aggregateExpr:ExpressionContext):Seq[FhirPathResult] = {
@@ -665,13 +764,15 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   }
 
   /**
-   * If the current expression returns Nil, then evaluates the else expression, otherwise return current
+   * If the current expression returns Nil, then evaluates the else expression from start, otherwise return current
    */
   def orElse(elseExpr:ExpressionContext):Seq[FhirPathResult] = {
-    if(current.isEmpty)
-      new FhirPathExpressionEvaluator(context, current).visit(elseExpr)
-    else
-      current
+    current match {
+      case Nil =>
+        val elsePart = new FhirPathExpressionEvaluator(context, context._this).visit(elseExpr)
+        elsePart
+      case oth => oth
+    }
   }
 
 }

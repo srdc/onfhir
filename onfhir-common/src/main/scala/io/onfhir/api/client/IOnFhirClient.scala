@@ -166,6 +166,15 @@ trait IOnFhirClient {
   def search(rtype:String, count:Int):FhirSearchRequestBuilder
 
   /**
+   * Start search from a specific page
+   * @param rtype
+   * @param count
+   * @param page
+   * @return
+   */
+  def search(rtype:String, count:Int, page:Long):FhirSearchRequestBuilder
+
+  /**
    * Return builder for FHIR operation
    * @param opName  Operation name
    * @return

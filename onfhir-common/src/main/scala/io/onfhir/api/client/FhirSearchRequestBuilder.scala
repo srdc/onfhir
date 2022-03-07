@@ -4,6 +4,8 @@ import akka.http.scaladsl.model.HttpMethods
 import io.onfhir.api.FHIR_INTERACTIONS
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse}
 
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
@@ -13,11 +15,13 @@ import scala.util.{Failure, Success}
  * @param rtype
  * @param count
  */
-class FhirSearchRequestBuilder(onFhirClient: IOnFhirClient, rtype:String, count:Option[Int] = None, var page:Option[Int] = None)
+class FhirSearchRequestBuilder(onFhirClient: IOnFhirClient, rtype:String, count:Option[Int] = None, var page:Option[Long] = None)
   extends FhirSearchLikeRequestBuilder(onFhirClient, FHIRRequest(interaction = FHIR_INTERACTIONS.SEARCH, requestUri = s"${onFhirClient.getBaseUrl()}/$rtype", resourceType = Some(rtype)))
     with IFhirBundleReturningRequestBuilder
   {
   type This = FhirSearchRequestBuilder
+  // Sort parameters where true indicate descending sort
+  protected val sortParams:mutable.ListBuffer[(String, Boolean)] = new ListBuffer[(String, Boolean)]
 
   def byHttpPost():FhirSearchRequestBuilder = {
     request.httpMethod = Some(HttpMethods.POST)
@@ -30,8 +34,20 @@ class FhirSearchRequestBuilder(onFhirClient: IOnFhirClient, rtype:String, count:
     this
   }
 
+  def sortOnDesc(params:String*):FhirSearchRequestBuilder = {
+    sortParams.append(params.map(p => p -> true):_*)
+    this
+  }
+
+  def sortOnAsc(params:String*):FhirSearchRequestBuilder = {
+    sortParams.append(params.map(p => p -> false):_*)
+    this
+  }
+
   override protected def compile(): Unit = {
     super.compile()
+    if(sortParams.nonEmpty)
+      request.queryParams = request.queryParams ++ Map("_sort" -> sortParams.map(sp => s"${if(sp._2) "-" else ""}${sp._1}").toList)
     if(page.isDefined)
       request.queryParams = request.queryParams ++ Map("_page" -> List(s"${page.get}"))
     //Also add the compartment as param
@@ -52,6 +68,19 @@ class FhirSearchRequestBuilder(onFhirClient: IOnFhirClient, rtype:String, count:
     new SearchSetIterator(this)
   }
 
+  def executeAndMergeBundle()(implicit executionContext: ExecutionContext):Future[FHIRSearchSetBundle] = {
+    getMergedBundle(executeAndReturnBundle())
+  }
+
+  private def getMergedBundle(bundle:Future[FHIRSearchSetBundle])(implicit ec:ExecutionContext):Future[FHIRSearchSetBundle] = {
+      bundle.flatMap {
+        case r if r.hasNext() =>
+          getMergedBundle(onFhirClient.next(r))
+            .map(r2 => r2.mergeResults(r))
+        case r => Future.apply(r)
+      }
+    }
+
   override def constructBundle(fhirResponse: FHIRResponse): FHIRSearchSetBundle = {
       try {
         new FHIRSearchSetBundle(fhirResponse.responseBody.get, this)
@@ -62,7 +91,7 @@ class FhirSearchRequestBuilder(onFhirClient: IOnFhirClient, rtype:String, count:
   }
 
   override def nextPage():Unit = {
-    this.page = Some(this.page.getOrElse(1) + 1)
+    this.page = Some(this.page.getOrElse(1L) + 1)
   }
 }
 

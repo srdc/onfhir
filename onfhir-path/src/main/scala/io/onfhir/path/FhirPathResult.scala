@@ -313,6 +313,8 @@ case class FhirPathQuantity(q:FhirPathNumber, unit:String) extends FhirPathResul
   }
 
   override def compare(that:FhirPathQuantity):Int = {
+    if(unit != that.unit)
+      throw FhirPathException(s"Invalid comparison between FHIR Path quantities, units does not match; $unit != ${that.unit}")
     q.compareTo(that.q)
   }
 

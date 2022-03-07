@@ -36,7 +36,7 @@ case class FhirConstraint(key: String, desc: String, expr: FhirPathExprParser.Ex
    */
   def evaluate(value: JValue, fhirPathEvaluator: FhirPathEvaluator): Option[ConstraintFailure] = {
     try {
-      if (!fhirPathEvaluator.satisfiesParsed(expr, value))
+      if (!fhirPathEvaluator.satisfies(expr, value))
         Some(ConstraintFailure(s"Constraint '$key' is not satisfied for the given value! Constraint Description: '$desc'. FHIR Path expression: '${expr.getText}'", isWarning))
       else
         None

@@ -9,7 +9,7 @@ import io.onfhir.util.DateTimeUtil
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class FhirHistoryRequestBuilder(onFhirClient: IOnFhirClient, rtype:Option[String], rid:Option[String], count:Option[Int] = None, var page:Option[Int] = None)
+class FhirHistoryRequestBuilder(onFhirClient: IOnFhirClient, rtype:Option[String], rid:Option[String], count:Option[Int] = None, var page:Option[Long] = None)
   extends FhirRequestBuilder(onFhirClient,
     FHIRRequest(
       interaction =
@@ -66,6 +66,6 @@ class FhirHistoryRequestBuilder(onFhirClient: IOnFhirClient, rtype:Option[String
   }
 
   override def nextPage(): Unit = {
-    this.page = Some(this.page.getOrElse(1) + 1)
+    this.page = Some(this.page.getOrElse(1L) + 1)
   }
 }

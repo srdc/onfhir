@@ -1,7 +1,7 @@
 package io.onfhir.path
 
 import java.io.ByteArrayInputStream
-import java.nio.charset.{Charset, StandardCharsets}
+import java.nio.charset.{StandardCharsets}
 import java.time.{LocalTime, ZoneId}
 import java.time.temporal.Temporal
 
@@ -19,27 +19,16 @@ import org.slf4j.{Logger, LoggerFactory}
 case class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None, environmentVariables:Map[String, JValue] = Map.empty) {
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
-  private def normalizeInput(input:String):String = {
-    //As function 'contains' and literal 'contains' clash in the grammar, we have
-    if(input.contains("contains(")) input.replace("contains(", "_contains(") else input
-  }
-
-  def withEnviromentVariable(variable:String, value:JValue):FhirPathEvaluator = {
+  /**
+   * Append a new environment variable and return the new evaluator
+   * @param variable    Variable name
+   * @param value       Value of the context variable
+   * @return
+   */
+  def withEnvironmentVariable(variable:String, value:JValue):FhirPathEvaluator = {
     this.copy(environmentVariables = environmentVariables + (variable -> value))
   }
 
-  /**
-   * Parse a FHIR path expression (by using antlr4)
-   * @param input Expression
-   * @return Parsed expression
-   */
-  def parse(input:String):FhirPathExprParser.ExpressionContext = {
-    logger.debug(s"Parsing FHIR path expression '$input' ...")
-    val stream = new ByteArrayInputStream(normalizeInput(input).getBytes(StandardCharsets.UTF_8))
-    val lexer = new FhirPathExprLexer(CharStreams.fromStream(stream, StandardCharsets.UTF_8))
-    val parser = new FhirPathExprParser(new CommonTokenStream(lexer))
-    parser.expression()
-  }
 
   /**
    * Evaluate a FHIR path expression
@@ -62,7 +51,7 @@ case class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = Non
    * @return
    */
   def evaluate(expr:String, on:JValue):Seq[FhirPathResult] = {
-    val parsedExpr = parse(expr)
+    val parsedExpr = FhirPathEvaluator.parse(expr)
     evaluate(parsedExpr, on)
   }
 
@@ -73,10 +62,8 @@ case class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = Non
    * @return
    */
   def satisfies(expr:String, on:JValue):Boolean = {
-    val result = evaluate(expr, on)
-    if(result.length != 1 || !result.head.isInstanceOf[FhirPathBoolean])
-      throw new FhirPathException(s"Expression $expr does not evaluate to a boolean for the given resource!")
-    result.head.asInstanceOf[FhirPathBoolean].b
+    val parsedExpr = FhirPathEvaluator.parse(expr)
+    satisfies(parsedExpr, on)
   }
 
   /**
@@ -85,55 +72,184 @@ case class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = Non
    * @param on       Input FHIR content
    * @return
    */
-  def satisfiesParsed(expr:FhirPathExprParser.ExpressionContext, on:JValue):Boolean = {
+  def satisfies(expr:FhirPathExprParser.ExpressionContext, on:JValue):Boolean = {
     val result = evaluate(expr, on)
     result match {
       //Then rule is not relevant
       case Nil => true
       //Otherwise we are expecting a single boolean result
       case Seq(FhirPathBoolean(b)) => b
-      case _ => throw new FhirPathException(s"Expression $expr does not evaluate to a single boolean for the given resource!")
+      case _ => throw new FhirPathException(s"Expression ${expr.getText} does not evaluate to a single boolean for the given resource!")
     }
   }
 
+  /**
+   * Evaluate the FHIR path expression that is expected to return an optional numeric value
+   * @param expr    FHIR Path expression
+   * @param on      FHIR Content
+   * @return
+   */
   def evaluateOptionalNumerical(expr:String, on:JValue):Option[BigDecimal] = {
+    val parsedExpr = FhirPathEvaluator.parse(expr)
+    evaluateOptionalNumerical(parsedExpr, on)
+  }
+
+  /**
+   * Evaluate the FHIR path expression that is expected to return an optional numeric value
+   * @param expr  Parsed FHIR Path expression
+   * @param on    FHIR Content
+   * @return
+   */
+  def evaluateOptionalNumerical(expr:FhirPathExprParser.ExpressionContext, on:JValue):Option[BigDecimal] = {
     val results = evaluateNumerical(expr, on)
     if(results.length > 1)
-      throw new FhirPathException(s"Expression $expr does not evaluate to a single number for the given resource!")
+      throw new FhirPathException(s"Expression ${expr.getText} does not evaluate to a single number for the given resource!")
     results.headOption
   }
 
+
+  /**
+   * Evaluate the FHIR path expression that is expected to return 0 or more numeric values
+   * @param expr  FHIR Path expression
+   * @param on    FHIR Content
+   * @return
+   */
   def evaluateNumerical(expr:String, on:JValue):Seq[BigDecimal] = {
+    val parsedExpr = FhirPathEvaluator.parse(expr)
+    evaluateNumerical(parsedExpr, on)
+  }
+
+  /**
+   * Evaluate the FHIR path expression that is expected to return 0 or more numeric values
+   * @param expr  Parsed FHIR Path expression
+   * @param on    FHIR Content
+   * @return
+   */
+  def evaluateNumerical(expr:FhirPathExprParser.ExpressionContext, on:JValue):Seq[BigDecimal] = {
     val result = evaluate(expr, on)
     if(result.exists(!_.isInstanceOf[FhirPathNumber]))
-      throw new FhirPathException(s"Expression $expr does not evaluate to numbers for the given resource!")
+      throw new FhirPathException(s"Expression ${expr.getText} does not evaluate to numbers for the given resource!")
     result.map(_.asInstanceOf[FhirPathNumber].v)
   }
 
-
-  def evaluateDateTime(expr:String, on:JValue):Temporal = {
-    val result = evaluate(expr, on)
-    if(result.length != 1 || !result.head.isInstanceOf[FhirPathDateTime])
-      throw new FhirPathException(s"Expression $expr does not evaluate to a datetime for the given resource!")
-    result.head.asInstanceOf[FhirPathDateTime].dt
+  /**
+   * Evaluate the FHIR path expression that is expected to return optional temporal value (ZonedDateTime, Instant, LocalDate, Year, YearMonth)
+   * @param expr  FHIR Path expression
+   * @param on    FHIR content
+   * @return
+   */
+  def evaluateOptionalDateTime(expr:String, on:JValue):Option[Temporal] = {
+    val parsedExpr = FhirPathEvaluator.parse(expr)
+    evaluateOptionalDateTime(parsedExpr, on)
   }
 
-  def evaluateTime(expr:String, on:JValue):(LocalTime, Option[ZoneId]) = {
+  /**
+   * Evaluate the FHIR path expression that is expected to return optional temporal value (ZonedDateTime, Instant, LocalDate, Year, YearMonth)
+   * @param expr  Parsed FHIR Path expression
+   * @param on    FHIR content
+   * @return
+   */
+  def evaluateOptionalDateTime(expr:FhirPathExprParser.ExpressionContext, on:JValue):Option[Temporal] = {
+    val result = evaluateDateTime(expr, on)
+    if(result.length > 1)
+      throw new FhirPathException(s"Expression ${expr.getText} evaluates more than one temporal value!")
+    result.headOption
+  }
+
+  /**
+   * Evaluate the FHIR path expression that is expected to return 0 or more temporal value (ZonedDateTime, Instant, LocalDate, Year, YearMonth)
+   * @param expr  FHIR Path expression
+   * @param on    FHIR content
+   * @return
+   */
+  def evaluateDateTime(expr:String, on:JValue):Seq[Temporal] = {
+    val parsedExpr = FhirPathEvaluator.parse(expr)
+    evaluateDateTime(parsedExpr, on)
+  }
+
+  /**
+   * Evaluate the FHIR path expression that is expected to return 0 or more temporal value (ZonedDateTime, Instant, LocalDate, Year, YearMonth)
+   * @param expr  Parsed FHIR Path expression
+   * @param on    FHIR content
+   * @return
+   */
+  def evaluateDateTime(expr:FhirPathExprParser.ExpressionContext, on:JValue):Seq[Temporal] = {
     val result = evaluate(expr, on)
-    if(result.length != 1 || !result.head.isInstanceOf[FhirPathTime])
+    if(result.exists(!_.isInstanceOf[FhirPathDateTime]))
+      throw new FhirPathException(s"Expression ${expr.getText} does not evaluate to a datetime for the given resource!")
+    result
+      .map(_.asInstanceOf[FhirPathDateTime].dt)
+  }
+
+  /**
+   * Evaluate the FHIR path expression that is expected to return optional LocalTime and ZoneId tuple
+   * @param expr  FHIR Path expression
+   * @param on    FHIR content
+   * @return
+   */
+  def evaluateOptionalTime(expr:String, on:JValue):Option[(LocalTime, Option[ZoneId])] = {
+    val parsedExpr = FhirPathEvaluator.parse(expr)
+    evaluateOptionalTime(parsedExpr, on)
+  }
+
+  /**
+   * Evaluate the FHIR path expression that is expected to return optional LocalTime and ZoneId tuple
+   * @param expr  Parsed FHIR Path expression
+   * @param on    FHIR content
+   * @return
+   */
+  def evaluateOptionalTime(expr:FhirPathExprParser.ExpressionContext, on:JValue):Option[(LocalTime, Option[ZoneId])] = {
+    val result = evaluate(expr, on)
+    if(result.length > 1 || !result.head.isInstanceOf[FhirPathTime])
       throw new FhirPathException(s"Expression $expr does not evaluate to a time for the given resource!")
-    val t = result.head.asInstanceOf[FhirPathTime]
-    t.lt -> t.zone
+    result
+      .headOption
+      .map(_.asInstanceOf[FhirPathTime])
+      .map(t => t.lt -> t.zone)
   }
 
+  /**
+   * Evaluate the FHIR path expression that is expected to return optional string value
+   * @param expr    FHIR Path expression
+   * @param on      FHIR content
+   * @return
+   */
   def evaluateOptionalString(expr:String, on:JValue):Option[String] = {
-    val result = evaluate(expr, on)
-    if(result.length > 1 || result.exists(!_.isInstanceOf[FhirPathString]))
-      throw new FhirPathException(s"Expression $expr does not evaluate to a single string for the given resource!")
-    result.headOption.map(_.asInstanceOf[FhirPathString].s)
+    val parsedExpr = FhirPathEvaluator.parse(expr)
+    evaluateOptionalString(parsedExpr, on)
   }
 
+  /**
+   * Evaluate the FHIR path expression that is expected to return optional string value
+   * @param expr    Parsed FHIR Path expression
+   * @param on      FHIR content
+   * @return
+   */
+  def evaluateOptionalString(expr:FhirPathExprParser.ExpressionContext, on:JValue):Option[String] = {
+    val result = evaluateString(expr, on)
+    if(result.length > 1)
+      throw new FhirPathException(s"Expression $expr does not evaluate to a single string for the given resource!")
+    result.headOption
+  }
+
+  /**
+   * Evaluate the FHIR path expression that is expected to return 0 or more string value
+   * @param expr  FHIR Path expression
+   * @param on    FHIR content
+   * @return
+   */
   def evaluateString(expr:String, on:JValue):Seq[String] = {
+    val parsedExpr = FhirPathEvaluator.parse(expr)
+    evaluateString(parsedExpr, on)
+  }
+
+  /**
+   * Evaluate the FHIR path expression that is expected to return 0 or more string value
+   * @param expr  Parsed FHIR Path expression
+   * @param on    FHIR content
+   * @return
+   */
+  def evaluateString(expr:FhirPathExprParser.ExpressionContext, on:JValue):Seq[String] = {
     val result = evaluate(expr, on)
     if(result.exists(!_.isInstanceOf[FhirPathString]))
       throw new FhirPathException(s"Expression $expr does not evaluate to a string for the given resource!")
@@ -142,11 +258,22 @@ case class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = Non
 
   /**
    * Evaluate the expression and return it as JSON value
-   * @param expr
-   * @param on
+   * @param expr  FHIR path expression
+   * @param on    FHIR content
    * @return
    */
   def evaluateAndReturnJson(expr:String, on:JValue):Option[JValue] = {
+    val parsedExpr = FhirPathEvaluator.parse(expr)
+    evaluateAndReturnJson(parsedExpr, on)
+  }
+
+  /**
+   * Evaluate the expression and return it as JSON value
+   * @param expr  Parsed FHIR path expression
+   * @param on    FHIR content
+   * @return
+   */
+  def evaluateAndReturnJson(expr:FhirPathExprParser.ExpressionContext, on:JValue):Option[JValue] = {
     val result = evaluate(expr, on)
     val results = result.map(_.toJson)
     results.length match {
@@ -156,6 +283,7 @@ case class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = Non
     }
   }
 
+
   /**
    * Evaluate a FHIR Path expression that indicates single or multiple paths within a resource to find those paths e.g. Observation.code.coding.where(system ='...').code --> code.coding[2].code
    * @param expr  FHIR Path Expression
@@ -164,7 +292,7 @@ case class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = Non
    */
   def evaluateToFindPaths(expr:String, on:JValue):Seq[Seq[(String, Option[Int])]] = {
     logger.debug(s"Evaluating FHIR path expression '${expr}' to find indicated paths  ...")
-    val parsedExpr = parse(expr)
+    val parsedExpr = FhirPathEvaluator.parse(expr)
     val resource = FhirPathValueTransformer.transform(on)
     val environment = new FhirPathEnvironment(resource, referenceResolver,environmentVariables.mapValues(FhirPathValueTransformer.transform))
     val evaluator = new FhirPathPathFinder(environment, resource)
@@ -205,7 +333,7 @@ case class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = Non
     val normalizedExpr = normalizeExpression(escapedExpr)
     val finalExpr = normalizedExpr.getOrElse(escapedExpr)
 
-    val parsedExpr = parse(finalExpr)
+    val parsedExpr = FhirPathEvaluator.parse(finalExpr)
     val pathExtractor = new FhirPathExtractor()
     val paths = pathExtractor.visit(parsedExpr)
 
@@ -220,6 +348,23 @@ case class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = Non
 object FhirPathEvaluator {
   //Keywords to normalize in expressions
   val keywords = Set("contains")
+
+  /**
+   * Parse a FHIR path expression (by using antlr4)
+   * @param input Expression
+   * @return Parsed expression
+   */
+  def parse(input:String):FhirPathExprParser.ExpressionContext = {
+    val stream = new ByteArrayInputStream(normalizeInput(input).getBytes(StandardCharsets.UTF_8))
+    val lexer = new FhirPathExprLexer(CharStreams.fromStream(stream, StandardCharsets.UTF_8))
+    val parser = new FhirPathExprParser(new CommonTokenStream(lexer))
+    parser.expression()
+  }
+
+  private def normalizeInput(input:String):String = {
+    //As function 'contains' and literal 'contains' clash in the grammar, we have
+    if(input.contains("contains(")) input.replace("contains(", "_contains(") else input
+  }
 
   def apply(referenceResolver: IReferenceResolver): FhirPathEvaluator = new FhirPathEvaluator(Some(referenceResolver))
 

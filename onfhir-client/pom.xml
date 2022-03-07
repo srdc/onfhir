@@ -54,11 +54,11 @@
         <!-- Akka HTTP Suite -->
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-http-core_2.12</artifactId>
+            <artifactId>akka-http-core_${scala.binary.version}</artifactId>
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-http_2.12</artifactId>
+            <artifactId>akka-http_${scala.binary.version}</artifactId>
         </dependency>
         <!-- Authorization Configuration and Handling-->
         <dependency>

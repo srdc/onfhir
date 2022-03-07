@@ -144,68 +144,68 @@ class FhirPathEvaluatorTest extends Specification {
     }
 
     "evaluate path with arithmetic operators on datetime and time" in {
-      var result = FhirPathEvaluator().evaluateDateTime("@2018 + 1 year", observation)
+      var result = FhirPathEvaluator().evaluateOptionalDateTime("@2018 + 1 year", observation)
       //Operations on Year
-      result mustEqual Year.of(2019)
-      result = FhirPathEvaluator().evaluateDateTime("@2018 + 2 months", observation)
-      result mustEqual Year.of(2018)
-      result = FhirPathEvaluator().evaluateDateTime("@2018 + 26 months", observation) // Rounded to 2 years
-      result mustEqual Year.of(2020)
-      result = FhirPathEvaluator().evaluateDateTime("@2018 + 365 days", observation) // Rounded to 1 year
-      result mustEqual Year.of(2019)
-      result = FhirPathEvaluator().evaluateDateTime("@2018 - 365 days", observation) // Rounded to 1 year
-      result mustEqual Year.of(2017)
+      result must beSome(Year.of(2019))
+      result = FhirPathEvaluator().evaluateOptionalDateTime("@2018 + 2 months", observation)
+      result must beSome(Year.of(2018))
+      result = FhirPathEvaluator().evaluateOptionalDateTime("@2018 + 26 months", observation) // Rounded to 2 years
+      result must beSome(Year.of(2020))
+      result = FhirPathEvaluator().evaluateOptionalDateTime("@2018 + 365 days", observation) // Rounded to 1 year
+      result must beSome(Year.of(2019))
+      result = FhirPathEvaluator().evaluateOptionalDateTime("@2018 - 365 days", observation) // Rounded to 1 year
+      result must beSome(Year.of(2017))
       //Operations on YearMonth
-      result = FhirPathEvaluator().evaluateDateTime("@2018-11 + 60 days", observation) // Rounded to 2 month
-      result mustEqual YearMonth.of(2019, 1)
-      result = FhirPathEvaluator().evaluateDateTime("@2018-11 + 59 days", observation) // Rounded to 1 month
-      result mustEqual YearMonth.of(2018, 12)
-      result = FhirPathEvaluator().evaluateDateTime("@2018-11 + 2 years", observation) // Rounded to 1 month
-      result mustEqual YearMonth.of(2020, 11)
-      result = FhirPathEvaluator().evaluateDateTime("@2018-11 - 5 months", observation) // Rounded to 1 month
-      result mustEqual YearMonth.of(2018, 6)
+      result = FhirPathEvaluator().evaluateOptionalDateTime("@2018-11 + 60 days", observation) // Rounded to 2 month
+      result must beSome(YearMonth.of(2019, 1))
+      result = FhirPathEvaluator().evaluateOptionalDateTime("@2018-11 + 59 days", observation) // Rounded to 1 month
+      result must beSome(YearMonth.of(2018, 12))
+      result = FhirPathEvaluator().evaluateOptionalDateTime("@2018-11 + 2 years", observation) // Rounded to 1 month
+      result must beSome(YearMonth.of(2020, 11))
+      result = FhirPathEvaluator().evaluateOptionalDateTime("@2018-11 - 5 months", observation) // Rounded to 1 month
+      result must beSome(YearMonth.of(2018, 6))
       //Operations on Date
-      result = FhirPathEvaluator().evaluateDateTime("@2018-11-10 + 2 years", observation)
-      result mustEqual LocalDate.of(2020, 11, 10)
-      result = FhirPathEvaluator().evaluateDateTime("@2018-11-10 - 2 months", observation)
-      result mustEqual LocalDate.of(2018, 9, 10)
-      result = FhirPathEvaluator().evaluateDateTime("@2018-11-10 - 32 days", observation)
-      result mustEqual LocalDate.of(2018, 10, 9)
-      result = FhirPathEvaluator().evaluateDateTime("@2018-11-10 + 32 hours", observation) //rounded to 1 day
-      result mustEqual LocalDate.of(2018, 11, 11)
-      result = FhirPathEvaluator().evaluateDateTime("@2018-11-10 + 2880 minutes", observation) //rounded to 2 day
-      result mustEqual LocalDate.of(2018, 11, 12)
+      result = FhirPathEvaluator().evaluateOptionalDateTime("@2018-11-10 + 2 years", observation)
+      result must beSome(LocalDate.of(2020, 11, 10))
+      result = FhirPathEvaluator().evaluateOptionalDateTime("@2018-11-10 - 2 months", observation)
+      result must beSome(LocalDate.of(2018, 9, 10))
+      result = FhirPathEvaluator().evaluateOptionalDateTime("@2018-11-10 - 32 days", observation)
+      result must beSome(LocalDate.of(2018, 10, 9))
+      result = FhirPathEvaluator().evaluateOptionalDateTime("@2018-11-10 + 32 hours", observation) //rounded to 1 day
+      result must beSome(LocalDate.of(2018, 11, 11))
+      result = FhirPathEvaluator().evaluateOptionalDateTime("@2018-11-10 + 2880 minutes", observation) //rounded to 2 day
+      result must beSome(LocalDate.of(2018, 11, 12))
       //Operations on LocalDate
-      result = FhirPathEvaluator().evaluateDateTime("@2018-11-10T10:00:05 + 2 years", observation)
-      result mustEqual LocalDateTime.of(2020, 11, 10, 10, 0, 5)
-      result = FhirPathEvaluator().evaluateDateTime("@2018-11-10T10:00:05 + 2 hours", observation)
-      result mustEqual LocalDateTime.of(2018, 11, 10, 12, 0, 5)
-      result = FhirPathEvaluator().evaluateDateTime("@2018-11-10T10:00:05 + 40 minutes", observation)
-      result mustEqual LocalDateTime.of(2018, 11, 10, 10, 40, 5)
-      result = FhirPathEvaluator().evaluateDateTime("@2018-11-10T10:00:05 + 30 seconds", observation)
-      result mustEqual LocalDateTime.of(2018, 11, 10, 10, 0, 35)
-      result = FhirPathEvaluator().evaluateDateTime("@2018-11-10T10:00:05 + 40 minutes + 30 seconds", observation)
-      result mustEqual LocalDateTime.of(2018, 11, 10, 10, 40, 35)
+      result = FhirPathEvaluator().evaluateOptionalDateTime("@2018-11-10T10:00:05 + 2 years", observation)
+      result must beSome(LocalDateTime.of(2020, 11, 10, 10, 0, 5))
+      result = FhirPathEvaluator().evaluateOptionalDateTime("@2018-11-10T10:00:05 + 2 hours", observation)
+      result must beSome(LocalDateTime.of(2018, 11, 10, 12, 0, 5))
+      result = FhirPathEvaluator().evaluateOptionalDateTime("@2018-11-10T10:00:05 + 40 minutes", observation)
+      result must beSome(LocalDateTime.of(2018, 11, 10, 10, 40, 5))
+      result = FhirPathEvaluator().evaluateOptionalDateTime("@2018-11-10T10:00:05 + 30 seconds", observation)
+      result must beSome(LocalDateTime.of(2018, 11, 10, 10, 0, 35))
+      result = FhirPathEvaluator().evaluateOptionalDateTime("@2018-11-10T10:00:05 + 40 minutes + 30 seconds", observation)
+      result must beSome(LocalDateTime.of(2018, 11, 10, 10, 40, 35))
       //Operations on ZonedDateTime
-      result = FhirPathEvaluator().evaluateDateTime("@2018-11-10T10:00:05Z + 1 month", observation)
-      result mustEqual ZonedDateTime.of(2018, 12, 10, 10, 0, 5, 0, ZoneId.of("Z"))
-      result = FhirPathEvaluator().evaluateDateTime("@2018-11-10T10:00:05.003+02:00 + 2 minutes", observation)
-      result mustEqual ZonedDateTime.of(2018, 11, 10, 10, 2, 5, 3000000, ZoneId.of("+02:00"))
-      result = FhirPathEvaluator().evaluateDateTime("@2018-11-10T10:00:05.003+02:00 + 2 'ms'", observation)
-      result mustEqual ZonedDateTime.of(2018, 11, 10, 10, 0, 5, 5000000, ZoneId.of("+02:00"))
+      result = FhirPathEvaluator().evaluateOptionalDateTime("@2018-11-10T10:00:05Z + 1 month", observation)
+      result must beSome(ZonedDateTime.of(2018, 12, 10, 10, 0, 5, 0, ZoneId.of("Z")))
+      result = FhirPathEvaluator().evaluateOptionalDateTime("@2018-11-10T10:00:05.003+02:00 + 2 minutes", observation)
+      result must beSome(ZonedDateTime.of(2018, 11, 10, 10, 2, 5, 3000000, ZoneId.of("+02:00")))
+      result = FhirPathEvaluator().evaluateOptionalDateTime("@2018-11-10T10:00:05.003+02:00 + 2 'ms'", observation)
+      result must beSome(ZonedDateTime.of(2018, 11, 10, 10, 0, 5, 5000000, ZoneId.of("+02:00")))
 
       //Operations on Time
-      val (lt, z) = FhirPathEvaluator().evaluateTime("@T10:00:05 + 1 hour", observation)
-      lt mustEqual LocalTime.of(11, 0, 5)
+      val (lt, z) = FhirPathEvaluator().evaluateOptionalTime("@T10:00:05 + 1 hour", observation).get
+      lt === LocalTime.of(11, 0, 5)
       z must empty
 
-      val (lt2, z2) = FhirPathEvaluator().evaluateTime("@T10:00:05 + 1 'ms'", observation)
-      lt2 mustEqual LocalTime.of(10, 0, 5, 1000000)
+      val (lt2, z2) = FhirPathEvaluator().evaluateOptionalTime("@T10:00:05 + 1 'ms'", observation).get
+      lt2 === LocalTime.of(10, 0, 5, 1000000)
       z2 must empty
 
-      val (lt3, z3) = FhirPathEvaluator().evaluateTime("@T10:00:05+02:00 + 1 'ms'", observation)
-      lt3 mustEqual LocalTime.of(10, 0, 5, 1000000)
-      z3 mustEqual Some(ZoneId.of("+02:00"))
+      val (lt3, z3) = FhirPathEvaluator().evaluateOptionalTime("@T10:00:05+02:00 + 1 'ms'", observation).get
+      lt3 === LocalTime.of(10, 0, 5, 1000000)
+      z3 must beSome(ZoneId.of("+02:00"))
     }
 
     "evaluate path with arithmetic operators on string" in {

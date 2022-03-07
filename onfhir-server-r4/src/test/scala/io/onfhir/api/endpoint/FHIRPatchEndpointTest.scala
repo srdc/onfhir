@@ -165,7 +165,7 @@ class FHIRPatchEndpointTest extends OnFhirTest with FHIREndpoint {
         val result = responseAs[Resource]
         FhirPathEvaluator().evaluateString("achievementStatus.coding.code", result) mustEqual Seq("achieved")
         FhirPathEvaluator().evaluateString("outcomeReference.reference", result) mustEqual Seq("Observation/1321313")
-        FhirPathEvaluator().evaluateDateTime("statusDate", result) mustEqual LocalDate.now()
+        FhirPathEvaluator().evaluateOptionalDateTime("statusDate", result) must beSome(LocalDate.now())
       }
 
       Patch("/" + OnfhirConfig.baseUri + "/" + "Goal"  + conditionalQuery, HttpEntity.apply(jsonFhirContentType, goalStatusPatch2)) ~> fhirRoute ~> check {
@@ -173,7 +173,7 @@ class FHIRPatchEndpointTest extends OnFhirTest with FHIREndpoint {
         val result = responseAs[Resource]
         FhirPathEvaluator().evaluateString("achievementStatus.coding.code", result) mustEqual Seq("in-progress")
         FhirPathEvaluator().evaluateString("outcomeReference.reference", result) mustEqual Seq("Observation/1321313", "Observation/1321314")
-        FhirPathEvaluator().evaluateDateTime("statusDate", result) mustEqual LocalDate.now()
+        FhirPathEvaluator().evaluateOptionalDateTime("statusDate", result) must beSome(LocalDate.now())
       }
     }
 
