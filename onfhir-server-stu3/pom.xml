@@ -9,7 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>onfhir-server-stu3</artifactId>
+    <artifactId>onfhir-server-stu3_2.13</artifactId>
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
         <!--testSourceDirectory>src/test/scala</testSourceDirectory-->
@@ -104,15 +104,15 @@
         <!--Onfhir modules -->
         <dependency>
             <groupId>io.onfhir</groupId>
-            <artifactId>onfhir-common</artifactId>
+            <artifactId>onfhir-common_${scala.binary.version}</artifactId>
         </dependency>
         <dependency>
             <groupId>io.onfhir</groupId>
-            <artifactId>onfhir-core</artifactId>
+            <artifactId>onfhir-core_${scala.binary.version}</artifactId>
         </dependency>
         <dependency>
             <groupId>io.onfhir</groupId>
-            <artifactId>onfhir-server-r4</artifactId>
+            <artifactId>onfhir-server-r4_${scala.binary.version}</artifactId>
         </dependency>
     </dependencies>
 

@@ -9,7 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>onfhir-validation</artifactId>
+    <artifactId>onfhir-validation_2.13</artifactId>
 
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
@@ -32,13 +32,14 @@
             <groupId>org.json4s</groupId>
             <artifactId>json4s-jackson_${scala.binary.version}</artifactId>
         </dependency>
+        <!-- Onfhir internal dependencies-->
         <dependency>
             <groupId>io.onfhir</groupId>
-            <artifactId>onfhir-path</artifactId>
+            <artifactId>onfhir-path_${scala.binary.version}</artifactId>
         </dependency>
         <dependency>
             <groupId>io.onfhir</groupId>
-            <artifactId>onfhir-common</artifactId>
+            <artifactId>onfhir-common_${scala.binary.version}</artifactId>
         </dependency>
         <!-- Unit Testing -->
         <dependency>

@@ -9,7 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>onfhir-client</artifactId>
+    <artifactId>onfhir-client_2.13</artifactId>
 
     <properties>
         <akka.version>2.6.8</akka.version>
@@ -33,11 +33,11 @@
     <dependencies>
         <dependency>
             <groupId>io.onfhir</groupId>
-            <artifactId>onfhir-common</artifactId>
+            <artifactId>onfhir-common_${scala.binary.version}</artifactId>
         </dependency>
         <dependency>
             <groupId>io.onfhir</groupId>
-            <artifactId>onfhir-path</artifactId>
+            <artifactId>onfhir-path_${scala.binary.version}</artifactId>
         </dependency>
 
         <!-- JSON Utilities -->

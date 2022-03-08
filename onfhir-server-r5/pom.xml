@@ -9,7 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>onfhir-server-r5</artifactId>
+    <artifactId>onfhir-server-r5_2.13</artifactId>
     <packaging>jar</packaging>
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
@@ -105,7 +105,7 @@
         </dependency>
         <dependency>
             <groupId>io.onfhir</groupId>
-            <artifactId>onfhir-server-r4</artifactId>
+            <artifactId>onfhir-server-r4_${scala.binary.version}</artifactId>
         </dependency>
     </dependencies>
 </project>
