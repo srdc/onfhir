@@ -22,7 +22,7 @@ trait FHIRUpdateEndpoint {
     */
   def updateRoute(fhirRequest: FHIRRequest, authContext:(AuthContext, Option[AuthzContext])):Route = {
     put{
-      optionalHeaderValueByType[`If-Match`](()) { ifMatch => //for version-aware updates
+      optionalHeaderValueByType(`If-Match`) { ifMatch => //for version-aware updates
         optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { prefer =>
           //PUT [base]/[type]/[id] {?_format=[mime-type]}  <-----
           pathPrefix(Segment / Segment) { (_type, _id) =>

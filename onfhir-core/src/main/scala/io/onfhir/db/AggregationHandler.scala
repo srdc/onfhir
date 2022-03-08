@@ -206,7 +206,7 @@ object AggregationHandler {
             .extractElementPathsAndTargetTypes(withArrayIndicators = true)
 
           val expressionForEachPath =
-            pathsAndTargetTypes.to
+            pathsAndTargetTypes
               .map(pathAndTargetType =>
                 constructGroupByExpressionForPath(gbypConf.pname, gbypConf.ptype, queryParams, pathAndTargetType._1, pathAndTargetType._2)
               )
@@ -288,7 +288,7 @@ object AggregationHandler {
               throw new InternalServerException(s"When grouping is requested on a search parameter on reference, only '${FHIR_PREFIXES_MODIFIERS.IDENTIFIER}' modifier can be used.")
           }
         } else {
-          relatedSearchParamOpt match {
+          (relatedSearchParamOpt : @unchecked) match {
             case Some(relatedSearchParam) if relatedSearchParam.suffix != "" =>
               relatedSearchParam.suffix match {
                 case FHIR_PREFIXES_MODIFIERS.IDENTIFIER =>

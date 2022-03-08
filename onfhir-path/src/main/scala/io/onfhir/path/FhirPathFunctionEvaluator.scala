@@ -3,15 +3,15 @@ package io.onfhir.path
 import java.lang.reflect.InvocationTargetException
 import java.time.temporal.{ChronoUnit, Temporal}
 import java.time.{LocalDate, Period, ZonedDateTime}
-
 import io.onfhir.api.Resource
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
-import org.apache.commons.lang3.StringEscapeUtils
+import org.apache.commons.text.StringEscapeUtils
 import org.json4s.JsonAST.JObject
 
 import scala.concurrent.Await
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.language.postfixOps
 import scala.util.Try
 
 class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPathResult]) {
@@ -659,8 +659,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     })
 
     buckets
-      .groupBy(_._1)
-      .mapValues(_.map(_._2))
+      .groupMap(_._1)(_._2)
       .map(bv => {
         //Evaluate aggregation for each group
         val aggValues = new FhirPathExpressionEvaluator(context, bv._2).visit(aggregateExpr)
@@ -757,6 +756,8 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
             // system|
             case (Some(s), None) =>
               FHIRUtil.extractValueOption[String](coding.json, "system").contains(s)
+            case _ =>
+              throw new FhirPathException("Invalid given system codes pairings!")
           }
       )
 

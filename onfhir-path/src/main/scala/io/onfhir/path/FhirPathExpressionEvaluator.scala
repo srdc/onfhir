@@ -6,7 +6,7 @@ import io.onfhir.path.grammar.FhirPathExprParser.{FunctionInvocationContext, Inv
 import io.onfhir.path.grammar.{FhirPathExprBaseVisitor, FhirPathExprParser}
 import org.json4s._
 
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
 
@@ -447,7 +447,7 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
     //Get the function name
     val fname = ctx.function().identifier().getText()
     //Get the parameter expressions
-    val paramExpressions = Option(ctx.function().paramList()).map(_.expression().asScala).getOrElse(Nil)
+    val paramExpressions:Seq[FhirPathExprParser.ExpressionContext] = Option(ctx.function().paramList()).map(_.expression().asScala.toSeq).getOrElse(Nil)
     //Evaluate the function
     new FhirPathFunctionEvaluator(context, current).callFunction(fname, paramExpressions)
   }

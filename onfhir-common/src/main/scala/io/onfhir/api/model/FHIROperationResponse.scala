@@ -79,7 +79,7 @@ class FHIROperationResponse(httpStatus:StatusCode, location:Option[Uri] = None, 
     * Get output parameters returned from the operation
     * @return
     */
-  def getOutputParams:Seq[(String,FHIROperationParam)] = outputParams
+  def getOutputParams:Seq[(String,FHIROperationParam)] = outputParams.toSeq
 
   /**
    * Get single cardinality output param
@@ -96,7 +96,7 @@ class FHIROperationResponse(httpStatus:StatusCode, location:Option[Uri] = None, 
    * @return
    */
   def getOutputParams(pname:String):Seq[FHIROperationParam] = {
-    outputParams.filter(_._1 == pname).map(_._2)
+    outputParams.filter(_._1 == pname).map(_._2).toSeq
   }
 }
 

@@ -45,18 +45,22 @@ class AuditManager(customAuditHandler:Option[ICustomAuditHandler]) extends Actor
   /**
     * Before starting this actor
     */
-  override def preStart() {
+  override def preStart():Unit = {
     //If it is remote auditing, schedule batch auditing with given interval
     if(OnfhirConfig.fhirAuditingRepository == "remote" && OnfhirConfig.fhirAuditingRepositoryUrl.isDefined) {
       logger.info(s"Scheduling remote batch auditing service with interval; '${OnfhirConfig.fhirAuditingRemoteBatchInterval}' minutes ... ")
-      scheduledRemoteAuditSender = Some(actorSystem.scheduler.schedule(FiniteDuration.apply(OnfhirConfig.fhirAuditingRemoteBatchInterval, TimeUnit.MINUTES), FiniteDuration.apply(OnfhirConfig.fhirAuditingRemoteBatchInterval, TimeUnit.MINUTES), self, FlushAudits()))
+      scheduledRemoteAuditSender =
+        Some(
+          actorSystem.scheduler
+            .scheduleAtFixedRate(FiniteDuration.apply(OnfhirConfig.fhirAuditingRemoteBatchInterval, TimeUnit.MINUTES), FiniteDuration.apply(OnfhirConfig.fhirAuditingRemoteBatchInterval, TimeUnit.MINUTES), self, FlushAudits())
+        )
     }
   }
 
   /**
     * After starting this actor
     */
-  override def postStop() {
+  override def postStop():Unit = {
     //Cancel the scheduler, if audit manager is stopped
     logger.info("Stopping AuditManager and related scheduler...")
     scheduledRemoteAuditSender.foreach(_.cancel())
@@ -112,7 +116,7 @@ class AuditManager(customAuditHandler:Option[ICustomAuditHandler]) extends Actor
     } else {
       logger.info("No audits to send!...")
     }
-    Unit
+    ()
   }
 
   /**
@@ -203,11 +207,11 @@ class AuditManager(customAuditHandler:Option[ICustomAuditHandler]) extends Actor
                     //Send the audits if it exceeds the batch size
                     if (remoteAudits.size() > OnfhirConfig.fhirAuditingRemoteBatchSize)
                       sendBatchAudits()
-                    Future(Unit)
+                    Future(())
                   })
               case any =>
                 logger.error(s"Unknown default audit mode '$any'")
-                Seq(Future(Unit))
+                Seq(Future(()))
             }
         }
 
@@ -218,12 +222,12 @@ class AuditManager(customAuditHandler:Option[ICustomAuditHandler]) extends Actor
             case br:Boolean => if(!br) logger.error(s"Problem in custom audit sending!")
             case _ =>
           }
-          Future(Unit)
+          Future(())
         })
       } catch {
         case e:Exception =>
           logger.error("Unexpected error while creating/sending audit", e)
-          Future(Unit)
+          Future(())
       }
     }
   }
@@ -280,7 +284,7 @@ object AuditManager {
     * @return
     */
   def audit(fhirRequest: FHIRRequest, authContext: AuthContext, authzContext: Option[AuthzContext]): Directive0 =
-    Directives.mapResponse { httpResponse ⇒
+    Directives.mapResponse { httpResponse =>
       //Create and Store audit
       if(!OnfhirConfig.fhirAuditingRepository.equalsIgnoreCase(AUDITING_METHOD_NONE))
         Onfhir.actorSystem.actorSelection(s"/user/$ACTOR_NAME") ! AuditEventLog(fhirRequest, authContext, authzContext, httpResponse)

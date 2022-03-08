@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <groupId>io.onfhir</groupId>
-        <artifactId>fhir-repository</artifactId>
+        <artifactId>fhir-repository_2.13</artifactId>
         <version>3.2-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -45,8 +45,7 @@
         <!-- Apache Kafka -->
         <dependency>
             <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka_2.12</artifactId>
-            <version>${kafka.version}</version>
+            <artifactId>kafka_${scala.binary.version}</artifactId>
             <exclusions>
                 <exclusion>
                     <groupId>org.slf4j</groupId>

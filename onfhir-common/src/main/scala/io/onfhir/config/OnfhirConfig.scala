@@ -4,7 +4,7 @@ import java.time.Duration
 import com.typesafe.config.ConfigFactory
 import io.onfhir.api.{DEFAULT_FHIR_VERSION, FHIR_HTTP_OPTIONS, FHIR_VALIDATION_ALTERNATIVES}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -70,7 +70,7 @@ object OnfhirConfig {
   /** Database host name/address and ports. */
   lazy val mongodbHosts:Seq[String] = {
     Try(config.getStringList("mongodb.host").asScala) match {
-      case Success(list) => list
+      case Success(list) => list.toSeq
       case Failure(_) => {
         Try(config.getString("mongodb.host").split(',').toSeq).getOrElse(Seq("localhost"))
       }

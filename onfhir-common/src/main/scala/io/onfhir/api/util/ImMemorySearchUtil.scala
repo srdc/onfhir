@@ -139,8 +139,8 @@ object ImMemorySearchUtil {
              //If there are restrictions
              case r =>
                val pathParts = ptr._1.split('.')
-                val indexOfRestrictions = FHIRUtil.findIndexOfRestrictionsOnPath(pathParts, ptr._3)
-               extractValuesBasedOnRestrictions(pathParts, indexOfRestrictions, Seq(resource)) -> ptr._2
+                val indexOfRestrictions = FHIRUtil.findIndexOfRestrictionsOnPath(pathParts.toIndexedSeq, ptr._3)
+               extractValuesBasedOnRestrictions(pathParts.toIndexedSeq, indexOfRestrictions, Seq(resource)) -> ptr._2
            }
         )
   }

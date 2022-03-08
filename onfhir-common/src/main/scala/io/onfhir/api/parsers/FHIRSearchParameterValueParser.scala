@@ -190,18 +190,20 @@ object FHIRSearchParameterValueParser {
     * @return
     */
   def parseSimpleValue(valueExpr:String, paramType:String):Seq[(String, String)] = {
-    valueExpr.split(',').map(eachValue =>
-      paramType match {
-        case FHIR_PARAMETER_TYPES.NUMBER => NumberParser.parse(NumberParser.parseNumberValue, eachValue).get
-        case FHIR_PARAMETER_TYPES.DATE => DateParser.parse(DateParser.parseDateValue, eachValue).get
-        case FHIR_PARAMETER_TYPES.STRING => StringParser.parse(StringParser.parseStringValue, eachValue).get
-        case FHIR_PARAMETER_TYPES.URI => URIParser.parse(URIParser.parseUriValue, eachValue).get
-        case FHIR_PARAMETER_TYPES.TOKEN => TokenParser.parse(TokenParser.parseTokenValue, eachValue).get
-        case FHIR_PARAMETER_TYPES.QUANTITY => QuantityParser.parse(QuantityParser.parseQuantityValue, eachValue).get
-        case FHIR_PARAMETER_TYPES.REFERENCE => ReferenceParser.parse(ReferenceParser.parseReferenceValue, eachValue).get
-        case FHIR_PARAMETER_TYPES.COMPOSITE => CompositeParser.parse(CompositeParser.parseCompositeValue, eachValue).get
-      }
-    )
+    valueExpr
+      .split(',')
+      .map(eachValue =>
+        paramType match {
+          case FHIR_PARAMETER_TYPES.NUMBER => NumberParser.parse(NumberParser.parseNumberValue, eachValue).get
+          case FHIR_PARAMETER_TYPES.DATE => DateParser.parse(DateParser.parseDateValue, eachValue).get
+          case FHIR_PARAMETER_TYPES.STRING => StringParser.parse(StringParser.parseStringValue, eachValue).get
+          case FHIR_PARAMETER_TYPES.URI => URIParser.parse(URIParser.parseUriValue, eachValue).get
+          case FHIR_PARAMETER_TYPES.TOKEN => TokenParser.parse(TokenParser.parseTokenValue, eachValue).get
+          case FHIR_PARAMETER_TYPES.QUANTITY => QuantityParser.parse(QuantityParser.parseQuantityValue, eachValue).get
+          case FHIR_PARAMETER_TYPES.REFERENCE => ReferenceParser.parse(ReferenceParser.parseReferenceValue, eachValue).get
+          case FHIR_PARAMETER_TYPES.COMPOSITE => CompositeParser.parse(CompositeParser.parseCompositeValue, eachValue).get
+        }
+      ).toIndexedSeq
   }
 
   /***
@@ -294,9 +296,9 @@ object FHIRSearchParameterValueParser {
           //Check if we support all
           val undefinedParam = prefixAndValues.find(v => fhirConfig.findSupportedSearchParameter(rtype, v.get._2).isEmpty)
           if(undefinedParam.nonEmpty)
-            throw new UnsupportedParameterException(s"Search parameter ${undefinedParam.get.get._2} is not supported for resource type $rtype , you can not use it for sorting! Check conformance statement of server!!")
+            throw new UnsupportedParameterException(s"Search parameter ${undefinedParam.get.get._2.toIndexedSeq} is not supported for resource type $rtype , you can not use it for sorting! Check conformance statement of server!!")
           //Return the parameter
-          Parameter(FHIR_PARAMETER_CATEGORIES.RESULT, "", nameExprs, prefixAndValues.map(_.get))
+          Parameter(FHIR_PARAMETER_CATEGORIES.RESULT, "", nameExprs, prefixAndValues.map(_.get).toIndexedSeq)
         }
 
       //Elements is just names of elements to include in search result
@@ -405,7 +407,7 @@ object FHIRSearchParameterValueParser {
     //Parse for the actual query part
     val parameter = parseSimpleCategory(queryPart, valueExpr, queryOn)
     //Set the chain part
-    parameter.copy(chain = parsedChainQuery, paramCategory = FHIR_PARAMETER_CATEGORIES.REVCHAINED)
+    parameter.copy(chain = parsedChainQuery.toIndexedSeq, paramCategory = FHIR_PARAMETER_CATEGORIES.REVCHAINED)
   }
 
   /***
@@ -453,7 +455,7 @@ object FHIRSearchParameterValueParser {
       //Parse for the actual query part
       val parameter = parseSimpleCategory(queryPart, valueExpr, parsedChainQuery.last._1)
       //Set the chain part
-      parameter.copy(chain = parsedChainQuery, paramCategory = FHIR_PARAMETER_CATEGORIES.CHAINED)
+      parameter.copy(chain = parsedChainQuery.toIndexedSeq, paramCategory = FHIR_PARAMETER_CATEGORIES.CHAINED)
   }
 
   /**

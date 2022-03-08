@@ -10,7 +10,7 @@ import com.nimbusds.jwt.proc.{ConfigurableJWTProcessor, DefaultJWTProcessor}
 import io.onfhir.Onfhir
 import io.onfhir.config.AuthzConfig
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.Future
 import scala.util.Try
 
@@ -27,9 +27,9 @@ class JWTResolver(authzConfig:AuthzConfig) extends ITokenResolver {
     val signatureAlgorithm:JWSAlgorithm = authzConfig.jwtSignatureAlgorithm.get
 
     if(Family.RSA.contains(signatureAlgorithm))
-      myJwtProcessor.setJWSKeySelector(new JWSVerificationKeySelector(signatureAlgorithm, new RemoteJWKSet(authzConfig.authzServerMetadata.jwks_uri.get.toURL)))
+      myJwtProcessor.setJWSKeySelector(new JWSVerificationKeySelector(signatureAlgorithm, new RemoteJWKSet[SecurityContext](authzConfig.authzServerMetadata.jwks_uri.get.toURL)))
     else if(Family.HMAC_SHA.contains(signatureAlgorithm)){
-      myJwtProcessor.setJWSKeySelector(new JWSVerificationKeySelector(signatureAlgorithm, new ImmutableSecret(authzConfig.jwtSignatureSecretKey.get.getBytes())))
+      myJwtProcessor.setJWSKeySelector(new JWSVerificationKeySelector(signatureAlgorithm, new ImmutableSecret[SecurityContext](authzConfig.jwtSignatureSecretKey.get.getBytes())))
     }
 
     myJwtProcessor
@@ -56,7 +56,7 @@ class JWTResolver(authzConfig:AuthzConfig) extends ITokenResolver {
             clientId = aud.find(! _.equals(authzConfig.protectedResourceInformation.getID.getValue)),
             scopes = Try(Option(claimSet.getStringClaim("scope"))).toOption.flatten.map(_.split(" ").toSeq).getOrElse(Seq.empty), //scopes
             expirationTime = Option(claimSet.getExpirationTime),
-            aud = aud,
+            aud = aud.toSeq,
             sub = Option(claimSet.getSubject),
             username = Try(Option(claimSet.getStringClaim("username"))).toOption.flatten,
             furtherParams = furtherParams.map(pname => pname -> claimSet.getClaim(pname)).toMap

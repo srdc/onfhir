@@ -40,7 +40,7 @@ trait FHIREndpoint
     */
   private def transformHeaders(resolvedMediaRange:MediaRange)(req:HttpRequest):HttpRequest = {
     val headers = req.headers.filter(_.name != "Accept") :+ Accept.apply(resolvedMediaRange)
-    req.copy(req.method, req.uri, headers, req.entity, req.protocol)
+    req.withHeaders(headers)
   }
 
   /**
@@ -52,10 +52,10 @@ trait FHIREndpoint
     pathPrefix(OnfhirConfig.baseUri) {
       corsHandler {
         parameters(FHIR_HTTP_OPTIONS.FORMAT.?) { format: Option[String] =>
-          optionalHeaderValueByType[Accept](()) { acceptHeader: Option[Accept] =>
-            optionalHeaderValueByType[`Content-Type`](()) { contentType: Option[`Content-Type`] =>
-              optionalHeaderValueByType[`X-Forwarded-For`](()) { xForwardedFor =>
-                optionalHeaderValueByType[`X-Forwarded-Host`](()) { xForwardedHost =>
+          optionalHeaderValueByType(Accept) { acceptHeader: Option[Accept] =>
+            optionalHeaderValueByType(`Content-Type`) { contentType: Option[`Content-Type`] =>
+              optionalHeaderValueByType(`X-Forwarded-For`) { xForwardedFor =>
+                optionalHeaderValueByType(`X-Forwarded-Host`) { xForwardedHost =>
                   optionalHeaderValueByName("X-Intermediary") { xIntermediary =>
                     optionalHeaderValueByName("X-Request-Id") { xRequestId =>
                       FHIRUtil.resolveResponseMediaRange(format, contentType, acceptHeader.map(_.mediaRanges).getOrElse(Seq.empty)) match {

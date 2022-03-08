@@ -64,21 +64,28 @@ case class FHIRRequest(
   private var parsedQueryParams:Either[List[Parameter], Map[String, List[Parameter]]] = Left(List.empty)
 
   def addParsedQueryParams(params:List[Parameter]):Unit = {
-    parsedQueryParams = Left(parsedQueryParams.left.get ++ params)
+    parsedQueryParams = Left(parsedQueryParams.left.getOrElse(List.empty[Parameter]) ++ params)
   }
 
   def addParsedQueryParams(rtype:String, params:List[Parameter]):Unit = {
+    val tempMap =
+      parsedQueryParams
+        .swap
+        .left
+        .getOrElse(Map.empty[String, List[Parameter]])
+
     parsedQueryParams = Right(
-      parsedQueryParams.right.getOrElse(Map.empty).get(rtype) match {
-        case Some(p) => parsedQueryParams.right.getOrElse(Map.empty) ++ Map(rtype -> (p ++ params))
-        case None =>   parsedQueryParams.right.getOrElse(Map.empty) ++ Map(rtype -> params)
-      }
+      tempMap
+        .get(rtype) match {
+          case Some(p) => tempMap ++ Map(rtype -> (p ++ params))
+          case None =>  tempMap ++ Map(rtype -> params)
+        }
     )
   }
 
-  def getParsedQueryParams():List[Parameter] = parsedQueryParams.left.get
+  def getParsedQueryParams():List[Parameter] = parsedQueryParams.left.getOrElse(List.empty[Parameter])
 
-  def getAllParsedQueryParams():Map[String, List[Parameter]] = parsedQueryParams.right.get
+  def getAllParsedQueryParams():Map[String, List[Parameter]] = parsedQueryParams.swap.left.getOrElse(Map.empty[String, List[Parameter]])
 
   //Set id for the request externally
   def setId(id:Option[String]):FHIRRequest = {

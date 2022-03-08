@@ -12,7 +12,7 @@ import io.onfhir.config.FhirConfigurationManager.fhirConfig
 import io.onfhir.config.OnfhirConfig
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.conversions.Bson
-import io.onfhir.db.BsonTransformer._
+import io.onfhir.db.OnFhirBsonTransformer._
 import io.onfhir.event.{FhirEventBus, ResourceCreated, ResourceDeleted, ResourceUpdated}
 import io.onfhir.exception.UnsupportedParameterException
 import io.onfhir.util.DateTimeUtil
@@ -101,8 +101,9 @@ object ResourceManager {
    * @return                            Num of Total Matched Resources, Matched Resources (with Paging)
    */
   def searchResourcesFromMultipleResourceTypes(parametersForResourceTypes:Map[String, List[Parameter]],excludeExtraParams:Boolean = false)(implicit transactionSession: Option[TransactionSession] = None):Future[(Long, Seq[Resource])] = {
-    val resultParameters = parametersForResourceTypes
-      .mapValues(_.filter(_.paramCategory == FHIR_PARAMETER_CATEGORIES.RESULT))
+    val resultParameters =
+      parametersForResourceTypes
+        .map(p => p._1 -> p._2.filter(_.paramCategory == FHIR_PARAMETER_CATEGORIES.RESULT))
 
     val commonResultParameters =
       resultParameters
@@ -120,13 +121,15 @@ object ResourceManager {
           rparams._1 -> FHIRResultParameterResolver.resolveSummaryParameter( rparams._1, rparams._2)
         )
     val sortingFields =
-      resultParameters.map(rparams =>
-        rparams._1 -> FHIRResultParameterResolver.resolveSortingParameters(rparams._1, rparams._2)
-      )
+      resultParameters
+        .map(rparams =>
+          rparams._1 -> FHIRResultParameterResolver.resolveSortingParameters(rparams._1, rparams._2)
+        )
 
     //Filter query parameters for each resource type
     val queryParameters =
       parametersForResourceTypes
+        .view
         .mapValues(_.filterNot(_.paramCategory == FHIR_PARAMETER_CATEGORIES.RESULT))
 
     //If summary is count
@@ -226,7 +229,7 @@ object ResourceManager {
                              needTotal:Boolean = true
                             )(implicit transactionSession: Option[TransactionSession] = None):Future[(Long, Seq[Resource])] = {
 
-    val sortingPaths = sortingFields.mapValues(constructFinalSortingPaths)
+    val sortingPaths = sortingFields.map(sf => sf._1 -> constructFinalSortingPaths(sf._2))
     for {
       total <- if(needTotal) DocumentManager.countDocumentsFromMultipleCollections(queries) else Future.apply(-1L) //If they don't need total number, just return -1 for it
       resultResources <-
@@ -544,7 +547,7 @@ object ResourceManager {
       if(includedResources.isEmpty || iteratedIncludeParams.isEmpty)
         Future.apply(includedResources.flatMap(_._2))
       else {
-        val newIncludedResources = includedResources.toMap.mapValues(ir => ir.map(r => extractIdVersionIdAndCanonicalUrl(r)))
+        val newIncludedResources = includedResources.map(ir => ir._1 -> ir._2.map(r => extractIdVersionIdAndCanonicalUrl(r))).toMap
         val newAllResources = mergeAllResources(allResources,newIncludedResources)
         Future.sequence(
           //Run iteration recursively for each ResourceType, run iterations only on new resources
@@ -562,8 +565,9 @@ object ResourceManager {
    */
   private def mergeAllResources(allResources:Map[String,Seq[(String, Long, Option[String])]], newResources:Map[String,Seq[(String, Long, Option[String])]]) = {
     (allResources.toSeq ++ newResources.toSeq)
-      .groupBy(_._1)
-      .mapValues(_.flatMap(_._2))
+      .groupMap(_._1)(_._2)
+      .map(g => g._1 -> g._2.flatten)
+
   }
 
   /**
@@ -632,6 +636,7 @@ object ResourceManager {
         //Get the latest version of resource for each url (this is required when no version is given in canonical URL)
         rs
           .groupBy(FHIRUtil.extractValue[String](_, FHIR_COMMON_FIELDS.URL))
+          .view
           .mapValues(_.sortBy(FHIRUtil.extractValue[String](_, FHIR_COMMON_FIELDS.VERSION).last))
           .values.flatten.toSeq
       )
@@ -693,7 +698,7 @@ object ResourceManager {
               None
           })
 
-        refPathAndTargetType match {
+        (refPathAndTargetType : @unchecked) match {
           case None => Nil
           //If target type is a reference
           case Some((refPath, FHIR_DATA_TYPES.REFERENCE)) =>

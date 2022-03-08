@@ -3,7 +3,7 @@ package io.onfhir.event.kafka
 import com.typesafe.config.Config
 
 import scala.util.Try
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 class KafkaConfig(config:Config) {
   /**
@@ -24,7 +24,7 @@ class KafkaConfig(config:Config) {
   lazy val kafkaEnabled :Boolean= Try(config.getBoolean("kafka.enabled")).getOrElse(false)
 
   /** If given kafka sending is only available for these resources **/
-  lazy val kafkaEnabledResources:Option[Seq[String]] = Try(config.getStringList("kafka.enabled-resources").asScala).toOption
+  lazy val kafkaEnabledResources:Option[Seq[String]] = Try(config.getStringList("kafka.enabled-resources").asScala.toSeq).toOption
 
   /** Check if Kafka resource sending is enabled for this resource type **/
   def isKafkaEnabled(rtype:String):Boolean = {

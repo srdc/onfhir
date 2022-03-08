@@ -10,13 +10,13 @@ import io.onfhir.api.{FHIR_COMMON_FIELDS, FHIR_EXTRA_FIELDS}
 import io.onfhir.util.DateTimeUtil
 import org.apache.commons.lang3.time.FastDateFormat
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 
 /**
   * Import this object to implicitly convert Scala Maps to BsonDocuments via the "toBson" method
   */
-object BsonTransformer{
+object OnFhirBsonTransformer{
   // DateTime formats, must use a thread-safe formatter
   private val dateTimeWMiliFormat = FastDateFormat.getInstance("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
   private val dateTimeWSecFormat = FastDateFormat.getInstance("yyyy-MM-dd'T'HH:mm:ssXXX")
@@ -34,7 +34,7 @@ object BsonTransformer{
       value.obj.foreach { field =>
         document.put(field._1, field._2 match {
           case b: JBool => BsonBoolean(b.value)
-          case n: JInt => if(n.num.isValidInt) BsonInt32(n.num.intValue()) else BsonInt64(n.num.longValue())
+          case n: JInt => if(n.num.isValidInt) BsonInt32(n.num.intValue) else BsonInt64(n.num.longValue)
           case l: JLong => BsonInt64(l.num)
           case d: JDouble => BsonDouble(d.num)
           case dec:JDecimal => BsonDecimal128(dec.num)
@@ -62,7 +62,7 @@ object BsonTransformer{
     def apply(value: JArray): BsonArray = BsonArray.fromIterable {
       value.arr map {
         case b: JBool => BsonBoolean(b.value)
-        case n: JInt => if(n.num.isValidInt) BsonInt32(n.num.intValue()) else BsonInt64(n.num.longValue())
+        case n: JInt => if(n.num.isValidInt) BsonInt32(n.num.intValue) else BsonInt64(n.num.longValue)
         case l: JLong => BsonInt64(l.num)
         case d: JDouble => BsonDouble(d.num)
         case dec:JDecimal => BsonDecimal128(dec.num)
@@ -170,7 +170,7 @@ object BsonTransformer{
         case x:BsonArray    => transformArray(x)
         case m:BsonDocument => if(!m.isEmpty) handleDocument(m) else JNull
         case _              => JNull
-    }
+    }.toSeq
 
     JArray(results.toList)
   }
@@ -216,7 +216,7 @@ object BsonTransformer{
     val serverRangeStart = DateTime(dateTime.get(FHIR_EXTRA_FIELDS.TIME_RANGE_START).asInstanceOf[BsonDateTime].getValue).toIsoDateTimeString
     val serverRangeEnd = DateTime(dateTime.get(FHIR_EXTRA_FIELDS.TIME_RANGE_END).asInstanceOf[BsonDateTime].getValue).toIsoDateTimeString
     // Longest prefix match to trim the server generated parts(e.g. server range 2016-10-10T00:00/2016-10-10T23:59 trimmed to 2016-10-10)
-    (serverRangeStart, serverRangeEnd).zipped.takeWhile(Function.tupled(_==_)).unzip._1.mkString.dropRight(1)
+    serverRangeStart.lazyZip(serverRangeEnd).takeWhile(Function.tupled(_ == _)).map(_._1).mkString.dropRight(1)
   }
 
   /**
@@ -393,7 +393,7 @@ object BsonTransformer{
     }
   }
 
-  def createBsonTimeObject(value:String) = {
+  def createBsonTimeObject(value:String):BsonDocument = {
     val ts = dateToISODate(value)
     val onlyDate:BsonValue = BsonDateTime(dateTimeWSecFormat.parse(value.split("T").head + "T00:00:00Z").getTime)
     //Create a Json object with original time string, a parsed timestamp ISODate, and only date part

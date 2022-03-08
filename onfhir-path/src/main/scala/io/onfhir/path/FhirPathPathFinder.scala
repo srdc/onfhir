@@ -1,7 +1,7 @@
 package io.onfhir.path
 import io.onfhir.api.util.FHIRUtil
 
-import collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import io.onfhir.path.grammar.FhirPathExprParser
 import io.onfhir.path.grammar.FhirPathExprParser.{FunctionInvocationContext, InvocationContext, MemberInvocationContext, ThisInvocationContext}
 

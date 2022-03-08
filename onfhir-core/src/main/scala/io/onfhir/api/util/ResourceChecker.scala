@@ -9,6 +9,7 @@ import io.onfhir.exception.NotImplementedException
 
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
+import scala.language.postfixOps
 import scala.util.Try
 
 /**

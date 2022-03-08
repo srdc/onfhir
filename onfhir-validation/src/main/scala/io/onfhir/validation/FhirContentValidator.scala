@@ -75,6 +75,7 @@ class FhirContentValidator(
               .filter(!_._2)
               .map(_._1)
               .map(reference => ConstraintFailure(s"Referenced resource ${reference._1.getReference()} does not exist!"))
+              .toSeq
           )
         )
       })
@@ -154,7 +155,7 @@ class FhirContentValidator(
     )
 
     //Find out primitives that are not with a value e.g. birthDate does not exist but _birthDate exist
-    val primitivesWithoutValues = possiblePrimitiveExtensions.filterKeys( k => !validatedFields.contains(k))
+    val primitivesWithoutValues = possiblePrimitiveExtensions.view.filterKeys( k => !validatedFields.contains(k))
     val primitiveWithoutValuesIssuesFuture =
       Future.sequence(
         primitivesWithoutValues
@@ -162,7 +163,7 @@ class FhirContentValidator(
           .map {
             case (field, fieldValue) =>
               //Find out the field name and DataType for the given field
-              extractFieldNameAndDataType(field, allRestrictions) match {
+              (extractFieldNameAndDataType(field, allRestrictions) : @unchecked) match {
                 case None =>
                   Future.apply {
                     if (!isAllAbstract || forceRecognitionOfElementsEvenForAbstractChain)
@@ -663,7 +664,7 @@ class FhirContentValidator(
           case "value" | "pattern" =>
             //Handle extensions
             if(disc._2 == "url" && sliceRestriction.path.contains("extension")) {
-              sliceRestriction.restrictions.get(ConstraintKeys.DATATYPE) match {
+              (sliceRestriction.restrictions.get(ConstraintKeys.DATATYPE) : @unchecked) match {
                 //If this is a restriction on resource profile that mentions an Extension profile, find the url of that extension profile
                 case Some(TypeRestriction(typs)) =>
                   val extensionUrl = typs.head._2.head
@@ -682,7 +683,7 @@ class FhirContentValidator(
                   _.map(
                     _.map(er => er._1 ->
                       er._2.restrictions
-                        .filterKeys(k => k == ConstraintKeys.PATTERN || k == ConstraintKeys.BINDING || k == ConstraintKeys.MAX).values //These restrictions can be related with value or pattern
+                        .view.filterKeys(k => k == ConstraintKeys.PATTERN || k == ConstraintKeys.BINDING || k == ConstraintKeys.MAX).values //These restrictions can be related with value or pattern
                       )
                       .filter(_._2.nonEmpty)
                       .flatMap(er => er._2.toSeq.map(r => er._1 -> r))))
@@ -693,7 +694,7 @@ class FhirContentValidator(
               _.map(
                 _.map(er => er._1 ->
                   er._2.restrictions
-                    .filterKeys(k => k == ConstraintKeys.MIN || k == ConstraintKeys.MAX).values
+                    .view.filterKeys(k => k == ConstraintKeys.MIN || k == ConstraintKeys.MAX).values
                 ) //
                   .filter(_._2.nonEmpty)
                   .flatMap(x => x._2.toSeq.map(r => x._1 -> r))
@@ -855,7 +856,7 @@ class FhirContentValidator(
       case ot if ot.startsWith("ofType(") =>
         //just skip ofType for definition path
         val typ = ot.drop(7).dropRight(1)
-        finalActualPath = Some(finalActualPath + typ.capitalize) //e.g. value.ofType(Quantity) --> valueQuantity
+        finalActualPath = Some(s"${finalActualPath.getOrElse("")}${typ.capitalize}") //e.g. value.ofType(Quantity) --> valueQuantity
       case valueAfterExt if valueAfterExt.startsWith("value") && discriminatorPathItems.apply(pathAndIndex._2 - 1).startsWith("extension(") =>
         finalDefinitionPath = Some(FHIRUtil.mergeElementPath(finalDefinitionPath, "value[x]"))
         finalActualPath = Some(FHIRUtil.mergeElementPath(finalActualPath, valueAfterExt))
@@ -1159,7 +1160,7 @@ class FhirContentValidator(
    * @return
    */
   private def getFhirRestriction(restrictionKey: Int, elementRestriction:ElementRestrictions):Option[FhirRestriction] = {
-    elementRestriction.contentReference match {
+    (elementRestriction.contentReference : @unchecked) match {
       //If there is a content reference (e.g. Questionnaire.item.item -> Questionnaire.item) and restriction is not about cardinality, check the referenced element restrictions
       case Some(cr) if(restrictionKey >= 3) =>
         rootProfileChain.reverse.view.flatMap(_.elementRestrictions).find(_._1 == cr)
@@ -1309,7 +1310,7 @@ class FhirContentValidator(
    * @return
    */
   def decapitilize(s: String): String = {
-    s.apply(0).toLower + s.substring(1)
+    s"${s.apply(0).toLower}${s.substring(1)}"
   }
 
   /**

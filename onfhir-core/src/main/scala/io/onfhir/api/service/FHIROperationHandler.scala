@@ -96,9 +96,9 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
     */
   private def validateRequestBody(fhirRequest: FHIRRequest):Future[Unit] = {
     if(fhirRequest.resource.exists(body => FHIRUtil.extractValueOption[String](body, FHIR_COMMON_FIELDS.RESOURCE_TYPE).contains("Parameters")))
-      fhirValidator.validateResource(fhirRequest.resource.get, "Parameters").map(_ => Unit)
+      fhirValidator.validateResource(fhirRequest.resource.get, "Parameters").map(_ => ())
     else
-      Future.apply(Unit)
+      Future.apply(())
   }
 
 
@@ -449,11 +449,11 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
 
           fresults flatMap { results =>
             //Check if there is any validation issue for the parameters
-            val issues = results.filter(r => r._2.isRight && r._2.right.get.nonEmpty).flatMap(_._2.right.get)
+            val issues = results.filter(r => r._2.isRight).flatMap(_._2.toOption.getOrElse(Nil))
             if (issues.nonEmpty) throw new BadRequestException(issues)
 
             //Filter the ones with a value
-            val parameterValues = results.filter(_._2.isLeft).map(p => p._1 -> p._2.left.get)
+            val parameterValues = results.filter(_._2.isLeft).map(p => p._1 -> p._2.left.getOrElse(Nil))
             //Load the Operation Service
             val operationService = getOperationServiceImpl(operationConf)
 

@@ -6,6 +6,8 @@ import io.onfhir.api.model.InternalEntity
 import io.onfhir.api.{FHIR_FORMATS, FHIR_ROOT_URL_FOR_DEFINITIONS, FHIR_VERSIONING_OPTIONS}
 import io.onfhir.api.validation.{ProfileRestrictions, ValueSetRestrictions}
 
+import scala.collection.LazyZip3
+
 /**
   * Central OnFhir configuration defining FHIR server capabilities
   * @param version FHIR version
@@ -269,7 +271,7 @@ case class SearchParameterConf(pname:String,
   }
 
   def extractElementPathsTargetTypesAndRestrictions(withArrayIndicators:Boolean = false):Seq[(String, String, Seq[(String,String)])] = {
-    (extractElementPaths(withArrayIndicators), targetTypes, restrictions).zipped.toSeq
+    extractElementPaths(withArrayIndicators).lazyZip(targetTypes).lazyZip(restrictions).toSeq
   }
 }
 

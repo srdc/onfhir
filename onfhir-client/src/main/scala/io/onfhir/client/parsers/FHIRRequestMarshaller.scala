@@ -50,7 +50,7 @@ object FHIRRequestMarshaller {
       HttpRequest()
         .withMethod(method)
         .withUri(getRequestUri(fhirRequest, fhirServerBaseUrl, method))
-        .withHeaders(getHeaders(fhirRequest): _*)
+        .withHeaders(getHeaders(fhirRequest))
 
     getEntity(fhirRequest, method, fhirServerBaseUrl, ctype).foreach(e =>
       request = request.withEntity(e)

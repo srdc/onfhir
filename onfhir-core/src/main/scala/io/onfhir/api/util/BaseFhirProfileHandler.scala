@@ -122,7 +122,7 @@ abstract class BaseFhirProfileHandler(val fhirConfig: FhirConfig) {
 
     //If still it is empty, path may be referring to an inner element of a FHIR Complex DataType so does not exist in Resource e.g. Patient.name.given (name refers to HumanName)
     if(targetTypeAndProfiles.isEmpty && path.contains('.')){
-      targetTypeAndProfiles = findTargetTypeInSubPaths(path.split('.'), profiles)
+      targetTypeAndProfiles = findTargetTypeInSubPaths(path.split('.').toIndexedSeq, profiles)
     }
 
     if(targetTypeAndProfiles.isEmpty)
@@ -195,7 +195,7 @@ abstract class BaseFhirProfileHandler(val fhirConfig: FhirConfig) {
       //If such a path not exist
       case None =>
         if(path.contains('.'))
-          findPathCardinalityInSubpaths(path.split('.'), profiles)
+          findPathCardinalityInSubpaths(path.split('.').toIndexedSeq, profiles)
         else
           false
     }

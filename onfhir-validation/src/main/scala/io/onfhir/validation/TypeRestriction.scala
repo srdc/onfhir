@@ -12,6 +12,7 @@ import io.onfhir.util.JsonFormatter.formats
 
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
+import scala.language.postfixOps
 /**
  * Restriction on the type of an element
  *

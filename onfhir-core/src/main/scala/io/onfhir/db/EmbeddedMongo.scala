@@ -1,17 +1,18 @@
 package io.onfhir.db
 
-import com.typesafe.scalalogging.Logger
+
 import de.flapdoodle.embed.mongo.{MongodExecutable, MongodStarter}
 import de.flapdoodle.embed.mongo.config.{MongodConfig, Net, Storage}
 import de.flapdoodle.embed.mongo.distribution.Version
 import de.flapdoodle.embed.process.runtime.Network
+import org.slf4j.LoggerFactory
 
 /**
  * Embedded MongoDB Server
  */
 object EmbeddedMongo {
 
-  private val logger: Logger = Logger(this.getClass)
+  private val logger  = LoggerFactory.getLogger("EmbeddedMongo")
 
   val FOLDER_EXT: String = ".emb.mongo"
 

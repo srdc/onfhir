@@ -236,7 +236,7 @@ class SearchParameterConfigurator(
           .map(p => if(p!="") p.drop(1) else  p) //Remove the dot after resource type if exist
           .map(p => p -> Nil)
 
-      val (finalPaths, finalTargetTypes, _, _) = transformPathsAndExtractTargetTypes(searchParameterDef.ptype, compositionPaths)
+      val (finalPaths, finalTargetTypes, _, _) = transformPathsAndExtractTargetTypes(searchParameterDef.ptype, compositionPaths.toIndexedSeq)
 
       val combinedParamNames =
         combinedParamUrls
@@ -344,7 +344,7 @@ object SearchParameterConfigurator extends RegexParsers {
       p.takeWhile(_ != '[') -> Some(p.dropWhile(_ != '[').drop(1).dropRight(1).toInt)
     else
       p -> None
-    )
+    ).toIndexedSeq
   }
 
   /**
@@ -380,7 +380,7 @@ object SearchParameterConfigurator extends RegexParsers {
           p._1.drop(FHIR_DATA_TYPES.RESOURCE.length+1) -> p._2
         else
           p._1.drop(resourceType.length+1) -> p._2
-      )
+      ).toIndexedSeq
   }
 
   /**

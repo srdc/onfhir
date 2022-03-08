@@ -2,8 +2,7 @@ package io.onfhir.path
 
 import io.onfhir.path.grammar.{FhirPathExprBaseVisitor, FhirPathExprParser}
 import io.onfhir.path.grammar.FhirPathExprParser.{AndExpressionContext, BooleanLiteralContext, EqualityExpressionContext, ExpressionContext, ExternalConstantTermContext, FunctionContext, FunctionInvocationContext, IdentifierContext, InvocationContext, InvocationExpressionContext, InvocationTermContext, LiteralTermContext, MemberInvocationContext, NumberLiteralContext, ParenthesizedTermContext, StringLiteralContext, TermExpressionContext, ThisInvocationContext, TypeExpressionContext}
-
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 
 /**
  * Go over the FHIR Path Expression tree and return the path parts for a FHIR Path path expression (SearchParameter.expression) that defines a path in FHIR content
@@ -68,7 +67,7 @@ class FhirPathExtractor(latestPath:Seq[(String, Seq[(String, String)])] = Nil) e
                     throw new FhirPathException("Invalid FHIR Path path expression!")
                   val restrictions = eqExpressions.map(_.asInstanceOf[EqualityExpressionContext]).map(handleEqualityExpression)
                   val lp = path.last._1
-                  path.dropRight(1) :+ (lp -> restrictions)
+                  path.dropRight(1) :+ (lp -> restrictions.toSeq)
                 // e.g. ActivityDefinition.relatedArtifact.where(type='composed-of').resource
                 case e:EqualityExpressionContext =>
                   val restrictions = Seq(handleEqualityExpression(e))

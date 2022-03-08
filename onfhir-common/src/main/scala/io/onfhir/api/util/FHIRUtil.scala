@@ -609,7 +609,7 @@ object FHIRUtil {
     def parsePathItem(pitem:String):(String, Seq[Int]) = {
       if(pitem.last == ']'){
         val parts = pitem.split('[')
-        parts.head -> parts.tail.map(_.dropRight(1).toInt)
+        parts.head -> parts.tail.map(_.dropRight(1).toInt).toIndexedSeq
       } else
         pitem -> Nil
     }
@@ -821,6 +821,7 @@ object FHIRUtil {
       .flatMap {
         case c:JString => Seq(c.s)
         case a:JArray => a.extract[Seq[String]]
+        case _ => throw new IllegalArgumentException("The given path does not indicate a FHIR canonical reference element!")
       }
   }
 
@@ -874,6 +875,8 @@ object FHIRUtil {
             val referencedResourceType = FHIRUtil.extractValueOption[String](obj, FHIR_COMMON_FIELDS.TYPE)
             val refIdentifier = FHIRUtil.extractValueOption[JObject](obj, FHIR_COMMON_FIELDS.IDENTIFIER).get
             FhirLogicalReference(referencedResourceType, FHIRUtil.extractValueOption[String](refIdentifier, FHIR_COMMON_FIELDS.SYSTEM), FHIRUtil.extractValue[String](refIdentifier, FHIR_COMMON_FIELDS.VALUE))
+          case _ =>
+            throw new Exception("Invalid FHIR reference content!")
         }
       case _ =>
         throw new Exception("Invalid FHIR reference")
@@ -1060,7 +1063,7 @@ object FHIRUtil {
    * @return
    */
   def decapitilize(s: String): String = {
-    s.charAt(0).toLower + s.substring(1)
+    s"${s.charAt(0).toLower}${s.substring(1)}"
   }
 
   /**

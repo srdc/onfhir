@@ -39,7 +39,7 @@ case class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = Non
   private def evaluate(expr:FhirPathExprParser.ExpressionContext, on:JValue):Seq[FhirPathResult] = {
     logger.debug(s"Evaluating FHIR path expression '${expr.getText}' ...")
     val resource = FhirPathValueTransformer.transform(on)
-    val environment = new FhirPathEnvironment(resource, referenceResolver, environmentVariables.mapValues(FhirPathValueTransformer.transform))
+    val environment = new FhirPathEnvironment(resource, referenceResolver, environmentVariables.map(e => e._1 -> FhirPathValueTransformer.transform(e._2)))
     val evaluator = new FhirPathExpressionEvaluator(environment, resource)
     evaluator.visit(expr)
   }
@@ -294,7 +294,7 @@ case class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = Non
     logger.debug(s"Evaluating FHIR path expression '${expr}' to find indicated paths  ...")
     val parsedExpr = FhirPathEvaluator.parse(expr)
     val resource = FhirPathValueTransformer.transform(on)
-    val environment = new FhirPathEnvironment(resource, referenceResolver,environmentVariables.mapValues(FhirPathValueTransformer.transform))
+    val environment = new FhirPathEnvironment(resource, referenceResolver,environmentVariables.map(e => e._1 -> FhirPathValueTransformer.transform(e._2)))
     val evaluator = new FhirPathPathFinder(environment, resource)
     evaluator.visit(parsedExpr)
     evaluator.getFoundPaths

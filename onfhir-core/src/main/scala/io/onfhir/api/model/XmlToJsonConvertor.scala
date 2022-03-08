@@ -68,7 +68,7 @@ class XmlToJsonConvertor(fhirConfig: FhirConfig) extends BaseFhirProfileHandler(
         convertResourceToJson(children.head.asInstanceOf[Elem])
       //Extension is serialized in a special way
       case "extension" =>
-        val urlElem = node.attribute("url") match {
+        val urlElem = (node.attribute("url") : @unchecked) match {
           case Some(Seq(n)) =>
             JField("url", JString(n.text))
           case None => JField("url", JNull)
@@ -80,7 +80,7 @@ class XmlToJsonConvertor(fhirConfig: FhirConfig) extends BaseFhirProfileHandler(
       //div is special, so we embed the content
       case "div" => JString(node.toString())
       case _ =>
-        node.attribute("value") match {
+        (node.attribute("value") : @unchecked) match {
           //If it has a 'value' attribute it should be primitive
           case Some(Seq(v)) =>
             //Find the target type
@@ -145,7 +145,7 @@ class XmlToJsonConvertor(fhirConfig: FhirConfig) extends BaseFhirProfileHandler(
         .map(n => n._1.label -> n)
         .groupBy(_._1)
         .map(g => g._1 -> g._2.map(_._2)).toSeq.sortWith((g1, g2) => g1._2.head._2 < g2._2.head._2)
-        .map(g => g._1 -> g._2.map(_._1))
+        .map(g => g._1 -> g._2.map(_._1).toSeq)
 
     JObject(
       elements.flatMap(elem => convertElementToJson(elem, profileChain, parentPath)).toList

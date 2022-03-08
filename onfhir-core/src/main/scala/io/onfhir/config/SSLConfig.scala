@@ -12,9 +12,9 @@ trait SSLConfig {
   /**
     * Defaults
     */
-  final val DEFAULT_KEYSTORE_PATH :String = DEFAULT_ROOT_FOLDER + "/keystore.jks"
+  final val DEFAULT_KEYSTORE_PATH :String = s"$DEFAULT_ROOT_FOLDER/keystore.jks"
   final val DEFAULT_KEYSTORE_PASSWORD = "fhir-repository"
-  final val DEFAULT_PROTECTED_RESOURCE_METADATA_PATH :String = DEFAULT_ROOT_FOLDER + "/protected-resource-server-metadata.json"
+  final val DEFAULT_PROTECTED_RESOURCE_METADATA_PATH :String = s"$DEFAULT_ROOT_FOLDER /protected-resource-server-metadata.json"
   final val DEFAULT_PROTECTED_RESOURCE_JWKS_FILE_NAME = "fhir-server.jwks"
   final val DEFAULT_PROTECTED_RESOURCE_DYNAMIC_REGISTRATION_METADATA_FILE_NAME = "protected-resource-server-metadata-dynamic.json"
   /**
@@ -34,7 +34,7 @@ trait SSLConfig {
     val sslContext = SSLContext.getInstance("TLS")
     sslContext.init(keyManagerFactory.getKeyManagers, trustManagerFactory.getTrustManagers, new SecureRandom)
 
-    val https: HttpsConnectionContext = ConnectionContext.https(sslContext)
+    val https: HttpsConnectionContext = ConnectionContext.httpsClient(sslContext)
     https
   }
 

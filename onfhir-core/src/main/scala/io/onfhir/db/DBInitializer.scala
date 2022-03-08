@@ -96,7 +96,7 @@ object DBInitializer {
     */
   private def createCollection(rtype:String):Future[String] = {
     //Create the collection and basic indexes
-    MongoDB.getDatabase.createCollection(rtype).toFuture
+    MongoDB.getDatabase.createCollection(rtype).toFuture()
       .flatMap { unit =>
         Future.sequence(
           Seq(
@@ -111,7 +111,7 @@ object DBInitializer {
               Indexes.descending(s"${FHIR_COMMON_FIELDS.META}.${FHIR_COMMON_FIELDS.LAST_UPDATED}.${FHIR_EXTRA_FIELDS.TIME_TIMESTAMP}"),
               new IndexOptions().name("onfhir_lastUpdated"))
           ).map(indModel =>
-            MongoDB.getCollection(rtype).createIndexes(Seq(indModel)).toFuture
+            MongoDB.getCollection(rtype).createIndexes(Seq(indModel)).toFuture()
           )
         )
       }.flatMap { unit =>
@@ -127,7 +127,7 @@ object DBInitializer {
     */
   private def createHistoryCollection(rtype:String) = {
     //Create the collection and basic indexes
-    MongoDB.getDatabase.createCollection(rtype+"_history").toFuture
+    MongoDB.getDatabase.createCollection(rtype+"_history").toFuture()
       .flatMap { unit =>
         Future.sequence(
           Seq(
@@ -144,7 +144,7 @@ object DBInitializer {
               Indexes.descending(s"${FHIR_COMMON_FIELDS.META}.${FHIR_COMMON_FIELDS.LAST_UPDATED}.${FHIR_EXTRA_FIELDS.TIME_TIMESTAMP}"),
               new IndexOptions().name("onfhir_lastUpdated"))
           ).map(indModel =>
-            MongoDB.getCollection(rtype, history = true).createIndexes(Seq(indModel)).toFuture
+            MongoDB.getCollection(rtype, history = true).createIndexes(Seq(indModel)).toFuture()
           )
         )
       }.flatMap { unit =>
@@ -200,7 +200,7 @@ object DBInitializer {
             val resourcesDoesNotExist = resourceIdsAndVersions.filterNot(r => idsAndVersionsExist.keySet.contains(r._1)).map(r => r._1 -> r._2._2)
 
             //Create the non existant infrastructure resources
-            val createFuture = if(resourcesDoesNotExist.nonEmpty) ResourceManager.createResources(resourceType, resourcesDoesNotExist).map(_ => Unit) else Future(Unit)
+            val createFuture = if(resourcesDoesNotExist.nonEmpty) ResourceManager.createResources(resourceType, resourcesDoesNotExist).map(_ => ()) else Future(())
 
             // Wait for the creation of the resources
             Await.result(createFuture, 5 seconds)

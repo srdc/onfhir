@@ -310,7 +310,7 @@ object FHIRApiValidator {
    * @return
    */
   def validateAndReturnTypeParameter(fhirRequest:FHIRRequest):Seq[String] = {
-    fhirRequest.queryParams.get("_type") match {
+    (fhirRequest.queryParams.get("_type") : @unchecked) match {
       case Some(List(rtypes)) =>
         val resourceTypes = rtypes.split(',').toSet
         val unsupportedResourceTypes = resourceTypes.diff(fhirConfig.resourceConfigurations.keySet)

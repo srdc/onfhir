@@ -1,14 +1,13 @@
 package io.onfhir
 
-import java.time.temporal.ChronoUnit
-
 import akka.Done
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
+import akka.http.scaladsl.server.Directives.concat
 import org.slf4j.{Logger, LoggerFactory}
-import akka.http.scaladsl.server.{HttpApp, Route}
+import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.settings.ServerSettings
-import io.onfhir.api.endpoint.{FHIREndpoint, OnFhirEndpoint, OnFhirInternalEndpoint}
+import io.onfhir.api.endpoint.{FHIREndpoint, OnFhirInternalEndpoint}
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.audit.AuditManager
 import io.onfhir.authz._
@@ -17,8 +16,10 @@ import io.onfhir.db.{DBConflictManager, EmbeddedMongo}
 import io.onfhir.event.{FhirDataEvent, FhirEventBus, FhirEventSubscription}
 import io.onfhir.event.kafka.KafkaEventProducer
 
-import scala.concurrent.{ExecutionContext, Future, Promise, blocking}
-import scala.util.Try
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.{Await, ExecutionContext, Future, Promise, blocking}
+import scala.util.{Failure, Success}
 import scala.io.StdIn
 
 /**
@@ -41,72 +42,15 @@ class Onfhir(
               val customAuditHandler:Option[ICustomAuditHandler],
               val externalRoutes:Seq[(FHIRRequest, (AuthContext, Option[AuthzContext])) => Route],
               val cdsHooksRoute:Option[Route]
-            ) extends SSLConfig {
+            )(implicit actorSystem:ActorSystem) extends SSLConfig with FHIREndpoint with OnFhirInternalEndpoint{
 
   private val logger:Logger = LoggerFactory.getLogger(this.getClass)
 
-  /**
-    * Akka HTTP rest server for FHIR endpoint
-    */
-  private object FhirServer extends HttpApp with OnFhirEndpoint {
-    /**
-      * Callback for server shutdown
-      * @param attempt
-      * @param system
-      */
-    override def postServerShutdown(attempt: Try[Done], system: ActorSystem): Unit = {
-      logger.info("Closing OnFhir server...")
-      implicit val executionContext = Onfhir.actorSystem.dispatcher
-      Onfhir.actorSystem.terminate().map( _ => System.exit(0))
-    }
-
-    /**
-      * In order to close the server
-      * @param actorSystem
-      * @param executionContext
-      * @return
-      */
-    override def waitForShutdownSignal(actorSystem: ActorSystem)(implicit executionContext: ExecutionContext): Future[Done] = {
-      val promise = Promise[Done]()
-      sys.addShutdownHook {
-        promise.trySuccess(Done)
-        if (OnfhirConfig.mongoEmbedded) {
-          EmbeddedMongo.stop()
-        }
-      }
-      Future {
-        blocking {
-          if (StdIn.readLine("Write 'quit' to stop the server...\n").equalsIgnoreCase("quit"))
-            promise.trySuccess(Done)
-        }
-      }
-      promise.future
-    }
-
-    override def postHttpBinding(binding: Http.ServerBinding) = {
-      logger.info("OnFhir FHIR server started on host {} and port {}", OnfhirConfig.serverHost, OnfhirConfig.serverPort)
-      if(OnfhirConfig.internalApiActive)
-        OnFhirInternalServer.startServer(OnfhirConfig.serverHost, OnfhirConfig.internalApiPort, ServerSettings(OnfhirConfig.config).withVerboseErrorMessages(true), Onfhir.actorSystem)
-    }
-  }
-
-  private object OnFhirInternalServer extends HttpApp with OnFhirInternalEndpoint {
-    override def postServerShutdown(attempt: Try[Done], system: ActorSystem): Unit = {
-      logger.info("Closing OnFhir internal server...")
-    }
-
-    override def postHttpBinding(binding: Http.ServerBinding) = {
-      logger.info("OnFhir internal server is started on host {} and port {}...", OnfhirConfig.serverHost, OnfhirConfig.internalApiPort)
-    }
-
-    override def waitForShutdownSignal(actorSystem: ActorSystem)(implicit executionContext: ExecutionContext): Future[Done] = {
-      val promise = Promise[Done]()
-      sys.addShutdownHook {
-        promise.trySuccess(Done)
-      }
-      promise.future
-    }
-  }
+  implicit val ec:ExecutionContext = actorSystem.dispatcher
+  // FHIR server binding
+  private var fhirServerBinding:Http.ServerBinding = _
+  // Internal server binding
+  private var internalOnFhirServerBinding:Http.ServerBinding = _
 
   /* Setup or Configure the platform and prepare it for running */
   FhirConfigurationManager.initialize(fhirConfigurator, fhirOperationImplms)
@@ -153,15 +97,95 @@ class Onfhir(
     * Start the server
     */
   def start = {
-    //Read server settings from config
-    val settings = ServerSettings(OnfhirConfig.config).withVerboseErrorMessages(true)
+    // FHIR server definition
+    var fhirServer =
+      Http()
+        .newServerAt(OnfhirConfig.serverHost, OnfhirConfig.serverPort)
+        .withSettings(
+          ServerSettings(OnfhirConfig.config)
+            .withVerboseErrorMessages(true)
+        )
+
     if(OnfhirConfig.serverSsl) {
       logger.info("Configuring SSL context...")
-      Http()(Onfhir.actorSystem).setDefaultServerHttpContext(https)
+      fhirServer = fhirServer.enableHttps(https)
+    }
+    //Final FHIR route
+    val finalRoute =
+      cdsHooksRoute match {
+        case None => fhirRoute
+        case Some(cdsRoute) => concat(cdsRoute, fhirRoute)
+      }
+
+    fhirServer
+      .bind(finalRoute) onComplete {
+        case Success(binding) =>
+          fhirServerBinding = binding
+          fhirServerBinding.addToCoordinatedShutdown(FiniteDuration.apply(60L, TimeUnit.SECONDS))
+          fhirServerBinding.whenTerminated onComplete {
+            case Success(t) =>
+              logger.info("Closing OnFhir server...")
+              if (OnfhirConfig.mongoEmbedded) {
+                EmbeddedMongo.stop()
+              }
+              actorSystem.terminate()
+              logger.info("OnFhir server is gracefully terminated...")
+            case Failure(exception) => logger.error("Problem while gracefully terminating OnFhir server!", exception)
+          }
+          logger.info("OnFhir FHIR server started on host {} and port {}", OnfhirConfig.serverHost, OnfhirConfig.serverPort)
+          //Wait for a shutdown signal
+          Await.ready(waitForShutdownSignal(), Duration.Inf)
+          fhirServerBinding.terminate(FiniteDuration.apply(60L, TimeUnit.SECONDS))
+        case Failure(ex) =>
+          logger.error("Problem while binding to the onFhir FHIR server address and port!", ex)
     }
 
-    //Start FHIR server
-    FhirServer.startServer(OnfhirConfig.serverHost, OnfhirConfig.serverPort, settings, Onfhir.actorSystem)
+    //If we have internal onFhir api active
+    if(OnfhirConfig.internalApiActive){
+      val onFhirInternalServer = Http()
+        .newServerAt(OnfhirConfig.serverHost, OnfhirConfig.internalApiPort)
+        .withSettings(
+          ServerSettings(OnfhirConfig.config)
+            .withVerboseErrorMessages(true)
+        )
+
+      onFhirInternalServer
+        .bind(onFhirInternalRoutes) onComplete {
+          case Success(binding) =>
+            logger.info("OnFhir internal server is started on host {} and port {}...", OnfhirConfig.serverHost, OnfhirConfig.internalApiPort)
+            internalOnFhirServerBinding = binding
+            internalOnFhirServerBinding.addToCoordinatedShutdown(FiniteDuration.apply(60L, TimeUnit.SECONDS))
+            internalOnFhirServerBinding.whenTerminated onComplete {
+              case Success(t) =>
+                logger.info("OnFhir internal server is gracefully terminated...")
+              case Failure(exception) =>
+                logger.error("Problem while gracefully terminating OnFhir internal server!", exception)
+            }
+          case Failure(ex) =>
+            logger.error("Problem while binding to the onFhir internal server address and port!", ex)
+        }
+    }
+  }
+
+  /**
+   *
+   * @return
+   */
+  protected def waitForShutdownSignal(): Future[Done] = {
+    val promise = Promise[Done]()
+    sys.addShutdownHook {
+      promise.trySuccess(Done)
+    }
+    Future {
+      blocking {
+        do {
+          val line = StdIn.readLine("Write 'quit' to stop the server...\n")
+          if (line.equalsIgnoreCase("quit"))
+            promise.trySuccess(Done)
+        } while (!promise.isCompleted)
+      }
+    }
+    promise.future
   }
 }
 

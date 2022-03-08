@@ -21,11 +21,11 @@ case class MinMaxValueRestriction(comparedValue:JValue, isMin:Boolean) extends  
    * @return
    */
   private def convertQuantityToLiteral(quantity:JObject):String = {
-    val literal = FHIRUtil.extractValue[Double](quantity, "value") + " " +
-      FHIRUtil
+    val literal =
+      s"${FHIRUtil.extractValue[Double](quantity, "value")} ${FHIRUtil
         .extractValueOption[String](quantity, "code")
         .map(unit => "'"+unit+"'")
-        .getOrElse("")
+        .getOrElse("")}"
 
     literal.trim()
   }

@@ -11,7 +11,7 @@ import io.onfhir.config.AuthzConfig
 import io.onfhir.exception.InternalServerException
 import org.slf4j.{Logger, LoggerFactory}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.Future
 import scala.util.Try
 

@@ -66,7 +66,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
     //1.4) Check if only versioned update is supported, then ifMatch should exist
     FHIRApiValidator.validateVersionedUpdate(_type, ifmatch)
     //1.5) Validate the conformance of resource
-    fhirValidator.validateResource(resource, _type).map(_ => Unit)
+    fhirValidator.validateResource(resource, _type).map(_ => ())
   }
 
 
@@ -85,7 +85,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
     //1.3) Check the resource type consistency
     FHIRApiValidator.validateResourceType(resource, _type)
     //1.4) Validate the conformance of resource
-    fhirValidator.validateResource(resource, _type).map(_ => Unit)
+    fhirValidator.validateResource(resource, _type).map(_ => ())
   }
 
   /**

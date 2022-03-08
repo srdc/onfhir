@@ -67,7 +67,7 @@ case class FhirPatternEvent(matchedPatterns:Map[String, Seq[IFhirEvent]]) extend
 case class FhirTimeEvent(scheduledTime:Instant, context:Map[String, String] = Map.empty[String, String]) extends IFhirEvent {
   override def getContent: JValue = JNothing
   override def getContextParams: Map[String, JValue] = {
-    Map("eventScheduledTime" -> JString(DateTimeUtil.serializeInstant(scheduledTime))) ++ context.mapValues(JString(_))
+    Map("eventScheduledTime" -> JString(DateTimeUtil.serializeInstant(scheduledTime))) ++ context.map(c => c._1 -> JString(c._2))
   }
 }
 

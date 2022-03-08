@@ -183,7 +183,7 @@ object IOUtil {
         zipStream.closeEntry()
         zipEntry = zipStream.getNextEntry
       }
-      resources
+      resources.toSeq
    }
 
   private def parseResource(reader:Reader, path:String):Resource = {

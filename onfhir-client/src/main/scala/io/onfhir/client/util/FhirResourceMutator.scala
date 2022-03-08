@@ -9,6 +9,7 @@ import org.json4s.JsonAST.JValue
  * Utility class to make it easy to update FHIR resource content by using FHIR Patch like operations
  */
 object FhirResourceMutator {
+  implicit val ic = scala.language.implicitConversions
 
   class FhirMutableResource(resource:Resource) {
 

@@ -4,7 +4,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <parent>
         <groupId>io.onfhir</groupId>
-        <artifactId>fhir-repository</artifactId>
+        <artifactId>fhir-repository_2.13</artifactId>
         <version>3.2-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
@@ -54,11 +54,16 @@
             <groupId>com.typesafe</groupId>
             <artifactId>config</artifactId>
         </dependency>
+        <!-- string escaping -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
+        </dependency>
 
         <!-- MongoDB Driver -->
         <dependency>
             <groupId>org.mongodb.scala</groupId>
-            <artifactId>mongo-scala-driver_2.12</artifactId>
+            <artifactId>mongo-scala-driver_${scala.binary.version}</artifactId>
         </dependency>
         <!-- Embedded MongoDB -->
         <dependency>
@@ -70,40 +75,40 @@
         <!-- Akka HTTP Suite -->
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-http-core_2.12</artifactId>
+            <artifactId>akka-http-core_${scala.binary.version}</artifactId>
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-http_2.12</artifactId>
+            <artifactId>akka-http_${scala.binary.version}</artifactId>
         </dependency>
 
         <!-- Caching purposes-->
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-http-caching_2.12</artifactId>
+            <artifactId>akka-http-caching_${scala.binary.version}</artifactId>
         </dependency>
         <!-- Akka and Akka Streaming -->
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-actor_2.12</artifactId>
+            <artifactId>akka-actor_${scala.binary.version}</artifactId>
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-stream_2.12</artifactId>
+            <artifactId>akka-stream_${scala.binary.version}</artifactId>
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-slf4j_2.12</artifactId>
+            <artifactId>akka-slf4j_${scala.binary.version}</artifactId>
         </dependency>
         <!--Testing-->
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-testkit_2.12</artifactId>
+            <artifactId>akka-testkit_${scala.binary.version}</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.typesafe.akka</groupId>
-            <artifactId>akka-http-testkit_2.12</artifactId>
+            <artifactId>akka-http-testkit_${scala.binary.version}</artifactId>
             <scope>test</scope>
         </dependency>
         <!-- Logging -->
@@ -130,13 +135,13 @@
         <!-- Unit Testing -->
         <dependency>
             <groupId>org.specs2</groupId>
-            <artifactId>specs2-core_2.12</artifactId>
+            <artifactId>specs2-core_${scala.binary.version}</artifactId>
             <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.specs2</groupId>
-            <artifactId>specs2-junit_2.12</artifactId>
+            <artifactId>specs2-junit_${scala.binary.version}</artifactId>
             <scope>provided</scope>
         </dependency>
     </dependencies>

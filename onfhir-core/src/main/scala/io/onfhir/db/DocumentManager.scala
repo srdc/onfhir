@@ -19,12 +19,10 @@ import org.mongodb.scala.model.Sorts.{ascending, descending}
 import com.mongodb.client.model.Updates.setOnInsert
 import io.onfhir.api.model.{FHIRResponse, OutcomeIssue}
 import io.onfhir.util.DateTimeUtil
-import org.bson.BsonValue
-import org.json4s.JValue
 import org.mongodb.scala.model.{Accumulators, Aggregates, BsonField, BulkWriteOptions, Filters, Projections, Sorts, UpdateOptions, Updates}
 import org.mongodb.scala.{Completed, FindObservable, MongoCollection, bson}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -219,10 +217,10 @@ object DocumentManager {
                       excludeExtraFields:Boolean = false,
                       excludeDeleted:Boolean = true )(implicit transactionSession: Option[TransactionSession] = None):Future[Seq[Document]] = {
     //Construct final filters
-    val finalFilters:Map[String, Option[Bson]] = filters.mapValues {
+    val finalFilters:Map[String, Option[Bson]] = filters.map(f => f._1 -> (f._2 match {
       case None => if(excludeDeleted) Some(isActiveQuery) else None
       case Some(sfilter) => if(excludeDeleted) Some(and(isActiveQuery, sfilter)) else Some(sfilter)
-    }
+    }))
 
     //Internal method to construct aggregation pipeline for each resource type
     def constructAggQueryForResourceType(filter:Option[Bson], sortingPaths:Seq[(String, Int, Seq[String])], includingOrExcludingFields:Option[(Boolean, Set[String])]):ListBuffer[Bson] = {
@@ -233,7 +231,7 @@ object DocumentManager {
 
       if(sortingPaths.nonEmpty) {
         //Then add common sorting field for sort parameters that has multiple alternative paths
-        aggregations.append(sortingPaths.map(sp => addFieldAggregationForParamWithAlternativeSorting(sp)) : _*)
+        aggregations.appendAll(sortingPaths.map(sp => addFieldAggregationForParamWithAlternativeSorting(sp)))
       }
       //Handle projections (summary and extra fields)
       if(includingOrExcludingFields.isDefined || excludeExtraFields)
@@ -253,7 +251,7 @@ object DocumentManager {
     val unionWithAggregations:Seq[Bson] =
       aggregatesForEachResourceType
         .tail
-        .map(a => constructUnionWithExpression(a._1, a._2.map(_.toBsonDocument[BsonDocument](classOf[BsonDocument],MongoClientSettings.getDefaultCodecRegistry))))
+        .map(a => constructUnionWithExpression(a._1, a._2.map(_.toBsonDocument[BsonDocument](classOf[BsonDocument],MongoClientSettings.getDefaultCodecRegistry)).toSeq))
         .toSeq
     //Sorting aggregations
     val sortingAggregations = sortingPaths.head._2.map(sp => Aggregates.sort( if(sp._2 > 0) ascending(s"__sort_${sp._1}") else descending(s"__sort_${sp._1}")))
@@ -275,7 +273,7 @@ object DocumentManager {
       } else Nil
 
     //Merge aggregations
-    val finalAggregations = firstAggregation._2 ++ unionWithAggregations ++ sortingAggregations ++ pagingAggregations ++ finalProjectionAggregation
+    val finalAggregations = (firstAggregation._2 ++ unionWithAggregations ++ sortingAggregations ++ pagingAggregations ++ finalProjectionAggregation).toSeq
     //Execute aggregation pipeline
     transactionSession match {
       case None => MongoDB.getCollection(firstAggregation._1).aggregate(finalAggregations).toFuture()
@@ -313,7 +311,7 @@ object DocumentManager {
       .filter(_._3.length > 1) //Those that have multiple paths
 
     //Then add common sorting field for sort parameters that has multiple alternative paths
-    aggregations.append(paramsWithAlternativeSorting.map(sp => addFieldAggregationForParamWithAlternativeSorting(sp)) : _*)
+    aggregations.appendAll(paramsWithAlternativeSorting.map(sp => addFieldAggregationForParamWithAlternativeSorting(sp)))
 
     //Add sorting aggregations
     val sorts =
@@ -359,8 +357,8 @@ object DocumentManager {
     )*/
 
     transactionSession match {
-      case None => MongoDB.getCollection(rtype).aggregate(aggregations).toFuture()
-      case Some(ts) =>  MongoDB.getCollection(rtype).aggregate(ts.dbSession, aggregations).toFuture()
+      case None => MongoDB.getCollection(rtype).aggregate(aggregations.toSeq).toFuture()
+      case Some(ts) =>  MongoDB.getCollection(rtype).aggregate(ts.dbSession, aggregations.toSeq).toFuture()
     }
   }
 
@@ -573,7 +571,7 @@ object DocumentManager {
       aggregations.append(Aggregates.limit(count))
 
 
-  collection.aggregate(aggregations).toFuture().map(results =>
+  collection.aggregate(aggregations.toSeq).toFuture().map(results =>
       results.map(r => Document(r.get("first").get.asDocument()))
     )
   }
@@ -599,7 +597,7 @@ object DocumentManager {
     aggregations.append(Aggregates.group("$id", Accumulators.first("first", "$id")))
 
 
-    collection.aggregate(aggregations).toFuture().map(results =>
+    collection.aggregate(aggregations.toSeq).toFuture().map(results =>
       results.length
     )
   }
@@ -806,7 +804,7 @@ object DocumentManager {
       getCollection(rtype)
       .bulkWrite(documents.map(d => new InsertOneModel[Document](d)), BulkWriteOptions.apply().ordered(ordered))
       .toFuture()
-      .map(br => br.getUpserts.asScala)
+      .map(br => br.getUpserts.asScala.toSeq)
   }
 
   /**
@@ -934,7 +932,7 @@ object DocumentManager {
           Updates.set(FHIR_COMMON_FIELDS.META + "." +FHIR_COMMON_FIELDS.VERSION_ID, ""+newVersion),
           //Set the last update time
           Updates.set(FHIR_COMMON_FIELDS.META + "." +FHIR_COMMON_FIELDS.LAST_UPDATED,
-            BsonTransformer.createBsonTimeObject(DateTimeUtil.serializeInstant(lastModified))
+            OnFhirBsonTransformer.createBsonTimeObject(DateTimeUtil.serializeInstant(lastModified))
           ),
           //Set the status code
           Updates.set(FHIR_EXTRA_FIELDS.STATUS_CODE, sc),
@@ -1016,7 +1014,7 @@ object DocumentManager {
     val paramsWithAlternativeSorting = spaths.filter(_._3.length > 1) //Those that have multiple paths
 
     //Then add common sorting field for sort parameters that has multiple alternative paths
-    aggregations.append(paramsWithAlternativeSorting.map(sp => addFieldAggregationForParamWithAlternativeSorting(sp)) : _*)
+    aggregations.appendAll(paramsWithAlternativeSorting.map(sp => addFieldAggregationForParamWithAlternativeSorting(sp)))
 
     //Add sorting aggregations
     spaths.foreach(sp => sp._3.length match {
@@ -1047,7 +1045,7 @@ object DocumentManager {
 
     MongoDB
       .getCollection(rtype)
-      .aggregate(aggregations)  //run the aggregation pipeline
+      .aggregate(aggregations.toSeq)  //run the aggregation pipeline
       .allowDiskUse(true) //these aggregations may not fit into memory restrictions defined by mongo
       .toFuture()
       .map(results =>
@@ -1055,7 +1053,7 @@ object DocumentManager {
           .map(d =>
             if(Math.abs(lastOrFirstN)> 1)
               Document(d.get[BsonDocument]("_id").get) ->
-                d.get[BsonArray]("bucket").get.getValues.asScala.map(v => Document(v.asInstanceOf[BsonDocument]))
+                d.get[BsonArray]("bucket").get.getValues.asScala.map(v => Document(v.asInstanceOf[BsonDocument])).toSeq
             else
               Document(d.get[BsonDocument]("_id").get) -> d.get[BsonDocument]("first").toSeq.map(Document(_))
           )

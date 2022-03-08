@@ -65,7 +65,7 @@ object AuthManager {
     * @return
     */
   def authenticate():Directive1[(AuthContext, Option[AuthzContext])] = {
-    HeaderDirectives.optionalHeaderValueByType[Authorization](()).flatMap(authorizationHeader => {
+    HeaderDirectives.optionalHeaderValueByType(Authorization).flatMap(authorizationHeader => {
       clientIP.flatMap(networkAddress => {
         val accessToken = getToken(authorizationHeader)
 

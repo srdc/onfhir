@@ -35,12 +35,12 @@ class FhirSearchRequestBuilder(onFhirClient: IOnFhirClient, rtype:String, count:
   }
 
   def sortOnDesc(params:String*):FhirSearchRequestBuilder = {
-    sortParams.append(params.map(p => p -> true):_*)
+    sortParams.appendAll(params.map(p => p -> true))
     this
   }
 
   def sortOnAsc(params:String*):FhirSearchRequestBuilder = {
-    sortParams.append(params.map(p => p -> false):_*)
+    sortParams.appendAll(params.map(p => p -> false))
     this
   }
 

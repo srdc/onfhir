@@ -25,8 +25,7 @@ class TerminologyParser {
 
     prepareMapForInfrastructureResources(
       withResourceType.filter(_._1 == "ValueSet").map(_._2)
-    )
-      .mapValues(_.mapValues(vs => parseValueSet(vs, codeSystems)).filter(_._2.isDefined).mapValues(_.get))
+    ).map(g => g._1 -> g._2.map(vs => vs._1 -> parseValueSet(vs._2, codeSystems)).filter(_._2.isDefined).view.mapValues(_.get).toMap)
       .filter(_._2.nonEmpty)
   }
 

@@ -26,7 +26,7 @@ import net.minidev.json.JSONObject
 import org.json4s.JsonAST.JObject
 import org.slf4j.{Logger, LoggerFactory}
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.io.Source
 
 /**
@@ -38,7 +38,7 @@ object AuthzConfigurationManager {
   /**
     * Defaults
     */
-  private final val DEFAULT_PROTECTED_RESOURCE_METADATA_PATH :String = DEFAULT_ROOT_FOLDER + "/protected-resource-server-metadata.json"
+  private final val DEFAULT_PROTECTED_RESOURCE_METADATA_PATH :String = s"$DEFAULT_ROOT_FOLDER/protected-resource-server-metadata.json"
   private final val DEFAULT_PROTECTED_RESOURCE_JWKS_FILE_NAME = "fhir-server.jwks"
   private final val DEFAULT_PROTECTED_RESOURCE_DYNAMIC_REGISTRATION_METADATA_FILE_NAME = "protected-resource-server-metadata-dynamic.json"
   /**

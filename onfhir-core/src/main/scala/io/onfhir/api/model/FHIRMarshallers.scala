@@ -8,7 +8,7 @@ import io.onfhir.api.Resource
 import io.onfhir.config.FhirConfigurationManager
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
 import io.onfhir.util.JsonFormatter._
-import org.apache.commons.lang3.StringEscapeUtils
+import org.apache.commons.text.StringEscapeUtils
 import org.json4s.JsonAST.JObject
 
 import scala.collection.immutable.StringOps
@@ -128,7 +128,7 @@ object FHIRMarshallers {
     */
   private def prepareHtml(resource: Resource): String ={
     val prettyJson = resource.toPrettyJson
-    val prettyHtmlJson = new StringOps(prettyJson).lines.map(l => {
+    val prettyHtmlJson = new StringOps(prettyJson).linesIterator.map(l => {
 
       val prefixSpace = " " * l.indexOf(l.trim())
       val trimmed = l.trim()

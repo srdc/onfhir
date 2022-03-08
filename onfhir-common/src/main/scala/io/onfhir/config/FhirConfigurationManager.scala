@@ -38,7 +38,7 @@ object FhirConfigurationManager extends IFhirConfigurationManager {
     if(OnfhirConfig.fhirAuditingRepository.equalsIgnoreCase("local") || OnfhirConfig.fhirAuditingRepository.equalsIgnoreCase("remote"))
       fhirAuditCreator = fhirConfigurator.getAuditCreator()
 
-    printSystemRuntime
+    printSystemRuntime()
   }
 
   /**

@@ -257,7 +257,7 @@ object PrefixModifierHandler {
           }
         }
         //Constuct the regex to match any url above
-        val regularExpressionValue = FHIRUtil.escapeCharacters(initialPart) + constructRegexForAbove(parts)
+        val regularExpressionValue = FHIRUtil.escapeCharacters(initialPart) + constructRegexForAbove(parts.toIndexedSeq)
         regex(path, "\\A" + regularExpressionValue + "$")
       case FHIR_PREFIXES_MODIFIERS.BELOW if uri.contains("/") =>
         val url =  Try(new URL(uri)).toOption
@@ -283,8 +283,6 @@ object PrefixModifierHandler {
         if(modifier == FHIR_PREFIXES_MODIFIERS.NOT)
           finalQuery = not(finalQuery)
         finalQuery
-      case other =>
-        throw new InvalidParameterException(s"Modifier $other is not supported for FHIR uri queries!")
     }
   }
 
@@ -534,7 +532,7 @@ object PrefixModifierHandler {
       // Populate Implicit ranges(e.g. 2010-10-10 represents the range 2010-10-10T00:00Z/2010-10-10T23:59ZZ)
       val implicitRanges = DateTimeUtil.populateImplicitDateTimeRanges(value)
       // Convert implicit range to dateTime objects(inputted values have already been converted to dataTime format)
-      var (floor, ceil) = (BsonTransformer.dateToISODate(implicitRanges._1), BsonTransformer.dateToISODate(implicitRanges._2))
+      var (floor, ceil) = (OnFhirBsonTransformer.dateToISODate(implicitRanges._1), OnFhirBsonTransformer.dateToISODate(implicitRanges._2))
 
       val subpath = if (value.contains("T")) FHIR_EXTRA_FIELDS.TIME_TIMESTAMP else FHIR_EXTRA_FIELDS.TIME_DATE
       dateRangePrefixHandler(subpath, value, prefix)
@@ -598,7 +596,7 @@ object PrefixModifierHandler {
     * @return BsonDocument for the target query
     */
   private def periodQueryBuilder(path:(String, String), prefix:String, valueRange:(String, String)):Bson = {
-    val isoDate:(BsonValue, BsonValue) = (BsonTransformer.dateToISODate(valueRange._1), BsonTransformer.dateToISODate(valueRange._2))
+    val isoDate:(BsonValue, BsonValue) = (OnFhirBsonTransformer.dateToISODate(valueRange._1), OnFhirBsonTransformer.dateToISODate(valueRange._2))
     /*try {
       // Try to convert input date to date time(only fails when checking periods for date)
       isoDate = (DateTimeUtil.dateToISODate(valueRange._1), DateTimeUtil.dateToISODate(valueRange._2))
@@ -648,7 +646,7 @@ object PrefixModifierHandler {
     */
   private def dateTimeQueryBuilder(path:String, prefix:String, valueRange:(String, String)):Bson = {
     // Convert implicit range to dateTime objects(inputted values have already been converted to dataTime format)
-    var(floor, ceil) = (BsonTransformer.dateToISODate(valueRange._1), BsonTransformer.dateToISODate(valueRange._2))
+    var(floor, ceil) = (OnFhirBsonTransformer.dateToISODate(valueRange._1), OnFhirBsonTransformer.dateToISODate(valueRange._2))
     prefix match {
       case FHIR_PREFIXES_MODIFIERS.BLANK_EQUAL | FHIR_PREFIXES_MODIFIERS.EQUAL => or(and(gte(path, floor), lt(path, ceil)), equal(path, floor))
       case FHIR_PREFIXES_MODIFIERS.GREATER_THAN | FHIR_PREFIXES_MODIFIERS.GREATER_THAN_M => gt(path, ceil)

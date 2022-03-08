@@ -114,7 +114,7 @@ object AuthzManager {
                 })
           case FHIR_INTERACTIONS.TRANSACTION =>
             //If any child request fails within transaction for authorization, return failure
-            val results = fhirRequest.childRequests.to[scala.collection.immutable.Iterable]
+            val results = fhirRequest.childRequests
               .map(cr => {
                 val childAuthzResult = getAuthorizationDecision(authzContext, cr)
                 authorizeForSimpleInteraction(cr, childAuthzResult).map(r => cr -> r)

@@ -104,9 +104,7 @@ class FHIRHistoryBundle(bundle:Resource, override val request:FhirHistoryRequest
                 case _ => e._2.url.split('/').last
               }
               rid -> e
-            })
-            .groupBy(_._1)
-            .mapValues(_.map(_._2))
+            }).groupMap(_._1)(_._2)
         }
     }
 
@@ -123,13 +121,18 @@ class FHIRHistoryBundle(bundle:Resource, override val request:FhirHistoryRequest
    * @param rid
    * @return
    */
-  def getHistory(rid:String):Seq[(Long, Option[Resource], DateTime)] = historyEntries.getOrElse(rid, Nil).map(e => (e._1 , e._4, e._3.lastUpdateTime))
+  def getHistory(rid:String):Seq[(Long, Option[Resource], DateTime)] =
+    historyEntries
+      .getOrElse(rid, Nil)
+      .map(e => (e._1 , e._4, e._3.lastUpdateTime))
 
   /**
    * Get histories of all resources in the bundle
    * @return
    */
-  def getHistories:Map[String, Seq[(Long, Option[Resource], DateTime)]] = historyEntries.mapValues(_.map(e => (e._1 , e._4, e._3.lastUpdateTime)))
+  def getHistories:Map[String, Seq[(Long, Option[Resource], DateTime)]] =
+    historyEntries
+      .map(g => g._1 -> g._2.map(e => (e._1 , e._4, e._3.lastUpdateTime)))
 
   private def parseEntry(entry:JObject):(Long, BundleRequestEntry, BundleResponseEntry, Option[Resource]) = {
     val rq = parseBundleRequest((entry \ "request").asInstanceOf[JObject])

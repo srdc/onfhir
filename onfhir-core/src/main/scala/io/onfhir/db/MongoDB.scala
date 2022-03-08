@@ -8,7 +8,7 @@ import org.mongodb.scala.connection.{ClusterSettings, ConnectionPoolSettings}
 import org.mongodb.scala.{ClientSession, MongoClient, MongoClientSettings, MongoCollection, MongoCredential, MongoDatabase, Observable, ReadConcern, ReadPreference, ServerAddress, TransactionOptions, WriteConcern}
 
 import java.util.concurrent.TimeUnit
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.Future
 
 /**
@@ -136,7 +136,7 @@ object MongoDB {
           .toFuture()
       )
     ).map(docs =>
-      Unit
+      ()
     )
   }
 

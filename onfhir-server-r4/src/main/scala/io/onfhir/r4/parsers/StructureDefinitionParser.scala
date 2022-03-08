@@ -87,8 +87,8 @@ class StructureDefinitionParser(fhirComplexTypes:Set[String], fhirPrimitiveTypes
 
     //Some resource types erroneously define both parent and child elements as summary which produces problem in MongoDB See heading Path Collision: Embedded Documents and Its Fields (https://docs.mongodb.com/manual/reference/limits/)
     elemsIndicatedAsSummary
-      .groupBy(_._1)
-      .mapValues(_.map(_._2))
+      .groupMap(_._1)(_._2)
+      .view
       .mapValues(_.filter(_.nonEmpty))
       .flatMap(e =>
         if(e._2.isEmpty)

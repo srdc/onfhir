@@ -80,7 +80,7 @@ object ResourceQueryBuilder {
           //e.g. f:PlanDefinition/f:relatedArtifact[f:type/@value='depends-on']/f:resource -->  path = relatedArtifact[i].resource, restriction = @.type -->  (relatedArtifact[i], resource, type)
           //e.g. f:OrganizationAffiliation/f:telecom[system/@value='email']  --> path => telecom[i] , restriction = system --> (telecom[i], "", system)
           case (path, targetType, restrictions) =>
-            val pathParts = path.split('.')
+            val pathParts = path.split('.').toIndexedSeq
             val indexOfRestrictions  = FHIRUtil.findIndexOfRestrictionsOnPath(pathParts, restrictions)
             SearchUtil.queryWithRestrictions(pathParts, indexOfRestrictions, value, paramType, targetType, modifierOrPrefix, searchParameterConf.targets)
         }

@@ -274,7 +274,13 @@ object BundleRequestParser {
     * @return
     */
   def parseUrl(sprayUrl:Uri):Seq[String] = {
-    sprayUrl.path.toString.split(OnfhirConfig.fhirRootUrl).last.split("/").filterNot(_.equals(""))
+    sprayUrl
+      .path.toString
+      .split(OnfhirConfig.fhirRootUrl)
+      .last
+      .split("/")
+      .filterNot(_.equals(""))
+      .toIndexedSeq
   }
 
 }

@@ -113,7 +113,7 @@ class ExpandOperationHandler extends FHIROperationHandlerService {
   def buildExpansion(valueSet:Resource, operationRequest: FHIROperationRequest):Resource = {
     val compose = (valueSet \ VALUESET_COMPOSE).extractOrElse(JObject())
 
-    val filterKeys: Seq[String] = operationRequest.extractParamValue[String](EXPAND_PARAM_FILTER).getOrElse("").split(",")
+    val filterKeys: Seq[String] = operationRequest.extractParamValue[String](EXPAND_PARAM_FILTER).getOrElse("").split(",").toIndexedSeq
     val language: Option[String] = operationRequest.extractParamValue[String](EXPAND_PARAM_LANGUAGE)
 
     // 1) First, filter all the matching concepts

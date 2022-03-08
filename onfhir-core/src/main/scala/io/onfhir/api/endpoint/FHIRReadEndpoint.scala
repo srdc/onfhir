@@ -37,8 +37,8 @@ trait FHIRReadEndpoint {
           pathEndOrSingleSlash {
             parameters(FHIR_SEARCH_RESULT_PARAMETERS.SUMMARY.?) { summary =>
               parameters(FHIR_SEARCH_RESULT_PARAMETERS.ELEMENTS.?) { elements =>
-                optionalHeaderValueByType[`If-None-Match`](()) { ifNoneMatch =>
-                  optionalHeaderValueByType[`If-Modified-Since`](()) { ifModifiedSince =>
+                optionalHeaderValueByType(`If-None-Match`) { ifNoneMatch =>
+                  optionalHeaderValueByType(`If-Modified-Since`) { ifModifiedSince =>
                     //Create the FHIR request object
                     fhirRequest.initializeReadRequest(_type, _id, ifModifiedSince, ifNoneMatch, summary, elements)
                     //Enforce authorization

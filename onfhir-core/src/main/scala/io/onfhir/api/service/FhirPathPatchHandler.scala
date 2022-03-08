@@ -238,8 +238,8 @@ class FhirPathPatchHandler(profileHandler:BaseFhirProfileHandler) extends IFHIRP
                   FHIRUtil.extractValue[String](p, "name") ->
                     extractOrConstructValueFromMultiParam(p, resource, ind)
                 )
-                .groupBy(_._1)
-                .mapValues(_.map(_._2))
+                .groupMap(_._1)(v => v._2)
+                .view
                 .mapValues(l => if(l.length > 1) JArray(l) else l.head)
                 .toList
             )

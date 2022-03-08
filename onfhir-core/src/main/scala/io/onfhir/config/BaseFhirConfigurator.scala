@@ -14,6 +14,7 @@ import io.onfhir.api._
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.DurationInt
+import scala.language.postfixOps
 
 /**
  * Configuration of FHIR related capabilites based on foundation resources provided (CapabilityStatement, StructureDefinition, etc)
@@ -484,6 +485,7 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
     val opHandler = new FHIROperationHandler()
     val operationsWithInvalidClassPaths =
       fhirOperationImplms
+        .view
         .filterKeys(conformance.operationDefUrls.contains)
         .filter(opImpl => opHandler.loadOperationClass(opImpl._2).isEmpty)
 
@@ -532,7 +534,7 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
     //Parse Index configurations, and set configured shard keys
     indexConfigurations = IndexConfigurator.parseIndexConfigurationFile(OnfhirConfig.dbIndexConfigurationPath, DEFAULT_RESOURCE_PATHS.INDEX_CONF_PATH, fhirConfig.compartmentRelations)
     if(OnfhirConfig.mongoShardingEnabled)
-      fhirConfig.shardKeys = indexConfigurations.mapValues(iconf => iconf.shardKey.getOrElse(Nil).toSet)
+      fhirConfig.shardKeys = indexConfigurations.map(c => c._1 -> c._2.shardKey.getOrElse(Nil).toSet)
     fhirConfig
   }
 
