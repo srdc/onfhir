@@ -14,6 +14,7 @@ import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
 
 import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.language.postfixOps
 
 object OnFhirNetworkClientTest extends Specification {
   val baseUrl = "http://localhost:8080/fhir"

@@ -31,7 +31,7 @@ abstract class FHIRPaginatedBundle(bundle:Resource, val request:FhirRequestBuild
     case _ => Map.empty
   }
 
-  def getLastPage():Long = links.get("last").flatMap(l => Uri(l).query().get("_page")).map(_.toLong).getOrElse(0L)
+  def getLastPage():Long = links.get("last").flatMap(l => Uri(l).query().get("_page")).map(_.toLong).getOrElse(if(entries.isEmpty) 0L else 1L)
 
   /**
    * If search set has next page
