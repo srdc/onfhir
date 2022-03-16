@@ -261,15 +261,17 @@ case class FHIRRequest(
     * Initialize FHIR transaction or batch request
     * @param resource Transcation/Batch request body
     */
-  def initializeTransactionOrBatchRequest(resource: Resource): Unit = {
+  def initializeTransactionOrBatchRequest(resource: Resource, prefer:Option[String] = None): Unit = {
     this.interaction = (resource \ FHIR_COMMON_FIELDS.TYPE).extractOpt[String].getOrElse("unknown")
     this.resource = Some(resource)
     this.childRequests =
       if(interaction == FHIR_BUNDLE_TYPES.DOCUMENT) {
         this.interaction = FHIR_INTERACTIONS.TRANSACTION
-        BundleRequestParser.parseBundleDocumentRequest(resource)
+        BundleRequestParser.parseBundleDocumentRequest(resource, prefer)
       } else
-        BundleRequestParser.parseBundleRequest(resource)
+        BundleRequestParser.parseBundleRequest(resource, prefer)
+    //Set prefer header
+    this.prefer = prefer
   }
 
   /**

@@ -68,7 +68,7 @@ object BundleRequestParser {
       .extractOpt[JArray]
       .map(_.arr.toSeq).getOrElse(Nil)
       .map(entry => {
-        parseBundleDocumentRequestEntry(entry.asInstanceOf[JObject])
+        parseBundleDocumentRequestEntry(entry.asInstanceOf[JObject], prefer)
       })
   }
 
@@ -77,7 +77,7 @@ object BundleRequestParser {
    * @param entry
    * @return
    */
-  private def parseBundleDocumentRequestEntry(entry:Resource):FHIRRequest = {
+  private def parseBundleDocumentRequestEntry(entry:Resource, prefer:Option[String]):FHIRRequest = {
     //Parse the entry
     val fullUrl = (entry \  FHIR_BUNDLE_FIELDS.FULL_URL).extractOpt[String].filter(_.startsWith("urn:uuid:"))
     //Get the resource
@@ -90,11 +90,13 @@ object BundleRequestParser {
         val fhirRequest = FHIRRequest(interaction = FHIR_INTERACTIONS.CREATE, requestUri = "/" + resourceType)
         fhirRequest.initializeCreateRequest(resourceType, None, None)
         fhirRequest.resource = Some(resource)
+        fhirRequest.prefer = prefer
         fhirRequest.setId(fullUrl)
       case Some(rid) =>
         val fhirRequest = FHIRRequest(interaction = FHIR_INTERACTIONS.UPDATE, requestUri = "/" + resourceType + "/" + rid)
         fhirRequest.initializeUpdateRequest(resourceType, Some(rid), None, None)
         fhirRequest.resource = Some(resource)
+        fhirRequest.prefer = prefer
         fhirRequest.setId(fullUrl)
     }
   }

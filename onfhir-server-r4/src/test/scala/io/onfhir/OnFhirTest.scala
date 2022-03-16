@@ -3,13 +3,12 @@ package io.onfhir
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.concurrent.TimeUnit
-
 import akka.http.scaladsl.model.headers.`Last-Modified`
 import akka.http.scaladsl.testkit.Specs2RouteTest
 import io.onfhir.api.Resource
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.OnfhirConfig
-import io.onfhir.db.MongoDB
+import io.onfhir.db.{EmbeddedMongo, MongoDB}
 import io.onfhir.r4.config.FhirR4Configurator
 import io.onfhir.util.DateTimeUtil
 import org.json4s.JsonAST.{JArray, JObject}
@@ -32,7 +31,11 @@ trait OnFhirTest extends Specification with Specs2RouteTest with BeforeAfterAll 
 
   override def beforeAll() = OnfhirSetup.environment
 
-  override def afterAll() = Await.result(MongoDB.getDatabase.drop().head(), Duration.apply(5, TimeUnit.SECONDS))
+  override def afterAll() = {
+    Await.result(MongoDB.getDatabase.drop().head(), Duration.apply(5, TimeUnit.SECONDS))
+    if(OnfhirConfig.mongoEmbedded)
+      EmbeddedMongo.stop()
+  }
 
 
   /**

@@ -377,10 +377,9 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
     * Create the Bundle Entries for child responses
     *
     * @param requestsResponses
-    * @param isTransaction
     * @return
     */
-  def createEntriesForChildResponses(requestsResponses: Seq[FHIRRequest], isTransaction: Boolean = false): Seq[Resource] = {
+  def createEntriesForChildResponses(requestsResponses: Seq[FHIRRequest]): Seq[Resource] = {
     requestsResponses.map(requestResponse => {
       var entry: Resource = JObject()
       //Put the body of the resource into the 'resource' element
