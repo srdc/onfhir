@@ -24,7 +24,7 @@ trait FHIRBatchTransactionEndpoint {
           optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { prefer =>
             entity(as[Resource]) { resource =>
               //Set the bundle into the request
-              fhirRequest.initializeTransactionOrBatchRequest(resource)
+              fhirRequest.initializeTransactionOrBatchRequest(resource, prefer)
               //Enforce authorization
               AuthzManager.authorize(authContext._2, fhirRequest) {
                 //Execute the interaction

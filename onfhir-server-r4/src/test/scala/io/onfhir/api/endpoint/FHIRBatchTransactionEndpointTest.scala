@@ -1,7 +1,6 @@
 package io.onfhir.api.endpoint
 
 import java.util.concurrent.TimeUnit
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.testkit.RouteTestTimeout
@@ -12,6 +11,7 @@ import io.onfhir.config.OnfhirConfig
 import org.junit.runner.RunWith
 import org.specs2.runner.JUnitRunner
 import akka.http.scaladsl.model.StatusCodes._
+import akka.http.scaladsl.model.headers.RawHeader
 
 import scala.concurrent.duration.FiniteDuration
 import scala.io.Source
@@ -32,7 +32,7 @@ class FHIRBatchTransactionEndpointTest extends OnFhirTest with FHIREndpoint {
 
   sequential
 
-  "FHIR Batch Endpoint" should {
+ "FHIR Batch Endpoint" should {
     "handle batch request" in {
       Post("/" + OnfhirConfig.baseUri , HttpEntity(batch1)) ~> fhirRoute ~> check {
         eventually(status === OK)
@@ -186,6 +186,14 @@ class FHIRBatchTransactionEndpointTest extends OnFhirTest with FHIREndpoint {
     "reject transaction if there is error" in {
       Post("/" + OnfhirConfig.baseUri , HttpEntity(transaction2)) ~> fhirRoute ~> check {
         eventually(status === BadRequest)
+      }
+    }
+
+    "handle prefer header in batch/transaction" in {
+      Post("/" + OnfhirConfig.baseUri , HttpEntity(batch1)).withHeaders(List((RawHeader("Prefer", "return=minimal")))) ~> fhirRoute ~> check {
+        eventually(status === OK)
+        val response = responseAs[Resource]
+        FhirPathEvaluator().satisfies("entry.resource.empty()", response)
       }
     }
   }

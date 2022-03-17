@@ -110,18 +110,22 @@ trait FHIROperationEndpoint {
                               operationConf:OperationConf,
                               resourceType:Option[String] = None,
                               resourceId:Option[String] = None):Route = {
-    pathEndOrSingleSlash {
-      parameterMultiMap { parameters =>
-        //Initialize FHIR operation request
-        fhirRequest.initializeOperationRequest("$"+operationConf.name, resourceType, resourceId)
-        //Initialize parameters in the request
-        fhirRequest.queryParams = parameters
-        entity(as[Resource]) { resource =>
-          //Initialize operation body
-          fhirRequest.resource = if(resource.obj.isEmpty) None else Some(resource)
-          AuthzManager.authorize(authContext._2, fhirRequest) {
-            complete {
-              new FHIROperationHandler().validateAndCompleteOperation(fhirRequest, operationConf)
+    extractMethod { httpMethod =>
+      pathEndOrSingleSlash {
+        parameterMultiMap { parameters =>
+          //Initialize FHIR operation request
+          fhirRequest.initializeOperationRequest("$" + operationConf.name, resourceType, resourceId)
+          //Set the method
+          fhirRequest.httpMethod = Some(httpMethod)
+          //Initialize parameters in the request
+          fhirRequest.queryParams = parameters
+          entity(as[Resource]) { resource =>
+            //Initialize operation body
+            fhirRequest.resource = if (resource.obj.isEmpty) None else Some(resource)
+            AuthzManager.authorize(authContext._2, fhirRequest) {
+              complete {
+                new FHIROperationHandler().validateAndCompleteOperation(fhirRequest, operationConf)
+              }
             }
           }
         }
