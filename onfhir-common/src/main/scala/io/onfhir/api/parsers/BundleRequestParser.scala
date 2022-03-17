@@ -1,7 +1,7 @@
 package io.onfhir.api.parsers
 
 import akka.http.scaladsl.model.headers.{EntityTag, `If-Match`, `If-Modified-Since`, `If-None-Match`}
-import akka.http.scaladsl.model.{StatusCodes, Uri}
+import akka.http.scaladsl.model.{HttpMethods, StatusCodes, Uri}
 import io.onfhir.exception._
 import io.onfhir.api.{FHIR_BUNDLE_FIELDS, FHIR_HTTP_OPTIONS, FHIR_INTERACTIONS, FHIR_METHOD_NAMES}
 import io.onfhir.api.Resource
@@ -201,11 +201,13 @@ object BundleRequestParser {
             fhirRequest.setId(fullUrl)
           //Type and instance level Operations
           case Seq(rtype, operation) if operation.startsWith("$") =>
+            fhirRequest.httpMethod = Some(HttpMethods.POST)
             fhirRequest.initializeOperationRequest(operation, Some(rtype))
             fhirRequest.queryParams = sprayUrl.query().toMultiMap
             fhirRequest.resource = Some(resource)
             fhirRequest.setId(fullUrl)
           case Seq(rtype, rid, operation) if  operation.startsWith("$")=>
+            fhirRequest.httpMethod = Some(HttpMethods.POST)
             fhirRequest.initializeOperationRequest(operation, Some(rtype), Some(rid))
             fhirRequest.queryParams = sprayUrl.query().toMultiMap
             fhirRequest.resource = Some(resource)
@@ -229,6 +231,18 @@ object BundleRequestParser {
           case Seq(rtype, FHIR_HTTP_OPTIONS.HISTORY) =>
             fhirRequest.initializeHistoryRequest(FHIR_INTERACTIONS.HISTORY_TYPE, Some(rtype), None)
             fhirRequest.queryParams = sprayUrl.query().toMultiMap
+          //Type level operation
+          case Seq(rtype, operation) if operation.startsWith("$") =>
+            fhirRequest.httpMethod = Some(HttpMethods.GET)
+            fhirRequest.initializeOperationRequest(operation, Some(rtype))
+            fhirRequest.queryParams = sprayUrl.query().toMultiMap
+            fhirRequest.setId(fullUrl)
+          //Instance level operation
+          case Seq(rtype, rid, operation) if  operation.startsWith("$")=>
+            fhirRequest.httpMethod = Some(HttpMethods.GET)
+            fhirRequest.initializeOperationRequest(operation, Some(rtype), Some(rid))
+            fhirRequest.queryParams = sprayUrl.query().toMultiMap
+            fhirRequest.setId(fullUrl)
           //Read interaction
           case Seq(rtype, rid) =>
             fhirRequest.initializeReadRequest(rtype, rid, ifModifiedSince, ifNoneMatch, None, None)
@@ -243,6 +257,7 @@ object BundleRequestParser {
           //VRead interaction
           case Seq(rtype, rid, FHIR_HTTP_OPTIONS.HISTORY, vid) =>
             fhirRequest.initializeVReadRequest(rtype,rid, vid)
+
           case _ =>
             throw new NotFoundException(invalidOperation("Invalid HTTP Get", requestUrl))
         }

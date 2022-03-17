@@ -2,8 +2,7 @@ package io.onfhir.api.service
 
 import java.time.Instant
 import java.util.concurrent.TimeUnit
-
-import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.model.{HttpMethod, HttpMethods, StatusCodes}
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
@@ -78,6 +77,9 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
   override def executeInteraction(fhirRequest: FHIRRequest, authzContext: Option[AuthzContext] = None, isTesting: Boolean = false): Future[FHIRResponse] = {
     validateInteraction(fhirRequest) flatMap { _ =>
       completeInteraction(fhirRequest, authzContext, isTesting)
+        .map(response =>
+          response
+        )
     }
   }
 
@@ -87,16 +89,20 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
     * @param interaction FHIR interaction
     * @return priority numbering
     */
-  private def operationPriority(interaction: String) = interaction match {
+  private def operationPriority(interaction: String, httpMethod: Option[HttpMethod]) = interaction match {
     case FHIR_INTERACTIONS.DELETE => 1
     case FHIR_INTERACTIONS.CREATE => 2
     case FHIR_INTERACTIONS.UPDATE | FHIR_INTERACTIONS.PATCH => 3
-    case op if op.startsWith("$") => 4
-    case _ => 5
+    case op if op.startsWith("$") =>
+      httpMethod match {
+        case Some(HttpMethods.GET) => 4
+        case _ => 2
+      }
+    case _ => 4
   }
 
   /**
-    * Exceute a FHIRRequest
+    * Execute a FHIRRequest and return FHIR Response while linking it with the given request
     *
     * @param bundleType   Type of Bundle request - batch or interaction
     * @param childRequest - The child request for an entry
@@ -105,7 +111,7 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
     * @param isTesting    if this is only testing the execution
     * @return
     */
-  private def executeChildInteraction(bundleType: String, childRequest: FHIRRequest, authzContext: Option[AuthzContext], uuids: Seq[String], transactionSession: Option[TransactionSession] = None, isTesting: Boolean = false): FHIRResponse = {
+  private def executeChildInteraction(bundleType: String, childRequest: FHIRRequest, authzContext: Option[AuthzContext], uuids: Seq[String], transactionSession: Option[TransactionSession] = None, isTesting: Boolean = false): Future[FHIRResponse] = {
     try {
       val fhirInteractionService = FHIRServiceFactory.getFHIRService(childRequest, transactionSession)
       //If it is batch validate if there is no interdependency with other resources
@@ -113,20 +119,20 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
         FHIRApiValidator.validateInterdependencies(childRequest.resource.get, uuids)
       //If there is already a response (it means it is authorization or parsing error) return it
       if (childRequest.response.isDefined)
-        childRequest.response.get
-      else {
+        Future.apply(childRequest.response.get)
+      else
         // Perform the interaction
-        val fresponse = fhirInteractionService.executeInteraction(childRequest, authzContext, isTesting)
-        //Wait the result, handle the exceptions
-        Await.result(fresponse, FiniteDuration(OnfhirConfig.fhirRequestTimeout.getSeconds, TimeUnit.SECONDS))
-      }
+        fhirInteractionService
+          .executeInteraction(childRequest, authzContext, isTesting)
+          .recover {
+            case e:Exception =>
+              ErrorHandler.fhirErrorHandlerToResponse(e)
+          }
     } catch {
       //Handle exceptions
       case e: Exception =>
         //logger.debug("Exception in child interaction execution;", e)
-        val response = ErrorHandler.fhirErrorHandlerToResponse(e)
-        childRequest.setResponse(response)
-        response
+        Future.apply(ErrorHandler.fhirErrorHandlerToResponse(e))
     }
   }
 
@@ -136,18 +142,15 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
     * @param childRequest Parsed child FHIR request of a transaction/batch
     * @return
     */
-  def realizeChildInteraction(childRequest: FHIRRequest): FHIRResponse = {
-    try {
+  def realizeChildInteraction(childRequest: FHIRRequest): Future[FHIRResponse] = {
       // Perform the interaction
-      val fresponse = FHIRServiceFactory.getFHIRService(childRequest).completeInteraction(childRequest)
-      Await.result(fresponse, FiniteDuration(OnfhirConfig.fhirRequestTimeout.getSeconds, TimeUnit.SECONDS))
-    } catch {
-      //We still handle exceptions because errors in Read/Search operations are not critical we need to handle them
-      case e: Exception =>
-        val response = ErrorHandler.fhirErrorHandlerToResponse(e)
-        childRequest.setResponse(response)
-        response
-    }
+      FHIRServiceFactory
+        .getFHIRService(childRequest)
+        .completeInteraction(childRequest)
+        .recover {
+          case e:Exception =>
+            ErrorHandler.fhirErrorHandlerToResponse(e)
+        }
   }
 
   /**
@@ -158,29 +161,56 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
     * @return
     */
   def performBatchRequest(fhirRequest: FHIRRequest, authzContext: Option[AuthzContext]): Future[FHIRResponse] = {
-    Future.apply {
-      //Actual order of requests
-      val actualOrderOfRequests = fhirRequest.childRequests.map(_.id)
-      //Sort the requests according to priority, execution order
-      val sortedFhirRequests = fhirRequest.childRequests.sortWith((fr1: FHIRRequest, fr2: FHIRRequest) => {
-        operationPriority(fr1.interaction) < operationPriority(fr2.interaction)
-      })
-
-      //Execute the interactions sequentially
-      sortedFhirRequests.foreach(childRequest => {
-        //Wait the result, as we want a sequential execution
-        childRequest.requestTime = Instant.now()
-        childRequest.setResponse(executeChildInteraction(fhirRequest.interaction, childRequest, authzContext, actualOrderOfRequests))
-      })
+    executeChildRequests(fhirRequest, authzContext)
+      .map(executedRequests =>  {
+        //Convert the FHIRResponses to Bundle.entry list
+        val responseEntries = createEntriesForChildResponses(executedRequests)
+        //Create the full Bundle response from response entries
+        generateBundleResponse(responseEntries, FHIR_BUNDLE_TYPES.BATCH_RESPONSE)
+    })
       //Sort the responses back to original order
       //val sortedResponses = responses.sortWith((r1, r2) => actualOrderOfRequests.indexOf(r1._1) < actualOrderOfRequests.indexOf(r2._1)).map(_._2)
       //Set the responses within request (Need for auditing)
       //fhirRequest.childResponses = sortedResponses
-      //Convert the FHIRResponses to Bundle.entry list
-      val responseEntries = createEntriesForChildResponses(sortedFhirRequests)
-      //Create the full Bundle response from response entries
-      generateBundleResponse(responseEntries, FHIR_BUNDLE_TYPES.BATCH_RESPONSE)
-    }
+  }
+
+  /**
+   * Execute the child requests parallel within groups, sequential for priority groups, fill the response for the request and return
+   * @param fhirRequest   FHIRRequest
+   * @param authzContext  Authorization context
+   * @param transactionSession  Transaction session for database
+   * @return
+   */
+  private def executeChildRequests(fhirRequest:FHIRRequest, authzContext: Option[AuthzContext], transactionSession: Option[TransactionSession] = None, isTesting:Boolean = false):Future[Seq[FHIRRequest]] = {
+    //Actual order of requests
+    val uuidsOfRequests = fhirRequest.childRequests.map(_.id)
+    //Group and sort the requests according to priority, execution order
+    val groupedFhirRequests = fhirRequest.childRequests.groupBy(fr => operationPriority(fr.interaction, fr.httpMethod))
+    // Execute the child requests parallel within groups, sequential for priority groups
+    val requestResponsePairsFuture =
+      (1 to 4)
+        .map(i =>
+          groupedFhirRequests
+            .get(i)
+            .map(requests =>
+              Future.sequence(
+                requests
+                  .map(request => {
+                    request.requestTime = Instant.now() //Set child request time to this
+                    executeChildInteraction(fhirRequest.interaction, request, authzContext, uuidsOfRequests, transactionSession, isTesting)
+                      .map(response => request -> response)
+                  }))
+            ).getOrElse(Future.apply(Nil))
+        )
+        .reduceLeft((r1f, r2f) => r1f.flatMap(r1 => r2f.map(r2 => r1 ++ r2))) //Execute the groups in priority order
+
+    requestResponsePairsFuture
+        .map(requestResponsePairs => {
+          requestResponsePairs.foreach {
+            case (request, response) => request.setResponse(response) //set the response for the request
+          }
+          requestResponsePairs.map(_._1)
+        })
   }
 
   /**
@@ -192,16 +222,12 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
   private def filterTransactionCriticalErrors(requests: Seq[FHIRRequest]): Seq[FHIRRequest] = {
     requests.filter(request => {
       request.response.exists(_.isError)
-      /*requestResponse.interaction match {
-        case FHIR_INTERACTIONS.CREATE | FHIR_INTERACTIONS.UPDATE | FHIR_INTERACTIONS.DELETE => requestResponse.response.exists(_.httpStatus.isFailure)
-        case _ => false
-      }*/
     })
   }
 
   /**
     * Get All issues for a failed transcation
-    * @param requests
+    * @param requests Executed FHIR requests with responses
     * @return
     */
   private def getIssuesForTransaction(requests:Seq[FHIRRequest]):Seq[OutcomeIssue] = {
@@ -221,11 +247,16 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
   /**
     * Replace UUIDs with actual references in a resource including links to other resources in transaction
     *
-    * @param resource
-    * @param uuidMappingsMap
+    * @param resource           FHIR resource
+    * @param uuidMappingsMap    All uuid mappings
     * @return
     */
   private def replaceUUIDs(resource: JObject, uuidMappingsMap: Map[String, String]): JObject = {
+    // TODO Other replacements
+    // See https://www.hl7.org/fhir/http.html#transaction  -> "Servers SHALL replace all matching links in the bundle,
+    // whether they are found in the resource ids, resource references, elements of type uri, url, oid, uuid, a
+    // nd <a href="" & <img src="" in the narrative. Elements of type canonical are not replaced."
+
     resource.mapField {
       //Check every reference value
       case ("reference", org.json4s.JsonAST.JString(s)) if uuidMappingsMap.contains(s) =>
@@ -234,7 +265,12 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
     }.asInstanceOf[JObject]
   }
 
-
+  /**
+   * Execute a FHIR Transaction request
+   * @param fhirRequest   Parsed FHIR request
+   * @param authzContext  Authorization context
+   * @return
+   */
   private def performTransactionRequest(fhirRequest: FHIRRequest, authzContext: Option[AuthzContext]): Future[FHIRResponse] = {
     //Check if FHIR requests are valid
     val requestsWithError = fhirRequest.childRequests.filter(_.response.exists(_.isError))
@@ -243,16 +279,17 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
     }
 
     //Map given uuids to our own logical ids for resources
-    urnIdToLogicalIdMapping(fhirRequest.childRequests).flatMap(uuidMappings => {
-      //Check if there is identity overlapping in resources
-      if (uuidMappings.map(_._1).distinct.size != uuidMappings.size)
-        throw new BadRequestException(Seq(OutcomeIssue(
-          FHIRResponse.SEVERITY_CODES.ERROR,
-          FHIRResponse.OUTCOME_CODES.INVALID,
-          None,
-          Some("Identity overlapping, check your 'uuid's given to the entries! Transaction can not be performed ..."),
-          Nil
-        )))
+    urnIdToLogicalIdMapping(fhirRequest.childRequests)
+      .flatMap(uuidMappings => {
+        //Check if there is identity overlapping in resources
+        if (uuidMappings.map(_._1).distinct.size != uuidMappings.size)
+          throw new BadRequestException(Seq(OutcomeIssue(
+            FHIRResponse.SEVERITY_CODES.ERROR,
+            FHIRResponse.OUTCOME_CODES.INVALID,
+            None,
+            Some("Identity overlapping, check your 'uuid's given to the entries! Transaction can not be performed ..."),
+            Nil
+          )))
 
       val uuidMappingsMap: Map[String, String] = uuidMappings.toMap
       if (uuidMappingsMap.nonEmpty)
@@ -280,36 +317,31 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
     */
   def performTransactionRequestByActual(fhirRequest: FHIRRequest, authzContext: Option[AuthzContext]): Future[FHIRResponse] = {
     val transactionSession = new TransactionSession(fhirRequest.id)
-    val actualOrderOfRequests = fhirRequest.childRequests.map(_.id)
-    //Sort the requests according to priority, execution order
-    val sortedFhirRequests = fhirRequest.childRequests.sortWith((fr1: FHIRRequest, fr2: FHIRRequest) => {
-      operationPriority(fr1.interaction) < operationPriority(fr2.interaction)
-    })
-    //Test the interactions sequentially (Test excecution - nothing changed in persistence)
-    sortedFhirRequests.foreach(childReq =>
-      //Execute with the transaction
-      childReq.setResponse(executeChildInteraction(fhirRequest.interaction, childReq, authzContext, actualOrderOfRequests, Some(transactionSession)))
-    )
-    //Check if there is any error, if so return the errors directly
-    val responseWithErrors = filterTransactionCriticalErrors(sortedFhirRequests)
-    if (responseWithErrors.nonEmpty) {
-      transactionSession.abort().flatMap(_ =>
-        throw new BadRequestException(getIssuesForTransaction(sortedFhirRequests))
-      )
-    } else {
-      try {
-        //Realize the database operations as transaction
-        transactionSession.commit().map(completed => {
-          //Convert the FHIRResponses to Bundle.entry list
-          val responseEntries = createEntriesForChildResponses(fhirRequest.childRequests)
-          //Create the full Bundle response from response entries
-          generateBundleResponse(responseEntries, FHIR_BUNDLE_TYPES.TRANSACTION_RESPONSE)
-        })
-      } catch {
-        case e: Exception =>
-          throw new InternalServerException("Problem in persistency layer while committing transaction!")
-      }
-    }
+    //Execute child requests according to FHIR Transaction processing rules
+    executeChildRequests(fhirRequest, authzContext, Some(transactionSession))
+      .flatMap(executedRequests => {
+        //Check if there is any error, if so return the errors directly
+        val responseWithErrors = filterTransactionCriticalErrors(executedRequests)
+        //If there is any error in one of the request, abort the transaction and return the errors
+        if (responseWithErrors.nonEmpty) {
+          transactionSession.abort().flatMap(_ =>
+            throw new BadRequestException(getIssuesForTransaction(executedRequests))
+          )
+        } else {
+          try {
+            //Otherwise, realize the database operations as transaction
+            transactionSession.commit().map(completed => {
+              //Convert the FHIRResponses to Bundle.entry list
+              val responseEntries = createEntriesForChildResponses(fhirRequest.childRequests)
+              //Create the full Bundle response from response entries
+              generateBundleResponse(responseEntries, FHIR_BUNDLE_TYPES.TRANSACTION_RESPONSE)
+            })
+          } catch {
+            case e: Exception =>
+              throw new InternalServerException("Problem in persistency layer while committing transaction!")
+          }
+        }
+      })
   }
 
   /**
@@ -320,38 +352,53 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
     * @return
     */
   def performTransactionRequestBySimulation(fhirRequest: FHIRRequest, authzContext: Option[AuthzContext]): Future[FHIRResponse] = {
-    Future.apply {
-      val actualOrderOfRequests = fhirRequest.childRequests.map(_.id)
-      //Sort the requests according to priority, execution order
-      val sortedFhirRequests = fhirRequest.childRequests.sortWith((fr1: FHIRRequest, fr2: FHIRRequest) => {
-        operationPriority(fr1.interaction) < operationPriority(fr2.interaction)
-      })
-      //Test the interactions sequentially (Test excecution - nothing changed in persistence)
-      sortedFhirRequests.foreach(childReq =>
-        childReq.setResponse(executeChildInteraction(fhirRequest.interaction, childReq, authzContext, actualOrderOfRequests, isTesting = true))
-      )
-      //Check if there is any error, if so return the errors directly
-      val responseWithErrors = filterTransactionCriticalErrors(sortedFhirRequests)
-      if (responseWithErrors.nonEmpty)
-        throw new BadRequestException(getIssuesForTransaction(sortedFhirRequests))
+    //Execute child requests according to FHIR Transaction processing rules
+    executeChildRequests(fhirRequest, authzContext, None, isTesting = true)
+      .flatMap(executedRequests => {
+        //Check if there is any error, if so return the errors directly
+        val responseWithErrors = filterTransactionCriticalErrors(executedRequests)
+        if (responseWithErrors.nonEmpty)
+          throw new BadRequestException(getIssuesForTransaction(executedRequests))
+        //Clear the side effects of test execution
+        executedRequests.foreach(fr => if (fr.resource.isDefined) fr.resource = Some(FHIRUtil.clearExtraFields(fr.resource.get)))
 
-      //Clear the side effects of test execution
-      sortedFhirRequests.foreach(fr => if (fr.resource.isDefined) fr.resource = Some(FHIRUtil.clearExtraFields(fr.resource.get)))
-      //Perform the interactions
-      sortedFhirRequests.foreach(childRequest =>
-        childRequest.setResponse(realizeChildInteraction(childRequest))
-      )
-      //Convert the FHIRResponses to Bundle.entry list
-      val responseEntries = createEntriesForChildResponses(fhirRequest.childRequests)
-      //Create the full Bundle response from response entries
-      generateBundleResponse(responseEntries, FHIR_BUNDLE_TYPES.TRANSACTION_RESPONSE)
-    }
+        //Group and sort the requests according to priority, execution order
+        val groupedFhirRequests = executedRequests.groupBy(fr => operationPriority(fr.interaction, fr.httpMethod))
+
+        val requestResponsePairsFuture =
+          (1 to 4)
+            .map(i =>
+              groupedFhirRequests
+                .get(i)
+                .map(requests =>
+                  Future.sequence(
+                    requests
+                      .map(request => {
+                        realizeChildInteraction(request)
+                          .map(response =>
+                            request -> response
+                          )
+                      }))
+                ).getOrElse(Future.apply(Nil))
+            )
+            .reduceLeft((r1f, r2f) => r1f.flatMap(r1 => r2f.map(r2 => r1 ++ r2))) //Execute the groups in priority order
+
+        requestResponsePairsFuture
+          .map(requestResponsePairs => {
+            requestResponsePairs.foreach {
+              case (request, response) => request.setResponse(response) //set the response for the request
+            }
+            //Convert the FHIRResponses to Bundle.entry list
+            val responseEntries = createEntriesForChildResponses(fhirRequest.childRequests)
+            //Create the full Bundle response from response entries
+            generateBundleResponse(responseEntries, FHIR_BUNDLE_TYPES.TRANSACTION_RESPONSE)
+          })
+      })
   }
 
 
   /**
     * Construct full URL from request response pair
-    *
     * @param requestResponse
     * @return
     */
@@ -375,8 +422,7 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
 
   /**
     * Create the Bundle Entries for child responses
-    *
-    * @param requestsResponses
+    * @param requestsResponses  Executed request with response set
     * @return
     */
   def createEntriesForChildResponses(requestsResponses: Seq[FHIRRequest]): Seq[Resource] = {
@@ -439,7 +485,7 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
   /**
     * Retrieve resource id from database for conditional update
     *
-    * @param fhirRequest
+    * @param fhirRequest FHIR Request
     * @return
     */
   private def getResourceIdForConditionalUpdate(fhirRequest: FHIRRequest): Future[Option[String]] = {
@@ -452,8 +498,8 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
   }
 
   /**
-    * Converts each local uuid to logical ids and returns the mapping
-    *
+    * Converts each local uuid to logical ids and returns the mapping (also set the requests' generated resource id for FHIR creates)
+    * e.g. urn:uuid:221313 -> Patient/6556684
     * @param fhirRequests
     * @return
     */
@@ -470,7 +516,6 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
                 // Generate new resource Id, reference, url
                 val rid = FHIRUtil.generateResourceId()
                 val newReference = fhirRequest.resourceType.get + "/" + rid
-                val newUrl = OnfhirConfig.fhirRootUrl + newReference
                 //Put the identifier into the resource, as generated id
                 fhirRequest.resourceId = Some(rid)
                 Future.apply(Some((uuid, newReference)))
@@ -489,7 +534,7 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
                     Future.apply(None)
                 }
             }
-          case FHIR_INTERACTIONS.UPDATE =>
+          case FHIR_INTERACTIONS.UPDATE | FHIR_INTERACTIONS.PATCH =>
             //If it is a conditional update and they give a uuid
             if (fullUrl.isDefined && fhirRequest.resourceId.isEmpty) {
               getResourceIdForConditionalUpdate(fhirRequest)
@@ -497,7 +542,9 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
                 val newReference = fhirRequest.resourceType.get + "/" + rid
                 (fullUrl.get, newReference)
               }))
-            } else if (fullUrl.isDefined && fhirRequest.resourceId.isDefined)  {
+            }
+            //Normal FHIR update
+            else if (fullUrl.isDefined && fhirRequest.resourceId.isDefined)  {
               val newReference = fhirRequest.resourceType.get + "/" + fhirRequest.resourceId.get
               Future.apply(Some((fullUrl.get, newReference)))
             } else

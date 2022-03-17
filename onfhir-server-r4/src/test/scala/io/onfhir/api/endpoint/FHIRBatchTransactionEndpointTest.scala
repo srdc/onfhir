@@ -32,7 +32,7 @@ class FHIRBatchTransactionEndpointTest extends OnFhirTest with FHIREndpoint {
 
   sequential
 
-  "FHIR Batch Endpoint" should {
+ "FHIR Batch Endpoint" should {
     "handle batch request" in {
       Post("/" + OnfhirConfig.baseUri , HttpEntity(batch1)) ~> fhirRoute ~> check {
         eventually(status === OK)

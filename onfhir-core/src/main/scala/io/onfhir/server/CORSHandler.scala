@@ -16,7 +16,7 @@ trait CORSHandler extends BasicDirectives {
   private val corsResponseHeaders = List(
     `Access-Control-Allow-Origin`.*,
     `Access-Control-Allow-Credentials`(true),
-    `Access-Control-Allow-Headers`("Origin, X-Requested-With, Content-Type, Accept, Accept-Encoding, Accept-Language, Authorization, Host, Referer, User-Agent"),
+    `Access-Control-Allow-Headers`("Origin, X-Requested-With, Content-Type, Accept, Accept-Encoding, Accept-Language, Authorization, Host, Referer, User-Agent, Prefer"),
     `Access-Control-Max-Age`(1728000)
   )
 
