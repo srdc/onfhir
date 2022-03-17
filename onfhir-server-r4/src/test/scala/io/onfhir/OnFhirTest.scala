@@ -33,8 +33,8 @@ trait OnFhirTest extends Specification with Specs2RouteTest with BeforeAfterAll 
 
   override def afterAll() = {
     Await.result(MongoDB.getDatabase.drop().head(), Duration.apply(5, TimeUnit.SECONDS))
-    if(OnfhirConfig.mongoEmbedded)
-      EmbeddedMongo.stop()
+    //if(OnfhirConfig.mongoEmbedded)
+    //  EmbeddedMongo.stop()
   }
 
 
