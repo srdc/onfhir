@@ -233,6 +233,12 @@ public interface FhirPathExprVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitFunction(FhirPathExprParser.FunctionContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link FhirPathExprParser#functionName}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitFunctionName(FhirPathExprParser.FunctionNameContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link FhirPathExprParser#paramList}.
 	 * @param ctx the parse tree
 	 * @return the visitor result

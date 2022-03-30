@@ -9,6 +9,7 @@ import org.json4s._
 import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
+import io.onfhir.path.util.FhirPathUtil
 
 /**
   * FHIR Path expression evaluator
@@ -416,10 +417,10 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
   override def visitInvocationExpression(ctx: FhirPathExprParser.InvocationExpressionContext): Seq[FhirPathResult] = {
     ctx.invocation() match {
       case fn:FunctionInvocationContext =>
-          val fname = fn.function().identifier().getText
+          val (fprefix, fname) = FhirPathUtil.getFunctionName(fn.function())
           val parent =
             //If this is a type function 'ofType', evaluate left expression with expected target type
-            if(typeFunctions.contains(fname)){
+            if(fprefix.isEmpty && typeFunctions.contains(fname)){
               val params = Option(fn.function().paramList()).map(_.expression().asScala).getOrElse(Nil)
               if(params.length != 1)
                 throw new FhirPathException(s"Invalid function call $fname, it expects a single parameter which is the FHIR type identifier...")
@@ -445,11 +446,11 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
 
   override def visitFunctionInvocation(ctx: FhirPathExprParser.FunctionInvocationContext): Seq[FhirPathResult] = {
     //Get the function name
-    val fname = ctx.function().identifier().getText()
+    val (fprefix, fname) =  FhirPathUtil.getFunctionName(ctx.function())
     //Get the parameter expressions
     val paramExpressions:Seq[FhirPathExprParser.ExpressionContext] = Option(ctx.function().paramList()).map(_.expression().asScala.toSeq).getOrElse(Nil)
     //Evaluate the function
-    new FhirPathFunctionEvaluator(context, current).callFunction(fname, paramExpressions)
+    new FhirPathFunctionEvaluator(context, current).callFunction(fprefix, fname, paramExpressions)
   }
 
   /**

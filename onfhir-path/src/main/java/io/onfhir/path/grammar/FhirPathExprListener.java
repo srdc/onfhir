@@ -388,6 +388,16 @@ public interface FhirPathExprListener extends ParseTreeListener {
 	 */
 	void exitFunction(FhirPathExprParser.FunctionContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link FhirPathExprParser#functionName}.
+	 * @param ctx the parse tree
+	 */
+	void enterFunctionName(FhirPathExprParser.FunctionNameContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link FhirPathExprParser#functionName}.
+	 * @param ctx the parse tree
+	 */
+	void exitFunctionName(FhirPathExprParser.FunctionNameContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link FhirPathExprParser#paramList}.
 	 * @param ctx the parse tree
 	 */

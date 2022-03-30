@@ -1,10 +1,9 @@
 package io.onfhir.path
 
 import java.io.ByteArrayInputStream
-import java.nio.charset.{StandardCharsets}
+import java.nio.charset.StandardCharsets
 import java.time.{LocalTime, ZoneId}
 import java.time.temporal.Temporal
-
 import io.onfhir.api.validation.IReferenceResolver
 import io.onfhir.path.grammar.{FhirPathExprLexer, FhirPathExprParser}
 import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
@@ -15,8 +14,13 @@ import org.slf4j.{Logger, LoggerFactory}
  * Fhir Path Engine implementation
  * @param referenceResolver     onFhir reference resolver (resolving literal and inter-bundle references)
  * @param environmentVariables  Supplied environment variables
+ * @param functionLibraries     External function libraries registered
  */
-case class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = None, environmentVariables:Map[String, JValue] = Map.empty) {
+case class FhirPathEvaluator (
+                               referenceResolver:Option[IReferenceResolver] = None,
+                               environmentVariables:Map[String, JValue] = Map.empty,
+                               functionLibraries:Map[String, IFhirPathFunctionLibraryFactory] = Map.empty
+                             ) {
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   /**
@@ -29,6 +33,29 @@ case class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = Non
     this.copy(environmentVariables = environmentVariables + (variable -> value))
   }
 
+  /**
+   * Register a function library
+   * @param prefix
+   * @param factory
+   * @return
+   */
+  def withFunctionLibrary(prefix:String, factory:IFhirPathFunctionLibraryFactory):FhirPathEvaluator = {
+    this.copy(functionLibraries = this.functionLibraries ++ Map(prefix -> factory))
+  }
+
+  /**
+   * Initialize the evaluator with onFhir default extra function libraries
+   * @return
+   */
+  def withDefaultFunctionLibraries():FhirPathEvaluator = {
+    this.copy(functionLibraries = this.functionLibraries ++
+      Map(
+        FhirPathAggFunctionsFactory.defaultPrefix -> FhirPathAggFunctionsFactory,
+        FhirPathTimeUtilFunctionsFactory.defaultPrefix -> FhirPathTimeUtilFunctionsFactory,
+        FhirPathNavFunctionsFactory.defaultPrefix -> FhirPathNavFunctionsFactory
+      )
+    )
+  }
 
   /**
    * Evaluate a FHIR path expression
@@ -39,7 +66,12 @@ case class FhirPathEvaluator (referenceResolver:Option[IReferenceResolver] = Non
   private def evaluate(expr:FhirPathExprParser.ExpressionContext, on:JValue):Seq[FhirPathResult] = {
     logger.debug(s"Evaluating FHIR path expression '${expr.getText}' ...")
     val resource = FhirPathValueTransformer.transform(on)
-    val environment = new FhirPathEnvironment(resource, referenceResolver, environmentVariables.map(e => e._1 -> FhirPathValueTransformer.transform(e._2)))
+    val environment =
+      new FhirPathEnvironment(
+        resource,
+        referenceResolver,
+        environmentVariables.map(e => e._1 -> FhirPathValueTransformer.transform(e._2)),
+        functionLibraries)
     val evaluator = new FhirPathExpressionEvaluator(environment, resource)
     evaluator.visit(expr)
   }

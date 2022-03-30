@@ -565,20 +565,21 @@ class FhirPathEvaluatorTest extends Specification {
       FhirPathEvaluator(referenceResolver).evaluate("Questionnaire.item.extension('http://example.org/additional-information2').valueAttachment.title", questionnaire2) mustEqual Seq(FhirPathString("Ali"))
     }
 
-    "evaluate groupBy and aggregations" in {
-      val results = FhirPathEvaluator().evaluate("groupBy(Condition.subject.reference.substring(8),count())", JArray(conditions.toList))
+    "evaluate onfhir aggregation functions" in {
+      val evaluator = FhirPathEvaluator().withDefaultFunctionLibraries()
+      val results = evaluator.evaluate("groupBy(Condition.subject.reference.substring(8),count())", JArray(conditions.toList))
       results.length mustEqual(2)
 
-      val pids = FhirPathEvaluator().evaluateString("groupBy(Condition.subject.reference.substring(8),count()).where(agg >= 2).bucket", JArray(conditions.toList))
+      val pids = evaluator.evaluateString("agg:groupBy(Condition.subject.reference.substring(8),count()).where(agg >= 2).bucket", JArray(conditions.toList))
       pids mustEqual(Seq("p1"))
 
-      var results2 = FhirPathEvaluator().evaluateNumerical("groupBy($this.notexist, sum($this.valueQuantity.value))[0].agg", JArray(Seq(observation, observation2).toList))
+      var results2 = evaluator.evaluateNumerical("groupBy($this.notexist, agg:sum($this.valueQuantity.value))[0].agg", JArray(Seq(observation, observation2).toList))
       results2 mustEqual Seq(16.3)
 
-      results2 = FhirPathEvaluator().evaluateNumerical("groupBy($this.notexist, min($this.valueQuantity.value))[0].agg", JArray(Seq(observation, observation2).toList))
+      results2 = evaluator.evaluateNumerical("groupBy($this.notexist, min($this.valueQuantity.value))[0].agg", JArray(Seq(observation, observation2).toList))
       results2 mustEqual Seq(6.3)
 
-      results2 = FhirPathEvaluator().evaluateNumerical("groupBy($this.notexist, max($this.valueQuantity.value))[0].agg", JArray(Seq(observation, observation2).toList))
+      results2 = evaluator.evaluateNumerical("groupBy($this.notexist, max($this.valueQuantity.value))[0].agg", JArray(Seq(observation, observation2).toList))
       results2 mustEqual Seq(10)
     }
 
@@ -604,23 +605,24 @@ class FhirPathEvaluatorTest extends Specification {
       result mustEqual true
     }
 
-    "evaluate onfhir added time functions" in {
-      var result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.getPeriod(start, @2020-09-07T10:00:00Z, 'years')", observation).head.toLong
+    "evaluate onfhir time utility functions" in {
+      val evaluator = FhirPathEvaluator().withDefaultFunctionLibraries()
+      var result = evaluator.evaluateNumerical("effectivePeriod.tutl:getPeriod(start, @2020-09-07T10:00:00Z, 'years')", observation).head.toLong
       result mustEqual 7
 
-      result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.getPeriod(start, @2013-08-07T10:00:00Z, 'months')", observation).head.toLong
+      result = evaluator.evaluateNumerical("effectivePeriod.getPeriod(start, @2013-08-07T10:00:00Z, 'months')", observation).head.toLong
       result mustEqual 4
 
-      result = FhirPathEvaluator().evaluateNumerical("effectivePeriod.getPeriod(start, @2013-04-07T09:30:10+01:00, 'days')", observation).head.toLong
+      result = evaluator.evaluateNumerical("effectivePeriod.getPeriod(start, @2013-04-07T09:30:10+01:00, 'days')", observation).head.toLong
       result mustEqual 5
 
       //Due to given zoned date time in resource
-      FhirPathEvaluator().evaluateNumerical("effectivePeriod.getPeriod(start, @2020-09-07, 'years')", observation) must throwA[FhirPathException]
+      evaluator.evaluateNumerical("effectivePeriod.getPeriod(start, @2020-09-07, 'years')", observation) must throwA[FhirPathException]
 
-      result = FhirPathEvaluator().evaluateNumerical("period.getPeriod(start, end, 'days')", encounter).head.toLong
+      result = evaluator.evaluateNumerical("period.getPeriod(start, end, 'days')", encounter).head.toLong
       result mustEqual 9
 
-      result = FhirPathEvaluator().evaluateNumerical("period.getPeriod(s, end, 'days')", encounter).head.toLong
+      result = evaluator.evaluateNumerical("period.getPeriod(s, end, 'days')", encounter).head.toLong
       result mustEqual 0
     }
 

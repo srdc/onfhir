@@ -10,11 +10,14 @@ import scala.util.matching.Regex
  * @param _this                 The main context (resource) that FHIR path is evaluated on
  * @param referenceResolver     onFhir reference resolver
  * @param environmentVariables  Other external variables supplied
+ * @param functionLibraries     External function libraries registered with a prefix
  */
 class FhirPathEnvironment(
                            val _this:Seq[FhirPathResult],
                            val referenceResolver: Option[IReferenceResolver],
-                            val environmentVariables:Map[String, Seq[FhirPathResult]] = Map.empty[String, Seq[FhirPathResult]]) {
+                           val environmentVariables:Map[String, Seq[FhirPathResult]] = Map.empty[String, Seq[FhirPathResult]],
+                           val functionLibraries:Map[String, IFhirPathFunctionLibraryFactory] = Map.empty
+                         ) {
   val vsPattern:Regex = "'vs-[A-Za-z0-9\\-]+'".r
   val extPattern:Regex = "'ext-[A-Za-z0-9\\-]+'".r
 

@@ -400,6 +400,18 @@ public class FhirPathExprBaseListener implements FhirPathExprListener {
 	 *
 	 * <p>The default implementation does nothing.</p>
 	 */
+	@Override public void enterFunctionName(FhirPathExprParser.FunctionNameContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
+	@Override public void exitFunctionName(FhirPathExprParser.FunctionNameContext ctx) { }
+	/**
+	 * {@inheritDoc}
+	 *
+	 * <p>The default implementation does nothing.</p>
+	 */
 	@Override public void enterParamList(FhirPathExprParser.ParamListContext ctx) { }
 	/**
 	 * {@inheritDoc}

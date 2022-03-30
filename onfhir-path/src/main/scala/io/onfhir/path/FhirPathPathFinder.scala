@@ -4,6 +4,7 @@ import io.onfhir.api.util.FHIRUtil
 import scala.jdk.CollectionConverters._
 import io.onfhir.path.grammar.FhirPathExprParser
 import io.onfhir.path.grammar.FhirPathExprParser.{FunctionInvocationContext, InvocationContext, MemberInvocationContext, ThisInvocationContext}
+import io.onfhir.path.util.FhirPathUtil
 
 /**
  * A special FHIR Path evaluator that focus on finding the paths indicated by the expression
@@ -49,10 +50,10 @@ class FhirPathPathFinder(context:FhirPathEnvironment, current:Seq[FhirPathResult
   override def visitInvocationExpression(ctx: FhirPathExprParser.InvocationExpressionContext): Seq[FhirPathResult] = {
     ctx.invocation() match {
       case fn:FunctionInvocationContext =>
-        val fname = fn.function().identifier().getText
+        val (fprefix, fname) = FhirPathUtil.getFunctionName(fn.function())
         val parent =
         //If this is a type function 'ofType', evaluate left expression with expected target type
-          if(typeFunctions.contains(fname)){
+          if(fprefix.isEmpty && typeFunctions.contains(fname)){
             val params = Option(fn.function().paramList()).map(_.expression().asScala).getOrElse(Nil)
             if(params.length != 1)
               throw new FhirPathException(s"Invalid function call $fname, it expects a single parameter which is the FHIR type identifier...")
@@ -125,8 +126,8 @@ class FhirPathPathFinder(context:FhirPathEnvironment, current:Seq[FhirPathResult
 
   override def visitFunctionInvocation(ctx: FhirPathExprParser.FunctionInvocationContext): Seq[FhirPathResult] = {
     //Get the function name
-    val fname = ctx.function().identifier().getText()
-    if(allowedFunctionsInPathIndicatingStatements.contains(fname)) {
+    val (fprefix, fname) = FhirPathUtil.getFunctionName(ctx.function())
+    if(fprefix.isEmpty && allowedFunctionsInPathIndicatingStatements.contains(fname)) {
       val filteredResults = new FhirPathExpressionEvaluator(context, current, targetType).visitFunctionInvocation(ctx)
       filteredResults match {
         case Nil => context.foundPaths = Nil

@@ -55,7 +55,12 @@ invocation                          // Terms that can be used after the function
         ;
 
 function
-        : identifier '(' paramList? ')'
+        : functionName '(' paramList? ')'
+        ;
+
+functionName
+        : identifier
+        | identifier':'identifier
         ;
 
 paramList

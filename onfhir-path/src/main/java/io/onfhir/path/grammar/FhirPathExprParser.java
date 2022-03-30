@@ -24,17 +24,17 @@ public class FhirPathExprParser extends Parser {
 		T__31=32, T__32=33, T__33=34, T__34=35, T__35=36, T__36=37, T__37=38, 
 		T__38=39, T__39=40, T__40=41, T__41=42, T__42=43, T__43=44, T__44=45, 
 		T__45=46, T__46=47, T__47=48, T__48=49, T__49=50, T__50=51, T__51=52, 
-		T__52=53, T__53=54, DATETIME=55, TIME=56, IDENTIFIER=57, QUOTEDIDENTIFIER=58, 
-		STRING=59, NUMBER=60, WS=61, COMMENT=62, LINE_COMMENT=63;
+		T__52=53, T__53=54, T__54=55, DATETIME=56, TIME=57, IDENTIFIER=58, QUOTEDIDENTIFIER=59, 
+		STRING=60, NUMBER=61, WS=62, COMMENT=63, LINE_COMMENT=64;
 	public static final int
 		RULE_expression = 0, RULE_term = 1, RULE_literal = 2, RULE_externalConstant = 3, 
-		RULE_invocation = 4, RULE_function = 5, RULE_paramList = 6, RULE_quantity = 7, 
-		RULE_unit = 8, RULE_dateTimePrecision = 9, RULE_pluralDateTimePrecision = 10, 
-		RULE_typeSpecifier = 11, RULE_qualifiedIdentifier = 12, RULE_identifier = 13;
+		RULE_invocation = 4, RULE_function = 5, RULE_functionName = 6, RULE_paramList = 7, 
+		RULE_quantity = 8, RULE_unit = 9, RULE_dateTimePrecision = 10, RULE_pluralDateTimePrecision = 11, 
+		RULE_typeSpecifier = 12, RULE_qualifiedIdentifier = 13, RULE_identifier = 14;
 	public static final String[] ruleNames = {
 		"expression", "term", "literal", "externalConstant", "invocation", "function", 
-		"paramList", "quantity", "unit", "dateTimePrecision", "pluralDateTimePrecision", 
-		"typeSpecifier", "qualifiedIdentifier", "identifier"
+		"functionName", "paramList", "quantity", "unit", "dateTimePrecision", 
+		"pluralDateTimePrecision", "typeSpecifier", "qualifiedIdentifier", "identifier"
 	};
 
 	private static final String[] _LITERAL_NAMES = {
@@ -42,16 +42,16 @@ public class FhirPathExprParser extends Parser {
 		"'&'", "'|'", "'<='", "'<'", "'>'", "'>='", "'is'", "'as'", "'='", "'~'", 
 		"'!='", "'!~'", "'in'", "'contains'", "'and'", "'or'", "'xor'", "'implies'", 
 		"'('", "')'", "'{'", "'}'", "'true'", "'false'", "'%'", "'$this'", "'$index'", 
-		"'$total'", "','", "'year'", "'month'", "'week'", "'day'", "'hour'", "'minute'", 
-		"'second'", "'millisecond'", "'years'", "'months'", "'weeks'", "'days'", 
-		"'hours'", "'minutes'", "'seconds'", "'milliseconds'"
+		"'$total'", "':'", "','", "'year'", "'month'", "'week'", "'day'", "'hour'", 
+		"'minute'", "'second'", "'millisecond'", "'years'", "'months'", "'weeks'", 
+		"'days'", "'hours'", "'minutes'", "'seconds'", "'milliseconds'"
 	};
 	private static final String[] _SYMBOLIC_NAMES = {
 		null, null, null, null, null, null, null, null, null, null, null, null, 
 		null, null, null, null, null, null, null, null, null, null, null, null, 
 		null, null, null, null, null, null, null, null, null, null, null, null, 
 		null, null, null, null, null, null, null, null, null, null, null, null, 
-		null, null, null, null, null, null, null, "DATETIME", "TIME", "IDENTIFIER", 
+		null, null, null, null, null, null, null, null, "DATETIME", "TIME", "IDENTIFIER", 
 		"QUOTEDIDENTIFIER", "STRING", "NUMBER", "WS", "COMMENT", "LINE_COMMENT"
 	};
 	public static final Vocabulary VOCABULARY = new VocabularyImpl(_LITERAL_NAMES, _SYMBOLIC_NAMES);
@@ -433,7 +433,7 @@ public class FhirPathExprParser extends Parser {
 			int _alt;
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(32);
+			setState(34);
 			_errHandler.sync(this);
 			switch (_input.LA(1)) {
 			case T__15:
@@ -457,7 +457,7 @@ public class FhirPathExprParser extends Parser {
 				_ctx = _localctx;
 				_prevctx = _localctx;
 
-				setState(29);
+				setState(31);
 				term();
 				}
 				break;
@@ -467,7 +467,7 @@ public class FhirPathExprParser extends Parser {
 				_localctx = new PolarityExpressionContext(_localctx);
 				_ctx = _localctx;
 				_prevctx = _localctx;
-				setState(30);
+				setState(32);
 				_la = _input.LA(1);
 				if ( !(_la==T__3 || _la==T__4) ) {
 				_errHandler.recoverInline(this);
@@ -477,7 +477,7 @@ public class FhirPathExprParser extends Parser {
 					_errHandler.reportMatch(this);
 					consume();
 				}
-				setState(31);
+				setState(33);
 				expression(11);
 				}
 				break;
@@ -485,24 +485,24 @@ public class FhirPathExprParser extends Parser {
 				throw new NoViableAltException(this);
 			}
 			_ctx.stop = _input.LT(-1);
-			setState(74);
+			setState(76);
 			_errHandler.sync(this);
 			_alt = getInterpreter().adaptivePredict(_input,2,_ctx);
-			while ( _alt!=2 && _alt!=org.antlr.v4.runtime.atn.ATN.INVALID_ALT_NUMBER ) {
+			while ( _alt!=2 && _alt!= ATN.INVALID_ALT_NUMBER ) {
 				if ( _alt==1 ) {
 					if ( _parseListeners!=null ) triggerExitRuleEvent();
 					_prevctx = _localctx;
 					{
-					setState(72);
+					setState(74);
 					_errHandler.sync(this);
 					switch ( getInterpreter().adaptivePredict(_input,1,_ctx) ) {
 					case 1:
 						{
 						_localctx = new MultiplicativeExpressionContext(new ExpressionContext(_parentctx, _parentState));
 						pushNewRecursionContext(_localctx, _startState, RULE_expression);
-						setState(34);
+						setState(36);
 						if (!(precpred(_ctx, 10))) throw new FailedPredicateException(this, "precpred(_ctx, 10)");
-						setState(35);
+						setState(37);
 						_la = _input.LA(1);
 						if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__5) | (1L << T__6) | (1L << T__7) | (1L << T__8))) != 0)) ) {
 						_errHandler.recoverInline(this);
@@ -512,7 +512,7 @@ public class FhirPathExprParser extends Parser {
 							_errHandler.reportMatch(this);
 							consume();
 						}
-						setState(36);
+						setState(38);
 						expression(11);
 						}
 						break;
@@ -520,9 +520,9 @@ public class FhirPathExprParser extends Parser {
 						{
 						_localctx = new AdditiveExpressionContext(new ExpressionContext(_parentctx, _parentState));
 						pushNewRecursionContext(_localctx, _startState, RULE_expression);
-						setState(37);
+						setState(39);
 						if (!(precpred(_ctx, 9))) throw new FailedPredicateException(this, "precpred(_ctx, 9)");
-						setState(38);
+						setState(40);
 						_la = _input.LA(1);
 						if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__3) | (1L << T__4) | (1L << T__9))) != 0)) ) {
 						_errHandler.recoverInline(this);
@@ -532,7 +532,7 @@ public class FhirPathExprParser extends Parser {
 							_errHandler.reportMatch(this);
 							consume();
 						}
-						setState(39);
+						setState(41);
 						expression(10);
 						}
 						break;
@@ -540,11 +540,11 @@ public class FhirPathExprParser extends Parser {
 						{
 						_localctx = new UnionExpressionContext(new ExpressionContext(_parentctx, _parentState));
 						pushNewRecursionContext(_localctx, _startState, RULE_expression);
-						setState(40);
-						if (!(precpred(_ctx, 8))) throw new FailedPredicateException(this, "precpred(_ctx, 8)");
-						setState(41);
-						match(T__10);
 						setState(42);
+						if (!(precpred(_ctx, 8))) throw new FailedPredicateException(this, "precpred(_ctx, 8)");
+						setState(43);
+						match(T__10);
+						setState(44);
 						expression(9);
 						}
 						break;
@@ -552,9 +552,9 @@ public class FhirPathExprParser extends Parser {
 						{
 						_localctx = new InequalityExpressionContext(new ExpressionContext(_parentctx, _parentState));
 						pushNewRecursionContext(_localctx, _startState, RULE_expression);
-						setState(43);
+						setState(45);
 						if (!(precpred(_ctx, 7))) throw new FailedPredicateException(this, "precpred(_ctx, 7)");
-						setState(44);
+						setState(46);
 						_la = _input.LA(1);
 						if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__11) | (1L << T__12) | (1L << T__13) | (1L << T__14))) != 0)) ) {
 						_errHandler.recoverInline(this);
@@ -564,7 +564,7 @@ public class FhirPathExprParser extends Parser {
 							_errHandler.reportMatch(this);
 							consume();
 						}
-						setState(45);
+						setState(47);
 						expression(8);
 						}
 						break;
@@ -572,9 +572,9 @@ public class FhirPathExprParser extends Parser {
 						{
 						_localctx = new EqualityExpressionContext(new ExpressionContext(_parentctx, _parentState));
 						pushNewRecursionContext(_localctx, _startState, RULE_expression);
-						setState(46);
+						setState(48);
 						if (!(precpred(_ctx, 5))) throw new FailedPredicateException(this, "precpred(_ctx, 5)");
-						setState(47);
+						setState(49);
 						_la = _input.LA(1);
 						if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__17) | (1L << T__18) | (1L << T__19) | (1L << T__20))) != 0)) ) {
 						_errHandler.recoverInline(this);
@@ -584,7 +584,7 @@ public class FhirPathExprParser extends Parser {
 							_errHandler.reportMatch(this);
 							consume();
 						}
-						setState(48);
+						setState(50);
 						expression(6);
 						}
 						break;
@@ -592,9 +592,9 @@ public class FhirPathExprParser extends Parser {
 						{
 						_localctx = new MembershipExpressionContext(new ExpressionContext(_parentctx, _parentState));
 						pushNewRecursionContext(_localctx, _startState, RULE_expression);
-						setState(49);
+						setState(51);
 						if (!(precpred(_ctx, 4))) throw new FailedPredicateException(this, "precpred(_ctx, 4)");
-						setState(50);
+						setState(52);
 						_la = _input.LA(1);
 						if ( !(_la==T__21 || _la==T__22) ) {
 						_errHandler.recoverInline(this);
@@ -604,7 +604,7 @@ public class FhirPathExprParser extends Parser {
 							_errHandler.reportMatch(this);
 							consume();
 						}
-						setState(51);
+						setState(53);
 						expression(5);
 						}
 						break;
@@ -612,11 +612,11 @@ public class FhirPathExprParser extends Parser {
 						{
 						_localctx = new AndExpressionContext(new ExpressionContext(_parentctx, _parentState));
 						pushNewRecursionContext(_localctx, _startState, RULE_expression);
-						setState(52);
-						if (!(precpred(_ctx, 3))) throw new FailedPredicateException(this, "precpred(_ctx, 3)");
-						setState(53);
-						match(T__23);
 						setState(54);
+						if (!(precpred(_ctx, 3))) throw new FailedPredicateException(this, "precpred(_ctx, 3)");
+						setState(55);
+						match(T__23);
+						setState(56);
 						expression(4);
 						}
 						break;
@@ -624,9 +624,9 @@ public class FhirPathExprParser extends Parser {
 						{
 						_localctx = new OrExpressionContext(new ExpressionContext(_parentctx, _parentState));
 						pushNewRecursionContext(_localctx, _startState, RULE_expression);
-						setState(55);
+						setState(57);
 						if (!(precpred(_ctx, 2))) throw new FailedPredicateException(this, "precpred(_ctx, 2)");
-						setState(56);
+						setState(58);
 						_la = _input.LA(1);
 						if ( !(_la==T__24 || _la==T__25) ) {
 						_errHandler.recoverInline(this);
@@ -636,7 +636,7 @@ public class FhirPathExprParser extends Parser {
 							_errHandler.reportMatch(this);
 							consume();
 						}
-						setState(57);
+						setState(59);
 						expression(3);
 						}
 						break;
@@ -644,11 +644,11 @@ public class FhirPathExprParser extends Parser {
 						{
 						_localctx = new ImpliesExpressionContext(new ExpressionContext(_parentctx, _parentState));
 						pushNewRecursionContext(_localctx, _startState, RULE_expression);
-						setState(58);
-						if (!(precpred(_ctx, 1))) throw new FailedPredicateException(this, "precpred(_ctx, 1)");
-						setState(59);
-						match(T__26);
 						setState(60);
+						if (!(precpred(_ctx, 1))) throw new FailedPredicateException(this, "precpred(_ctx, 1)");
+						setState(61);
+						match(T__26);
+						setState(62);
 						expression(2);
 						}
 						break;
@@ -656,11 +656,11 @@ public class FhirPathExprParser extends Parser {
 						{
 						_localctx = new InvocationExpressionContext(new ExpressionContext(_parentctx, _parentState));
 						pushNewRecursionContext(_localctx, _startState, RULE_expression);
-						setState(61);
-						if (!(precpred(_ctx, 13))) throw new FailedPredicateException(this, "precpred(_ctx, 13)");
-						setState(62);
-						match(T__0);
 						setState(63);
+						if (!(precpred(_ctx, 13))) throw new FailedPredicateException(this, "precpred(_ctx, 13)");
+						setState(64);
+						match(T__0);
+						setState(65);
 						invocation();
 						}
 						break;
@@ -668,13 +668,13 @@ public class FhirPathExprParser extends Parser {
 						{
 						_localctx = new IndexerExpressionContext(new ExpressionContext(_parentctx, _parentState));
 						pushNewRecursionContext(_localctx, _startState, RULE_expression);
-						setState(64);
-						if (!(precpred(_ctx, 12))) throw new FailedPredicateException(this, "precpred(_ctx, 12)");
-						setState(65);
-						match(T__1);
 						setState(66);
-						expression(0);
+						if (!(precpred(_ctx, 12))) throw new FailedPredicateException(this, "precpred(_ctx, 12)");
 						setState(67);
+						match(T__1);
+						setState(68);
+						expression(0);
+						setState(69);
 						match(T__2);
 						}
 						break;
@@ -682,9 +682,9 @@ public class FhirPathExprParser extends Parser {
 						{
 						_localctx = new TypeExpressionContext(new ExpressionContext(_parentctx, _parentState));
 						pushNewRecursionContext(_localctx, _startState, RULE_expression);
-						setState(69);
+						setState(71);
 						if (!(precpred(_ctx, 6))) throw new FailedPredicateException(this, "precpred(_ctx, 6)");
-						setState(70);
+						setState(72);
 						_la = _input.LA(1);
 						if ( !(_la==T__15 || _la==T__16) ) {
 						_errHandler.recoverInline(this);
@@ -694,14 +694,14 @@ public class FhirPathExprParser extends Parser {
 							_errHandler.reportMatch(this);
 							consume();
 						}
-						setState(71);
+						setState(73);
 						typeSpecifier();
 						}
 						break;
 					}
 					} 
 				}
-				setState(76);
+				setState(78);
 				_errHandler.sync(this);
 				_alt = getInterpreter().adaptivePredict(_input,2,_ctx);
 			}
@@ -810,7 +810,7 @@ public class FhirPathExprParser extends Parser {
 		TermContext _localctx = new TermContext(_ctx, getState());
 		enterRule(_localctx, 2, RULE_term);
 		try {
-			setState(84);
+			setState(86);
 			_errHandler.sync(this);
 			switch (_input.LA(1)) {
 			case T__15:
@@ -823,7 +823,7 @@ public class FhirPathExprParser extends Parser {
 				_localctx = new InvocationTermContext(_localctx);
 				enterOuterAlt(_localctx, 1);
 				{
-				setState(77);
+				setState(79);
 				invocation();
 				}
 				break;
@@ -837,7 +837,7 @@ public class FhirPathExprParser extends Parser {
 				_localctx = new LiteralTermContext(_localctx);
 				enterOuterAlt(_localctx, 2);
 				{
-				setState(78);
+				setState(80);
 				literal();
 				}
 				break;
@@ -845,7 +845,7 @@ public class FhirPathExprParser extends Parser {
 				_localctx = new ExternalConstantTermContext(_localctx);
 				enterOuterAlt(_localctx, 3);
 				{
-				setState(79);
+				setState(81);
 				externalConstant();
 				}
 				break;
@@ -853,11 +853,11 @@ public class FhirPathExprParser extends Parser {
 				_localctx = new ParenthesizedTermContext(_localctx);
 				enterOuterAlt(_localctx, 4);
 				{
-				setState(80);
-				match(T__27);
-				setState(81);
-				expression(0);
 				setState(82);
+				match(T__27);
+				setState(83);
+				expression(0);
+				setState(84);
 				match(T__28);
 				}
 				break;
@@ -1012,16 +1012,16 @@ public class FhirPathExprParser extends Parser {
 		enterRule(_localctx, 4, RULE_literal);
 		int _la;
 		try {
-			setState(94);
+			setState(96);
 			_errHandler.sync(this);
 			switch ( getInterpreter().adaptivePredict(_input,4,_ctx) ) {
 			case 1:
 				_localctx = new NullLiteralContext(_localctx);
 				enterOuterAlt(_localctx, 1);
 				{
-				setState(86);
+				setState(88);
 				match(T__29);
-				setState(87);
+				setState(89);
 				match(T__30);
 				}
 				break;
@@ -1029,7 +1029,7 @@ public class FhirPathExprParser extends Parser {
 				_localctx = new BooleanLiteralContext(_localctx);
 				enterOuterAlt(_localctx, 2);
 				{
-				setState(88);
+				setState(90);
 				_la = _input.LA(1);
 				if ( !(_la==T__31 || _la==T__32) ) {
 				_errHandler.recoverInline(this);
@@ -1045,7 +1045,7 @@ public class FhirPathExprParser extends Parser {
 				_localctx = new StringLiteralContext(_localctx);
 				enterOuterAlt(_localctx, 3);
 				{
-				setState(89);
+				setState(91);
 				match(STRING);
 				}
 				break;
@@ -1053,7 +1053,7 @@ public class FhirPathExprParser extends Parser {
 				_localctx = new NumberLiteralContext(_localctx);
 				enterOuterAlt(_localctx, 4);
 				{
-				setState(90);
+				setState(92);
 				match(NUMBER);
 				}
 				break;
@@ -1061,7 +1061,7 @@ public class FhirPathExprParser extends Parser {
 				_localctx = new DateTimeLiteralContext(_localctx);
 				enterOuterAlt(_localctx, 5);
 				{
-				setState(91);
+				setState(93);
 				match(DATETIME);
 				}
 				break;
@@ -1069,7 +1069,7 @@ public class FhirPathExprParser extends Parser {
 				_localctx = new TimeLiteralContext(_localctx);
 				enterOuterAlt(_localctx, 6);
 				{
-				setState(92);
+				setState(94);
 				match(TIME);
 				}
 				break;
@@ -1077,7 +1077,7 @@ public class FhirPathExprParser extends Parser {
 				_localctx = new QuantityLiteralContext(_localctx);
 				enterOuterAlt(_localctx, 7);
 				{
-				setState(93);
+				setState(95);
 				quantity();
 				}
 				break;
@@ -1123,9 +1123,9 @@ public class FhirPathExprParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(96);
+			setState(98);
 			match(T__33);
-			setState(97);
+			setState(99);
 			identifier();
 			}
 		}
@@ -1242,14 +1242,14 @@ public class FhirPathExprParser extends Parser {
 		InvocationContext _localctx = new InvocationContext(_ctx, getState());
 		enterRule(_localctx, 8, RULE_invocation);
 		try {
-			setState(104);
+			setState(106);
 			_errHandler.sync(this);
 			switch ( getInterpreter().adaptivePredict(_input,5,_ctx) ) {
 			case 1:
 				_localctx = new MemberInvocationContext(_localctx);
 				enterOuterAlt(_localctx, 1);
 				{
-				setState(99);
+				setState(101);
 				identifier();
 				}
 				break;
@@ -1257,7 +1257,7 @@ public class FhirPathExprParser extends Parser {
 				_localctx = new FunctionInvocationContext(_localctx);
 				enterOuterAlt(_localctx, 2);
 				{
-				setState(100);
+				setState(102);
 				function();
 				}
 				break;
@@ -1265,7 +1265,7 @@ public class FhirPathExprParser extends Parser {
 				_localctx = new ThisInvocationContext(_localctx);
 				enterOuterAlt(_localctx, 3);
 				{
-				setState(101);
+				setState(103);
 				match(T__34);
 				}
 				break;
@@ -1273,7 +1273,7 @@ public class FhirPathExprParser extends Parser {
 				_localctx = new IndexInvocationContext(_localctx);
 				enterOuterAlt(_localctx, 4);
 				{
-				setState(102);
+				setState(104);
 				match(T__35);
 				}
 				break;
@@ -1281,7 +1281,7 @@ public class FhirPathExprParser extends Parser {
 				_localctx = new TotalInvocationContext(_localctx);
 				enterOuterAlt(_localctx, 5);
 				{
-				setState(103);
+				setState(105);
 				match(T__36);
 				}
 				break;
@@ -1299,8 +1299,8 @@ public class FhirPathExprParser extends Parser {
 	}
 
 	public static class FunctionContext extends ParserRuleContext {
-		public IdentifierContext identifier() {
-			return getRuleContext(IdentifierContext.class,0);
+		public FunctionNameContext functionName() {
+			return getRuleContext(FunctionNameContext.class,0);
 		}
 		public ParamListContext paramList() {
 			return getRuleContext(ParamListContext.class,0);
@@ -1331,22 +1331,86 @@ public class FhirPathExprParser extends Parser {
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(106);
-			identifier();
-			setState(107);
-			match(T__27);
+			setState(108);
+			functionName();
 			setState(109);
+			match(T__27);
+			setState(111);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
 			if ((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__3) | (1L << T__4) | (1L << T__15) | (1L << T__16) | (1L << T__27) | (1L << T__29) | (1L << T__31) | (1L << T__32) | (1L << T__33) | (1L << T__34) | (1L << T__35) | (1L << T__36) | (1L << DATETIME) | (1L << TIME) | (1L << IDENTIFIER) | (1L << QUOTEDIDENTIFIER) | (1L << STRING) | (1L << NUMBER))) != 0)) {
 				{
-				setState(108);
+				setState(110);
 				paramList();
 				}
 			}
 
-			setState(111);
+			setState(113);
 			match(T__28);
+			}
+		}
+		catch (RecognitionException re) {
+			_localctx.exception = re;
+			_errHandler.reportError(this, re);
+			_errHandler.recover(this, re);
+		}
+		finally {
+			exitRule();
+		}
+		return _localctx;
+	}
+
+	public static class FunctionNameContext extends ParserRuleContext {
+		public List<IdentifierContext> identifier() {
+			return getRuleContexts(IdentifierContext.class);
+		}
+		public IdentifierContext identifier(int i) {
+			return getRuleContext(IdentifierContext.class,i);
+		}
+		public FunctionNameContext(ParserRuleContext parent, int invokingState) {
+			super(parent, invokingState);
+		}
+		@Override public int getRuleIndex() { return RULE_functionName; }
+		@Override
+		public void enterRule(ParseTreeListener listener) {
+			if ( listener instanceof FhirPathExprListener ) ((FhirPathExprListener)listener).enterFunctionName(this);
+		}
+		@Override
+		public void exitRule(ParseTreeListener listener) {
+			if ( listener instanceof FhirPathExprListener ) ((FhirPathExprListener)listener).exitFunctionName(this);
+		}
+		@Override
+		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
+			if ( visitor instanceof FhirPathExprVisitor ) return ((FhirPathExprVisitor<? extends T>)visitor).visitFunctionName(this);
+			else return visitor.visitChildren(this);
+		}
+	}
+
+	public final FunctionNameContext functionName() throws RecognitionException {
+		FunctionNameContext _localctx = new FunctionNameContext(_ctx, getState());
+		enterRule(_localctx, 12, RULE_functionName);
+		try {
+			setState(120);
+			_errHandler.sync(this);
+			switch ( getInterpreter().adaptivePredict(_input,7,_ctx) ) {
+			case 1:
+				enterOuterAlt(_localctx, 1);
+				{
+				setState(115);
+				identifier();
+				}
+				break;
+			case 2:
+				enterOuterAlt(_localctx, 2);
+				{
+				setState(116);
+				identifier();
+				setState(117);
+				match(T__37);
+				setState(118);
+				identifier();
+				}
+				break;
 			}
 		}
 		catch (RecognitionException re) {
@@ -1388,26 +1452,26 @@ public class FhirPathExprParser extends Parser {
 
 	public final ParamListContext paramList() throws RecognitionException {
 		ParamListContext _localctx = new ParamListContext(_ctx, getState());
-		enterRule(_localctx, 12, RULE_paramList);
+		enterRule(_localctx, 14, RULE_paramList);
 		int _la;
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(113);
+			setState(122);
 			expression(0);
-			setState(118);
+			setState(127);
 			_errHandler.sync(this);
 			_la = _input.LA(1);
-			while (_la==T__37) {
+			while (_la==T__38) {
 				{
 				{
-				setState(114);
-				match(T__37);
-				setState(115);
+				setState(123);
+				match(T__38);
+				setState(124);
 				expression(0);
 				}
 				}
-				setState(120);
+				setState(129);
 				_errHandler.sync(this);
 				_la = _input.LA(1);
 			}
@@ -1450,18 +1514,18 @@ public class FhirPathExprParser extends Parser {
 
 	public final QuantityContext quantity() throws RecognitionException {
 		QuantityContext _localctx = new QuantityContext(_ctx, getState());
-		enterRule(_localctx, 14, RULE_quantity);
+		enterRule(_localctx, 16, RULE_quantity);
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(121);
+			setState(130);
 			match(NUMBER);
-			setState(123);
+			setState(132);
 			_errHandler.sync(this);
-			switch ( getInterpreter().adaptivePredict(_input,8,_ctx) ) {
+			switch ( getInterpreter().adaptivePredict(_input,9,_ctx) ) {
 			case 1:
 				{
-				setState(122);
+				setState(131);
 				unit();
 				}
 				break;
@@ -1508,12 +1572,11 @@ public class FhirPathExprParser extends Parser {
 
 	public final UnitContext unit() throws RecognitionException {
 		UnitContext _localctx = new UnitContext(_ctx, getState());
-		enterRule(_localctx, 16, RULE_unit);
+		enterRule(_localctx, 18, RULE_unit);
 		try {
-			setState(128);
+			setState(137);
 			_errHandler.sync(this);
 			switch (_input.LA(1)) {
-			case T__38:
 			case T__39:
 			case T__40:
 			case T__41:
@@ -1521,13 +1584,13 @@ public class FhirPathExprParser extends Parser {
 			case T__43:
 			case T__44:
 			case T__45:
+			case T__46:
 				enterOuterAlt(_localctx, 1);
 				{
-				setState(125);
+				setState(134);
 				dateTimePrecision();
 				}
 				break;
-			case T__46:
 			case T__47:
 			case T__48:
 			case T__49:
@@ -1535,16 +1598,17 @@ public class FhirPathExprParser extends Parser {
 			case T__51:
 			case T__52:
 			case T__53:
+			case T__54:
 				enterOuterAlt(_localctx, 2);
 				{
-				setState(126);
+				setState(135);
 				pluralDateTimePrecision();
 				}
 				break;
 			case STRING:
 				enterOuterAlt(_localctx, 3);
 				{
-				setState(127);
+				setState(136);
 				match(STRING);
 				}
 				break;
@@ -1585,14 +1649,14 @@ public class FhirPathExprParser extends Parser {
 
 	public final DateTimePrecisionContext dateTimePrecision() throws RecognitionException {
 		DateTimePrecisionContext _localctx = new DateTimePrecisionContext(_ctx, getState());
-		enterRule(_localctx, 18, RULE_dateTimePrecision);
+		enterRule(_localctx, 20, RULE_dateTimePrecision);
 		int _la;
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(130);
+			setState(139);
 			_la = _input.LA(1);
-			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__38) | (1L << T__39) | (1L << T__40) | (1L << T__41) | (1L << T__42) | (1L << T__43) | (1L << T__44) | (1L << T__45))) != 0)) ) {
+			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__39) | (1L << T__40) | (1L << T__41) | (1L << T__42) | (1L << T__43) | (1L << T__44) | (1L << T__45) | (1L << T__46))) != 0)) ) {
 			_errHandler.recoverInline(this);
 			}
 			else {
@@ -1635,14 +1699,14 @@ public class FhirPathExprParser extends Parser {
 
 	public final PluralDateTimePrecisionContext pluralDateTimePrecision() throws RecognitionException {
 		PluralDateTimePrecisionContext _localctx = new PluralDateTimePrecisionContext(_ctx, getState());
-		enterRule(_localctx, 20, RULE_pluralDateTimePrecision);
+		enterRule(_localctx, 22, RULE_pluralDateTimePrecision);
 		int _la;
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(132);
+			setState(141);
 			_la = _input.LA(1);
-			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__46) | (1L << T__47) | (1L << T__48) | (1L << T__49) | (1L << T__50) | (1L << T__51) | (1L << T__52) | (1L << T__53))) != 0)) ) {
+			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__47) | (1L << T__48) | (1L << T__49) | (1L << T__50) | (1L << T__51) | (1L << T__52) | (1L << T__53) | (1L << T__54))) != 0)) ) {
 			_errHandler.recoverInline(this);
 			}
 			else {
@@ -1688,11 +1752,11 @@ public class FhirPathExprParser extends Parser {
 
 	public final TypeSpecifierContext typeSpecifier() throws RecognitionException {
 		TypeSpecifierContext _localctx = new TypeSpecifierContext(_ctx, getState());
-		enterRule(_localctx, 22, RULE_typeSpecifier);
+		enterRule(_localctx, 24, RULE_typeSpecifier);
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(134);
+			setState(143);
 			qualifiedIdentifier();
 			}
 		}
@@ -1735,30 +1799,30 @@ public class FhirPathExprParser extends Parser {
 
 	public final QualifiedIdentifierContext qualifiedIdentifier() throws RecognitionException {
 		QualifiedIdentifierContext _localctx = new QualifiedIdentifierContext(_ctx, getState());
-		enterRule(_localctx, 24, RULE_qualifiedIdentifier);
+		enterRule(_localctx, 26, RULE_qualifiedIdentifier);
 		try {
 			int _alt;
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(136);
+			setState(145);
 			identifier();
-			setState(141);
+			setState(150);
 			_errHandler.sync(this);
-			_alt = getInterpreter().adaptivePredict(_input,10,_ctx);
-			while ( _alt!=2 && _alt!=org.antlr.v4.runtime.atn.ATN.INVALID_ALT_NUMBER ) {
+			_alt = getInterpreter().adaptivePredict(_input,11,_ctx);
+			while ( _alt!=2 && _alt!= ATN.INVALID_ALT_NUMBER ) {
 				if ( _alt==1 ) {
 					{
 					{
-					setState(137);
+					setState(146);
 					match(T__0);
-					setState(138);
+					setState(147);
 					identifier();
 					}
 					} 
 				}
-				setState(143);
+				setState(152);
 				_errHandler.sync(this);
-				_alt = getInterpreter().adaptivePredict(_input,10,_ctx);
+				_alt = getInterpreter().adaptivePredict(_input,11,_ctx);
 			}
 			}
 		}
@@ -1797,12 +1861,12 @@ public class FhirPathExprParser extends Parser {
 
 	public final IdentifierContext identifier() throws RecognitionException {
 		IdentifierContext _localctx = new IdentifierContext(_ctx, getState());
-		enterRule(_localctx, 26, RULE_identifier);
+		enterRule(_localctx, 28, RULE_identifier);
 		int _la;
 		try {
 			enterOuterAlt(_localctx, 1);
 			{
-			setState(144);
+			setState(153);
 			_la = _input.LA(1);
 			if ( !((((_la) & ~0x3f) == 0 && ((1L << _la) & ((1L << T__15) | (1L << T__16) | (1L << IDENTIFIER) | (1L << QUOTEDIDENTIFIER))) != 0)) ) {
 			_errHandler.recoverInline(this);
@@ -1863,48 +1927,52 @@ public class FhirPathExprParser extends Parser {
 	}
 
 	public static final String _serializedATN =
-		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3A\u0095\4\2\t\2\4"+
+		"\3\u608b\ua72a\u8133\ub9ed\u417c\u3be7\u7786\u5964\3B\u009e\4\2\t\2\4"+
 		"\3\t\3\4\4\t\4\4\5\t\5\4\6\t\6\4\7\t\7\4\b\t\b\4\t\t\t\4\n\t\n\4\13\t"+
-		"\13\4\f\t\f\4\r\t\r\4\16\t\16\4\17\t\17\3\2\3\2\3\2\3\2\5\2#\n\2\3\2\3"+
-		"\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2"+
+		"\13\4\f\t\f\4\r\t\r\4\16\t\16\4\17\t\17\4\20\t\20\3\2\3\2\3\2\3\2\5\2"+
+		"%\n\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2"+
 		"\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3\2\3"+
-		"\2\3\2\7\2K\n\2\f\2\16\2N\13\2\3\3\3\3\3\3\3\3\3\3\3\3\3\3\5\3W\n\3\3"+
-		"\4\3\4\3\4\3\4\3\4\3\4\3\4\3\4\5\4a\n\4\3\5\3\5\3\5\3\6\3\6\3\6\3\6\3"+
-		"\6\5\6k\n\6\3\7\3\7\3\7\5\7p\n\7\3\7\3\7\3\b\3\b\3\b\7\bw\n\b\f\b\16\b"+
-		"z\13\b\3\t\3\t\5\t~\n\t\3\n\3\n\3\n\5\n\u0083\n\n\3\13\3\13\3\f\3\f\3"+
-		"\r\3\r\3\16\3\16\3\16\7\16\u008e\n\16\f\16\16\16\u0091\13\16\3\17\3\17"+
-		"\3\17\2\3\2\20\2\4\6\b\n\f\16\20\22\24\26\30\32\34\2\16\3\2\6\7\3\2\b"+
-		"\13\4\2\6\7\f\f\3\2\16\21\3\2\24\27\3\2\30\31\3\2\33\34\3\2\22\23\3\2"+
-		"\"#\3\2)\60\3\2\618\4\2\22\23;<\2\u00a6\2\"\3\2\2\2\4V\3\2\2\2\6`\3\2"+
-		"\2\2\bb\3\2\2\2\nj\3\2\2\2\fl\3\2\2\2\16s\3\2\2\2\20{\3\2\2\2\22\u0082"+
-		"\3\2\2\2\24\u0084\3\2\2\2\26\u0086\3\2\2\2\30\u0088\3\2\2\2\32\u008a\3"+
-		"\2\2\2\34\u0092\3\2\2\2\36\37\b\2\1\2\37#\5\4\3\2 !\t\2\2\2!#\5\2\2\r"+
-		"\"\36\3\2\2\2\" \3\2\2\2#L\3\2\2\2$%\f\f\2\2%&\t\3\2\2&K\5\2\2\r\'(\f"+
-		"\13\2\2()\t\4\2\2)K\5\2\2\f*+\f\n\2\2+,\7\r\2\2,K\5\2\2\13-.\f\t\2\2."+
-		"/\t\5\2\2/K\5\2\2\n\60\61\f\7\2\2\61\62\t\6\2\2\62K\5\2\2\b\63\64\f\6"+
-		"\2\2\64\65\t\7\2\2\65K\5\2\2\7\66\67\f\5\2\2\678\7\32\2\28K\5\2\2\69:"+
-		"\f\4\2\2:;\t\b\2\2;K\5\2\2\5<=\f\3\2\2=>\7\35\2\2>K\5\2\2\4?@\f\17\2\2"+
-		"@A\7\3\2\2AK\5\n\6\2BC\f\16\2\2CD\7\4\2\2DE\5\2\2\2EF\7\5\2\2FK\3\2\2"+
-		"\2GH\f\b\2\2HI\t\t\2\2IK\5\30\r\2J$\3\2\2\2J\'\3\2\2\2J*\3\2\2\2J-\3\2"+
-		"\2\2J\60\3\2\2\2J\63\3\2\2\2J\66\3\2\2\2J9\3\2\2\2J<\3\2\2\2J?\3\2\2\2"+
-		"JB\3\2\2\2JG\3\2\2\2KN\3\2\2\2LJ\3\2\2\2LM\3\2\2\2M\3\3\2\2\2NL\3\2\2"+
-		"\2OW\5\n\6\2PW\5\6\4\2QW\5\b\5\2RS\7\36\2\2ST\5\2\2\2TU\7\37\2\2UW\3\2"+
-		"\2\2VO\3\2\2\2VP\3\2\2\2VQ\3\2\2\2VR\3\2\2\2W\5\3\2\2\2XY\7 \2\2Ya\7!"+
-		"\2\2Za\t\n\2\2[a\7=\2\2\\a\7>\2\2]a\79\2\2^a\7:\2\2_a\5\20\t\2`X\3\2\2"+
-		"\2`Z\3\2\2\2`[\3\2\2\2`\\\3\2\2\2`]\3\2\2\2`^\3\2\2\2`_\3\2\2\2a\7\3\2"+
-		"\2\2bc\7$\2\2cd\5\34\17\2d\t\3\2\2\2ek\5\34\17\2fk\5\f\7\2gk\7%\2\2hk"+
-		"\7&\2\2ik\7\'\2\2je\3\2\2\2jf\3\2\2\2jg\3\2\2\2jh\3\2\2\2ji\3\2\2\2k\13"+
-		"\3\2\2\2lm\5\34\17\2mo\7\36\2\2np\5\16\b\2on\3\2\2\2op\3\2\2\2pq\3\2\2"+
-		"\2qr\7\37\2\2r\r\3\2\2\2sx\5\2\2\2tu\7(\2\2uw\5\2\2\2vt\3\2\2\2wz\3\2"+
-		"\2\2xv\3\2\2\2xy\3\2\2\2y\17\3\2\2\2zx\3\2\2\2{}\7>\2\2|~\5\22\n\2}|\3"+
-		"\2\2\2}~\3\2\2\2~\21\3\2\2\2\177\u0083\5\24\13\2\u0080\u0083\5\26\f\2"+
-		"\u0081\u0083\7=\2\2\u0082\177\3\2\2\2\u0082\u0080\3\2\2\2\u0082\u0081"+
-		"\3\2\2\2\u0083\23\3\2\2\2\u0084\u0085\t\13\2\2\u0085\25\3\2\2\2\u0086"+
-		"\u0087\t\f\2\2\u0087\27\3\2\2\2\u0088\u0089\5\32\16\2\u0089\31\3\2\2\2"+
-		"\u008a\u008f\5\34\17\2\u008b\u008c\7\3\2\2\u008c\u008e\5\34\17\2\u008d"+
-		"\u008b\3\2\2\2\u008e\u0091\3\2\2\2\u008f\u008d\3\2\2\2\u008f\u0090\3\2"+
-		"\2\2\u0090\33\3\2\2\2\u0091\u008f\3\2\2\2\u0092\u0093\t\r\2\2\u0093\35"+
-		"\3\2\2\2\r\"JLV`jox}\u0082\u008f";
+		"\2\3\2\3\2\3\2\3\2\7\2M\n\2\f\2\16\2P\13\2\3\3\3\3\3\3\3\3\3\3\3\3\3\3"+
+		"\5\3Y\n\3\3\4\3\4\3\4\3\4\3\4\3\4\3\4\3\4\5\4c\n\4\3\5\3\5\3\5\3\6\3\6"+
+		"\3\6\3\6\3\6\5\6m\n\6\3\7\3\7\3\7\5\7r\n\7\3\7\3\7\3\b\3\b\3\b\3\b\3\b"+
+		"\5\b{\n\b\3\t\3\t\3\t\7\t\u0080\n\t\f\t\16\t\u0083\13\t\3\n\3\n\5\n\u0087"+
+		"\n\n\3\13\3\13\3\13\5\13\u008c\n\13\3\f\3\f\3\r\3\r\3\16\3\16\3\17\3\17"+
+		"\3\17\7\17\u0097\n\17\f\17\16\17\u009a\13\17\3\20\3\20\3\20\2\3\2\21\2"+
+		"\4\6\b\n\f\16\20\22\24\26\30\32\34\36\2\16\3\2\6\7\3\2\b\13\4\2\6\7\f"+
+		"\f\3\2\16\21\3\2\24\27\3\2\30\31\3\2\33\34\3\2\22\23\3\2\"#\3\2*\61\3"+
+		"\2\629\4\2\22\23<=\2\u00af\2$\3\2\2\2\4X\3\2\2\2\6b\3\2\2\2\bd\3\2\2\2"+
+		"\nl\3\2\2\2\fn\3\2\2\2\16z\3\2\2\2\20|\3\2\2\2\22\u0084\3\2\2\2\24\u008b"+
+		"\3\2\2\2\26\u008d\3\2\2\2\30\u008f\3\2\2\2\32\u0091\3\2\2\2\34\u0093\3"+
+		"\2\2\2\36\u009b\3\2\2\2 !\b\2\1\2!%\5\4\3\2\"#\t\2\2\2#%\5\2\2\r$ \3\2"+
+		"\2\2$\"\3\2\2\2%N\3\2\2\2&\'\f\f\2\2\'(\t\3\2\2(M\5\2\2\r)*\f\13\2\2*"+
+		"+\t\4\2\2+M\5\2\2\f,-\f\n\2\2-.\7\r\2\2.M\5\2\2\13/\60\f\t\2\2\60\61\t"+
+		"\5\2\2\61M\5\2\2\n\62\63\f\7\2\2\63\64\t\6\2\2\64M\5\2\2\b\65\66\f\6\2"+
+		"\2\66\67\t\7\2\2\67M\5\2\2\789\f\5\2\29:\7\32\2\2:M\5\2\2\6;<\f\4\2\2"+
+		"<=\t\b\2\2=M\5\2\2\5>?\f\3\2\2?@\7\35\2\2@M\5\2\2\4AB\f\17\2\2BC\7\3\2"+
+		"\2CM\5\n\6\2DE\f\16\2\2EF\7\4\2\2FG\5\2\2\2GH\7\5\2\2HM\3\2\2\2IJ\f\b"+
+		"\2\2JK\t\t\2\2KM\5\32\16\2L&\3\2\2\2L)\3\2\2\2L,\3\2\2\2L/\3\2\2\2L\62"+
+		"\3\2\2\2L\65\3\2\2\2L8\3\2\2\2L;\3\2\2\2L>\3\2\2\2LA\3\2\2\2LD\3\2\2\2"+
+		"LI\3\2\2\2MP\3\2\2\2NL\3\2\2\2NO\3\2\2\2O\3\3\2\2\2PN\3\2\2\2QY\5\n\6"+
+		"\2RY\5\6\4\2SY\5\b\5\2TU\7\36\2\2UV\5\2\2\2VW\7\37\2\2WY\3\2\2\2XQ\3\2"+
+		"\2\2XR\3\2\2\2XS\3\2\2\2XT\3\2\2\2Y\5\3\2\2\2Z[\7 \2\2[c\7!\2\2\\c\t\n"+
+		"\2\2]c\7>\2\2^c\7?\2\2_c\7:\2\2`c\7;\2\2ac\5\22\n\2bZ\3\2\2\2b\\\3\2\2"+
+		"\2b]\3\2\2\2b^\3\2\2\2b_\3\2\2\2b`\3\2\2\2ba\3\2\2\2c\7\3\2\2\2de\7$\2"+
+		"\2ef\5\36\20\2f\t\3\2\2\2gm\5\36\20\2hm\5\f\7\2im\7%\2\2jm\7&\2\2km\7"+
+		"\'\2\2lg\3\2\2\2lh\3\2\2\2li\3\2\2\2lj\3\2\2\2lk\3\2\2\2m\13\3\2\2\2n"+
+		"o\5\16\b\2oq\7\36\2\2pr\5\20\t\2qp\3\2\2\2qr\3\2\2\2rs\3\2\2\2st\7\37"+
+		"\2\2t\r\3\2\2\2u{\5\36\20\2vw\5\36\20\2wx\7(\2\2xy\5\36\20\2y{\3\2\2\2"+
+		"zu\3\2\2\2zv\3\2\2\2{\17\3\2\2\2|\u0081\5\2\2\2}~\7)\2\2~\u0080\5\2\2"+
+		"\2\177}\3\2\2\2\u0080\u0083\3\2\2\2\u0081\177\3\2\2\2\u0081\u0082\3\2"+
+		"\2\2\u0082\21\3\2\2\2\u0083\u0081\3\2\2\2\u0084\u0086\7?\2\2\u0085\u0087"+
+		"\5\24\13\2\u0086\u0085\3\2\2\2\u0086\u0087\3\2\2\2\u0087\23\3\2\2\2\u0088"+
+		"\u008c\5\26\f\2\u0089\u008c\5\30\r\2\u008a\u008c\7>\2\2\u008b\u0088\3"+
+		"\2\2\2\u008b\u0089\3\2\2\2\u008b\u008a\3\2\2\2\u008c\25\3\2\2\2\u008d"+
+		"\u008e\t\13\2\2\u008e\27\3\2\2\2\u008f\u0090\t\f\2\2\u0090\31\3\2\2\2"+
+		"\u0091\u0092\5\34\17\2\u0092\33\3\2\2\2\u0093\u0098\5\36\20\2\u0094\u0095"+
+		"\7\3\2\2\u0095\u0097\5\36\20\2\u0096\u0094\3\2\2\2\u0097\u009a\3\2\2\2"+
+		"\u0098\u0096\3\2\2\2\u0098\u0099\3\2\2\2\u0099\35\3\2\2\2\u009a\u0098"+
+		"\3\2\2\2\u009b\u009c\t\r\2\2\u009c\37\3\2\2\2\16$LNXblqz\u0081\u0086\u008b"+
+		"\u0098";
 	public static final ATN _ATN =
 		new ATNDeserializer().deserialize(_serializedATN.toCharArray());
 	static {

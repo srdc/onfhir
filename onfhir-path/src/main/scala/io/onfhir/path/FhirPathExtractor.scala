@@ -2,6 +2,8 @@ package io.onfhir.path
 
 import io.onfhir.path.grammar.{FhirPathExprBaseVisitor, FhirPathExprParser}
 import io.onfhir.path.grammar.FhirPathExprParser.{AndExpressionContext, BooleanLiteralContext, EqualityExpressionContext, ExpressionContext, ExternalConstantTermContext, FunctionContext, FunctionInvocationContext, IdentifierContext, InvocationContext, InvocationExpressionContext, InvocationTermContext, LiteralTermContext, MemberInvocationContext, NumberLiteralContext, ParenthesizedTermContext, StringLiteralContext, TermExpressionContext, ThisInvocationContext, TypeExpressionContext}
+import io.onfhir.path.util.FhirPathUtil
+
 import scala.jdk.CollectionConverters._
 
 /**
@@ -44,7 +46,9 @@ class FhirPathExtractor(latestPath:Seq[(String, Seq[(String, String)])] = Nil) e
       case fn:FunctionInvocationContext =>
         val path = new FhirPathExtractor(latestPath).visit(ctx.expression())
 
-        val fname = fn.function().identifier().getText
+        val (fprefix, fname) = FhirPathUtil.getFunctionName(fn.function())
+        if(fprefix.isDefined)
+          throw new FhirPathException("Invalid FHIR Path path expression ")
         fname match {
           case "where" =>
             val params = fn.function().paramList().expression()
@@ -143,7 +147,8 @@ class FhirPathExtractor(latestPath:Seq[(String, Seq[(String, String)])] = Nil) e
       case t:TermExpressionContext => t.term() match {
         case i:InvocationTermContext => i.invocation() match {
           case f:FunctionInvocationContext =>
-            if(f.function().identifier().getText != "resolve" || (f.function().paramList() != null && f.function().paramList().expression().size() > 0))
+            val (fprefix, fname) = FhirPathUtil.getFunctionName(f.function())
+            if((fname != "resolve" || fprefix.isDefined) || (f.function().paramList() != null && f.function().paramList().expression().size() > 0))
               throw new FhirPathException("Invalid FHIR Path path expression!")
           case _ => throw new FhirPathException("Invalid FHIR Path path expression!")
         }

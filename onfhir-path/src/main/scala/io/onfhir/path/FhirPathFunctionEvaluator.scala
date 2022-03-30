@@ -1,43 +1,63 @@
 package io.onfhir.path
 
-import java.lang.reflect.InvocationTargetException
 import java.time.temporal.{ChronoUnit, Temporal}
 import java.time.{LocalDate, Period, ZonedDateTime}
-import io.onfhir.api.Resource
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
 import org.apache.commons.text.StringEscapeUtils
 import org.json4s.JsonAST.JObject
 
 import scala.concurrent.Await
-import scala.concurrent.duration.{DurationInt, FiniteDuration}
+import scala.concurrent.duration.DurationInt
 import scala.language.postfixOps
 import scala.util.Try
 
-class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPathResult]) {
+/**
+ * Evaluator for FHIR Path functions
+ * @param context FhirPathContext
+ * @param current Current evaluated FhirPath result (the function will execute on this results)
+ */
+class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPathResult]) extends AbstractFhirPathFunctionLibrary {
 
   /**
     *
-    * @param fname
-    * @param params
+    * @param fprefix    Function library prefix if external library (not an original FHIR Path function)
+    * @param fname      Function name
+    * @param params     Supplied parameters
     * @return
     */
-  def callFunction(fname:String, params:Seq[ExpressionContext]):Seq[FhirPathResult] = {
-    try {
-      val functionName = if(fname == "toString") "_toString" else fname
-
-      val method = classOf[FhirPathFunctionEvaluator].getMethod(functionName, params.map(_ => classOf[ExpressionContext]): _*)
-      val result = method.invoke(this, params:_*)
-      val fhirPathResult = result.asInstanceOf[Seq[FhirPathResult]]
-      fhirPathResult
-    } catch {
-      case n:NoSuchMethodException =>
-        throw new FhirPathException(s"Invalid function call, function $fname does not exist or take ${params.length} arguments !!!")
-      case ite:InvocationTargetException =>
-        ite.getTargetException match {
-          case fpe:FhirPathException => throw fpe
-          case e:Throwable => throw FhirPathException.apply(s"Invalid function call $fname!", e)
+  def callFunction(fprefix:Option[String], fname:String, params:Seq[ExpressionContext]):Seq[FhirPathResult] = {
+    fprefix match {
+      //It is an original FHIR Path function or calling it without specificying a prefix
+      case None =>
+        val functionName = if(fname == "toString") "_toString" else fname
+        if(getFunctionSignatures().contains(functionName -> params.length))
+          callFhirPathFunction(functionName, params)
+        else {
+          context
+            .functionLibraries
+            .values
+            .find(_.getLibrary(context, current).getFunctionSignatures().contains(fname -> params.length)) match {
+              case None =>  throw new FhirPathException(s"Invalid FHIR Path function call, function $fname does not exist or take ${params.length} arguments !!!")
+              case Some(fnlibFactory) =>
+                fnlibFactory
+                  .getLibrary(context, current)
+                  .asInstanceOf[AbstractFhirPathFunctionLibrary]
+                  .callFhirPathFunction(fname, params)
+          }
         }
+      //Otherwise it is a external function
+      case Some(prefix) =>
+        context
+          .functionLibraries
+          .get(prefix) match {
+            case None => throw new FhirPathException(s"Invalid function call, there is no function library registered with prefix $prefix !!!")
+            case Some(fnlibFactory) =>
+              fnlibFactory
+                .getLibrary(context, current)
+                .asInstanceOf[AbstractFhirPathFunctionLibrary]
+                .callFhirPathFunction(fname, params)
+          }
     }
   }
 
@@ -493,287 +513,4 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   def trace(nameExpr : ExpressionContext, othExpr:ExpressionContext):Seq[FhirPathResult] = {
     current
   }
-
-
-
-
-  /**
-   * Extra aggregation functions
-   */
-
-  /**
-   * Sum of the input numeric values, 0 if input list is empty
-   * @return
-   */
-  def sum():Seq[FhirPathResult] = {
-    if(current.exists(!_.isInstanceOf[FhirPathNumber]))
-      throw new FhirPathException(s"Invalid function call 'sum', one of the input values is not a numeric value!")
-
-    current match {
-      case Nil => Seq(FhirPathNumber(0))
-      case oth =>
-        Seq(
-          oth
-          .map(_.asInstanceOf[FhirPathNumber])
-          .reduce((n1, n2) => n1 + n2)
-        )
-    }
-  }
-
-  /**
-   * Sum of the values after executing the expression on given input values
-   * @param expr Expression to calculate the sum
-   * @return
-   */
-  def sum(expr:ExpressionContext):Seq[FhirPathResult] = {
-    val results = current.map(c => {
-      val result = new FhirPathExpressionEvaluator(context, Seq(c)).visit(expr)
-      if(result.length > 1 || result.headOption.exists(!_.isInstanceOf[FhirPathNumber]))
-        throw new FhirPathException(s"Invalid function call 'sum', the expression ${expr.getText} does not return a single numeric value or Nil!")
-      result.headOption.map(_.asInstanceOf[FhirPathNumber]).getOrElse(FhirPathNumber(0))
-    })
-
-    if(results.isEmpty)
-      Seq(FhirPathNumber(0))
-    else
-      Seq(results.reduce((r1, r2) => r1 + r2))
-  }
-
-  /**
-   * Getting the average of given expression that returns a numeric value
-   * @param expr
-   * @return
-   */
-  def avg(expr:ExpressionContext):Seq[FhirPathResult] = {
-    if(current.isEmpty)
-      Nil
-    else
-      Seq(sum(expr).head.asInstanceOf[FhirPathNumber] / FhirPathNumber(current.length))
-  }
-
-  /**
-   * Average of the input numeric values
-   * @return
-   */
-  def avg():Seq[FhirPathResult] = {
-    if(current.exists(!_.isInstanceOf[FhirPathNumber]))
-      throw new FhirPathException(s"Invalid function call 'avg' on non numeric content!")
-    if(current.isEmpty)
-      Nil
-    else
-      Seq(current
-        .map(_.asInstanceOf[FhirPathNumber])
-        .reduce((n1, n2) => n1 + n2) / FhirPathNumber(current.length))
-  }
-
-  /**
-   * Get the minimum of the input comparable values (numeric, dateTime
-   * @return
-   */
-  def min():Seq[FhirPathResult] = {
-    if(current.exists(c => c.isInstanceOf[FhirPathComplex] || c.isInstanceOf[FhirPathBoolean]))
-      throw new FhirPathException(s"Invalid function call 'min' on non comparable values!")
-    if(current.map(_.getClass.getName).toSet.size > 1)
-      throw new FhirPathException(s"Invalid function call 'min', all compared values should be in same type!")
-
-
-    if(current.isEmpty)
-      Nil
-    else {
-      type T = FhirPathResult with Ordered[FhirPathResult]
-      Seq(current.map(_.asInstanceOf[T]).reduce((r1,r2) => if(r1<r2) r1 else r2))
-    }
-  }
-
-  /**
-   * Getting the minimum of given expression that returns a comparable value
-   * @param expr  Expression to calculate
-   * @return
-   */
-  def min(expr:ExpressionContext):Seq[FhirPathResult] = {
-    val results =
-      current
-        .flatMap(c => {
-          val result = new FhirPathExpressionEvaluator(context, Seq(c)).visit(expr)
-          if (result.length > 1)
-            throw new FhirPathException(s"Invalid function call 'min', the expression ${expr.getText} does not return a single value or Nil!")
-          result.headOption
-        })
-
-    if(results.isEmpty)
-      Nil
-    else {
-      type T = FhirPathResult with Ordered[FhirPathResult]
-      Seq(results.map(_.asInstanceOf[T]).reduce((r1,r2) => if(r1<r2) r1 else r2))
-    }
-  }
-
-  /**
-   * Getting the maximum of given expression that returns a comparable value
-   * @param expr  Expression to calculate
-   * @return
-   */
-  def max(expr:ExpressionContext):Seq[FhirPathResult] = {
-    val results = current
-      .flatMap(c => {
-        val result = new FhirPathExpressionEvaluator(context, Seq(c)).visit(expr)
-        if (result.length > 1)
-          throw new FhirPathException(s"Invalid function call 'min', the expression ${expr.getText} does not return a single value or Nil!")
-        result.headOption
-      })
-
-    if(results.isEmpty)
-      Nil
-    else {
-      type T = FhirPathResult with Ordered[FhirPathResult]
-      Seq(results.map(_.asInstanceOf[T]).reduce((r1,r2) => if(r1>r2) r1 else r2))
-    }
-  }
-
-  /**
-   * Getting the maximum of given input values
-   * @return
-   */
-  def max():Seq[FhirPathResult] = {
-    if(current.exists(c => c.isInstanceOf[FhirPathComplex] || c.isInstanceOf[FhirPathBoolean]))
-      throw new FhirPathException(s"Invalid function call 'max' on non comparable values!")
-    if(current.map(_.getClass.getName).toSet.size > 1)
-      throw new FhirPathException(s"Invalid function call 'max', all compared values should be in same type!")
-
-    if(current.isEmpty)
-      Nil
-    else {
-      type T = FhirPathResult with Ordered[FhirPathResult]
-      Seq(current.map(_.asInstanceOf[T]).reduce((r1,r2) => if(r1>r2) r1 else r2))
-    }
-  }
-
-  def groupBy(groupByExpr:ExpressionContext, aggregateExpr:ExpressionContext):Seq[FhirPathResult] = {
-    if(!current.forall(_.isInstanceOf[FhirPathComplex]))
-      throw new FhirPathException("Invalid function call 'groupBy' on current value! The data type for current value should be complex object!")
-    //Evaluate group by expression to calculate bucket keys
-    val buckets = current.map(c => {
-      val bucketKeyResults = new FhirPathExpressionEvaluator(context, Seq(c)).visit(groupByExpr)
-      val bucketKey = FhirPathValueTransformer.serializeToJson(bucketKeyResults)
-      bucketKey -> c
-    })
-
-    buckets
-      .groupMap(_._1)(_._2)
-      .map(bv => {
-        //Evaluate aggregation for each group
-        val aggValues = new FhirPathExpressionEvaluator(context, bv._2).visit(aggregateExpr)
-        if(aggValues.length != 1 || aggValues.exists(!_.isInstanceOf[FhirPathNumber]))
-          throw new FhirPathException(s"Invalid function call 'groupBy' on current value! The aggregation expression does not return single number for bucket ${bv._1}!")
-
-        val aggValue = aggValues.head.toJson
-        FhirPathComplex(JObject("bucket" -> bv._1, "agg" -> aggValue))
-      }).toSeq
-  }
-
-  /**
-   * Get a period between the FHIR date time given in current and  FHIR date time given in first expression
-   * @param toDate Given date expression
-   * @param period Period requested to calculate; either 'years','months','weeks','days'
-   * @return
-   */
-  def getPeriod(fromDate:ExpressionContext, toDate:ExpressionContext, period:ExpressionContext):Seq[FhirPathResult] = {
-    val fdate:Option[Temporal] = new FhirPathExpressionEvaluator(context, current).visit(fromDate) match {
-      case Seq(FhirPathDateTime(dt)) => Some(dt)
-      case Nil => None
-      case _ => throw new FhirPathException(s"Invalid function call 'getPeriod', second expression ${fromDate.getText} does not evaluate to a single FHIR date time!")
-    }
-
-    val tdate:Option[Temporal] = new FhirPathExpressionEvaluator(context, current).visit(toDate) match {
-      case Seq(FhirPathDateTime(dt)) => Some(dt)
-      case Nil => None
-      case _ => throw new FhirPathException(s"Invalid function call 'getPeriod', second expression ${toDate.getText} does not evaluate to a single FHIR date time!")
-    }
-
-    if(fdate.isEmpty || tdate.isEmpty)
-      Seq(FhirPathNumber(0))
-    else {
-      val chronoPeriod =
-        new FhirPathExpressionEvaluator(context, current).visit(period) match {
-          case Seq(FhirPathString(p)) =>
-            p match {
-              case "year" | "years" => ChronoUnit.YEARS
-              case "month" | "months" => ChronoUnit.MONTHS
-              case "week" | "weeks" => ChronoUnit.WEEKS
-              case "day" | "days" => ChronoUnit.DAYS
-              case _ => throw new FhirPathException(s"Invalid function call 'getPeriod', the period expression ${period.getText} does not evaluate to a valid (valid values: 'years', 'months', 'weeks', 'days') time-valued quantity !")
-            }
-          case _ =>
-            throw new FhirPathException(s"Invalid function call 'getPeriod', the period expression ${period.getText} does not evaluate to a valid (valid values:  'years', 'months', 'weeks', 'days') time-valued quantity !")
-        }
-
-      try {
-        Seq(FhirPathNumber(fdate.get.until(tdate.get, chronoPeriod)))
-      } catch {
-        case e: Throwable => throw FhirPathException.apply("Invalid function call 'getPeriod', both date time instances should be either with zone or not!", e)
-      }
-    }
-  }
-
-  /**
-   * For FHIR coding elements, filter the ones that match the given coding list as FHIR code query
-   * @param codingList  Expression that evaluates to Seq[FhirPathString] in FHIR token query format [system]|[code]
-   * @return
-   */
-  def isCodingIn(codingList:ExpressionContext):Seq[FhirPathResult] = {
-    val systemAndCodes:Seq[(Option[String], Option[String])] = new FhirPathExpressionEvaluator(context, current).visit(codingList) match {
-      case s:Seq[_] if s.forall(i =>i.isInstanceOf[FhirPathString]) =>
-        s
-          .map(_.asInstanceOf[FhirPathString])
-          .map(i =>
-            try {
-              FHIRUtil.parseTokenValue(i.s)
-            } catch {
-              case t:Throwable => throw new FhirPathException(s"Invalid function call 'filterCodings', first expression ${codingList.getText} does not evaluate to sequence of FHIR Path Strings in FHIR token query format!", Some(t))
-            }
-          )
-      case _ => throw new FhirPathException(s"Invalid function call 'filterCodings', first expression ${codingList.getText} does not evaluate to sequence of FHIR Path Strings!")
-    }
-
-    val codingMatch =
-      current
-      .filter(_.isInstanceOf[FhirPathComplex])
-      .map(_.asInstanceOf[FhirPathComplex])
-      .exists(coding =>
-        systemAndCodes
-          .exists {
-            // |code query
-            case (Some(""), Some(c)) =>
-              FHIRUtil.extractValueOption[String](coding.json, "system").isEmpty &&
-                FHIRUtil.extractValueOption[String](coding.json, "code").contains(c)
-            // system|code
-            case (Some(s), Some(c)) =>
-              FHIRUtil.extractValueOption[String](coding.json, "system").contains(s) &&
-                FHIRUtil.extractValueOption[String](coding.json, "code").contains(c)
-            // code
-            case (None, Some(c)) =>
-              FHIRUtil.extractValueOption[String](coding.json, "code").contains(c)
-            // system|
-            case (Some(s), None) =>
-              FHIRUtil.extractValueOption[String](coding.json, "system").contains(s)
-            case _ =>
-              throw new FhirPathException("Invalid given system codes pairings!")
-          }
-      )
-
-    Seq(FhirPathBoolean(codingMatch))
-  }
-
-  /**
-   * If the current expression returns Nil, then evaluates the else expression from start, otherwise return current
-   */
-  def orElse(elseExpr:ExpressionContext):Seq[FhirPathResult] = {
-    current match {
-      case Nil =>
-        val elsePart = new FhirPathExpressionEvaluator(context, context._this).visit(elseExpr)
-        elsePart
-      case oth => oth
-    }
-  }
-
 }
