@@ -407,4 +407,6 @@ object FhirPathEvaluator {
   def apply(referenceResolver: IReferenceResolver, environmentVariables:Map[String, JValue]) = new FhirPathEvaluator(Some(referenceResolver), environmentVariables)
 
   def apply(environmentVariables:Map[String, JValue]): FhirPathEvaluator = new FhirPathEvaluator(None, environmentVariables)
+
+  def apply(environmentVariables:Map[String, JValue], functionLibraries:Map[String, IFhirPathFunctionLibraryFactory]):FhirPathEvaluator = new FhirPathEvaluator(None, environmentVariables, functionLibraries)
 }
