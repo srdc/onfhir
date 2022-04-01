@@ -605,9 +605,9 @@ class FhirPathEvaluatorTest extends Specification {
       result mustEqual true
     }
 
-    "evaluate onfhir time utility functions" in {
+    "evaluate onfhir utility functions" in {
       val evaluator = FhirPathEvaluator().withDefaultFunctionLibraries()
-      var result = evaluator.evaluateNumerical("effectivePeriod.tutl:getPeriod(start, @2020-09-07T10:00:00Z, 'years')", observation).head.toLong
+      var result = evaluator.evaluateNumerical("effectivePeriod.utl:getPeriod(start, @2020-09-07T10:00:00Z, 'years')", observation).head.toLong
       result mustEqual 7
 
       result = evaluator.evaluateNumerical("effectivePeriod.getPeriod(start, @2013-08-07T10:00:00Z, 'months')", observation).head.toLong
@@ -625,19 +625,19 @@ class FhirPathEvaluatorTest extends Specification {
       result = evaluator.evaluateNumerical("period.getPeriod(s, end, 'days')", encounter).head.toLong
       result mustEqual 0
 
-      var quantity = evaluator.evaluateAndReturnJson("effectivePeriod.tutl:getDurationAsQuantityObject(start, @2013-04-02T12:30:10+01:00)", observation).head
+      var quantity = evaluator.evaluateAndReturnJson("effectivePeriod.utl:getDurationAsQuantityObject(start, @2013-04-02T12:30:10+01:00)", observation).head
       (quantity \ "code").extract[String] mustEqual "min"
       (quantity \ "unit").extract[String] mustEqual "min"
       (quantity \ "system").extract[String] mustEqual "http://unitsofmeasure.org"
       (quantity \ "value").extract[Double] mustEqual 180
 
-      quantity = evaluator.evaluateAndReturnJson("effectivePeriod.tutl:getDurationAsQuantityObject(start, @2013-04-05T15:30:10+01:00)", observation).head
+      quantity = evaluator.evaluateAndReturnJson("effectivePeriod.utl:getDurationAsQuantityObject(start, @2013-04-05T15:30:10+01:00)", observation).head
       (quantity \ "code").extract[String] mustEqual "d"
       (quantity \ "unit").extract[String] mustEqual "d"
       (quantity \ "system").extract[String] mustEqual "http://unitsofmeasure.org"
       (quantity \ "value").extract[Double] mustEqual 3.25
 
-      quantity = evaluator.evaluateAndReturnJson("effectivePeriod.tutl:getDurationAsQuantityObject(start, @2013-07-02T09:30:10+01:00)", observation).head
+      quantity = evaluator.evaluateAndReturnJson("effectivePeriod.utl:getDurationAsQuantityObject(start, @2013-07-02T09:30:10+01:00)", observation).head
       (quantity \ "code").extract[String] mustEqual "mo"
       (quantity \ "unit").extract[String] mustEqual "mo"
       (quantity \ "system").extract[String] mustEqual "http://unitsofmeasure.org"

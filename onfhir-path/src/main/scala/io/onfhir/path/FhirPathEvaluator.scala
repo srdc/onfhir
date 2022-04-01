@@ -51,7 +51,7 @@ case class FhirPathEvaluator (
     this.copy(functionLibraries = this.functionLibraries ++
       Map(
         FhirPathAggFunctionsFactory.defaultPrefix -> FhirPathAggFunctionsFactory,
-        FhirPathTimeUtilFunctionsFactory.defaultPrefix -> FhirPathTimeUtilFunctionsFactory,
+        FhirPathUtilFunctionsFactory.defaultPrefix -> FhirPathUtilFunctionsFactory,
         FhirPathNavFunctionsFactory.defaultPrefix -> FhirPathNavFunctionsFactory
       )
     )

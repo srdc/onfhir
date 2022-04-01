@@ -90,8 +90,8 @@ class FhirPathTimeUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPat
   }
 }
 
-object FhirPathTimeUtilFunctionsFactory extends IFhirPathFunctionLibraryFactory {
-  final val defaultPrefix:String = "tutl"
+object FhirPathUtilFunctionsFactory extends IFhirPathFunctionLibraryFactory {
+  final val defaultPrefix:String = "utl"
   /**
    *
    * @param context
