@@ -642,6 +642,9 @@ class FhirPathEvaluatorTest extends Specification {
       (quantity \ "unit").extract[String] mustEqual "mo"
       (quantity \ "system").extract[String] mustEqual "http://unitsofmeasure.org"
       (quantity \ "value").extract[Double] must be_>(3.0)
+
+      val fhirRef = evaluator.evaluateAndReturnJson("utl:createFhirReference('Observation', id)", observation).head
+      fhirRef mustEqual JObject(List("reference" -> JString("Observation/f001")))
     }
 
     "evaluate fixed bugs" in {

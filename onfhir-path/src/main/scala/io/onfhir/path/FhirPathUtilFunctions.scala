@@ -1,7 +1,7 @@
 package io.onfhir.path
 
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
-import org.json4s.JObject
+import org.json4s.{JField, JObject, JString}
 
 import java.time.Period
 import java.time.temporal.{ChronoUnit, Temporal}
@@ -13,6 +13,28 @@ import java.time.temporal.{ChronoUnit, Temporal}
  * @param current Current evaluated FhirPath result (the function will execute on this results)
  */
 class FhirPathTimeUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResult]) extends AbstractFhirPathFunctionLibrary {
+
+  /**
+   * Create FHIR Reference object(s) with given resource type and id(s)
+   * @param resourceTypeExp  Expression to provide FHIR Resource type 'Patient'
+   * @param ridExp           Resource identifier(s)
+   * @return
+   */
+  def createFhirReference(resourceTypeExp:ExpressionContext, ridExp:ExpressionContext):Seq[FhirPathResult] = {
+    val rids = new FhirPathExpressionEvaluator(context, current).visit(ridExp)
+    if(!rids.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'createFhirReference', ridExp (2nd parameter) should return FHIR Path string values!")
+
+    val rtype = new FhirPathExpressionEvaluator(context, current).visit(resourceTypeExp)
+    if(rtype.length != 1 || !rtype.head.isInstanceOf[FhirPathString])
+      throw new FhirPathException(s"Invalid function call 'createFhirReference', resourceTypeExp (1st parameter) should return single FHIR Path string value!")
+
+    rids
+      .map(_.asInstanceOf[FhirPathString])
+      .map(rid =>
+        FhirPathComplex(JObject(List(JField("reference", JString(s"${rtype.head.asInstanceOf[FhirPathString].s}/${rid.s}")))))
+      )
+  }
 
   /**
    * Retrieve the duration between given FHIR dateTimes as FHIR Duration with a suitable duration unit (either minute, day, or month)
