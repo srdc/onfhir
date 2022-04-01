@@ -1,7 +1,9 @@
 package io.onfhir.path
 
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
+import org.json4s.JObject
 
+import java.time.Period
 import java.time.temporal.{ChronoUnit, Temporal}
 
 
@@ -11,6 +13,37 @@ import java.time.temporal.{ChronoUnit, Temporal}
  * @param current Current evaluated FhirPath result (the function will execute on this results)
  */
 class FhirPathTimeUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResult]) extends AbstractFhirPathFunctionLibrary {
+
+  /**
+   * Retrieve the duration between given FHIR dateTimes as FHIR Duration with a suitable duration unit (either minute, day, or month)
+   * @param fromDate  Given date expression
+   * @param toDate    Other date expression
+   * @return
+   */
+  def getDurationAsQuantityObject(fromDate:ExpressionContext, toDate:ExpressionContext):Seq[FhirPathResult] = {
+    val fdate:Option[Temporal] = new FhirPathExpressionEvaluator(context, current).visit(fromDate) match {
+      case Seq(FhirPathDateTime(dt)) => Some(dt)
+      case Nil => None
+      case _ => throw new FhirPathException(s"Invalid function call 'getPeriod', second expression ${fromDate.getText} does not evaluate to a single FHIR date time!")
+    }
+
+    val tdate:Option[Temporal] = new FhirPathExpressionEvaluator(context, current).visit(toDate) match {
+      case Seq(FhirPathDateTime(dt)) => Some(dt)
+      case Nil => None
+      case _ => throw new FhirPathException(s"Invalid function call 'getPeriod', second expression ${toDate.getText} does not evaluate to a single FHIR date time!")
+    }
+    if(fdate.isEmpty || tdate.isEmpty)
+      Nil
+    else {
+      val durationInMin = fdate.get.until(tdate.get, ChronoUnit.MINUTES)
+      if(durationInMin < 60 * 24)
+        Seq(FhirPathComplex(FhirPathQuantity(FhirPathNumber(durationInMin), "min").toJson.asInstanceOf[JObject]))
+      else if(durationInMin < 60 * 24 * 6)
+        Seq(FhirPathComplex(FhirPathQuantity(FhirPathNumber(durationInMin / (60.0 * 24.0)), "d").toJson.asInstanceOf[JObject]))
+      else
+        Seq(FhirPathComplex(FhirPathQuantity(FhirPathNumber(durationInMin / (60.0 * 24.0 * 30)), "mo").toJson.asInstanceOf[JObject]))
+    }
+  }
 
   /**
    * Get a period between the FHIR date time given in current and  FHIR date time given in first expression

@@ -624,6 +624,24 @@ class FhirPathEvaluatorTest extends Specification {
 
       result = evaluator.evaluateNumerical("period.getPeriod(s, end, 'days')", encounter).head.toLong
       result mustEqual 0
+
+      var quantity = evaluator.evaluateAndReturnJson("effectivePeriod.tutl:getDurationAsQuantityObject(start, @2013-04-02T12:30:10+01:00)", observation).head
+      (quantity \ "code").extract[String] mustEqual "min"
+      (quantity \ "unit").extract[String] mustEqual "min"
+      (quantity \ "system").extract[String] mustEqual "http://unitsofmeasure.org"
+      (quantity \ "value").extract[Double] mustEqual 180
+
+      quantity = evaluator.evaluateAndReturnJson("effectivePeriod.tutl:getDurationAsQuantityObject(start, @2013-04-05T15:30:10+01:00)", observation).head
+      (quantity \ "code").extract[String] mustEqual "d"
+      (quantity \ "unit").extract[String] mustEqual "d"
+      (quantity \ "system").extract[String] mustEqual "http://unitsofmeasure.org"
+      (quantity \ "value").extract[Double] mustEqual 3.25
+
+      quantity = evaluator.evaluateAndReturnJson("effectivePeriod.tutl:getDurationAsQuantityObject(start, @2013-07-02T09:30:10+01:00)", observation).head
+      (quantity \ "code").extract[String] mustEqual "mo"
+      (quantity \ "unit").extract[String] mustEqual "mo"
+      (quantity \ "system").extract[String] mustEqual "http://unitsofmeasure.org"
+      (quantity \ "value").extract[Double] must be_>(3.0)
     }
 
     "evaluate fixed bugs" in {
