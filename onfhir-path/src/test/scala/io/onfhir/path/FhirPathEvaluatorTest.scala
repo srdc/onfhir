@@ -662,8 +662,12 @@ class FhirPathEvaluatorTest extends Specification {
       val decs =  evaluator.evaluateNumerical("code.coding.first().code.utl:split('-').select($this.toDecimal())", observation)
       decs mustEqual Seq(15074, 8)
 
-      val qnt = evaluator.evaluateAndReturnJson("utl:createFhirQuantity(15.2, 'mg')", observation).head
-      (qnt \ "code").extract[String] mustEqual "mg"
+      var qnt = evaluator.evaluateAndReturnJson("utl:createFhirQuantity(15.2, 'mg')", observation).head
+      (qnt \ "unit").extract[String] mustEqual "mg"
+      (qnt \ "system").extractOpt[String] must beEmpty
+      (qnt \ "value").extract[Double] mustEqual 15.2
+
+      qnt = evaluator.evaluateAndReturnJson("utl:createFhirQuantity(15.2, %ucum, 'mg')", observation).head
       (qnt \ "unit").extract[String] mustEqual "mg"
       (qnt \ "system").extract[String] mustEqual "http://unitsofmeasure.org"
       (qnt \ "value").extract[Double] mustEqual 15.2

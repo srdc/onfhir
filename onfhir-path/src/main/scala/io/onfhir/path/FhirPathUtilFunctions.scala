@@ -75,7 +75,7 @@ class FhirPathTimeUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPat
   }
 
   /**
-   * Create FHIR Quantity json object with given value and ucum unit
+   * Create FHIR Quantity json object with given value and unit
    * @param valueExpr
    * @param unitExpr
    * @return
@@ -88,7 +88,30 @@ class FhirPathTimeUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPat
     if(unit.length != 1 || !unit.forall(_.isInstanceOf[FhirPathString]))
       throw new FhirPathException(s"Invalid function call 'createFhirCodeableConcept', 2nd parameter should return FHIR Path string value!")
 
-    Seq(FhirPathComplex(FhirPathQuantity(value.head.asInstanceOf[FhirPathNumber], unit.head.asInstanceOf[FhirPathString].s).toJson.asInstanceOf[JObject]))
+    Seq(FhirPathComplex(JObject(List(JField("value", value.head.toJson), "unit" -> unit.head.toJson))))
+  }
+
+  /**
+   * Create FHIR Quantity json object with given value, system and unit
+   * @param valueExpr
+   * @param systemExpr
+   * @param unitExpr
+   * @return
+   */
+  def createFhirQuantity(valueExpr:ExpressionContext, systemExpr:ExpressionContext, unitExpr:ExpressionContext):Seq[FhirPathResult] = {
+    val value = new FhirPathExpressionEvaluator(context, current).visit(valueExpr)
+    if(value.length != 1 || !value.forall(_.isInstanceOf[FhirPathNumber]))
+      throw new FhirPathException(s"Invalid function call 'createFhirQuantity', 1st parameter should return FHIR Path numeric value!")
+
+    val system = new FhirPathExpressionEvaluator(context, current).visit(systemExpr)
+    if(system.length != 1 || !system.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'createFhirCodeableConcept', 2nd parameter should return FHIR Path string value!")
+
+    val unit = new FhirPathExpressionEvaluator(context, current).visit(unitExpr)
+    if(unit.length != 1 || !unit.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'createFhirCodeableConcept', 2nd parameter should return FHIR Path string value!")
+
+    Seq(FhirPathComplex(JObject(List("value" -> value.head.toJson, "system" -> system.head.toJson, "unit" -> unit.head.toJson, "code" -> unit.head.toJson))))
   }
 
   /**
