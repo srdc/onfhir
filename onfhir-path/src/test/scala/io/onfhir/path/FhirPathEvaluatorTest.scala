@@ -655,6 +655,13 @@ class FhirPathEvaluatorTest extends Specification {
       (cdc \ "coding" \"code").extract[Seq[String]] mustEqual Seq("15074-8")
       (cdc \ "coding" \ "system").extract[Seq[String]] mustEqual Seq("http://loinc.org")
       (cdc \ "coding" \"display").extract[Seq[String]] mustEqual Seq("Glucose")
+
+      val splittedStr = evaluator.evaluateString("code.coding.first().code.utl:split('-')", observation)
+      splittedStr mustEqual Seq("15074", "8")
+
+      val decs =  evaluator.evaluateNumerical("code.coding.first().code.utl:split('-').select($this.toDecimal())", observation)
+      decs mustEqual Seq(15074, 8)
+
     }
 
     "evaluate fixed bugs" in {

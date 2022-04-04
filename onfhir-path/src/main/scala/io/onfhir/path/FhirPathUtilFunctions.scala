@@ -106,6 +106,26 @@ class FhirPathTimeUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPat
   }
 
   /**
+   * Split the current string value by given split character or string
+   * @param splitCharExpr
+   * @return
+   */
+  def split(splitCharExpr:ExpressionContext):Seq[FhirPathResult] = {
+    if(!current.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'split' on non string value!")
+
+    val splitChar = new FhirPathExpressionEvaluator(context, current).visit(splitCharExpr)
+    if(splitChar.length!=1 || !splitChar.head.isInstanceOf[FhirPathString])
+      throw new FhirPathException(s"Invalid function call 'split', given expression should return a string value!")
+
+    val splitter = splitChar.head.asInstanceOf[FhirPathString].s
+    current
+      .map(_.asInstanceOf[FhirPathString])
+      .map(_.s.split(splitter))
+      .flatMap(_.map(s => FhirPathString(s)))
+  }
+
+  /**
    * Get a period between the FHIR date time given in current and  FHIR date time given in first expression
    * @param toDate Given date expression
    * @param period Period requested to calculate; either 'years','months','weeks','days'
