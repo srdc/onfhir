@@ -1,7 +1,7 @@
 package io.onfhir.path
 
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
-import org.json4s.{JField, JObject, JString}
+import org.json4s.{JArray, JField, JObject, JString}
 
 import java.time.Period
 import java.time.temporal.{ChronoUnit, Temporal}
@@ -34,6 +34,44 @@ class FhirPathTimeUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPat
       .map(rid =>
         FhirPathComplex(JObject(List(JField("reference", JString(s"${rtype.head.asInstanceOf[FhirPathString].s}/${rid.s}")))))
       )
+  }
+
+  /**
+   * Create a FHIR CodeableConcept content with given system code and optional display
+   * @param systemExp     Expression to give the system value
+   * @param codeExpr      Expression to give the code value
+   * @param displayExpr   Expression to give the display value (optional)
+   * @return
+   */
+  def createFhirCodeableConcept(systemExp:ExpressionContext, codeExpr:ExpressionContext, displayExpr:ExpressionContext):Seq[FhirPathResult] = {
+    val system = new FhirPathExpressionEvaluator(context, current).visit(systemExp)
+    if(system.length != 1 || !system.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'createFhirCodeableConcept', systemExp (1st parameter) should return FHIR Path string value!")
+
+    val code = new FhirPathExpressionEvaluator(context, current).visit(codeExpr)
+    if(code.length != 1 || !code.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'createFhirCodeableConcept', codeExpr (2nd parameter) should return FHIR Path string value!")
+
+    val display = new FhirPathExpressionEvaluator(context, current).visit(displayExpr)
+    if(display.length > 1 || !code.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'createFhirCodeableConcept', displayExpr (3nd parameter) should return an optional FHIR Path string value!")
+
+    var codingElems =
+      List(
+        JField("system", system.head.toJson),
+        JField("code", code.head.toJson)
+      )
+
+    display.headOption.foreach(d => codingElems = codingElems :+ JField("display", d.toJson))
+
+    val codeableConcept = JObject(
+      JField("coding", JArray(List(
+        JObject(
+          codingElems
+        )
+      )))
+    )
+    Seq(FhirPathComplex(codeableConcept))
   }
 
   /**

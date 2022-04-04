@@ -645,6 +645,16 @@ class FhirPathEvaluatorTest extends Specification {
 
       val fhirRef = evaluator.evaluateAndReturnJson("utl:createFhirReference('Observation', id)", observation).head
       fhirRef mustEqual JObject(List("reference" -> JString("Observation/f001")))
+
+      var cdc = evaluator.evaluateAndReturnJson("utl:createFhirCodeableConcept('http://loinc.org', code.coding.code.first(), {})", observation).head
+      (cdc \ "coding" \"code").extract[Seq[String]] mustEqual Seq("15074-8")
+      (cdc \ "coding" \ "system").extract[Seq[String]] mustEqual Seq("http://loinc.org")
+      (cdc \ "coding" \"display").extractOpt[String] must beEmpty
+
+      cdc = evaluator.evaluateAndReturnJson("utl:createFhirCodeableConcept('http://loinc.org', code.coding.code.first(), 'Glucose')", observation).head
+      (cdc \ "coding" \"code").extract[Seq[String]] mustEqual Seq("15074-8")
+      (cdc \ "coding" \ "system").extract[Seq[String]] mustEqual Seq("http://loinc.org")
+      (cdc \ "coding" \"display").extract[Seq[String]] mustEqual Seq("Glucose")
     }
 
     "evaluate fixed bugs" in {
