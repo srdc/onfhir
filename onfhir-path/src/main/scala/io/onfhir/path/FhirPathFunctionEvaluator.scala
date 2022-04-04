@@ -1,7 +1,7 @@
 package io.onfhir.path
 
 import java.time.temporal.{ChronoUnit, Temporal}
-import java.time.{LocalDate, Period, ZonedDateTime}
+import java.time.{LocalDate, LocalDateTime, LocalTime, Period, Year, YearMonth, ZonedDateTime}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
 import org.apache.commons.text.StringEscapeUtils
@@ -305,8 +305,14 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   def iif(criterium: ExpressionContext, trueResult:ExpressionContext, otherwiseResult: ExpressionContext) :Seq[FhirPathResult]= iif(criterium, trueResult, Some(otherwiseResult))
   def iif(criterium: ExpressionContext, trueResult:ExpressionContext):Seq[FhirPathResult] = iif(criterium, trueResult, None)
 
+
+  /**
+   * Integer conversion function
+   * @return
+   */
   def toInteger():Seq[FhirPathResult] = {
     current match {
+      case Nil => Nil
       case Seq(n:FhirPathNumber) if n.isInteger() => Seq(n)
       case Seq(n:FhirPathNumber) if !n.isInteger() =>  throw new FhirPathException(s"Invalid function call 'toInteger' on value $n !!!")
       case Seq(FhirPathString(s)) => Try(s.toInt).toOption match {
@@ -314,13 +320,18 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
         case None => throw new FhirPathException(s"Invalid function call 'toInteger' on value $s of string type cannot be converted to integer!!")
       }
       case Seq(FhirPathBoolean(b)) => if(b) Seq(FhirPathNumber(1)) else Seq(FhirPathNumber(0))
-      case Seq(oth) => throw new FhirPathException(s"Invalid function call 'toInteger' on value $oth !!!")
-      case _ => Nil
+      case Seq(oth) => Nil
+      case _ => throw new FhirPathException(s"Invalid function call 'toInteger' on multiple values!!!")
     }
   }
 
+  /**
+   * Decimal conversion function
+   * @return
+   */
   def toDecimal():Seq[FhirPathResult] = {
     current match {
+      case Nil => Nil
       case Seq(n:FhirPathNumber)  => Seq(n)
       case Seq(FhirPathString(s)) => Try(s.toDouble).toOption match {
         case Some(d) => Seq(FhirPathNumber(d))
@@ -328,23 +339,132 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
       }
       case Seq(FhirPathBoolean(b)) => if(b) Seq(FhirPathNumber(1.0)) else Seq(FhirPathNumber(0.0))
       case Seq(oth) => throw new FhirPathException(s"Invalid function call 'toDecimal' on value $oth !!!")
-      case _ => Nil
+      case _ => throw new FhirPathException(s"Invalid function call 'toDecimal' on multiple values!!!")
     }
   }
 
+  /**
+   * Boolean conversion function
+   * @return
+   */
+  def toBoolean():Seq[FhirPathResult] = {
+    current match {
+      case Nil => Nil
+      case Seq(n:FhirPathNumber) if n.v == 1.0 => Seq(FhirPathBoolean(true))
+      case Seq(n:FhirPathNumber) if n.v == 0 => Seq(FhirPathBoolean(false))
+      case Seq(FhirPathString(s)) if
+        s.equalsIgnoreCase("T") ||
+          s.equalsIgnoreCase("true") ||
+            s.equalsIgnoreCase("Y") ||
+              s.equalsIgnoreCase("yes") ||
+                s.equalsIgnoreCase("1") ||  s.equalsIgnoreCase("1.0")  => Seq(FhirPathBoolean(true))
+
+      case Seq(FhirPathString(s)) if
+        s.equalsIgnoreCase("F") ||
+          s.equalsIgnoreCase("false") ||
+          s.equalsIgnoreCase("N") ||
+          s.equalsIgnoreCase("no") ||
+          s.equalsIgnoreCase("0") ||  s.equalsIgnoreCase("0.0")  => Seq(FhirPathBoolean(false))
+
+      case Seq(b:FhirPathBoolean) => Seq(b)
+      case Seq(_) => Nil
+      case _ => throw new FhirPathException(s"Invalid function call 'toBoolean' on multiple values!!!")
+    }
+  }
+
+  /**
+   * Date conversion function
+   * @return
+   */
+  def toDate():Seq[FhirPathResult] = {
+    current match {
+      case Nil => Nil
+      case Seq(FhirPathDateTime(dt:LocalDateTime)) => Seq(FhirPathDateTime(dt.toLocalDate))
+      case Seq(FhirPathDateTime(dt:ZonedDateTime)) => Seq(FhirPathDateTime(dt.toLocalDate))
+      case Seq(FhirPathDateTime(_)) => current
+      case Seq(FhirPathString(s)) => Try(FhirPathLiteralEvaluator.parseFhirDateBest(s)).toOption match {
+        case None => Nil
+        case Some(t) => Seq(FhirPathDateTime(t))
+      }
+      case Seq(_) => Nil
+      case _ => throw new FhirPathException(s"Invalid function call 'toDate' on multiple values!!!")
+    }
+  }
+
+  /**
+   * DateTime conversion function
+   * @return
+   */
+  def toDateTime():Seq[FhirPathResult] = {
+    current match {
+      case Nil => Nil
+      case Seq(FhirPathDateTime(dt:Year)) => Seq(FhirPathDateTime(dt.atMonth(1).atDay(1).atTime(LocalTime.of(0, 0))))
+      case Seq(FhirPathDateTime(dt:YearMonth)) => Seq(FhirPathDateTime(dt.atDay(1).atTime(LocalTime.of(0, 0))))
+      case Seq(FhirPathDateTime(dt:LocalDate)) => Seq(FhirPathDateTime(dt.atTime(LocalTime.of(0, 0))))
+      case Seq(FhirPathDateTime(_)) => current
+      case Seq(FhirPathString(s)) => Try(FhirPathLiteralEvaluator.parseFhirDateTimeBest(s)).toOption match {
+        case None => Nil
+        case Some(t) => Seq(FhirPathDateTime(t))
+      }
+      case Seq(_) => Nil
+      case _ => throw new FhirPathException(s"Invalid function call 'toDateTime' on multiple values!!!")
+    }
+  }
+
+  def toQuantity():Seq[FhirPathResult] = {
+    current match {
+      case Nil => Nil
+      case Seq(n:FhirPathNumber) => Seq(FhirPathQuantity(n, "1"))
+      case Seq(q:FhirPathQuantity) => Seq(q)
+      case Seq(FhirPathString(s)) => FhirPathLiteralEvaluator.parseFhirQuantity(s).toSeq
+      case Seq(FhirPathBoolean(true)) => Seq(FhirPathQuantity(FhirPathNumber(1.0), "1"))
+      case Seq(FhirPathBoolean(false)) => Seq(FhirPathQuantity(FhirPathNumber(0.0), "1"))
+      case Seq(_) => Nil
+      case _ => throw new FhirPathException(s"Invalid function call 'toQuantity' on multiple values!!!")
+    }
+  }
+
+  def toQuantity(unitExpr:ExpressionContext):Seq[FhirPathResult] = {
+    val unitValue = new FhirPathExpressionEvaluator(context, current).visit(unitExpr)
+    if(!unitValue.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'toQuantity', given expression should return a string value!!!")
+    val unit = unitValue.headOption.map(_.asInstanceOf[FhirPathString].s).getOrElse("1")
+    current match {
+      case Nil => Nil
+      case Seq(n:FhirPathNumber) => Seq(FhirPathQuantity(n, unit))
+      case Seq(q:FhirPathQuantity) if q.unit == unit => Seq(q)
+      case Seq(FhirPathString(s)) => FhirPathLiteralEvaluator.parseFhirQuantity(s).toSeq
+      case Seq(FhirPathBoolean(true)) => Seq(FhirPathQuantity(FhirPathNumber(1.0), unit))
+      case Seq(FhirPathBoolean(false)) => Seq(FhirPathQuantity(FhirPathNumber(0.0), unit))
+      case Seq(_) => Nil
+      case _ => throw new FhirPathException(s"Invalid function call 'toQuantity' on multiple values!!!")
+    }
+  }
+
+  /**
+   * String conversion function
+   * @return
+   */
   def _toString():Seq[FhirPathResult] = {
     current match {
+      case Nil => Nil
       case Seq(FhirPathNumber(n))  => Seq(FhirPathString(n.toString))
       case Seq(s:FhirPathString) => Seq(s)
       case Seq(dt:FhirPathDateTime) => Seq(FhirPathString(FhirPathLiteralEvaluator.format(dt)))
       case Seq(t:FhirPathTime) =>  Seq(FhirPathString(FhirPathLiteralEvaluator.format(t)))
       case Seq(q:FhirPathQuantity) => Seq(FhirPathString(q.q.v.toString + " " + q.unit))
       case Seq(FhirPathBoolean(b)) => if(b) Seq(FhirPathString("'true'")) else Seq(FhirPathString("'false'"))
-      case Seq(oth) => throw new FhirPathException(s"Invalid function call 'toDecimal' on value $oth !!!")
-      case _ => Nil
+      case Seq(oth) => Nil
+      case _ => throw new FhirPathException(s"Invalid function call 'toDecimal' on multiple values !!!")
     }
   }
 
+  def toComplex():Seq[FhirPathResult] = {
+    current match {
+      case Seq(q:FhirPathQuantity) => Seq(FhirPathComplex(q.toJson.asInstanceOf[JObject]))
+      case _ => Nil
+    }
+  }
 
 
   /**

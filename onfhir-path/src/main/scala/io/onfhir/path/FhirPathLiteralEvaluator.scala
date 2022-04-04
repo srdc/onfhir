@@ -1,9 +1,10 @@
 package io.onfhir.path
 
+import io.onfhir.path.FhirPathLiteralEvaluator.fhirQuantityRegExp
+
 import java.time.{LocalDate, LocalDateTime, LocalTime, Year, YearMonth, ZoneOffset, ZonedDateTime}
 import java.time.format.DateTimeFormatter
 import java.time.temporal.{Temporal, TemporalAccessor}
-
 import io.onfhir.path.grammar.{FhirPathExprBaseVisitor, FhirPathExprParser}
 
 import scala.util.Try
@@ -14,6 +15,8 @@ import scala.util.Try
 object FhirPathLiteralEvaluator extends FhirPathExprBaseVisitor[Seq[FhirPathResult]] {
   // FHIR Path date time formatter
   val fhirPathDateTimeFormatter =  DateTimeFormatter.ofPattern("yyyy[-MM[-dd['T'HH[:mm[:ss[.SSS][XXX]]]]]]")
+
+  val fhirQuantityRegExp =   """(?<value>(\+|-)?\d+(\.\d+)?)\s*('(?<unit>[^']+)'|(?<time>[a-zA-Z]+))?""".r
 
   //Date time units
   private val dtUnits= Map (
@@ -104,6 +107,21 @@ object FhirPathLiteralEvaluator extends FhirPathExprBaseVisitor[Seq[FhirPathResu
     FhirPathNumber(n.toDouble)
   }
 
+  /**
+   *
+   * @param q
+   * @return
+   */
+  def parseFhirQuantity(q:String):Option[FhirPathQuantity] = {
+    fhirQuantityRegExp
+      .findFirstMatchIn(q)
+      .flatMap(m => {
+        val value = m.group(1)
+        var unit = Option(m.group(5))
+        if(unit.isEmpty) unit = dtUnits.get(m.group(6)).map(_.drop(1).dropRight(1))
+        unit.map(u =>FhirPathQuantity(FhirPathNumber(value.toDouble), u))
+      })
+  }
 
   /**
     * Parse FHIR Date time
@@ -112,6 +130,10 @@ object FhirPathLiteralEvaluator extends FhirPathExprBaseVisitor[Seq[FhirPathResu
     */
   def parseFhirDateTimeBest(dt:String):Temporal = {
     fhirPathDateTimeFormatter.parseBest(dt, ZonedDateTime.from(_), LocalDateTime.from(_), LocalDate.from(_), YearMonth.from(_), Year.from(_)).asInstanceOf[Temporal]
+  }
+
+  def parseFhirDateBest(dt:String):Temporal = {
+    fhirPathDateTimeFormatter.parseBest(dt, LocalDate.from(_), YearMonth.from(_), Year.from(_)).asInstanceOf[Temporal]
   }
 
 

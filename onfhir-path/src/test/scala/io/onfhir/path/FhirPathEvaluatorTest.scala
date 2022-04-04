@@ -470,7 +470,7 @@ class FhirPathEvaluatorTest extends Specification {
       FhirPathEvaluator().evaluateNumerical("Observation.component.code.coding[1].code.toInteger().toInteger()", observation2) mustEqual Seq(249227004) //from integer
       FhirPathEvaluator().evaluateNumerical("Observation.component.exists().toInteger()", observation2) mustEqual Seq(1) //from boolean
       FhirPathEvaluator().evaluateNumerical("Observation.component.empty().toInteger()", observation2) mustEqual Seq(0) //from boolean
-      FhirPathEvaluator().evaluate("Observation.effectiveDateTime.toInteger()", observation2) must throwA[Exception]
+      FhirPathEvaluator().evaluate("Observation.effectiveDateTime.toInteger()", observation2) must beEmpty
       //toDecimal
       FhirPathEvaluator().evaluateNumerical("Observation.component.code.coding[1].code.toDecimal()", observation2) mustEqual Seq(249227004) //from string
       FhirPathEvaluator().evaluateNumerical("Observation.valueQuantity.value.toDecimal()", observation) mustEqual Seq(6.3)
@@ -661,7 +661,6 @@ class FhirPathEvaluatorTest extends Specification {
 
       val decs =  evaluator.evaluateNumerical("code.coding.first().code.utl:split('-').select($this.toDecimal())", observation)
       decs mustEqual Seq(15074, 8)
-
     }
 
     "evaluate fixed bugs" in {
@@ -749,6 +748,11 @@ class FhirPathEvaluatorTest extends Specification {
       //Special case "contains" is a keyword in FHIR path grammar
       result = FhirPathEvaluator().getPathItemsWithRestrictions("ValueSet.expansion.contains.code")
       result.length mustEqual 4
+    }
+
+    "parse literal values" in {
+      FhirPathLiteralEvaluator.parseFhirQuantity("1 'mg'") must beSome(FhirPathQuantity(FhirPathNumber(1), "mg"))
+      FhirPathLiteralEvaluator.parseFhirQuantity("3 days") must beSome(FhirPathQuantity(FhirPathNumber(3), "d"))
     }
   }
 }

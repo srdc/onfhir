@@ -126,6 +126,19 @@ class FhirPathTimeUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPat
   }
 
   /**
+   * Throw a FHIR Path exception with the given msg
+   * @param msgExpr Message for the exception
+   * @return
+   */
+  def throwException(msgExpr:ExpressionContext):Seq[FhirPathResult] = {
+    val excMsg = new FhirPathExpressionEvaluator(context, current).visit(msgExpr)
+    if(excMsg.length!=1 || !excMsg.head.isInstanceOf[FhirPathString])
+      throw new FhirPathException(s"Invalid function call 'throwException', given expression should return a string value!")
+
+    throw new FhirPathException(excMsg.head.asInstanceOf[FhirPathString].s)
+  }
+
+  /**
    * Get a period between the FHIR date time given in current and  FHIR date time given in first expression
    * @param toDate Given date expression
    * @param period Period requested to calculate; either 'years','months','weeks','days'
