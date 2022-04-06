@@ -187,6 +187,7 @@ class FhirPathUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPathRes
 
   /**
    * Return the indices (starting from 1) in the current sequence of results where given expression returns true
+   * If cond expression returns non boolean value, it returns false
    * @param condExpr  Boolean expression to check for each item
    * @return
    */
@@ -199,6 +200,48 @@ class FhirPathUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPathRes
       })
       .filter(_._2)
       .map(i => FhirPathNumber(i._1))
+  }
+
+  /**
+   * Combine current string results with the given separator and return a string
+   * If current is Nil, return Nil
+   * @param separatorExp  Expression to return a separator string
+   * @return
+   */
+  def mkString(separatorExp:ExpressionContext):Seq[FhirPathResult] = {
+    if(!current.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'mkString' on non string value(s)!")
+    val separator = new FhirPathExpressionEvaluator(context,current).visit(separatorExp)
+    if(separator.length != 1 || !separator.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'mkString', given expression for seperator should return string value!")
+
+    if(current == Nil)
+      Nil
+    else
+      Seq(FhirPathString(
+       current
+         .map(_.asInstanceOf[FhirPathString].s)
+         .mkString(separator.head.asInstanceOf[FhirPathString].s)
+      ))
+  }
+
+  /**
+   * Evaluate the given FHIR Path expression (in string format) on current content and context
+   * @param fhirPathExpression  FHIR Path expression in string format
+   * @return
+   */
+  def evaluateExpression(fhirPathExpression:ExpressionContext):Seq[FhirPathResult] = {
+    val fhirPath = new FhirPathExpressionEvaluator(context, current).visit(fhirPathExpression)
+    if(fhirPath.length != 1 || !fhirPath.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'evaluateExpression', given expression should return a string value!")
+    val expr = fhirPath.head.asInstanceOf[FhirPathString].s
+    try {
+      val parsedExpr = FhirPathEvaluator.parse(expr)
+      new FhirPathExpressionEvaluator(context, current).visit(parsedExpr)
+    } catch {
+      case e:Throwable =>
+        throw new FhirPathException(s"Invalid function call 'evaluateExpression', given FHIR Path expression is not valid!")
+    }
   }
 
   /**

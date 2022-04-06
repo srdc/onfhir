@@ -1,7 +1,6 @@
 package io.onfhir.path
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, Year, YearMonth, ZoneId, ZonedDateTime}
-
 import io.onfhir.api.Resource
 import io.onfhir.api.model.{FhirCanonicalReference, FhirLiteralReference, FhirReference}
 import io.onfhir.api.validation.IReferenceResolver
@@ -14,6 +13,7 @@ import org.specs2.runner.JUnitRunner
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.io.Source
+import scala.language.postfixOps
 
 @RunWith(classOf[JUnitRunner])
 class FhirPathEvaluatorTest extends Specification {
@@ -677,6 +677,9 @@ class FhirPathEvaluatorTest extends Specification {
 
       indices = evaluator.evaluateNumerical("Observation.code.coding.utl:indicesWhere($this.system='http://snomed.info/sct')", observation)
       indices.map(_.toInt) mustEqual Seq(2)
+
+      val codings = evaluator.evaluateAndReturnJson("utl:evaluateExpression(utl:indices(0, 1).select('code.coding[' & $this.toString() &']').mkString(' | '))", observation)
+      codings must beSome
     }
 
     "evaluate fixed bugs" in {
