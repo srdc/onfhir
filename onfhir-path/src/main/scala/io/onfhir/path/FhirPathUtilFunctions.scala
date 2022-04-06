@@ -186,6 +186,22 @@ class FhirPathUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPathRes
   }
 
   /**
+   * Return the indices (starting from 1) in the current sequence of results where given expression returns true
+   * @param condExpr  Boolean expression to check for each item
+   * @return
+   */
+  def indicesWhere(condExpr:ExpressionContext):Seq[FhirPathResult] = {
+    current
+      .zipWithIndex
+      .map(r => {
+        val result = new FhirPathExpressionEvaluator(context, Seq(r._1)).visit(condExpr)
+        (r._2+1) -> result.find(_.isInstanceOf[FhirPathBoolean]).exists(_.asInstanceOf[FhirPathBoolean].b)
+      })
+      .filter(_._2)
+      .map(i => FhirPathNumber(i._1))
+  }
+
+  /**
    * Throw a FHIR Path exception with the given msg
    * @param msgExpr Message for the exception
    * @return
