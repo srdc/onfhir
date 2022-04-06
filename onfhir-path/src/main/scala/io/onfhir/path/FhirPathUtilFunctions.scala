@@ -12,7 +12,7 @@ import java.time.temporal.{ChronoUnit, Temporal}
  * @param context FhirPathContext
  * @param current Current evaluated FhirPath result (the function will execute on this results)
  */
-class FhirPathTimeUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResult]) extends AbstractFhirPathFunctionLibrary {
+class FhirPathUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResult]) extends AbstractFhirPathFunctionLibrary {
 
   /**
    * Create FHIR Reference object(s) with given resource type and id(s)
@@ -46,15 +46,15 @@ class FhirPathTimeUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPat
   def createFhirCodeableConcept(systemExp:ExpressionContext, codeExpr:ExpressionContext, displayExpr:ExpressionContext):Seq[FhirPathResult] = {
     val system = new FhirPathExpressionEvaluator(context, current).visit(systemExp)
     if(system.length != 1 || !system.forall(_.isInstanceOf[FhirPathString]))
-      throw new FhirPathException(s"Invalid function call 'createFhirCodeableConcept', systemExp (1st parameter) should return FHIR Path string value!")
+      return Nil
 
     val code = new FhirPathExpressionEvaluator(context, current).visit(codeExpr)
     if(code.length != 1 || !code.forall(_.isInstanceOf[FhirPathString]))
-      throw new FhirPathException(s"Invalid function call 'createFhirCodeableConcept', codeExpr (2nd parameter) should return FHIR Path string value!")
+      return Nil
 
     val display = new FhirPathExpressionEvaluator(context, current).visit(displayExpr)
     if(display.length > 1 || !code.forall(_.isInstanceOf[FhirPathString]))
-      throw new FhirPathException(s"Invalid function call 'createFhirCodeableConcept', displayExpr (3nd parameter) should return an optional FHIR Path string value!")
+      return Nil
 
     var codingElems =
       List(
@@ -83,10 +83,11 @@ class FhirPathTimeUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPat
   def createFhirQuantity(valueExpr:ExpressionContext, unitExpr:ExpressionContext):Seq[FhirPathResult] = {
     val value = new FhirPathExpressionEvaluator(context, current).visit(valueExpr)
     if(value.length != 1 || !value.forall(_.isInstanceOf[FhirPathNumber]))
-      throw new FhirPathException(s"Invalid function call 'createFhirQuantity', 1st parameter should return FHIR Path numeric value!")
+      return Nil
+
     val unit = new FhirPathExpressionEvaluator(context, current).visit(unitExpr)
     if(unit.length != 1 || !unit.forall(_.isInstanceOf[FhirPathString]))
-      throw new FhirPathException(s"Invalid function call 'createFhirCodeableConcept', 2nd parameter should return FHIR Path string value!")
+      return Nil
 
     Seq(FhirPathComplex(JObject(List(JField("value", value.head.toJson), "unit" -> unit.head.toJson))))
   }
@@ -101,15 +102,15 @@ class FhirPathTimeUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPat
   def createFhirQuantity(valueExpr:ExpressionContext, systemExpr:ExpressionContext, unitExpr:ExpressionContext):Seq[FhirPathResult] = {
     val value = new FhirPathExpressionEvaluator(context, current).visit(valueExpr)
     if(value.length != 1 || !value.forall(_.isInstanceOf[FhirPathNumber]))
-      throw new FhirPathException(s"Invalid function call 'createFhirQuantity', 1st parameter should return FHIR Path numeric value!")
+      return Nil
 
     val system = new FhirPathExpressionEvaluator(context, current).visit(systemExpr)
     if(system.length != 1 || !system.forall(_.isInstanceOf[FhirPathString]))
-      throw new FhirPathException(s"Invalid function call 'createFhirCodeableConcept', 2nd parameter should return FHIR Path string value!")
+      return Nil
 
     val unit = new FhirPathExpressionEvaluator(context, current).visit(unitExpr)
     if(unit.length != 1 || !unit.forall(_.isInstanceOf[FhirPathString]))
-      throw new FhirPathException(s"Invalid function call 'createFhirCodeableConcept', 2nd parameter should return FHIR Path string value!")
+      return Nil
 
     Seq(FhirPathComplex(JObject(List("value" -> value.head.toJson, "system" -> system.head.toJson, "unit" -> unit.head.toJson, "code" -> unit.head.toJson))))
   }
@@ -163,6 +164,25 @@ class FhirPathTimeUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPat
       .map(_.asInstanceOf[FhirPathString])
       .map(_.s.split(splitter))
       .flatMap(_.map(s => FhirPathString(s)))
+  }
+
+  /**
+   * Create a sequence of indices between from-to integers
+   * e.g. indices(1, 10) -> Seq(1,2,....10)
+   * @param fromExpr  Starting index
+   * @param toExpr    End index (inclusive)
+   * @return
+   */
+  def indices(fromExpr:ExpressionContext, toExpr:ExpressionContext):Seq[FhirPathResult] = {
+    val from = new FhirPathExpressionEvaluator(context, current).visit(fromExpr)
+    if(from.length != 1 || !from.forall(_.isInstanceOf[FhirPathNumber]))
+      throw new FhirPathException(s"Invalid function call 'indices', given expressions should return a integer value!")
+
+    val to = new FhirPathExpressionEvaluator(context, current).visit(toExpr)
+    if(to.length != 1 || !to.forall(_.isInstanceOf[FhirPathNumber]))
+      throw new FhirPathException(s"Invalid function call 'indices', given expressions should return a integer value!")
+
+    (from.head.asInstanceOf[FhirPathNumber].v.toInt to to.head.asInstanceOf[FhirPathNumber].v.toInt).map(i => FhirPathNumber(i))
   }
 
   /**
@@ -231,5 +251,5 @@ object FhirPathUtilFunctionsFactory extends IFhirPathFunctionLibraryFactory {
    * @param current
    * @return
    */
-  override def getLibrary(context: FhirPathEnvironment, current: Seq[FhirPathResult]): AbstractFhirPathFunctionLibrary = new FhirPathTimeUtilFunctions(context,current)
+  override def getLibrary(context: FhirPathEnvironment, current: Seq[FhirPathResult]): AbstractFhirPathFunctionLibrary = new FhirPathUtilFunctions(context,current)
 }

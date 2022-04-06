@@ -672,6 +672,8 @@ class FhirPathEvaluatorTest extends Specification {
       (qnt \ "system").extract[String] mustEqual "http://unitsofmeasure.org"
       (qnt \ "value").extract[Double] mustEqual 15.2
 
+      val indices = evaluator.evaluateNumerical("utl:indices(1, 10)", observation)
+      indices.map(_.toInt) mustEqual (1 to 10)
     }
 
     "evaluate fixed bugs" in {
