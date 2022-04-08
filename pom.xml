@@ -114,7 +114,7 @@
         <akka.version>2.6.18</akka.version>
         <mongodb.scala.version>2.9.0</mongodb.scala.version>
         <mongo.embedded.version>3.2.4</mongo.embedded.version>
-        <json4s.version>4.0.4</json4s.version>
+        <json4s.version>3.7.0-M11</json4s.version>
         <logback.version>1.2.11</logback.version>
         <kafka.version>3.1.0</kafka.version>
         <config.version>1.4.2</config.version>

@@ -2,7 +2,7 @@ package io.onfhir.path
 
 import io.onfhir.api.FHIR_COMMON_FIELDS
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.path.grammar.FhirPathExprParser.{FunctionInvocationContext, InvocationContext, MemberInvocationContext, ThisInvocationContext}
+import io.onfhir.path.grammar.FhirPathExprParser.{FunctionInvocationContext, IndexInvocationContext, InvocationContext, MemberInvocationContext, ThisInvocationContext, TotalInvocationContext}
 import io.onfhir.path.grammar.{FhirPathExprBaseVisitor, FhirPathExprParser}
 import org.json4s._
 
@@ -50,6 +50,10 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
       case fi:FunctionInvocationContext => visitFunctionInvocation(fi)
 
       case t:ThisInvocationContext => current
+
+      //TODO
+      //case tic:TotalInvocationContext =>
+      //case iic:IndexInvocationContext =>
     }
   }
 

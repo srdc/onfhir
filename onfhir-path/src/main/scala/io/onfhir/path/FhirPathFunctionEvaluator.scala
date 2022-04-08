@@ -120,7 +120,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     case _ => throw  new FhirPathException("Function 'not' should run on FHIR path boolean!!!")
   }
 
-  def exists(expr:Option[ExpressionContext]):Seq[FhirPathResult] = {
+  private def exists(expr:Option[ExpressionContext]):Seq[FhirPathResult] = {
     val result = expr match {
       case None =>  current.nonEmpty
       case Some(criteria) => current.exists(c => new FhirPathExpressionEvaluator(context, Seq(c)).visit(criteria) match {

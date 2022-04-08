@@ -5,6 +5,7 @@ import org.json4s.{JArray, JField, JObject, JString}
 
 import java.time.Period
 import java.time.temporal.{ChronoUnit, Temporal}
+import java.util.UUID
 
 
 /**
@@ -15,7 +16,16 @@ import java.time.temporal.{ChronoUnit, Temporal}
 class FhirPathUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResult]) extends AbstractFhirPathFunctionLibrary {
 
   /**
+   * Generate an UUID
+   * @return
+   */
+  def uuid():Seq[FhirPathResult] = {
+    Seq(FhirPathString(UUID.randomUUID().toString))
+  }
+
+  /**
    * Create FHIR Reference object(s) with given resource type and id(s)
+   * If ridExp returns Nil, the function also returns Nil
    * @param resourceTypeExp  Expression to provide FHIR Resource type 'Patient'
    * @param ridExp           Resource identifier(s)
    * @return
@@ -38,6 +48,8 @@ class FhirPathUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPathRes
 
   /**
    * Create a FHIR CodeableConcept content with given system code and optional display
+   * If system or code parameters return nil, the function returns Nil
+   * All parameters should return 0 or 1 string value
    * @param systemExp     Expression to give the system value
    * @param codeExpr      Expression to give the code value
    * @param displayExpr   Expression to give the display value (optional)
@@ -45,74 +57,86 @@ class FhirPathUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPathRes
    */
   def createFhirCodeableConcept(systemExp:ExpressionContext, codeExpr:ExpressionContext, displayExpr:ExpressionContext):Seq[FhirPathResult] = {
     val system = new FhirPathExpressionEvaluator(context, current).visit(systemExp)
-    if(system.length != 1 || !system.forall(_.isInstanceOf[FhirPathString]))
-      return Nil
+    if(system.length > 1 || !system.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'createFhirCodeableConcept', expression for system should return 0 or 1 string value!")
 
     val code = new FhirPathExpressionEvaluator(context, current).visit(codeExpr)
-    if(code.length != 1 || !code.forall(_.isInstanceOf[FhirPathString]))
-      return Nil
+    if(code.length > 1 || !code.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'createFhirCodeableConcept', expression for code should return 0 or 1 string value!")
 
     val display = new FhirPathExpressionEvaluator(context, current).visit(displayExpr)
     if(display.length > 1 || !code.forall(_.isInstanceOf[FhirPathString]))
-      return Nil
+      throw new FhirPathException(s"Invalid function call 'createFhirCodeableConcept', expression for display should return 0 or 1 string value!")
 
-    var codingElems =
-      List(
-        JField("system", system.head.toJson),
-        JField("code", code.head.toJson)
-      )
-
-    display.headOption.foreach(d => codingElems = codingElems :+ JField("display", d.toJson))
-
-    val codeableConcept = JObject(
-      JField("coding", JArray(List(
-        JObject(
-          codingElems
+    if(system.isEmpty || code.isEmpty)
+      Nil
+    else {
+      var codingElems =
+        List(
+          JField("system", system.head.toJson),
+          JField("code", code.head.toJson)
         )
-      )))
-    )
-    Seq(FhirPathComplex(codeableConcept))
+
+      display.headOption.foreach(d => codingElems = codingElems :+ JField("display", d.toJson))
+
+      val codeableConcept = JObject(
+        JField("coding", JArray(List(
+          JObject(
+            codingElems
+          )
+        )))
+      )
+      Seq(FhirPathComplex(codeableConcept))
+    }
   }
 
   /**
-   * Create FHIR Quantity json object with given value and unit
-   * @param valueExpr
-   * @param unitExpr
+   * Create FHIR Quantity json object with given value and unit (system or code not set)
+   * If value or unit expression returns Nil, the function also returns Nil
+   * @param valueExpr Expression for quantity value
+   * @param unitExpr  Expression for quantity unit
    * @return
    */
   def createFhirQuantity(valueExpr:ExpressionContext, unitExpr:ExpressionContext):Seq[FhirPathResult] = {
     val value = new FhirPathExpressionEvaluator(context, current).visit(valueExpr)
-    if(value.length != 1 || !value.forall(_.isInstanceOf[FhirPathNumber]))
-      return Nil
+    if(value.length > 1 || !value.forall(_.isInstanceOf[FhirPathNumber]))
+      throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter value expression should return 0 or 1 numeric value!")
 
     val unit = new FhirPathExpressionEvaluator(context, current).visit(unitExpr)
-    if(unit.length != 1 || !unit.forall(_.isInstanceOf[FhirPathString]))
-      return Nil
+    if(unit.length > 1 || !unit.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter unit expression should return 0 or 1 string value!")
 
-    Seq(FhirPathComplex(JObject(List(JField("value", value.head.toJson), "unit" -> unit.head.toJson))))
+    if(value.isEmpty || unit.isEmpty)
+      Nil
+    else
+      Seq(FhirPathComplex(JObject(List(JField("value", value.head.toJson), "unit" -> unit.head.toJson))))
   }
 
   /**
    * Create FHIR Quantity json object with given value, system and unit
-   * @param valueExpr
-   * @param systemExpr
-   * @param unitExpr
+   * If any parameter expression returns Nil, the function will also return Nil
+   * @param valueExpr   Expression to return the quantity value
+   * @param systemExpr  Expression to return the system for the unit
+   * @param unitExpr    Expression to return the the unit
    * @return
    */
   def createFhirQuantity(valueExpr:ExpressionContext, systemExpr:ExpressionContext, unitExpr:ExpressionContext):Seq[FhirPathResult] = {
     val value = new FhirPathExpressionEvaluator(context, current).visit(valueExpr)
-    if(value.length != 1 || !value.forall(_.isInstanceOf[FhirPathNumber]))
-      return Nil
+    if(value.length > 1 || !value.forall(_.isInstanceOf[FhirPathNumber]))
+      throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter value expression should return 0 or 1 numeric value!")
 
     val system = new FhirPathExpressionEvaluator(context, current).visit(systemExpr)
-    if(system.length != 1 || !system.forall(_.isInstanceOf[FhirPathString]))
-      return Nil
+    if(system.length > 1 || !system.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter system expression should return 0 or 1 string value!")
 
     val unit = new FhirPathExpressionEvaluator(context, current).visit(unitExpr)
-    if(unit.length != 1 || !unit.forall(_.isInstanceOf[FhirPathString]))
-      return Nil
+    if(unit.length > 1 || !unit.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter unit expression should return 0 or 1 string value!")
 
-    Seq(FhirPathComplex(JObject(List("value" -> value.head.toJson, "system" -> system.head.toJson, "unit" -> unit.head.toJson, "code" -> unit.head.toJson))))
+    if(value.isEmpty || system.isEmpty || unit.isEmpty)
+      Nil
+    else
+      Seq(FhirPathComplex(JObject(List("value" -> value.head.toJson, "system" -> system.head.toJson, "unit" -> unit.head.toJson, "code" -> unit.head.toJson))))
   }
 
   /**
@@ -148,7 +172,8 @@ class FhirPathUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPathRes
 
   /**
    * Split the current string value by given split character or string
-   * @param splitCharExpr
+   * e.g. Observation.valueSampleData.data.split(' ') --> Split by empty space
+   * @param splitCharExpr   Expression to return split character(s)
    * @return
    */
   def split(splitCharExpr:ExpressionContext):Seq[FhirPathResult] = {
@@ -162,7 +187,7 @@ class FhirPathUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPathRes
     val splitter = splitChar.head.asInstanceOf[FhirPathString].s
     current
       .map(_.asInstanceOf[FhirPathString])
-      .map(_.s.split(splitter))
+      .map(_.s.trim.split(splitter))
       .flatMap(_.map(s => FhirPathString(s)))
   }
 
@@ -226,7 +251,8 @@ class FhirPathUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPathRes
   }
 
   /**
-   * Evaluate the given FHIR Path expression (in string format) on current content and context
+   * Evaluate the given FHIR Path expression in string format on current content and context
+   * e.g. evaluateExpression('Observation.code[' & i &']') --> Return the ith code
    * @param fhirPathExpression  FHIR Path expression in string format
    * @return
    */
