@@ -1,7 +1,6 @@
 package io.onfhir.path
 
-import java.time.temporal.{ChronoUnit, Temporal}
-import java.time.{LocalDate, LocalDateTime, LocalTime, Period, Year, YearMonth, ZonedDateTime}
+import java.time.{LocalDate, LocalDateTime, LocalTime, Year, YearMonth, ZonedDateTime}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
 import org.apache.commons.text.StringEscapeUtils
@@ -123,10 +122,15 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   private def exists(expr:Option[ExpressionContext]):Seq[FhirPathResult] = {
     val result = expr match {
       case None =>  current.nonEmpty
-      case Some(criteria) => current.exists(c => new FhirPathExpressionEvaluator(context, Seq(c)).visit(criteria) match {
-        case Seq(FhirPathBoolean(true)) => true
-        case _ => false
-      })
+      case Some(criteria) =>
+        current
+          .zipWithIndex
+          .exists(c =>
+            new FhirPathExpressionEvaluator(context.copy(_index = c._2), Seq(c._1))
+              .visit(criteria) match {
+                  case Seq(FhirPathBoolean(true)) => true
+                  case _ => false
+          })
     }
     Seq(FhirPathBoolean(result))
   }
@@ -134,10 +138,15 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   def exists():Seq[FhirPathResult] = exists(None)
 
   def all(criteria:ExpressionContext):Seq[FhirPathResult] = {
-    val result = current.forall(c => new FhirPathExpressionEvaluator(context, Seq(c)).visit(criteria) match {
-      case Seq(FhirPathBoolean(true)) => true
-      case _ => false
-    })
+    val result =
+      current
+        .zipWithIndex
+        .forall(c =>
+          new FhirPathExpressionEvaluator(context.copy(_index = c._2), Seq(c._1))
+            .visit(criteria) match {
+              case Seq(FhirPathBoolean(true)) => true
+              case _ => false
+        })
     Seq(FhirPathBoolean(result))
   }
 
@@ -201,19 +210,26 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     * Filtering and projection http://hl7.org/fhirpath/#filtering-and-projection
     */
   def where(criteria : ExpressionContext):Seq[FhirPathResult] = {
-    current.filter(c => new FhirPathExpressionEvaluator(context, Seq(c)).visit(criteria) match {
-      case Seq(FhirPathBoolean(true)) => true
-      case Seq(FhirPathBoolean(false)) => false
-      case Nil => false
-      case _ => throw new FhirPathException(s"Invalid criteria ${criteria.getText} function call 'where', it does not evaluate to boolean!!!")
-    })
+    current
+      .zipWithIndex
+      .filter(c =>
+        new FhirPathExpressionEvaluator(context.copy(_index= c._2), Seq(c._1))
+          .visit(criteria) match {
+            case Seq(FhirPathBoolean(true)) => true
+            case Seq(FhirPathBoolean(false)) => false
+            case Nil => false
+            case _ => throw new FhirPathException(s"Invalid criteria ${criteria.getText} function call 'where', it does not evaluate to boolean!!!")
+      })
+      .map(_._1)
   }
 
   def select(projection: ExpressionContext):Seq[FhirPathResult] = {
-    current.flatMap(c => {
-      val r = new FhirPathExpressionEvaluator(context, Seq(c)).visit(projection)
-      r
-    })
+    current
+      .zipWithIndex
+      .flatMap(c => {
+        val r = new FhirPathExpressionEvaluator(context.copy(_index = c._2), Seq(c._1)).visit(projection)
+        r
+      })
   }
 
   def repeat(projection: ExpressionContext):Seq[FhirPathResult] = {
@@ -642,9 +658,10 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   private def handleAggregate(initialCntx:FhirPathEnvironment, aggExpr:ExpressionContext):Seq[FhirPathResult] = {
     val finalContext =
       current
+        .zipWithIndex
         .foldLeft(initialCntx) {
           case (cntx, cur) =>
-            val totalResult = new FhirPathExpressionEvaluator(cntx, Seq(cur)).visit(aggExpr)
+            val totalResult = new FhirPathExpressionEvaluator(cntx.copy(_index = cur._2), Seq(cur._1)).visit(aggExpr)
             cntx.copy(_total = totalResult.headOption)
         }
 

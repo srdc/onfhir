@@ -19,7 +19,7 @@ case class FhirPathEnvironment(
                            val referenceResolver: Option[IReferenceResolver],
                            val environmentVariables:Map[String, Seq[FhirPathResult]] = Map.empty[String, Seq[FhirPathResult]],
                            val functionLibraries:Map[String, IFhirPathFunctionLibraryFactory] = Map.empty,
-                           val _index:Int = 1,
+                           val _index:Int = 0,
                            val _total:Option[FhirPathResult] = None
                          ) {
   val vsPattern:Regex = "'vs-[A-Za-z0-9\\-]+'".r
