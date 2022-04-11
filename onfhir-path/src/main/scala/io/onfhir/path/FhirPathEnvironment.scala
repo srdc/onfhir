@@ -11,12 +11,16 @@ import scala.util.matching.Regex
  * @param referenceResolver     onFhir reference resolver
  * @param environmentVariables  Other external variables supplied
  * @param functionLibraries     External function libraries registered with a prefix
+ * @param _index                Index of current item to be processed on ($index variable in FHIR Path)
+ * @param _total                Total variable for aggregate ($total)
  */
-class FhirPathEnvironment(
+case class FhirPathEnvironment(
                            val _this:Seq[FhirPathResult],
                            val referenceResolver: Option[IReferenceResolver],
                            val environmentVariables:Map[String, Seq[FhirPathResult]] = Map.empty[String, Seq[FhirPathResult]],
-                           val functionLibraries:Map[String, IFhirPathFunctionLibraryFactory] = Map.empty
+                           val functionLibraries:Map[String, IFhirPathFunctionLibraryFactory] = Map.empty,
+                           val _index:Int = 1,
+                           val _total:Option[FhirPathResult] = None
                          ) {
   val vsPattern:Regex = "'vs-[A-Za-z0-9\\-]+'".r
   val extPattern:Regex = "'ext-[A-Za-z0-9\\-]+'".r

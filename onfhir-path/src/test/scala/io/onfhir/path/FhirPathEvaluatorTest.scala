@@ -532,6 +532,13 @@ class FhirPathEvaluatorTest extends Specification {
       FhirPathEvaluator().satisfies("text.`div`.exists()", observation)
     }
 
+    "evaluate FHIR path aggregate" in {
+      FhirPathEvaluator().evaluateNumerical("Observation.valueQuantity.value.aggregate($this + $total, 0)", JArray(List(observation, observation2))) mustEqual Seq(16.3)
+
+      FhirPathEvaluator().evaluateString("('ali' | 'veli' | 'deli').aggregate($total & ',' & $this, {})", observation) mustEqual Seq(",ali,veli,deli")
+      FhirPathEvaluator().evaluateString("('ali' | 'veli' | 'deli').aggregate($total & ',' & $this)", observation) mustEqual Seq(",ali,veli,deli")
+    }
+
     "evaluate special functions" in {
       var referenceResolver: IReferenceResolver = new IReferenceResolver {
         override val resource: Resource = JObject()

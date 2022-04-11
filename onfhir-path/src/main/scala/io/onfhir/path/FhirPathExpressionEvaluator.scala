@@ -2,13 +2,12 @@ package io.onfhir.path
 
 import io.onfhir.api.FHIR_COMMON_FIELDS
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.path.grammar.FhirPathExprParser.{FunctionInvocationContext, IndexInvocationContext, InvocationContext, MemberInvocationContext, ThisInvocationContext, TotalInvocationContext}
+import io.onfhir.path.grammar.FhirPathExprParser.{FunctionInvocationContext, InvocationContext, MemberInvocationContext, ThisInvocationContext, TotalInvocationContext}
 import io.onfhir.path.grammar.{FhirPathExprBaseVisitor, FhirPathExprParser}
 import org.json4s._
 
 import scala.jdk.CollectionConverters._
 import scala.language.implicitConversions
-import io.onfhir.config.FhirConfigurationManager.fhirConfig
 import io.onfhir.path.util.FhirPathUtil
 
 /**
@@ -48,11 +47,12 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
 
       //Function invocation at root
       case fi:FunctionInvocationContext => visitFunctionInvocation(fi)
-
+      //Call to $this
       case t:ThisInvocationContext => current
-
+      //Call to $total
+      case tic:TotalInvocationContext =>
+        context._total.toSeq
       //TODO
-      //case tic:TotalInvocationContext =>
       //case iic:IndexInvocationContext =>
     }
   }

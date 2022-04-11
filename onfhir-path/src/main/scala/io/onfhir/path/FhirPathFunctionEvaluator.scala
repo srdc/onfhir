@@ -620,6 +620,47 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   }
 
   /**
+   * FHIR Path aggregate function
+   * @param aggExpr         Aggregation expression
+   * @param initValueExpr   Given initial value for aggregation
+   * @return
+   */
+  def aggregate(aggExpr:ExpressionContext, initValueExpr:ExpressionContext):Seq[FhirPathResult] = {
+    val initValue = new FhirPathExpressionEvaluator(context, current).visit(initValueExpr)
+    if(initValue.length > 1)
+      throw new FhirPathException(s"Invalid function call 'aggregate', the initValue expression should return a single value!")
+
+    handleAggregate(context.copy(_total = initValue.headOption), aggExpr)
+  }
+
+  /**
+   * Helper function to evaluate aggregate
+   * @param initialCntx Initial context for total
+   * @param aggExpr     Aggregation expression
+   * @return
+   */
+  private def handleAggregate(initialCntx:FhirPathEnvironment, aggExpr:ExpressionContext):Seq[FhirPathResult] = {
+    val finalContext =
+      current
+        .foldLeft(initialCntx) {
+          case (cntx, cur) =>
+            val totalResult = new FhirPathExpressionEvaluator(cntx, Seq(cur)).visit(aggExpr)
+            cntx.copy(_total = totalResult.headOption)
+        }
+
+    finalContext._total.toSeq
+  }
+
+  /**
+   * FHIR Path aggregate function
+   * @param aggExpr Aggregation expression
+   * @return
+   */
+  def aggregate(aggExpr:ExpressionContext):Seq[FhirPathResult] = {
+      handleAggregate(context, aggExpr)
+  }
+
+  /**
     * Utility functions http://hl7.org/fhirpath/#utility-functions
     */
   def today():Seq[FhirPathResult] = Seq(FhirPathDateTime(LocalDate.now()))
