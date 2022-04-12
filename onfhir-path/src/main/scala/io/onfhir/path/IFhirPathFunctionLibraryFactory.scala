@@ -1,6 +1,6 @@
 package io.onfhir.path
 
-trait IFhirPathFunctionLibraryFactory {
+trait IFhirPathFunctionLibraryFactory extends Serializable {
   /**
    *
    * @param context

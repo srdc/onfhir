@@ -3,7 +3,7 @@ package io.onfhir.path
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
 import org.json4s.{JArray, JField, JObject, JString}
 
-import java.time.Period
+import java.time.{LocalDate, LocalDateTime, Period, Year, YearMonth, ZoneId, ZonedDateTime}
 import java.time.temporal.{ChronoUnit, Temporal}
 import java.util.UUID
 
@@ -149,25 +149,63 @@ class FhirPathUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPathRes
     val fdate:Option[Temporal] = new FhirPathExpressionEvaluator(context, current).visit(fromDate) match {
       case Seq(FhirPathDateTime(dt)) => Some(dt)
       case Nil => None
-      case _ => throw new FhirPathException(s"Invalid function call 'getPeriod', second expression ${fromDate.getText} does not evaluate to a single FHIR date time!")
+      case _ => throw new FhirPathException(s"Invalid function call 'getDurationAsQuantityObject', second expression ${fromDate.getText} does not evaluate to a single FHIR date time!")
     }
 
     val tdate:Option[Temporal] = new FhirPathExpressionEvaluator(context, current).visit(toDate) match {
       case Seq(FhirPathDateTime(dt)) => Some(dt)
       case Nil => None
-      case _ => throw new FhirPathException(s"Invalid function call 'getPeriod', second expression ${toDate.getText} does not evaluate to a single FHIR date time!")
+      case _ => throw new FhirPathException(s"Invalid function call 'getDurationAsQuantityObject', second expression ${toDate.getText} does not evaluate to a single FHIR date time!")
     }
     if(fdate.isEmpty || tdate.isEmpty)
       Nil
     else {
-      val durationInMin = fdate.get.until(tdate.get, ChronoUnit.MINUTES)
-      if(durationInMin < 60 * 24)
-        Seq(FhirPathComplex(FhirPathQuantity(FhirPathNumber(durationInMin), "min").toJson.asInstanceOf[JObject]))
-      else if(durationInMin < 60 * 24 * 6)
-        Seq(FhirPathComplex(FhirPathQuantity(FhirPathNumber(durationInMin / (60.0 * 24.0)), "d").toJson.asInstanceOf[JObject]))
-      else
-        Seq(FhirPathComplex(FhirPathQuantity(FhirPathNumber(durationInMin / (60.0 * 24.0 * 30)), "mo").toJson.asInstanceOf[JObject]))
+      val result =
+        (fdate.get, tdate.get) match {
+          case (y1:Year, y2:Year) => y1.until(y2, ChronoUnit.YEARS) * 1.0 -> "a"
+          case (y1:Year, m2:YearMonth) => y1.atMonth(1).until(m2, ChronoUnit.MONTHS) * 1.0 -> "mo"
+          case (y1:Year, d2:LocalDate) => y1.atMonth(1).atDay(1).until(d2, ChronoUnit.DAYS) * 1.0 -> "d"
+          case (y1:Year, dt2:LocalDateTime) => y1.atMonth(1).atDay(1).until(dt2, ChronoUnit.DAYS) * 1.0 -> "d"
+          case (y1:Year, zdt2:ZonedDateTime) => y1.atMonth(1).atDay(1).atTime(0,0).atZone(ZoneId.systemDefault()).until(zdt2, ChronoUnit.DAYS) * 1.0 -> "d"
+          case (m1:YearMonth, y2:Year) => m1.until(y2.atMonth(1), ChronoUnit.MONTHS) * 1.0 -> "mo"
+          case (m1:YearMonth, m2:YearMonth) => m1.until(m2, ChronoUnit.MONTHS) * 1.0 -> "mo"
+          case (m1:YearMonth, d2:LocalDate) => m1.atDay(1).until(d2, ChronoUnit.DAYS) * 1.0 -> "d"
+          case (m1:YearMonth, dt2:LocalDateTime) => m1.atDay(1).until(dt2, ChronoUnit.DAYS) * 1.0 -> "d"
+          case (m1:YearMonth, zdt2:ZonedDateTime) => m1.atDay(1).atTime(0,0).atZone(ZoneId.systemDefault()).until(zdt2, ChronoUnit.DAYS) * 1.0 -> "d"
+          case (d1:LocalDate, y2:Year) => d1.until(y2.atMonth(1).atDay(1), ChronoUnit.DAYS) * 1.0 -> "d"
+          case (d1:LocalDate, m2:YearMonth) => d1.until(m2.atDay(1), ChronoUnit.DAYS) * 1.0 -> "d"
+          case (d1:LocalDate, d2:LocalDate) => d1.until(d2, ChronoUnit.DAYS)  * 1.0-> "d"
+          case (d1:LocalDate, dt2:LocalDateTime) => d1.atTime(0,0).until(dt2, ChronoUnit.DAYS) * 1.0 -> "d"
+          case (d1:LocalDate, zdt2:ZonedDateTime) => handleDuration(d1.atTime(0,0).atZone(ZoneId.systemDefault()).until(zdt2, ChronoUnit.MINUTES))
+          case (dt1:LocalDateTime, y2:Year) => dt1.until(y2.atMonth(1).atDay(1).atTime(0, 0), ChronoUnit.DAYS) * 1.0 -> "d"
+          case (dt1:LocalDateTime, m2:YearMonth) => dt1.until(m2.atDay(1).atTime(0, 0), ChronoUnit.DAYS) * 1.0 -> "d"
+          case (dt1:LocalDateTime, d2:LocalDate) => dt1.until(d2.atTime(0,0).atZone(ZoneId.systemDefault()), ChronoUnit.DAYS) * 1.0 -> "d"
+          case (dt1:LocalDateTime, dt2:LocalDateTime) => handleDuration(dt1.until(dt2, ChronoUnit.MINUTES))
+          case (dt1:LocalDateTime, zdt2:ZonedDateTime) => handleDuration(dt1.atZone(ZoneId.systemDefault()).until(zdt2, ChronoUnit.MINUTES))
+          case (zdt1:ZonedDateTime, y2:Year) => zdt1.until(y2.atMonth(1).atDay(1).atTime(0, 0).atZone(ZoneId.systemDefault()), ChronoUnit.DAYS) * 1.0 -> "d"
+          case (zdt1:ZonedDateTime, m2:YearMonth) => zdt1.until(m2.atDay(1).atTime(0, 0).atZone(ZoneId.systemDefault()), ChronoUnit.DAYS) * 1.0 -> "d"
+          case (zdt1:ZonedDateTime, d2:LocalDate) => zdt1.until(d2.atTime(0, 0).atZone(ZoneId.systemDefault()), ChronoUnit.DAYS) * 1.0 -> "d"
+          case (zdt1:ZonedDateTime, dt2:LocalDateTime) => handleDuration(zdt1.until(dt2.atZone(ZoneId.systemDefault()), ChronoUnit.MINUTES))
+          case (zdt1:ZonedDateTime, zdt2:ZonedDateTime) => handleDuration(zdt1.until(zdt2, ChronoUnit.MINUTES))
+          case (oth1, oth2) => throw new FhirPathException(s"Invalid datetime comparison between $oth1 and $oth2 ...")
+        }
+
+      Seq(FhirPathComplex(FhirPathQuantity(FhirPathNumber(result._1), result._2).toJson.asInstanceOf[JObject]))
     }
+  }
+
+  /**
+   *
+   * @param durationInMin
+   * @return
+   */
+  private def handleDuration(durationInMin:Long):(Double, String) = {
+    if(durationInMin < 60 * 24)
+      durationInMin * 1.0 -> "min"
+    else if(durationInMin < 60 * 24 * 6)
+      (durationInMin / (60.0 * 24.0)) -> "d"
+    else
+      (durationInMin / (60.0 * 24.0 * 30)) -> "mo"
   }
 
   /**

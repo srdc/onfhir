@@ -654,6 +654,18 @@ class FhirPathEvaluatorTest extends Specification {
       (quantity \ "system").extract[String] mustEqual "http://unitsofmeasure.org"
       (quantity \ "value").extract[Double] must be_>(3.0)
 
+      quantity = evaluator.evaluateAndReturnJson("effectivePeriod.utl:getDurationAsQuantityObject(start, @2013-07-02)", observation).head
+      (quantity \ "code").extract[String] mustEqual "d"
+      (quantity \ "unit").extract[String] mustEqual "d"
+      (quantity \ "system").extract[String] mustEqual "http://unitsofmeasure.org"
+      (quantity \ "value").extract[Double] mustEqual 90.0
+
+      quantity = evaluator.evaluateAndReturnJson("effectivePeriod.utl:getDurationAsQuantityObject(start, @2013-07)", observation).head
+      (quantity \ "code").extract[String] mustEqual "d"
+      (quantity \ "unit").extract[String] mustEqual "d"
+      (quantity \ "system").extract[String] mustEqual "http://unitsofmeasure.org"
+      (quantity \ "value").extract[Double] mustEqual 89.0
+
       val fhirRef = evaluator.evaluateAndReturnJson("utl:createFhirReference('Observation', id)", observation).head
       fhirRef mustEqual JObject(List("reference" -> JString("Observation/f001")))
 
