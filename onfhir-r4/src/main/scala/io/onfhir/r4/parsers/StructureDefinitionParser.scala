@@ -1,10 +1,10 @@
 package io.onfhir.r4.parsers
 
+import io.onfhir.api.{FHIR_DATA_TYPES, FHIR_ROOT_URL_FOR_DEFINITIONS, Resource}
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.api.validation._
-import io.onfhir.api.{FHIR_DATA_TYPES, FHIR_ROOT_URL_FOR_DEFINITIONS, Resource, validation}
+import io.onfhir.api.validation.{ConstraintKeys, ElementRestrictions, ProfileRestrictions}
 import io.onfhir.validation.{AbstractStructureDefinitionParser, ConstraintsRestriction, MaxLengthRestriction, ReferenceRestrictions, TypeRestriction}
-import org.json4s.JsonAST.{JObject, JValue}
+import org.json4s.JsonAST.JObject
 import org.slf4j.{Logger, LoggerFactory}
 
 /**
@@ -23,7 +23,7 @@ class StructureDefinitionParser(fhirComplexTypes:Set[String], fhirPrimitiveTypes
     val rtype =  FHIRUtil.extractValueOption[String](structureDef, "type").get
     //Do not get primitive type definitions
     if(rtype.apply(0).isLower){
-      validation.ProfileRestrictions(
+      ProfileRestrictions(
         url = FHIRUtil.extractValueOption[String](structureDef, "url").get,
         baseUrl = None,
         elementRestrictions = Nil,
@@ -53,7 +53,7 @@ class StructureDefinitionParser(fhirComplexTypes:Set[String], fhirPrimitiveTypes
         .map(parseElementDef(_, rtype, if(profileUrl.startsWith(FHIR_ROOT_URL_FOR_DEFINITIONS)) None else Some(profileUrl))) //Parse the element definitions
 
 
-      validation.ProfileRestrictions(
+      ProfileRestrictions(
         url = FHIRUtil.extractValueOption[String](structureDef, "url").get,
         baseUrl = FHIRUtil.extractValueOption[String](structureDef, "baseDefinition"),
         elementRestrictions = elemDefs.map(e => e._1.path -> e._1),

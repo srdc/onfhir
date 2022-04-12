@@ -1,6 +1,7 @@
 package io.onfhir.config
 
 import akka.http.scaladsl.model.{MediaType, MediaTypes}
+import io.onfhir.api.parsers.IFhirFoundationResourceParser
 import io.onfhir.api.{FHIR_MEDIA_TYPES, FHIR_SEARCH_RESULT_PARAMETERS, FHIR_SEARCH_SPECIAL_PARAMETERS, Resource}
 import io.onfhir.api.validation.{IFhirResourceValidator, IFhirTerminologyValidator, ProfileRestrictions, ValueSetRestrictions}
 import io.onfhir.audit.IFhirAuditCreator
@@ -179,60 +180,17 @@ trait IFhirVersionConfigurator {
   def getAuditCreator():IFhirAuditCreator
 
   /**
+   * Return the parser for foundation resources
+   * @param complexTypes    List of FHIR complex types defined in the standard
+   * @param primitiveTypes  List of FHIR primitive types defined in the standard
+   * @return
+   */
+  def getFoundationResourceParser(complexTypes:Set[String], primitiveTypes:Set[String]):IFhirFoundationResourceParser
+
+  /**
    * Get Resource type or Data type from a StructureDefinition resource if it is not abstract
    * @param structureDefinition
    * @return
    */
   def getTypeFromStructureDefinition(structureDefinition:Resource):Option[String]
-
-  /**
-   * Parse a FHIR Capability Statement into our compact form
-   * @param capabilityStmt  CapabilityStatement resource in parsed JSON format
-   * @return
-   */
-  def parseCapabilityStatement(capabilityStmt:Resource):FHIRCapabilityStatement
-
-  /**
-   * Parse a FHIR SearchParameter definition into our compact form
-   * @param searchParameter SearchParameter resource in parsed JSON format
-   * @return
-   */
-  def parseSearchParameter(searchParameter:Resource):FHIRSearchParameter
-
-
-  /**
-   * Parse a FHIR OperationDefinition  into our compact form
-   * @param operationDefinition OperationDefinition resource in parsed JSON format
-   * @return
-   */
-  def parseOperationDefinition(operationDefinition:Resource):OperationConf
-
-  /**
-   * Parse a FHIR CompartmentDefinition into our compact form
-   * @param compartmentDefinition CompartmentDefinition resource in parsed JSON format
-   * @return
-   */
-  def parseCompartmentDefinition(compartmentDefinition:Resource):FHIRCompartmentDefinition
-
-  /**
-   * Parse a FHIR StructureDefinition into our compact form
-   * @param structureDefinition
-   * @return
-   */
-  def parseStructureDefinition(structureDefinition:Resource):ProfileRestrictions
-
-  /**
-   * Parse a bundle of FHIR ValueSet and CodeSystem into a compact form for validation
-   * @param valueSetOrCodeSystems
-   * @return
-   */
-  def parseValueSetAndCodeSystems(valueSetOrCodeSystems:Seq[Resource]):Map[String, Map[String, ValueSetRestrictions]]
-
-  /**
-   * Extract certain type of resources from a FHIR Bundle
-   * @param bundle
-   * @param rtype
-   * @return
-   */
-  def extractResourcesFromBundle(bundle:Resource, rtype:String):Seq[Resource]
 }

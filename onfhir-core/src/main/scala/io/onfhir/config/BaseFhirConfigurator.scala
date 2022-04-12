@@ -1,6 +1,6 @@
 package io.onfhir.config
 
-import io.onfhir.api.service.{FHIROperationHandler, FHIROperationHandlerService}
+import io.onfhir.api.service.FHIROperationHandler
 import io.onfhir.api.{DEFAULT_RESOURCE_PATHS, FHIR_ROOT_URL_FOR_DEFINITIONS, Resource, SERVER_CONFORMANCE_STATEMENT_ID}
 import io.onfhir.db.DBInitializer
 import org.slf4j.{Logger, LoggerFactory}
@@ -55,6 +55,7 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
    * @return
    */
   override def initializePlatform(fromConfig:Boolean = false, fhirOperationImplms:Map[String, String]):FhirConfig = {
+
     logger.info("Reading base FHIR foundation resources (base standard) to start configuration of onFhir server ...")
     //Read base resource profiles defined in the standard
     val baseResourceProfileResources = readStandardBundleFile(PROFILES_RESOURCES_BUNDLE_FILE_NAME, Set(FHIR_STRUCTURE_DEFINITION))
@@ -78,6 +79,9 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
     val allTypes = baseDataTypeProfileResources.flatMap(getTypeFromStructureDefinition)
     FHIR_COMPLEX_TYPES = allTypes.filter(_.head.isUpper).toSet
     FHIR_PRIMITIVE_TYPES = allTypes.filter(_.head.isLower).toSet
+
+    val foundationResourceParser = getFoundationResourceParser(FHIR_COMPLEX_TYPES, FHIR_PRIMITIVE_TYPES)
+
     //Initialize base types and resource types
     fhirConfig.FHIR_COMPLEX_TYPES = FHIR_COMPLEX_TYPES
     fhirConfig.FHIR_PRIMITIVE_TYPES = FHIR_PRIMITIVE_TYPES
@@ -103,23 +107,23 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
 
     logger.info("Parsing base FHIR foundation resources (base standard) ...")
     //Parsing base definitions
-    val baseResourceProfiles = baseResourceProfileResources.map(parseStructureDefinition).map(p => p.url -> p).toMap
-    val baseDataTypeProfiles = baseDataTypeProfileResources.map(parseStructureDefinition).map(p => p.url -> p).toMap
+    val baseResourceProfiles = baseResourceProfileResources.map(foundationResourceParser.parseStructureDefinition).map(p => p.url -> p).toMap
+    val baseDataTypeProfiles = baseDataTypeProfileResources.map(foundationResourceParser.parseStructureDefinition).map(p => p.url -> p).toMap
     val baseProfiles =
       baseResourceProfiles ++
         baseDataTypeProfiles.filter(_._1.split('/').last.head.isUpper) ++
-          baseOtherProfileResources.map(parseStructureDefinition).map(p => p.url -> p).toMap ++
-            baseExtensionProfileResources.map(parseStructureDefinition).map(p => p.url -> p).toMap
-    val baseSearchParameters = baseSearchParameterResources.map(parseSearchParameter).map(s => s.url -> s).toMap
-    val baseOperationDefinitions = baseOperationDefinitionResources.map(parseOperationDefinition).map(p => p.url -> p).toMap
-    val baseCompartmentDefinitions = baseCompartmentDefinitionResources.map(parseCompartmentDefinition).map(c => c.url -> c).toMap
+          baseOtherProfileResources.map(foundationResourceParser.parseStructureDefinition).map(p => p.url -> p).toMap ++
+            baseExtensionProfileResources.map(foundationResourceParser.parseStructureDefinition).map(p => p.url -> p).toMap
+    val baseSearchParameters = baseSearchParameterResources.map(foundationResourceParser.parseSearchParameter).map(s => s.url -> s).toMap
+    val baseOperationDefinitions = baseOperationDefinitionResources.map(foundationResourceParser.parseOperationDefinition).map(p => p.url -> p).toMap
+    val baseCompartmentDefinitions = baseCompartmentDefinitionResources.map(foundationResourceParser.parseCompartmentDefinition).map(c => c.url -> c).toMap
 
     //Initialize fhir config with base profiles and value sets to prepare for validation
     //fhirConfig.FHIR_RESOURCE_TYPES = baseResourceProfiles.filterNot(_._2.isAbstract).map(_._1.split('/').last).toSet
     //fhirConfig.FHIR_COMPLEX_TYPES = baseDataTypeProfiles.filterNot(_._2.isAbstract).filter(_._1.split('/').last.head.isUpper).map(_._1.split('/').last).toSet
     //fhirConfig.FHIR_PRIMITIVE_TYPES = baseDataTypeProfiles.filterNot(_._2.isAbstract).filter(_._1.split('/').last.head.isLower).map(_._1.split('/').last).toSet
     fhirConfig.profileRestrictions = baseProfiles
-    fhirConfig.valueSetRestrictions = parseValueSetAndCodeSystems(baseValueSetsAndCodeSystems)
+    fhirConfig.valueSetRestrictions = foundationResourceParser.parseValueSetAndCodeSystems(baseValueSetsAndCodeSystems)
 
     logger.info("Validating given FHIR foundation resources for base specification conformance ...")
     //Validations
@@ -133,13 +137,13 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
 
     logger.info("Parsing given FHIR foundation resources ...")
     //Parsing the Conformance statement into our compact form
-    val conformance = parseCapabilityStatement(conformanceResource)
-    val profiles = profileResources.map(parseStructureDefinition).map(p => p.url -> p).toMap
-    val searchParameters = searchParameterResources.map(parseSearchParameter).map(s => s.url -> s).toMap
-    val operationDefs = operationDefResources.map(opDef => parseOperationDefinition(opDef)).map(o => o.url -> o).toMap
-    val compartments = compartmentDefResources.map(parseCompartmentDefinition).map(c => c.url -> c).toMap
+    val conformance = foundationResourceParser.parseCapabilityStatement(conformanceResource)
+    val profiles = profileResources.map(foundationResourceParser.parseStructureDefinition).map(p => p.url -> p).toMap
+    val searchParameters = searchParameterResources.map(foundationResourceParser.parseSearchParameter).map(s => s.url -> s).toMap
+    val operationDefs = operationDefResources.map(opDef => foundationResourceParser.parseOperationDefinition(opDef)).map(o => o.url -> o).toMap
+    val compartments = compartmentDefResources.map(foundationResourceParser.parseCompartmentDefinition).map(c => c.url -> c).toMap
     //Parse all as bundle
-    val valueSets = parseValueSetAndCodeSystems(valueSetResources ++ codeSystemResources ++ baseValueSetsAndCodeSystems)
+    val valueSets = foundationResourceParser.parseValueSetAndCodeSystems(valueSetResources ++ codeSystemResources ++ baseValueSetsAndCodeSystems)
 
     logger.info("Configuring supported FHIR resources and profiles ...")
     fhirConfig = validateAndConfigureProfiles(fhirConfig, conformance, profiles, baseProfiles)

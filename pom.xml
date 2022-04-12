@@ -74,6 +74,7 @@
         <module>onfhir-server-r5</module>
         <module>onfhir-client</module>
         <module>onfhir-expression</module>
+        <module>onfhir-r4</module>
     </modules>
 
     <repositories>
@@ -321,6 +322,11 @@
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-kafka_${scala.binary.version}</artifactId>
+                <version>3.2-SNAPSHOT</version>
+            </dependency>
+            <dependency>
+                <groupId>io.onfhir</groupId>
+                <artifactId>onfhir-r4_${scala.binary.version}</artifactId>
                 <version>3.2-SNAPSHOT</version>
             </dependency>
             <dependency>
