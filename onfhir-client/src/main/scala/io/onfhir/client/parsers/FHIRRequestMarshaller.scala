@@ -257,7 +257,8 @@ object FHIRRequestMarshaller {
    * @return
    */
   private def getHeaders(fhirRequest: FHIRRequest): Seq[HttpHeader] = {
-    fhirRequest.ifNoneMatch.toSeq ++
+    fhirRequest.prefer.toSeq.map(p => RawHeader("Prefer", p)) ++
+      fhirRequest.ifNoneMatch.toSeq ++
       fhirRequest.ifModifiedSince.toSeq ++
       fhirRequest.ifMatch.toSeq ++
       fhirRequest.ifNoneExist.map(q => RawHeader("If-None-Exist", q)).toSeq ++
