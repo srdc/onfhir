@@ -159,13 +159,19 @@ class FHIRHistoryBundle(bundle:Resource, override val request:FhirHistoryRequest
 
 }
 
-class FHIRTransactionBatchBundle(bundle:Resource) extends FHIRBundle(bundle) {
-
+class FHIRTransactionBatchBundle(val bundle:Resource) extends FHIRBundle(bundle) {
+  /**
+   * Parsed individual responses
+   */
   val responses:Seq[(Option[String], FHIRResponse)] =
     entries.map(e =>
       FHIRUtil.extractValueOption[String](e, "fullUrl") ->
         parseEntryAsResponse(e)
     )
+
+  def hasAnyError():Boolean = {
+    responses.exists(_._2.isError)
+  }
 
   /**
    * Get the response of an child request of batch/transaction with given fullUrl
