@@ -2,12 +2,12 @@ package io.onfhir.path
 
 import java.time.{Duration, LocalDate, LocalDateTime, LocalTime, Period, Year, YearMonth, ZoneId, ZonedDateTime}
 import java.time.temporal.{ChronoField, ChronoUnit, Temporal, TemporalAmount}
-
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.path.FhirPathValueTransformer.transform
 import io.onfhir.util.DateTimeUtil
 import org.json4s.JsonAST.{JBool, JDecimal, JLong, JObject, JString, JValue}
 
+import java.time.format.DateTimeFormatter
 import scala.math.BigDecimal.RoundingMode
 import scala.math.BigDecimal.RoundingMode.RoundingMode
 import scala.math.{BigDecimal, Ordered, min}
@@ -226,7 +226,7 @@ case class FhirPathDateTime(dt:Temporal) extends FhirPathResult with Ordered[Fhi
     case ym:YearMonth => JString(ym.toString)
     case ld:LocalDate => JString(ld.toString)
     case ldt:LocalDateTime => JString(ldt.toString)
-    case zdt:ZonedDateTime => JString(DateTimeUtil.serializeInstant(zdt.toInstant))
+    case zdt:ZonedDateTime => JString(DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(zdt))
   }
 }
 
