@@ -1,20 +1,57 @@
 package io.onfhir.path
 
-import io.onfhir.path.FhirPathLiteralEvaluator.fhirQuantityRegExp
-
 import java.time.{LocalDate, LocalDateTime, LocalTime, Year, YearMonth, ZoneOffset, ZonedDateTime}
-import java.time.format.DateTimeFormatter
-import java.time.temporal.{Temporal, TemporalAccessor}
+import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder, SignStyle}
+import java.time.temporal.Temporal
 import io.onfhir.path.grammar.{FhirPathExprBaseVisitor, FhirPathExprParser}
 
-import scala.util.Try
+import java.time.temporal.ChronoField.{DAY_OF_MONTH, HOUR_OF_DAY, MINUTE_OF_HOUR, MONTH_OF_YEAR, NANO_OF_SECOND, SECOND_OF_MINUTE, YEAR}
 
 /**
   * Evaluator for FHIR Path literals
   */
 object FhirPathLiteralEvaluator extends FhirPathExprBaseVisitor[Seq[FhirPathResult]] {
+  val fhirPathTimeFormatter =
+    new DateTimeFormatterBuilder()
+      .appendValue(HOUR_OF_DAY, 2)
+      .optionalStart()
+      .appendLiteral(':')
+      .appendValue(MINUTE_OF_HOUR, 2)
+      .optionalStart
+      .appendLiteral(':')
+      .appendValue(SECOND_OF_MINUTE, 2)
+      .optionalStart
+      .appendFraction(NANO_OF_SECOND, 0, 3, true)
+      .parseStrict()
+      .toFormatter
+
+
   // FHIR Path date time formatter
-  val fhirPathDateTimeFormatter =  DateTimeFormatter.ofPattern("yyyy[-MM[-dd['T'HH[:mm[:ss[.SSS][XXX]]]]]]")
+  val fhirPathDateTimeFormatter =
+    new DateTimeFormatterBuilder()
+    .appendValue(YEAR, 4, 10, SignStyle.EXCEEDS_PAD)
+    .optionalStart()
+    .appendLiteral('-')
+    .appendValue(MONTH_OF_YEAR, 2)
+    .optionalStart()
+    .appendLiteral('-')
+    .appendValue(DAY_OF_MONTH, 2)
+    .optionalStart()
+    .appendLiteral('T')
+    .appendValue(HOUR_OF_DAY, 2)
+    .appendLiteral(':')
+    .appendValue(MINUTE_OF_HOUR, 2)
+    .optionalStart
+    .appendLiteral(':')
+    .appendValue(SECOND_OF_MINUTE, 2)
+    .optionalStart
+    .appendFraction(NANO_OF_SECOND, 0, 3, true)
+    .optionalStart()
+    .appendOffset("+HH:MM", "Z")
+    .parseStrict()
+    .toFormatter
+
+    //DateTimeFormatter.ofPattern("yyyy[-MM[-dd['T'HH[:mm[:ss[.SSS][XXX]]]]]]")
 
   val fhirQuantityRegExp =   """(?<value>(\+|-)?\d+(\.\d+)?)\s*('(?<unit>[^']+)'|(?<time>[a-zA-Z]+))?""".r
 
@@ -78,7 +115,7 @@ object FhirPathLiteralEvaluator extends FhirPathExprBaseVisitor[Seq[FhirPathResu
     * @param ctx the parse tree
     *     */
   override def visitTimeLiteral(ctx: FhirPathExprParser.TimeLiteralContext): Seq[FhirPathResult]  = {
-    val (lt, zdt) = parseFhirTime(ctx.TIME().getText.drop(1))
+    val (lt, zdt) = parseFhirTime(ctx.TIME().getText.drop(2)) //drop the '@T' part
     Seq(FhirPathTime(lt, zdt))
   }
 
@@ -149,14 +186,17 @@ object FhirPathLiteralEvaluator extends FhirPathExprBaseVisitor[Seq[FhirPathResu
 
   /**
     *
-    * @param t
-    * @return
-    */
+    * @param t  Time in FHIR Path time format without the initial '@T'
+   *            e.g. 10, 10:05, 10:00:02, 10:25:37.254
+   * @return
+   */
   def parseFhirTime(t:String):(LocalTime, Option[ZoneOffset]) = {
+    LocalTime.parse(t, fhirPathTimeFormatter) -> None
+    /*
     parseFhirDateTimeBest("2019-01-01"+t) match {
       case ldt:LocalDateTime => ldt.toLocalTime -> None
       case zdt:ZonedDateTime => zdt.toLocalTime -> Some(zdt.getOffset)
-    }
+    }*/
   }
 
   def parseIdentifier(identifier:String):String = {

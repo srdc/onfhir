@@ -38,8 +38,12 @@ object FhirPathValueTransformer {
       .map(FhirPathDateTime)
       .getOrElse(
         //If it seems to be a FHIR time, try to parse it
-        if(str.count(_ == ':') == 3)
-          Try(FhirPathLiteralEvaluator.parseFhirTime("T"+str)).toOption
+        if(
+          (str.length == 5 && str.apply(2) == ':') ||
+            (str.length == 8 && str.apply(2) == ':' && str.apply(5) == ':') ||
+              (str.length > 9 && str.apply(9) == '.' && str.length < 13 )
+            )
+          Try(FhirPathLiteralEvaluator.parseFhirTime(str)).toOption
             .map(t => FhirPathTime(t._1, t._2))
             .getOrElse(FhirPathString(str))
         else

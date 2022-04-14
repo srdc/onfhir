@@ -202,10 +202,6 @@ class FhirPathEvaluatorTest extends Specification {
       val (lt2, z2) = FhirPathEvaluator().evaluateOptionalTime("@T10:00:05 + 1 'ms'", observation).get
       lt2 === LocalTime.of(10, 0, 5, 1000000)
       z2 must empty
-
-      val (lt3, z3) = FhirPathEvaluator().evaluateOptionalTime("@T10:00:05+02:00 + 1 'ms'", observation).get
-      lt3 === LocalTime.of(10, 0, 5, 1000000)
-      z3 must beSome(ZoneId.of("+02:00"))
     }
 
     "evaluate path with arithmetic operators on string" in {
@@ -253,11 +249,11 @@ class FhirPathEvaluatorTest extends Specification {
       FhirPathEvaluator().satisfies("(Observation.effective as Period).start ~ @2013-05", observation) mustEqual false
       FhirPathEvaluator().satisfies("(Observation.effective as Period).start !~ @2013-05", observation) mustEqual true
       //On time
-      FhirPathEvaluator().satisfies("@T10:00 = @T10:00", observation) mustEqual true
+      FhirPathEvaluator().satisfies("@T10:00 = @T10", observation) mustEqual true
       FhirPathEvaluator().satisfies("@T10:00 = @T10:01", observation) mustEqual false
       FhirPathEvaluator().satisfies("@T10 = @T10:01", observation) mustEqual false
-      FhirPathEvaluator().satisfies("@T10:00 = @T10:00:00Z", observation) mustEqual false
-      FhirPathEvaluator().satisfies("@T10:00 ~ @T10:00:00Z", observation) mustEqual true
+      FhirPathEvaluator().satisfies("@T10:00 = @T10:00:00", observation) mustEqual true
+      FhirPathEvaluator().satisfies("@T10:00 ~ @T10:00:00.000", observation) mustEqual true
       //On Complex object
       FhirPathEvaluator().satisfies("Observation.code.coding[0] = Observation.code.coding[1]", observation) mustEqual false
       FhirPathEvaluator().satisfies("Observation.code.coding[0] = Observation.code.coding[0]", observation) mustEqual true
@@ -286,9 +282,9 @@ class FhirPathEvaluatorTest extends Specification {
       FhirPathEvaluator().satisfies("(Observation.effective as Period).start <= @2013-04-02", observation) mustEqual false
       //On time
       FhirPathEvaluator().satisfies("@T11:00 > @T10:00", observation) mustEqual true
-      FhirPathEvaluator().satisfies("@T11:00:00Z > @T10:00:00+01:00", observation) mustEqual true
-      FhirPathEvaluator().satisfies("@T11:00:00Z <= @T12:00:00+01:00", observation) mustEqual true
-      FhirPathEvaluator().satisfies("@T10:00:00Z >= @T12:00:00+01:00", observation) mustEqual false
+      FhirPathEvaluator().satisfies("@T11:00:00 > @T10:00:00", observation) mustEqual true
+      FhirPathEvaluator().satisfies("@T11:00:00 <= @T12:00:00", observation) mustEqual true
+      FhirPathEvaluator().satisfies("@T10:00 >= @T12:00:00", observation) mustEqual false
     }
 
     "evaluate path with collection operators" in {
@@ -481,7 +477,7 @@ class FhirPathEvaluatorTest extends Specification {
       FhirPathEvaluator().evaluateString("Observation.component.exists().toString()", observation2).head mustEqual "'true'" //from boolean
       FhirPathEvaluator().evaluateString("Observation.component.empty().toString()", observation2).head mustEqual "'false'" //from boolean
       FhirPathEvaluator().evaluateString("(1 'U').toString()", observation2).head mustEqual "1.0 'U'" //from boolean
-      FhirPathEvaluator().evaluateString("Observation.effectivePeriod.start.toString()", observation).head mustEqual "2013-04-02T09:30:10.000+01:00" //from boolean
+      FhirPathEvaluator().evaluateString("Observation.effectivePeriod.start.toString()", observation).head mustEqual "2013-04-02T09:30:10+01:00" //from boolean
     }
     "evaluate paths with string manipulation functions" in {
       //indexOf
@@ -568,6 +564,9 @@ class FhirPathEvaluatorTest extends Specification {
       //Resolving a literal reference
       FhirPathEvaluator(referenceResolver).evaluate("Observation.subject.resolve().gender", observation) mustEqual Seq(FhirPathString("male"))
       FhirPathEvaluator(referenceResolver).evaluate("Observation.subject.resolve().birthDate", observation) mustNotEqual  Seq(FhirPathString("1974-12-26"))
+
+
+
       //Resolving a canonical reference
       val ld = LocalDate.of(2016,11,14)
       FhirPathEvaluator(referenceResolver).evaluate("Questionnaire.derivedFrom.resolve().date", questionnaire) mustEqual Seq(FhirPathDateTime(ld))
