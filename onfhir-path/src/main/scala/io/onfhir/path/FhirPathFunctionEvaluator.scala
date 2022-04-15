@@ -471,7 +471,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
       case Seq(q:FhirPathQuantity) => Seq(FhirPathString(q.q.v.toString + " " + q.unit))
       case Seq(FhirPathBoolean(b)) => if(b) Seq(FhirPathString("'true'")) else Seq(FhirPathString("'false'"))
       case Seq(oth) => Nil
-      case _ => throw new FhirPathException(s"Invalid function call 'toDecimal' on multiple values !!!")
+      case _ => throw new FhirPathException(s"Invalid function call '_toString' on multiple values !!!")
     }
   }
 

@@ -811,7 +811,7 @@ class FhirContentValidator(
               .map(ers => ers
                 .map(er =>  {
                 //if the target element has the restriction, then the path is discriminator path itself
-                if(er._1 == defPath)
+                if(er._1.count(_ == '.') == defPath.count(_ == '.'))
                   actualPath -> er._2
                 //If the children of the target element has the restrictions, then merge the after paths with discriminator path
                 else
@@ -932,13 +932,22 @@ class FhirContentValidator(
    * @return
    */
   private def isSubElement(pathPrefix: String, elementPath: String, includeSubsAndSlices: Boolean = true) =
-    pathPrefix == elementPath ||
-      (includeSubsAndSlices && // Either same
-        (
-          elementPath.startsWith(pathPrefix + ".") || // Or a sub element
-            elementPath.startsWith(pathPrefix + ":")
-          )
-        ) // Or a slice
+    pathPrefix == elementPath || // Either same
+      pathPrefix == getBarePath(elementPath) || //Or match with the path by a sub slice
+        (includeSubsAndSlices &&
+          (
+            elementPath.startsWith(pathPrefix + ".") || // Or a sub element
+              elementPath.startsWith(pathPrefix + ":") ||
+                getBarePath(elementPath).startsWith(pathPrefix + ".")
+            )
+          ) // Or a slice
+
+  /**
+   * Get bare element path by eliminating slicing paths e.g. code.coding:SBPcode:code --> code.coding.code
+   * @param elementPath
+   * @return
+   */
+  private def getBarePath(elementPath:String):String = elementPath.split('.').map(_.takeWhile(_!=':')).mkString(".")
 
   /**
    * Filter the subelements under the given slice and normalize the paths
