@@ -301,7 +301,8 @@ class FhirPathUtilFunctions(context:FhirPathEnvironment, current:Seq[FhirPathRes
     val expr = fhirPath.head.asInstanceOf[FhirPathString].s
     try {
       val parsedExpr = FhirPathEvaluator.parse(expr)
-      new FhirPathExpressionEvaluator(context, current).visit(parsedExpr)
+      val result = new FhirPathExpressionEvaluator(context, current).visit(parsedExpr)
+      result
     } catch {
       case e:Throwable =>
         throw new FhirPathException(s"Invalid function call 'evaluateExpression', given FHIR Path expression is not valid!")

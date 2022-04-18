@@ -464,7 +464,8 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   def _toString():Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
-      case Seq(FhirPathNumber(n))  => Seq(FhirPathString(n.toString))
+      case Seq(n:FhirPathNumber) if n.isInteger()  => Seq(FhirPathString(n.v.toLong.toString()))
+      case Seq(n:FhirPathNumber) => Seq(FhirPathString(n.v.toString()))
       case Seq(s:FhirPathString) => Seq(s)
       case Seq(dt:FhirPathDateTime) => Seq(FhirPathString(FhirPathLiteralEvaluator.format(dt)))
       case Seq(t:FhirPathTime) =>  Seq(FhirPathString(FhirPathLiteralEvaluator.format(t)))
