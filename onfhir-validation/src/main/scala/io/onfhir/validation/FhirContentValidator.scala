@@ -1375,10 +1375,10 @@ object FhirContentValidator {
     */
   def validatePrimitive(value: JValue, ptype: String): Boolean = {
     ptype match {
-      case FHIR_DATA_TYPES.STRING => value.extract[String].length > 0 //OK
+      case FHIR_DATA_TYPES.STRING => value.extract[String].nonEmpty //OK
       case FHIR_DATA_TYPES.INTEGER => value.isInstanceOf[JInt]
-      case FHIR_DATA_TYPES.URI => Try(new URI(value.extract[String])).isSuccess
-      case FHIR_DATA_TYPES.URL =>  value.extract[String].length > 0
+      case FHIR_DATA_TYPES.URI => value.extract[String].nonEmpty//Try(new URI(value.extract[String])).isSuccess
+      case FHIR_DATA_TYPES.URL =>  value.extract[String].nonEmpty
         //Try(new URL(value.extract[String])).isSuccess //TODO even FHIR does not conform to this in its StructureDefinition
       case FHIR_DATA_TYPES.CANONICAL => value.extract[String].split('|') match {
         case Array(url) => Try(new URI(url)).isSuccess
