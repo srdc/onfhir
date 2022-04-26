@@ -115,6 +115,19 @@ case class FhirPathEvaluator (
     }
   }
 
+  def evaluateOptionalBoolean(expr:String, on:JValue):Option[Boolean] = {
+    val parsedExpr = FhirPathEvaluator.parse(expr)
+    evaluateOptionalBoolean(parsedExpr, on)
+  }
+
+  def evaluateOptionalBoolean(expr:FhirPathExprParser.ExpressionContext, on:JValue):Option[Boolean] = {
+    evaluate(expr, on) match {
+      case Nil => None
+      case Seq(FhirPathBoolean(b)) => Some(b)
+      case _ => throw new FhirPathException(s"Expression ${expr.getText} does not evaluate to a single boolean for the given resource!")
+    }
+  }
+
   /**
    * Evaluate the FHIR path expression that is expected to return an optional numeric value
    * @param expr    FHIR Path expression
