@@ -1,7 +1,6 @@
 package io.onfhir.api.endpoint
 
 import java.util.concurrent.TimeUnit
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{DateTime, HttpEntity}
 import akka.http.scaladsl.testkit.RouteTestTimeout
@@ -17,6 +16,7 @@ import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.util.JsonFormatter._
 import org.json4s.JsonAST.{JArray, JObject}
 
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.io.Source
 
@@ -34,6 +34,10 @@ class FHIRHistoryEndpointTest extends OnFhirTest with FHIREndpoint {
   sequential
 
   "FHIR History Service" should {
+    "wait a bit" in {
+      Await.result(Future.apply(Thread.sleep(15000)), FiniteDuration.apply(20, "seconds"))
+      1 === 1
+    }
     "return history of a resource for create, update, and delete interactions" in {
       var rid = ""
       var patientResource = ""
