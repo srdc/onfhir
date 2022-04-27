@@ -15,7 +15,9 @@ import org.junit.runner.RunWith
 import org.specs2.runner.JUnitRunner
 
 import java.nio.charset.StandardCharsets
+import java.time.temporal.ChronoUnit
 import java.util.concurrent.TimeUnit
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.io.Source
 
@@ -41,6 +43,10 @@ class FHIRCreateEndpointTest extends OnFhirTest with FHIREndpoint {
   sequential
 
   "FHIR Create Endpoint" should {
+    "wait a bit" in {
+      Await.result(Future.apply(Thread.sleep(5000)), FiniteDuration.apply(6, "seconds"))
+      1 === 1
+    }
     //Create a new resource given in JSON and XML formats
     "create a new resource" in {
       Post("/" + OnfhirConfig.baseUri + "/" + resourceType, HttpEntity(patientWithoutId)) ~> fhirRoute ~> check {

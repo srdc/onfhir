@@ -18,14 +18,14 @@ import org.specs2.specification.{BeforeAfterAll, BeforeAll}
 import io.onfhir.util.JsonFormatter._
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 
-//object OnfhirSetup {
-//  lazy val environment: Onfhir = {
-//    Onfhir.apply(new FhirR4Configurator)
-//  }
-//}
+object OnfhirSetup {
+  lazy val environment: Onfhir = {
+    Onfhir.apply(new FhirR4Configurator)
+  }
+}
 
 trait OnFhirTest extends Specification with Specs2RouteTest with BeforeAll {
 
@@ -34,7 +34,7 @@ trait OnFhirTest extends Specification with Specs2RouteTest with BeforeAll {
       val firstHostConfig = OnfhirConfig.mongodbHosts.head.split(':')
       EmbeddedMongo.start(OnfhirConfig.serverName, firstHostConfig(0), firstHostConfig(1).toInt)
     }
-    Onfhir.apply(new FhirR4Configurator)
+    OnfhirSetup.environment
   }
 
   override def afterAll(): Unit = {
