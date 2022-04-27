@@ -19,12 +19,6 @@ object MongoDB {
 
   private val SYSTEM_INDEXES = "system.indexes"
 
-//  if (OnfhirConfig.mongoEmbedded) {
-//    // If it is configured to use an embedded Mongo instance
-//    val firstHostConfig = OnfhirConfig.mongodbHosts.head.split(':')
-//    EmbeddedMongo.start(OnfhirConfig.serverName, firstHostConfig(0), firstHostConfig(1).toInt)
-//  }
-
   private val dbHosts = OnfhirConfig.mongodbHosts
 
   val transactionOptions:TransactionOptions = TransactionOptions.builder()
