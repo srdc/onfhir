@@ -14,81 +14,88 @@ import io.onfhir.util.DateTimeUtil
 import org.json4s.JsonAST.{JArray, JObject}
 import org.specs2.matcher.MatchResultCombinators
 import org.specs2.mutable.Specification
-import org.specs2.specification.BeforeAfterAll
+import org.specs2.specification.{BeforeAfterAll, BeforeAll}
 import io.onfhir.util.JsonFormatter._
 
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.Await
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
 
-object OnfhirSetup  {
-  lazy val environment:Onfhir = {
-     Onfhir.apply(new FhirR4Configurator)
+object OnfhirSetup {
+  lazy val environment: Onfhir = {
+    Onfhir.apply(new FhirR4Configurator)
   }
 }
 
-trait OnFhirTest extends Specification with Specs2RouteTest with BeforeAfterAll {
+trait OnFhirTest extends Specification with Specs2RouteTest with BeforeAll {
 
-  override def beforeAll() = OnfhirSetup.environment
-
-  override def afterAll() = {
-    Await.result(MongoDB.getDatabase.drop().head(), Duration.apply(5, TimeUnit.SECONDS))
-    //if(OnfhirConfig.mongoEmbedded)
-    //  EmbeddedMongo.stop()
+  override def beforeAll(): Unit = {
+    if (OnfhirConfig.mongoEmbedded) {
+      val firstHostConfig = OnfhirConfig.mongodbHosts.head.split(':')
+      EmbeddedMongo.start(OnfhirConfig.serverName, firstHostConfig(0), firstHostConfig(1).toInt)
+    }
+    OnfhirSetup.environment
   }
 
+  override def afterAll(): Unit = {
+    Await.result(MongoDB.getDatabase.drop().head(), Duration.apply(5, TimeUnit.SECONDS))
+    if (OnfhirConfig.mongoEmbedded) {
+      EmbeddedMongo.stop()
+    }
+  }
 
   /**
    * Check Meta version id and last updated and resource id
+   *
    * @param resource
    * @param expectedResourceId
    * @param expectedVersion
    * @return
    */
-  def checkIdAndMeta(resource:Resource, expectedResourceId:String, expectedVersion:String):org.specs2.matcher.MatchResult[Any] =  {
-    (if(expectedResourceId == null) FHIRUtil.extractValueOption[String](resource, "id") must beSome else
-        FHIRUtil.extractValueOption[String](resource, "id") must beSome(expectedResourceId) ) and
+  def checkIdAndMeta(resource: Resource, expectedResourceId: String, expectedVersion: String): org.specs2.matcher.MatchResult[Any] = {
+    (if (expectedResourceId == null) FHIRUtil.extractValueOption[String](resource, "id") must beSome else
+      FHIRUtil.extractValueOption[String](resource, "id") must beSome(expectedResourceId)) and
       (FHIRUtil.extractValueOptionByPath[String](resource, "meta.versionId") must beSome(expectedVersion)) and
-        (FHIRUtil.extractValueOptionByPath[String](resource, "meta.lastUpdated").map(DateTimeUtil.parseFhirDateTimeOrInstant) must beSome((i:Instant) => ChronoUnit.SECONDS.between(i, Instant.now()) < 10))
+      (FHIRUtil.extractValueOptionByPath[String](resource, "meta.lastUpdated").map(DateTimeUtil.parseFhirDateTimeOrInstant) must beSome((i: Instant) => ChronoUnit.SECONDS.between(i, Instant.now()) < 10))
   }
 
-  def checkHeaders(expectedLastModified:String, expectedVersion:String):org.specs2.matcher.MatchResult[Any] = {
+  def checkHeaders(expectedLastModified: String, expectedVersion: String): org.specs2.matcher.MatchResult[Any] = {
     (
-      if(expectedLastModified == null)
+      if (expectedLastModified == null)
         1 === 1
       else
         header("Last-Modified").map(_.asInstanceOf[`Last-Modified`].date) must beSome(DateTimeUtil.parseInstant(expectedLastModified).get)
-      ) and (header("ETag").map(_.value()) must beSome("W/\""+expectedVersion+"\""))
+      ) and (header("ETag").map(_.value()) must beSome("W/\"" + expectedVersion + "\""))
   }
 
-  def checkHeaders(resource:Resource, expectedRType:String, expectedResourceId:String, expectedVersion:String):org.specs2.matcher.MatchResult[Any] = {
+  def checkHeaders(resource: Resource, expectedRType: String, expectedResourceId: String, expectedVersion: String): org.specs2.matcher.MatchResult[Any] = {
     val isLocationOk = header("Location").map(_.value()) must beSome(FHIRUtil.resourceLocationWithVersion(expectedRType, expectedResourceId, expectedVersion.toLong))
-    val isLastModifiedOk=
-      if(resource != null) header("Last-Modified").map(_.asInstanceOf[`Last-Modified`].date) must beSome(DateTimeUtil.parseInstant(FHIRUtil.extractValueOptionByPath[String](resource, "meta.lastUpdated").get).get) else
-        header("Last-Modified").map(_.asInstanceOf[`Last-Modified`].date.toIsoDateTimeString() +"Z").map(DateTimeUtil.parseFhirDateTimeOrInstant) must beSome((i:Instant) => ChronoUnit.SECONDS.between(i, Instant.now()) < 10)
+    val isLastModifiedOk =
+      if (resource != null) header("Last-Modified").map(_.asInstanceOf[`Last-Modified`].date) must beSome(DateTimeUtil.parseInstant(FHIRUtil.extractValueOptionByPath[String](resource, "meta.lastUpdated").get).get) else
+        header("Last-Modified").map(_.asInstanceOf[`Last-Modified`].date.toIsoDateTimeString() + "Z").map(DateTimeUtil.parseFhirDateTimeOrInstant) must beSome((i: Instant) => ChronoUnit.SECONDS.between(i, Instant.now()) < 10)
 
-    val isETagOk = header("ETag").map(_.value()) must beSome("W/\""+expectedVersion+"\"")
+    val isETagOk = header("ETag").map(_.value()) must beSome("W/\"" + expectedVersion + "\"")
 
     isLocationOk and isLastModifiedOk and isETagOk
   }
 
-  def checkSearchResult(bundle:Resource, resourceType:String, expectedTotal:Long, query:Option[String], count:Option[Int] = None, page:Option[Int] = None):org.specs2.matcher.MatchResult[Any] = {
-    val matchers  = new ListBuffer[org.specs2.matcher.MatchResult[Any]]
+  def checkSearchResult(bundle: Resource, resourceType: String, expectedTotal: Long, query: Option[String], count: Option[Int] = None, page: Option[Int] = None): org.specs2.matcher.MatchResult[Any] = {
+    val matchers = new ListBuffer[org.specs2.matcher.MatchResult[Any]]
     matchers.append((bundle \ "type").extractOpt[String] must beSome("searchset"))
     matchers.append((bundle \ "total").extractOpt[Int] must beSome(expectedTotal))
 
 
     val selfLink = getLink(bundle, "self")
-    matchers.append(selfLink  must beSome)
+    matchers.append(selfLink must beSome)
     //matchers.append((selfLink.get \ "url").extractOpt[String] must beSome(OnfhirConfig.fhirRootUrl + "/" + resourceType + query.getOrElse("?") + count.map("&_count="+ _).getOrElse("") + "&_page=" + page.getOrElse(1)))
 
-    if(expectedTotal > count.getOrElse(OnfhirConfig.fhirDefaultPageCount) * page.getOrElse(1)){
+    if (expectedTotal > count.getOrElse(OnfhirConfig.fhirDefaultPageCount) * page.getOrElse(1)) {
       val nextlink = getLink(bundle, "next")
       matchers.append(nextlink must beSome)
       //matchers.append((nextlink.get \ "url").extractOpt[String] must beSome(OnfhirConfig.fhirRootUrl + "/" + resourceType + query.getOrElse("?") + count.map("&_count="+ _).getOrElse("") + "&_page="+ (page.getOrElse(1) + 1)))
     }
 
-    if(expectedTotal > 0 && page.getOrElse(1) > 1){
+    if (expectedTotal > 0 && page.getOrElse(1) > 1) {
       val previouslink = getLink(bundle, "previous")
       matchers.append(previouslink must beSome)
       //matchers.append((previouslink.get \ "url").extractOpt[String] must beSome(OnfhirConfig.fhirRootUrl + "/" + resourceType + query.getOrElse("?") + count.map("&_count="+ _).getOrElse("") + "&_page="+ (page.getOrElse(1) - 1)))
@@ -105,7 +112,7 @@ trait OnFhirTest extends Specification with Specs2RouteTest with BeforeAfterAll 
     matchers.reduce((m1, m2) => m1 and m2)
   }
 
-  private def getLink(bundle:Resource, link:String):Option[JObject] = {
+  private def getLink(bundle: Resource, link: String): Option[JObject] = {
     (bundle \ "link").asInstanceOf[JArray].arr.find(l =>
       (l \ "relation").extractOpt[String].contains(link)
     ).map(_.asInstanceOf[JObject])

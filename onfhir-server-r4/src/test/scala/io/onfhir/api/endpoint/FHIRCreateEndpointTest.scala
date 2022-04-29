@@ -1,26 +1,23 @@
 package io.onfhir.api.endpoint
 
-import java.io.File
-import java.nio.charset.{Charset, StandardCharsets}
-import java.time.temporal.ChronoUnit
-import java.time.{Duration, Instant}
-import java.util.concurrent.TimeUnit
-
-import akka.http.scaladsl.model.StatusCodes._
 import akka.actor.ActorSystem
+import akka.http.scaladsl.model.StatusCodes._
+import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{Accept, RawHeader}
-import akka.http.scaladsl.model.{ContentType, ContentTypes, DateTime, HttpCharsets, HttpEntity, MediaRange, MediaRanges, MediaTypes}
 import akka.http.scaladsl.testkit.RouteTestTimeout
 import io.onfhir.OnFhirTest
 import io.onfhir.api.Resource
+import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.OnfhirConfig
+import org.json4s.JsonAST.JObject
 import org.junit.runner.RunWith
 import org.specs2.runner.JUnitRunner
-import io.onfhir.api.model.FHIRMarshallers._
-import io.onfhir.util.DateTimeUtil
-import org.json4s.JsonAST.JObject
 
+import java.nio.charset.StandardCharsets
+import java.time.temporal.ChronoUnit
+import java.util.concurrent.TimeUnit
+import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.io.Source
 
@@ -46,6 +43,10 @@ class FHIRCreateEndpointTest extends OnFhirTest with FHIREndpoint {
   sequential
 
   "FHIR Create Endpoint" should {
+    "wait a bit" in {
+      Await.result(Future.apply(Thread.sleep(5000)), FiniteDuration.apply(6, "seconds"))
+      1 === 1
+    }
     //Create a new resource given in JSON and XML formats
     "create a new resource" in {
       Post("/" + OnfhirConfig.baseUri + "/" + resourceType, HttpEntity(patientWithoutId)) ~> fhirRoute ~> check {
