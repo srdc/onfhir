@@ -1,5 +1,6 @@
 package io.onfhir.client
 
+import akka.actor.ActorSystem
 import akka.http.javadsl.model.StatusCodes
 import io.onfhir.api.Resource
 import io.onfhir.api.client.{FHIRHistoryBundle, FHIRSearchSetBundle, FHIRTransactionBatchBundle}
@@ -20,7 +21,7 @@ object OnFhirNetworkClientTest extends Specification {
   val baseUrl = "http://localhost:8080/fhir"
   val patientWithoutId =  Source.fromInputStream(getClass.getResourceAsStream("/patient-without-id.json")).mkString.parseJson
   val obsGlucose = Source.fromInputStream(getClass.getResourceAsStream("/observation-glucose.json")).mkString.parseJson
-
+  implicit val actorSystem = ActorSystem("OnFhirClientTest")
   implicit val ec:ExecutionContext = ExecutionContext.global
   val onFhirClient = OnFhirNetworkClient.apply(baseUrl)
   implicit val ee: ExecutionEnv = ExecutionEnv.fromGlobalExecutionContext

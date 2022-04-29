@@ -76,8 +76,11 @@ class FhirSearchRequestBuilder(onFhirClient: IOnFhirClient, rtype:String, count:
       bundle.flatMap {
         case r if r.hasNext() =>
           getMergedBundle(onFhirClient.next(r))
-            .map(r2 => r2.mergeResults(r))
-        case r => Future.apply(r)
+            .map(r2 =>
+              r2.mergeResults(r)
+            )
+        case r =>
+          Future.apply(r)
       }
     }
 

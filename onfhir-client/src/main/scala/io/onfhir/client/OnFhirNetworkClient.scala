@@ -83,13 +83,12 @@ case class OnFhirNetworkClient(serverBaseUrl:String, interceptors:Seq[IHttpReque
 }
 
 object OnFhirNetworkClient {
-  implicit val system = ActorSystem.apply("OnFhirNetworkClient")
   /**
    * Create an network FHIR client with the given server base url
    * @param serverBaseUrl FHIR server's base url
    * @return
    */
-  def apply(serverBaseUrl:String): OnFhirNetworkClient = new OnFhirNetworkClient(serverBaseUrl)
+  def apply(serverBaseUrl:String)(implicit actorSystem: ActorSystem): OnFhirNetworkClient = new OnFhirNetworkClient(serverBaseUrl)
 
   /**
    * Create an network FHIR client with the given server base url and http request interceptors
@@ -97,7 +96,7 @@ object OnFhirNetworkClient {
    * @param interceptors
    * @return
    */
-  def apply(serverBaseUrl: String, interceptors: Seq[IHttpRequestInterceptor]): OnFhirNetworkClient = new OnFhirNetworkClient(serverBaseUrl, interceptors)
+  def apply(serverBaseUrl: String, interceptors: Seq[IHttpRequestInterceptor])(implicit actorSystem: ActorSystem): OnFhirNetworkClient = new OnFhirNetworkClient(serverBaseUrl, interceptors)
 
   /**
    *
@@ -105,5 +104,5 @@ object OnFhirNetworkClient {
    * @param interceptor
    * @return
    */
-  def apply(serverBaseUrl: String, interceptor:IHttpRequestInterceptor):OnFhirNetworkClient = new OnFhirNetworkClient(serverBaseUrl, Seq(interceptor))
+  def apply(serverBaseUrl: String, interceptor:IHttpRequestInterceptor)(implicit actorSystem: ActorSystem):OnFhirNetworkClient = new OnFhirNetworkClient(serverBaseUrl, Seq(interceptor))
 }
