@@ -3,6 +3,7 @@ package io.onfhir.db
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRResponse, OutcomeIssue, Parameter}
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
+import io.onfhir.api.parsers.FHIRSearchParameterValueParser.parseSimpleValue
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
 import io.onfhir.config.{OnfhirConfig, SearchParameterConf}
@@ -188,12 +189,19 @@ object ResourceQueryBuilder {
     */
   def constructQueryForCompartment(resourceType:String, compartmentParam:Parameter, validQueryParameters:Map[String, SearchParameterConf]):Bson = {
     //Resource type and value
-    val reference =  compartmentParam.valuePrefixList.head._1 + "/" + compartmentParam.valuePrefixList.head._2
+    val compartmentType = compartmentParam.valuePrefixList.head._1
+    val compartmentId = compartmentParam.valuePrefixList.head._2
+    val reference =  compartmentType + "/" + compartmentId
     val params = compartmentParam.chain.map(_._2)
-    val queries = params.map(p => {
+    var queries = params.map(p => {
       val parameter = Parameter(FHIR_PARAMETER_CATEGORIES.NORMAL, FHIR_PARAMETER_TYPES.REFERENCE, p, Seq("" -> reference))
       constructQueryForSimpleParameter(parameter, validQueryParameters.apply(p))
     })
+    //If the compartment and resource type is same, add also the _id based query
+    if(resourceType == compartmentType) {
+      val parameter = Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, FHIR_PARAMETER_TYPES.TOKEN, FHIR_SEARCH_SPECIAL_PARAMETERS.ID, Seq("" -> compartmentId))
+      queries = queries :+ constructQueryForIds(parameter)
+    }
     //OR the queries for multiple values
     if(queries.length > 1) or(queries:_*) else queries.head
   }
