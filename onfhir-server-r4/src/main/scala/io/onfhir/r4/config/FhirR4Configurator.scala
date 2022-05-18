@@ -167,16 +167,27 @@ class FhirR4Configurator extends BaseFhirConfigurator {
    * @return
    */
   override def parseCompartmentDefinition(compartmentDefinition: Resource): FHIRCompartmentDefinition = {
-
+    val compartmentUrl = (compartmentDefinition \ "url").extract[String]
+    val compartmentType = (compartmentDefinition \ "code").extract[String]
+    // Parse relations of compartment with each resource type
     val relations =
-      (compartmentDefinition \ "resource").asInstanceOf[JArray].arr
-        .map(r =>
-          (r \ "code").extract[String] -> (r \ "param").extractOrElse[Seq[String]](Nil).toSet
-        ).toMap
+      (compartmentDefinition \ "resource")
+        .asInstanceOf[JArray]
+        .arr
+        .map(r => {
+          val targetResourceType = (r \ "code").extract[String]
+          val compartmentParameters = (r \ "param").extractOrElse[Seq[String]](Nil).toSet - "{def}"
+          if(targetResourceType == compartmentType)
+            targetResourceType -> (compartmentParameters + "_id") //Add the _id parameter if the compartment and resource type is same
+          else
+            targetResourceType -> compartmentParameters
+        })
+        .filter(_._2.nonEmpty)
+        .toMap
 
     FHIRCompartmentDefinition(
-      (compartmentDefinition \ "url").extract[String],
-      (compartmentDefinition \ "code").extract[String],
+      compartmentUrl,
+      compartmentType,
       relations
     )
   }

@@ -181,11 +181,15 @@ object ResourceChecker {
     */
   private def handleCompartment(compartmentType:String, compartmentId:String, compartmentParamConfs:List[SearchParameterConf], resource: Resource):Boolean = {
     val resourceType = FHIRUtil.extractResourceType(resource)
-    compartmentParamConfs.exists(cpf => {
-      val param = Parameter(FHIR_PARAMETER_CATEGORIES.NORMAL, FHIR_PARAMETER_TYPES.REFERENCE, cpf.pname, Seq("" -> s"$compartmentType/$compartmentId"))
-      handleSimpleParameter(param, cpf, resource)
-    }) || //If compartment type is same with resource type, check if id is equal to compartment id
-      (resourceType == compartmentType && FHIRUtil.extractValueOptionByPath[String](resource, "id").contains(compartmentId))
+    compartmentParamConfs.exists(cpf =>
+      cpf.pname match {
+        case "_id" =>
+          resourceType == compartmentType && FHIRUtil.extractValueOptionByPath[String](resource, "id").contains(compartmentId)
+        case _ =>
+          val param = Parameter(FHIR_PARAMETER_CATEGORIES.NORMAL, FHIR_PARAMETER_TYPES.REFERENCE, cpf.pname, Seq("" -> s"$compartmentType/$compartmentId"))
+          handleSimpleParameter(param, cpf, resource)
+      }
+   )
   }
 
   /**
