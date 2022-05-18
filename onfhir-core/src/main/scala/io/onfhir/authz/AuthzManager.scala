@@ -8,7 +8,7 @@ import io.onfhir.Onfhir
 import io.onfhir.api.{FHIR_INTERACTIONS, FHIR_OPERATIONS, FHIR_PARAMETER_CATEGORIES}
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, Parameter}
 import io.onfhir.api.util.{FHIRUtil, ResourceChecker}
-import io.onfhir.config.OnfhirConfig
+import io.onfhir.config.{FhirConfigurationManager, OnfhirConfig}
 import io.onfhir.db.ResourceManager
 import io.onfhir.exception.{AuthorizationFailedException, AuthorizationFailedRejection}
 import org.slf4j.{Logger, LoggerFactory}
@@ -262,7 +262,8 @@ object AuthzManager {
           else
             authzResult
         case Some(ac) if ac.isActive => //if token is active check if the operation is allowed
-          AuthzConfigurationManager.authorizationHandler.authorize(ac, fhirRequest.interaction, fhirRequest.resourceType, fhirRequest.resourceId)
+          AuthzConfigurationManager.authorizationHandler
+            .authorize(ac, fhirRequest.interaction, fhirRequest.resourceType, fhirRequest.resourceId)
         //If token is invalid return false
         case _ => AuthzResult.failureInvalidToken("Invalid access token or we cannot resolve it...")
      }
