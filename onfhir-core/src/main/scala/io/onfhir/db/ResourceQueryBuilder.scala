@@ -193,14 +193,13 @@ object ResourceQueryBuilder {
     val compartmentId = compartmentParam.valuePrefixList.head._2
     val reference =  compartmentType + "/" + compartmentId
     val params = compartmentParam.chain.map(_._2)
-    var queries = params.map(p => {
-      val parameter = Parameter(FHIR_PARAMETER_CATEGORIES.NORMAL, FHIR_PARAMETER_TYPES.REFERENCE, p, Seq("" -> reference))
-      constructQueryForSimpleParameter(parameter, validQueryParameters.apply(p))
-    })
-    //If the compartment and resource type is same, add also the _id based query
-    if(resourceType == compartmentType) {
-      val parameter = Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, FHIR_PARAMETER_TYPES.TOKEN, FHIR_SEARCH_SPECIAL_PARAMETERS.ID, Seq("" -> compartmentId))
-      queries = queries :+ constructQueryForIds(parameter)
+    val queries = params.map{
+      case "_id" =>
+        val parameter = Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, FHIR_PARAMETER_TYPES.TOKEN, FHIR_SEARCH_SPECIAL_PARAMETERS.ID, Seq("" -> compartmentId))
+        constructQueryForIds(parameter)
+      case p =>
+        val parameter = Parameter(FHIR_PARAMETER_CATEGORIES.NORMAL, FHIR_PARAMETER_TYPES.REFERENCE, p, Seq("" -> reference))
+        constructQueryForSimpleParameter(parameter, validQueryParameters.apply(p))
     }
     //OR the queries for multiple values
     if(queries.length > 1) or(queries:_*) else queries.head

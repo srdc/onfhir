@@ -51,7 +51,7 @@ object IndexConfigurator {
       val definedIndexes:Set[String] = (resIndexConf \ ELEM_INDEXES).extractOpt[List[String]].map(_.toSet).getOrElse(Set.empty)//.union(defaultIndexes)
       val allIndexes =
         if(createIndexForCompartments)
-          definedIndexes.union(compartmentRelations.flatMap(cr => cr._2.getOrElse(resourceType, Set.empty)).toSet)
+          definedIndexes.union(compartmentRelations.flatMap(cr => cr._2.getOrElse(resourceType, Set.empty) - "_id").toSet)
         else
           definedIndexes
 
