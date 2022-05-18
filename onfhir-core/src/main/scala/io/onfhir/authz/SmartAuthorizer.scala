@@ -37,15 +37,18 @@ class SmartAuthorizer extends IAuthorizer {
     * @param resourceId Id of the resource to be accessed for FHIR instance base interactions
     * @return Either rejection or success with a list of restrictions in the format of FHIR search query
     */
-  def authorize(authzContext: AuthzContext, interaction:String, resourceType:Option[String], resourceId:Option[String]):AuthzResult = {
+  override def authorize(authzContext: AuthzContext, interaction:String, resourceType:Option[String], resourceId:Option[String]):AuthzResult = {
     //Parse the scopes, if scope is not understood just skip it
     val scopes:Seq[WGHeartScope] = authzContext.scopes.map(parseScope).filter(_.isDefined).map(_.get)
     //Check resourceType is given as Smart only deals with resource specific interactions
     if(resourceType.isEmpty) {
       AuthzResult.undecided("Smart Authorization only authorizes FHIR type and instance interactions!")
     } else {
-      //Get only the related scopes with the resource type
-      val relatedScopes:Seq[WGHeartScope] = scopes.filter(s => s.rtype == PERMISSION_TYPE_CONFIDENTIALITY || s.rtype == PERMISSION_TYPE_SENSITIVITY || s.rtype.equals(resourceType.get) || s.rtype.equals("*"))
+      // Get only the related scopes with the resource type
+      val relatedScopes:Seq[WGHeartScope] =
+        scopes
+          .filter(s => s.rtype == PERMISSION_TYPE_CONFIDENTIALITY || s.rtype == PERMISSION_TYPE_SENSITIVITY || s.rtype.equals(resourceType.get) || s.rtype.equals("*"))
+
       //Validate the context according to requirements of Smart on FHIR
       if(!isAuthzContextValid(authzContext, relatedScopes))
         AuthzResult.failureInsufficientScope("Information is missing in token related with the given scopes")
@@ -175,8 +178,9 @@ class SmartAuthorizer extends IAuthorizer {
       if(groupedScopes.isDefinedAt(PERMISSION_TYPE_PATIENT) && fhirConfig.compartmentRelations.get("Patient").exists(_.isDefinedAt(resourceType))){
         Some(groupedScopes(PERMISSION_TYPE_PATIENT).fold(WGHeartScope(PERMISSION_TYPE_PATIENT, resourceType, read=false, write=false))((s1, s2) => WGHeartScope(PERMISSION_TYPE_PATIENT, resourceType, s1.read || s2.read, s1.write || s2.write, s1.operations ++ s2.operations)))
       }
-      //Othwerwise search if there is a related user scope, that we can resolve from Practitioner or RelatedPerson compartments
-      else if(groupedScopes.isDefinedAt(PERMISSION_TYPE_USER) && fhirConfig.compartmentRelations.filter(c => c._1 == "Practitioner" || c._1 == "RelatedPerson").exists(_._2.isDefinedAt(resourceType))){
+      // Otherwise search if there is a related user scope, that we can resolve from Practitioner or RelatedPerson compartments
+      // IMPORTANT We loosen this dependency to Practitioner or Related Person compartment
+      else if(groupedScopes.isDefinedAt(PERMISSION_TYPE_USER) /*&& fhirConfig.compartmentRelations.filter(c => c._1 == "Practitioner" || c._1 == "RelatedPerson").exists(_._2.isDefinedAt(resourceType))*/){
         Some(groupedScopes(PERMISSION_TYPE_USER).fold(WGHeartScope(PERMISSION_TYPE_USER, resourceType, read=false, write=false))((s1, s2) => WGHeartScope(PERMISSION_TYPE_USER, resourceType, s1.read || s2.read, s1.write || s2.write, s1.operations ++ s2.operations)))
       } else
         None
