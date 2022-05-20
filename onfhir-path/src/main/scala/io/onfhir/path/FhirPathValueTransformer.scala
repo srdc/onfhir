@@ -17,18 +17,13 @@ object FhirPathValueTransformer {
     v match {
       case JArray(arr) => arr.flatMap(transform)
       case jobj:JObject => Seq(FhirPathComplex(jobj))
-      case jint:JInt => Seq(FhirPathNumber(jint.extract[Int]))
+      case JInt(i) => Seq(FhirPathNumber(BigDecimal(i)))
       case JDouble(num) => Seq(FhirPathNumber(num))
       case JDecimal(num) => Seq(FhirPathNumber(num.toDouble))
       case JLong(num) => Seq(FhirPathNumber(num.toDouble))
-      case jstr:JString =>
-        Seq(
-          if(jstr.s.head.isDigit)
-            resolveFromString(jstr.s)
-          else
-            FhirPathString(jstr.s)
-        )
-      case jb: JBool => Seq(FhirPathBoolean(jb.value))
+      case JString(s) if s.headOption.exists(_.isDigit)  => Seq(resolveFromString(s))
+      case JString(s) => Seq(FhirPathString(s))
+      case JBool(b) => Seq(FhirPathBoolean(b))
       case _ => Nil
     }
   }
