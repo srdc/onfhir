@@ -3,9 +3,9 @@ package io.onfhir.path
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
 import org.json4s.{JArray, JField, JObject, JString}
 
-import java.time.format.{DateTimeFormatter, DateTimeParseException}
-import java.time.{LocalDate, LocalDateTime, Period, Year, YearMonth, ZoneId, ZonedDateTime}
+import java.time.format.DateTimeFormatter
 import java.time.temporal.{ChronoUnit, Temporal}
+import java.time._
 import java.util.UUID
 import scala.util.Try
 
@@ -413,9 +413,9 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
     current.map {
       case dt: FhirPathDateTime => dt
       case FhirPathString(st) =>
-        val formatsToTry = patternsToTry.map(DateTimeFormatter.ofPattern)
+        val formatsToTry = patternsToTry.map(DateTimeFormatter.ofPattern(_).withZone(ZoneId.systemDefault()))
         val dateTime = formatsToTry.collectFirst {
-          case format if Try(LocalDateTime.parse(st, format)).isSuccess => LocalDateTime.parse(st, format)
+          case format if Try(ZonedDateTime.parse(st, format)).isSuccess => ZonedDateTime.parse(st, format)
         }
         if (dateTime.isDefined) {
           FhirPathDateTime(dateTime.get)
