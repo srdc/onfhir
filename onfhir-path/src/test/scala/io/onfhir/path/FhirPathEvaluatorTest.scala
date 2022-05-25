@@ -5,7 +5,7 @@ import io.onfhir.api.Resource
 import io.onfhir.api.model.{FhirCanonicalReference, FhirLiteralReference, FhirReference}
 import io.onfhir.api.validation.IReferenceResolver
 import io.onfhir.util.JsonFormatter._
-import org.json4s.JsonAST.{JArray, JObject, JString}
+import org.json4s.JsonAST.{JArray, JNull, JObject, JString}
 import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
@@ -702,6 +702,18 @@ class FhirPathEvaluatorTest extends Specification {
 
       val codings = evaluator.evaluateAndReturnJson("utl:evaluateExpression(utl:indices(0, 1).select('code.coding[' & $this.toString() &']').mkString(' | '))", observation)
       codings must beSome
+
+      val fhirDateTime = evaluator.evaluateDateTime("'2012-01-13 22:10:45'.utl:toFhirDateTime()", JNull)
+      val dt = LocalDateTime.from(fhirDateTime.head)
+      dt.getYear mustEqual 2012
+      dt.getDayOfMonth mustEqual 13
+      dt.getMinute mustEqual 10
+
+      val fhirDateTimeParam = evaluator.evaluateDateTime("'20120113.22:10:45'.utl:toFhirDateTime('yyyyMMdd.HH:mm:ss')", JNull)
+      val dtParam = LocalDateTime.from(fhirDateTimeParam.head)
+      dtParam.getYear mustEqual 2012
+      dtParam.getDayOfMonth mustEqual 13
+      dtParam.getMinute mustEqual 10
     }
 
     "evaluate fixed bugs" in {
