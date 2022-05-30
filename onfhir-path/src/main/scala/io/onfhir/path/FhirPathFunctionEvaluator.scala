@@ -9,6 +9,7 @@ import org.json4s.JsonAST.JObject
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.language.postfixOps
+import scala.math.BigDecimal.RoundingMode
 import scala.util.Try
 
 /**
@@ -293,6 +294,207 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     current.filterNot(c => otherSet.exists(o => c.isEqual(o).getOrElse(false))).distinct
   }
 
+  /**
+   * Returns the absolute value of the input. When taking the absolute value of a quantity, the unit is unchanged.
+   * If the input collection is empty, the result is empty.
+   * If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.
+   * @return
+   */
+  def abs():Seq[FhirPathResult] = {
+    current match {
+      case Nil => Nil
+      case Seq(FhirPathNumber(n)) => Seq(FhirPathNumber(n.abs))
+      case Seq(FhirPathQuantity(q, unit)) => Seq(FhirPathQuantity(FhirPathNumber(q.v.abs), unit))
+      case _ => throw new FhirPathException("Invalid function call 'abs' on multi item collection or non-numeric value!")
+    }
+  }
+
+  /**
+   * Returns the first integer greater than or equal to the input.
+   * If the input collection is empty, the result is empty.
+   * If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.
+   * @return
+   */
+  def ceiling():Seq[FhirPathResult] = {
+    current match {
+      case Nil => Nil
+      case Seq(FhirPathNumber(n)) => Seq(FhirPathNumber(Math.ceil(n.toDouble)))
+      case Seq(FhirPathQuantity(q, unit)) => Seq(FhirPathQuantity(FhirPathNumber(Math.ceil(q.v.toDouble)), unit))
+      case _ => throw new FhirPathException("Invalid function call 'ceiling' on multi item collection or non-numeric value!")
+    }
+  }
+
+  /**
+   * Returns e raised to the power of the input.
+   * If the input collection contains an Integer, it will be implicitly converted to a Decimal and the result will be a Decimal.
+   * If the input collection is empty, the result is empty.
+   * If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.
+   * @return
+   */
+  def exp():Seq[FhirPathResult] = {
+    current match {
+      case Nil => Nil
+      case Seq(FhirPathNumber(n)) => Seq(FhirPathNumber(Math.exp(n.toDouble)))
+      case Seq(FhirPathQuantity(q, unit)) => Seq(FhirPathQuantity(FhirPathNumber(Math.exp(q.v.toDouble)), unit))
+      case _ => throw new FhirPathException("Invalid function call 'exp' on multi item collection or non-numeric value!")
+    }
+  }
+
+  /**
+   * Returns the first integer less than or equal to the input.
+   * If the input collection is empty, the result is empty.
+   * If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.
+   * @return
+   */
+  def floor():Seq[FhirPathResult] = {
+    current match {
+      case Nil => Nil
+      case Seq(FhirPathNumber(n)) => Seq(FhirPathNumber(Math.floor(n.toDouble)))
+      case Seq(FhirPathQuantity(q, unit)) => Seq(FhirPathQuantity(FhirPathNumber(Math.floor(q.v.toDouble)), unit))
+      case _ => throw new FhirPathException("Invalid function call 'floor' on multi item collection or non-numeric value!")
+    }
+  }
+
+  /**
+   * Returns the natural logarithm of the input (i.e. the logarithm base e).
+   * When used with an Integer, it will be implicitly converted to a Decimal.
+   * If the input collection is empty, the result is empty.
+   * If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.
+   * @return
+   */
+  def ln():Seq[FhirPathResult] = {
+    current match {
+      case Nil => Nil
+      case Seq(FhirPathNumber(n)) => Seq(FhirPathNumber(Math.log(n.toDouble)))
+      case Seq(FhirPathQuantity(q, unit)) => Seq(FhirPathQuantity(FhirPathNumber(Math.log(q.v.toDouble)), unit))
+      case _ => throw new FhirPathException("Invalid function call 'ln' on multi item collection or non-numeric value!")
+    }
+  }
+
+  /**
+   * Returns the logarithm base base of the input number.
+   * When used with Integers, the arguments will be implicitly converted to Decimal.
+   * If base is empty, the result is empty.
+   * If the input collection is empty, the result is empty.
+   * If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.
+   * @param baseExp
+   * @return
+   */
+  def log(baseExp:ExpressionContext):Seq[FhirPathResult] = {
+    val baseResult = new FhirPathExpressionEvaluator(context, current).visit(baseExp)
+    if(baseResult.length != 1 || !baseResult.head.isInstanceOf[FhirPathNumber])
+      throw new FhirPathException("Invalid function call 'log', given base expression should return single numeric value!")
+    val base = baseResult.head.asInstanceOf[FhirPathNumber].v
+    current match {
+      case Nil => Nil
+      case Seq(FhirPathNumber(n)) => Seq(FhirPathNumber(Math.log(n.toDouble)/Math.log(base.toDouble)))
+      case Seq(FhirPathQuantity(q, unit)) => Seq(FhirPathQuantity(FhirPathNumber(Math.log(q.v.toDouble)/Math.log(base.toDouble)), unit))
+      case _ => throw new FhirPathException("Invalid function call 'ln' on multi item collection or non-numeric value!")
+    }
+  }
+
+  /**
+   * Raises a number to the exponent power. If this function is used with Integers, the result is an Integer. If the function is used with Decimals, the result is a Decimal. If the function is used with a mixture of Integer and Decimal, the Integer is implicitly converted to a Decimal and the result is a Decimal.
+   * If the power cannot be represented (such as the -1 raised to the 0.5), the result is empty.
+   * If the input is empty, or exponent is empty, the result is empty.
+   * If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.
+   * @param exponentExpr
+   * @return
+   */
+  def power(exponentExpr:ExpressionContext):Seq[FhirPathResult] = {
+    val exponentResult = new FhirPathExpressionEvaluator(context, current).visit(exponentExpr)
+    if(exponentResult.length != 1 || !exponentResult.head.isInstanceOf[FhirPathNumber])
+      throw new FhirPathException("Invalid function call 'power', given exponent expression should return single numeric value!")
+    val exponent = exponentResult.head.asInstanceOf[FhirPathNumber].v
+    current match {
+      case Nil => Nil
+      case Seq(FhirPathNumber(n)) => Seq(FhirPathNumber(Math.pow(n.toDouble,exponent.toDouble)))
+      case Seq(FhirPathQuantity(q, unit)) => Seq(FhirPathQuantity(FhirPathNumber(Math.pow(q.v.toDouble, exponent.toDouble)), unit))
+      case _ => throw new FhirPathException("Invalid function call 'power' on multi item collection or non-numeric value!")
+    }
+  }
+
+  /**
+   * Rounds the decimal to the nearest whole number using a traditional round (i.e. 0.5 or higher will round to 1).
+   * If the input collection is empty, the result is empty.
+   * If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.
+   * @return
+   */
+  def round():Seq[FhirPathResult] = {
+    current match {
+      case Nil => Nil
+      case Seq(FhirPathNumber(n)) => Seq(FhirPathNumber(Math.round(n.toDouble)))
+      case Seq(FhirPathQuantity(q, unit)) => Seq(FhirPathQuantity(FhirPathNumber(Math.round(q.v.toDouble)), unit))
+      case _ => throw new FhirPathException("Invalid function call 'power' on multi item collection or non-numeric value!")
+    }
+  }
+
+  /**
+   * The precision argument determines the decimal place at which the rounding will occur.
+   * The number of digits of precision must be >= 0 or the evaluation will end and signal an error to the calling environment.
+   * If the input collection is empty, the result is empty.
+   * If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.
+   * @param precisionExpr
+   * @return
+   */
+  def round(precisionExpr:ExpressionContext):Seq[FhirPathResult] = {
+    val precisionResult = new FhirPathExpressionEvaluator(context, current).visit(precisionExpr)
+    precisionResult match {
+      case Seq(n:FhirPathNumber) if n.isInteger() && n.v >0 =>
+        val precision = n.v.toInt
+        current match {
+          case Nil => Nil
+          case Seq(FhirPathNumber(n)) =>
+            Seq(FhirPathNumber(n.setScale(precision, RoundingMode.HALF_UP)))
+          case Seq(FhirPathQuantity(q, unit)) => Seq(FhirPathQuantity(FhirPathNumber(q.v.setScale(precision, RoundingMode.HALF_UP)), unit))
+          case _ => throw new FhirPathException("Invalid function call 'round' on multi item collection or non-numeric value!")
+        }
+      case _ =>  throw new FhirPathException("Invalid function call 'round', given precision expression should return single positive integer value!")
+    }
+  }
+
+  /**
+   * Returns the square root of the input number as a Decimal.
+   * If the square root cannot be represented (such as the square root of -1), the result is empty.
+   * If the input collection is empty, the result is empty.
+   * If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.
+   * @return
+   */
+  def sqrt():Seq[FhirPathResult] = {
+    current match {
+      case Nil => Nil
+      case Seq(FhirPathNumber(n)) =>
+        val result = Math.sqrt(n.toDouble)
+        if(result.isNaN)
+          Nil
+        else
+          Seq(FhirPathNumber(result))
+      case Seq(FhirPathQuantity(q, unit)) =>
+        val result = Math.sqrt(q.v.toDouble)
+        if(result.isNaN)
+          Nil
+        else
+          Seq(FhirPathQuantity(FhirPathNumber(result), unit))
+      case _ => throw new FhirPathException("Invalid function call 'sqrt' on multi item collection or non-numeric value!")
+    }
+  }
+
+  /**
+   * Returns the integer portion of the input.
+   * If the input collection is empty, the result is empty.
+   * If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.
+   * @return
+   */
+  def truncate():Seq[FhirPathResult] = {
+    current match {
+      case Nil => Nil
+      case Seq(FhirPathNumber(n)) => Seq(FhirPathNumber(n.toInt))
+      case Seq(FhirPathQuantity(q, unit)) => Seq(FhirPathQuantity(FhirPathNumber(q.v.toInt), unit))
+      case _ => throw new FhirPathException("Invalid function call 'truncate' on multi item collection or non-numeric value!")
+    }
+  }
+  
+  
   /**
     * Combining http://hl7.org/fhirpath/#combining
     * @param other

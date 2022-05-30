@@ -479,6 +479,59 @@ class FhirPathEvaluatorTest extends Specification {
       FhirPathEvaluator().evaluateString("(1 'U').toString()", observation2).head mustEqual "1.0 'U'" //from boolean
       FhirPathEvaluator().evaluateString("Observation.effectivePeriod.start.toString()", observation).head mustEqual "2013-04-02T09:30:10+01:00" //from boolean
     }
+
+    "evaluate paths with mathematical functions" in {
+      FhirPathEvaluator().evaluateOptionalNumerical("Observation.valueQuantity.value.abs()", observation).map(_.toDouble) must beSome(6.3)
+      FhirPathEvaluator().evaluateOptionalNumerical("(-5.1).abs()", observation).map(_.toDouble) must beSome(5.1)
+      FhirPathEvaluator().evaluateOptionalNumerical("{}.abs()", observation).map(_.toDouble) must beEmpty
+      FhirPathEvaluator().evaluateOptionalNumerical("(5 | -3).abs()", observation) must throwA[FhirPathException]
+
+      FhirPathEvaluator().evaluateOptionalNumerical("Observation.valueQuantity.value.ceiling()", observation).map(_.toDouble) must beSome(7)
+      FhirPathEvaluator().evaluateOptionalNumerical("(-3.4).ceiling()", observation).map(_.toDouble) must beSome(-3)
+      FhirPathEvaluator().evaluateOptionalNumerical("{}.ceiling()", observation).map(_.toDouble) must beEmpty
+      FhirPathEvaluator().evaluateOptionalNumerical("(5.1 | -3.2).ceiling()", observation) must throwA[FhirPathException]
+
+      FhirPathEvaluator().evaluateOptionalNumerical("2.exp()", observation).map(_.toDouble) must beSome(Math.exp(2))
+      FhirPathEvaluator().evaluateOptionalNumerical("{}.exp()", observation).map(_.toDouble) must beEmpty
+      FhirPathEvaluator().evaluateOptionalNumerical("(5.1 | -3.2).exp()", observation) must throwA[FhirPathException]
+
+      FhirPathEvaluator().evaluateOptionalNumerical("(-3.4).floor()", observation).map(_.toDouble) must beSome(-4)
+      FhirPathEvaluator().evaluateOptionalNumerical("{}.floor()", observation).map(_.toDouble) must beEmpty
+      FhirPathEvaluator().evaluateOptionalNumerical("(5.1 | -3.2).floor()", observation) must throwA[FhirPathException]
+
+      FhirPathEvaluator().evaluateOptionalNumerical("2.exp().ln()", observation).map(_.toDouble) must beSome(2)
+      FhirPathEvaluator().evaluateOptionalNumerical("{}.ln()", observation).map(_.toDouble) must beEmpty
+      FhirPathEvaluator().evaluateOptionalNumerical("(5.1 | -3.2).ln()", observation) must throwA[FhirPathException]
+
+      FhirPathEvaluator().evaluateOptionalNumerical("100.log(10)", observation).map(_.toDouble) must beSome(2)
+      FhirPathEvaluator().evaluateOptionalNumerical("{}.log(10)", observation).map(_.toDouble) must beEmpty
+      FhirPathEvaluator().evaluateOptionalNumerical("(5.1 | -3.2).log(10)", observation) must throwA[FhirPathException]
+
+      FhirPathEvaluator().evaluateOptionalNumerical("2.power(5)", observation).map(_.toDouble) must beSome(32)
+      FhirPathEvaluator().evaluateOptionalNumerical("{}.power(10)", observation).map(_.toDouble) must beEmpty
+      FhirPathEvaluator().evaluateOptionalNumerical("(5.1 | -3.2).power(10)", observation) must throwA[FhirPathException]
+
+      FhirPathEvaluator().evaluateOptionalNumerical("2.5.round()", observation).map(_.toDouble) must beSome(3)
+      FhirPathEvaluator().evaluateOptionalNumerical("2.4.round()", observation).map(_.toDouble) must beSome(2)
+      FhirPathEvaluator().evaluateOptionalNumerical("{}.round()", observation).map(_.toDouble) must beEmpty
+      FhirPathEvaluator().evaluateOptionalNumerical("(5.1 | -3.2).round()", observation) must throwA[FhirPathException]
+
+      FhirPathEvaluator().evaluateOptionalNumerical("2.52648.round(2)", observation).map(_.toDouble) must beSome(2.53)
+      FhirPathEvaluator().evaluateOptionalNumerical("2.52648.round(3)", observation).map(_.toDouble) must beSome(2.526)
+      FhirPathEvaluator().evaluateOptionalNumerical("2.52648.round(4)", observation).map(_.toDouble) must beSome(2.5265)
+      FhirPathEvaluator().evaluateOptionalNumerical("{}.round(3)", observation).map(_.toDouble) must beEmpty
+      FhirPathEvaluator().evaluateOptionalNumerical("(5.1 | -3.2).round(3)", observation) must throwA[FhirPathException]
+
+      FhirPathEvaluator().evaluateOptionalNumerical("16.sqrt()", observation).map(_.toDouble) must beSome(4)
+      FhirPathEvaluator().evaluateOptionalNumerical("(-1).sqrt()", observation).map(_.toDouble) must beEmpty
+      FhirPathEvaluator().evaluateOptionalNumerical("{}.sqrt()", observation).map(_.toDouble) must beEmpty
+      FhirPathEvaluator().evaluateOptionalNumerical("(5.1 | -3.2).sqrt()", observation) must throwA[FhirPathException]
+
+      FhirPathEvaluator().evaluateOptionalNumerical("2.8.truncate()", observation).map(_.toDouble) must beSome(2)
+      FhirPathEvaluator().evaluateOptionalNumerical("{}.truncate()", observation).map(_.toDouble) must beEmpty
+      FhirPathEvaluator().evaluateOptionalNumerical("(5.1 | -3.2).truncate(10)", observation) must throwA[FhirPathException]
+    }
+
     "evaluate paths with string manipulation functions" in {
       //indexOf
       FhirPathEvaluator().evaluateNumerical("Observation.performer.display.indexOf('Langeveld')", observation) mustEqual Seq(3)
