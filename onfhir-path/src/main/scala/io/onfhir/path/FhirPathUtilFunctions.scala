@@ -356,9 +356,9 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
       case Nil => None
       case _ => throw new FhirPathException(s"Invalid function call 'getPeriod', second expression ${toDate.getText} does not evaluate to a single FHIR date time!")
     }
-
+    //If any one is empty return nil
     if (fdate.isEmpty || tdate.isEmpty)
-      Seq(FhirPathNumber(0))
+      Nil
     else {
       val chronoPeriod =
         new FhirPathExpressionEvaluator(context, current).visit(period) match {

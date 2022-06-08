@@ -7,12 +7,24 @@ import io.onfhir.api.util.FHIRUtil
 import io.onfhir.util.DateTimeUtil
 import org.json4s.JsonAST.{JArray, JObject}
 
+/**
+ * FHIR Bundle representation
+ * @param bundle
+ */
 abstract class FHIRBundle(bundle:Resource) {
+  /**
+   * Entries of the bundle
+   */
   val entries:Seq[JObject] = bundle \ "entry" match {
     case JArray(arr) => arr.map(_.asInstanceOf[JObject])
     case _ => Nil
   }
 
+  /**
+   * Get the resource from the entry
+   * @param entry
+   * @return
+   */
   def getResourceFromEntry(entry:JObject):Option[JObject] =
     FHIRUtil.extractValueOption[JObject](entry, "resource")
 }

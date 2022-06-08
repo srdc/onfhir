@@ -692,7 +692,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     */
   private def checkSingleString() =
     if(current.length > 1 || current.headOption.exists(!_.isInstanceOf[FhirPathString]))
-      throw new FhirPathException("Invalid function call 'indexOf' on multi item collection or non-string value!")
+      throw new FhirPathException("Invalid function call on multi item collection or non-string value!")
 
   def indexOf(substringExpr : ExpressionContext):Seq[FhirPathResult] = {
     checkSingleString()

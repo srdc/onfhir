@@ -560,6 +560,13 @@ class FhirPathEvaluatorTest extends Specification {
       FhirPathEvaluator().evaluateString("Observation.performer.display.replace('', 'x')", observation).head mustEqual "xAx.x xLxaxnxgxexvxexlxdx"
       //matches
       FhirPathEvaluator().satisfies("Observation.performer.display.matches('.*Lan.*')", observation) mustEqual true
+      FhirPathEvaluator().satisfies("'M31.2'.matches('M31\\.[0-3]')", observation) mustEqual true
+      FhirPathEvaluator().satisfies("'M31.4'.matches('M31\\.[0-3]')", observation) mustEqual false
+      FhirPathEvaluator().satisfies("'K26.4'.matches('K2[5-8](\\..*)?')", observation)  mustEqual true
+      FhirPathEvaluator().satisfies("'K26'.matches('K2[5-8](\\..*)?')", observation)  mustEqual true
+      FhirPathEvaluator().satisfies("'C43.5'.matches('C4[0135](\\..*)?')", observation)  mustEqual true
+      FhirPathEvaluator().satisfies("'C40'.matches('C4[0135](\\..*)?')", observation)  mustEqual true
+      FhirPathEvaluator().satisfies("'C42.5'.matches('C4[0135](\\..*)?')", observation)  mustEqual false
       //replaceMatches
       FhirPathEvaluator().evaluateString("Observation.performer.display.replaceMatches('L.n', 'Lun')", observation).head mustEqual "A. Lungeveld"
       //length
@@ -685,8 +692,7 @@ class FhirPathEvaluatorTest extends Specification {
       result = evaluator.evaluateNumerical("period.getPeriod(start, end, 'days')", encounter).head.toLong
       result mustEqual 9
 
-      result = evaluator.evaluateNumerical("period.getPeriod(s, end, 'days')", encounter).head.toLong
-      result mustEqual 0
+      evaluator.evaluateNumerical("period.getPeriod(s, end, 'days')", encounter) must empty
 
       var quantity = evaluator.evaluateAndReturnJson("effectivePeriod.utl:getDurationAsQuantityObject(start, @2013-04-02T12:30:10+01:00)", observation).head
       (quantity \ "code").extract[String] mustEqual "min"
