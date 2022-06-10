@@ -1,11 +1,25 @@
-FROM openjdk:11
+# Stage 0
+FROM maven:3.6-openjdk-11 AS builder
 
-# Create folders
-RUN mkdir -p /onfhir
-ADD docker-entrypoint.sh /onfhir
+ENV ONFHIR_HOME /usr/local/onfhir
+RUN mkdir -p "$ONFHIR_HOME"
+WORKDIR $ONFHIR_HOME
 
-RUN chown root:root /onfhir/docker-entrypoint.sh
-RUN chmod +x /onfhir/docker-entrypoint.sh
+COPY . ./
 
-EXPOSE 8080
-ENTRYPOINT ["/onfhir/docker-entrypoint.sh"]
+# Build without running the unit and integration tests
+RUN mvn package -Pxtest
+
+# Stage 1
+FROM openjdk:11-jre-slim
+
+ENV ONFHIR_HOME /usr/local/onfhir
+RUN mkdir -p "$ONFHIR_HOME"
+WORKDIR $ONFHIR_HOME
+
+COPY --from=builder $ONFHIR_HOME/onfhir-server-r4/target/onfhir-server-standalone.jar .
+
+COPY docker/docker-entrypoint.sh .
+RUN chmod +x docker-entrypoint.sh
+
+ENTRYPOINT ["./docker-entrypoint.sh"]
