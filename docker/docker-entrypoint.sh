@@ -1,15 +1,29 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 JAVA_CMD="java -Xms256m -Xmx3g -jar "
 
-# Configure FHIR repository ROOT URL (after deployment and proxies)
-if [ ! -z "$FHIR_ROOT_URL" ]; then
-    JAVA_CMD+="-Dfhir.root-url=$FHIR_ROOT_URL "
+# Configure application.conf path
+if [ ! -z "$APP_CONF_FILE" ]; then
+    JAVA_CMD+="-Dconfig.file=$APP_CONF_FILE "
 fi
 
-# Configure FHIR repository binding host
-if [ ! -z "$FHIR_HOST" ]; then
-    JAVA_CMD+="-Dserver.host=$FHIR_HOST "
+# Configure FHIR repository server binding host
+if [ ! -z "$SERVER_HOST" ]; then
+    JAVA_CMD+="-Dserver.host=$SERVER_HOST "
+fi
+if [ ! -z "$SERVER_PORT" ]; then
+    JAVA_CMD+="-Dserver.port=$SERVER_PORT "
+fi
+if [ ! -z "$SERVER_BASE_URI" ]; then
+    JAVA_CMD+="-Dserver.base-uri=$SERVER_BASE_URI "
+fi
+
+# Configure FHIR repository ROOT URL (after deployment and proxies)
+if [ ! -z "$FHIR_INIT" ]; then
+    JAVA_CMD+="-Dfhir.initialize=$FHIR_INIT "
+fi
+if [ ! -z "$FHIR_ROOT_URL" ]; then
+    JAVA_CMD+="-Dfhir.root-url=$FHIR_ROOT_URL "
 fi
 
 # Configure Kafka broker host
@@ -29,16 +43,6 @@ if [ ! -z "$USE_SSL" ]; then
     JAVA_CMD+="-Dspray.can.server.ssl-encryption=on "
     JAVA_CMD+="-Dserver.ssl.keystore=/pds/ssl/keystore.jks "
     JAVA_CMD+="-Dserver.ssl.password=fhir-repository "
-fi
-
-# Configure application.conf path
-if [ ! -z "$APP_CONF_FILE" ]; then
-    JAVA_CMD+="-Dconfig.file=$APP_CONF_FILE "
-fi
-
-# Configure application.conf path
-if [ ! -z "$LOGBACK_CONF_FILE" ]; then
-    JAVA_CMD+="-Dlogback.configurationFile=$LOGBACK_CONF_FILE "
 fi
 
 # Configure MongoDB
@@ -70,6 +74,6 @@ if [ ! -z "$DELAY_EXECUTION" ]; then
 fi
 
 # Finally, tell which jar to run
-JAVA_CMD+="/fhir/onfhir-server-standalone.jar"
+JAVA_CMD+="onfhir-server-standalone.jar"
 
 eval $JAVA_CMD
