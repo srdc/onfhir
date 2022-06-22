@@ -164,7 +164,7 @@ class FHIRSearchService(transactionSession: Option[TransactionSession] = None) e
                                rtype:Seq[String],
                                parameters:List[Parameter]):Resource = {
     //Construct paging links
-    val pagingLinks = FHIRUtil.generateBundleLinks(rtype, None, totalNumOfMatched, parameters, isHistory = false)
+    val pagingLinks = FHIRUtil.generateBundleLinks(rtype, None, totalNumOfMatched, matchedResources.length, parameters, isHistory = false)
 
     //Whether search results are summarized or not
     val summaryParamValue = parameters.find(p => p.name == FHIR_SEARCH_RESULT_PARAMETERS.SUMMARY).map(_.valuePrefixList.head._2)

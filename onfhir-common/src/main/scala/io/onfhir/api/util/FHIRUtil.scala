@@ -79,7 +79,8 @@ object FHIRUtil {
     *
     * @param rtype           type (s) of the resource to search if Nil it means all
     * @param rid             id of the resource (for History searches)
-    * @param totalCount      number of entries in bundle
+    * @param totalCount      Total number of search results
+    * @param bundleCount     Number of matched results (matched entries) in bundle
     * @param parameters      query parameters used for query
     * @return List of LinkName and Location
     */
@@ -87,6 +88,7 @@ object FHIRUtil {
                            rtype: Seq[String],
                            rid: Option[String],
                            totalCount: Long,
+                           bundleCount:Int,
                            parameters: List[Parameter],
                            isHistory: Boolean): List[(String, String)] = {
 
@@ -119,12 +121,15 @@ object FHIRUtil {
         List(
           Some(FHIR_BUNDLE_FIELDS.SELF_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=$page"),
           Some(FHIR_BUNDLE_FIELDS.FIRST_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=1"),
-          Some(FHIR_BUNDLE_FIELDS.NEXT_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=${page + 1}"),
+          if(bundleCount == count) Some(FHIR_BUNDLE_FIELDS.NEXT_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=${page + 1}") else None,
           if (previousPage > 0) Some(FHIR_BUNDLE_FIELDS.PREVIOUS_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=$previousPage") else None
         ).filter(_.isDefined).map(_.get)
       }
       else if (totalCount < count) {
-        List(FHIR_BUNDLE_FIELDS.SELF_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=$page") //Only return self link if there is no previous or next
+        List(
+          Some(FHIR_BUNDLE_FIELDS.SELF_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=$page"), //Only return self link if there is no previous or next
+          if(page != 1) Some(FHIR_BUNDLE_FIELDS.FIRST_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=1") else None
+        ).filter(_.isDefined).map(_.get)
       } else {
         //Find next, last and previous pages in FHIR paging
         val lastPage = if (totalCount % count == 0) totalCount / count else totalCount / count + 1

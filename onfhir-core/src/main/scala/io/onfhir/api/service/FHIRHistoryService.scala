@@ -96,7 +96,7 @@ class FHIRHistoryService (transactionSession: Option[TransactionSession] = None)
       case (total, foundResources) =>
 
         //2.1) handle Bundle links
-        val bundleLinks = FHIRUtil.generateBundleLinks(Seq(_type), _id, total, searchParameters, isHistory = true)
+        val bundleLinks = FHIRUtil.generateBundleLinks(Seq(_type), _id, total, foundResources.length, searchParameters, isHistory = true)
         //2.2) handle bundle entries
         val bundleEntries = foundResources.map(r => FHIRUtil.createBundleEntry(r, FHIR_BUNDLE_TYPES.HISTORY, isSummarized = false))
         val bundle = FHIRUtil.createBundle(FHIR_BUNDLE_TYPES.HISTORY, bundleLinks, bundleEntries, total, None)
