@@ -115,6 +115,19 @@ case class FhirPathEvaluator (
     }
   }
 
+  def evaluateBoolean(expr:String, on:JValue):Seq[Boolean] = {
+    val parsedExpr = FhirPathEvaluator.parse(expr)
+    evaluateBoolean(parsedExpr, on)
+  }
+
+  def evaluateBoolean(expr:FhirPathExprParser.ExpressionContext, on:JValue):Seq[Boolean] = {
+    val result = evaluate(expr, on)
+    if(result.exists(!_.isInstanceOf[FhirPathBoolean]))
+      throw new FhirPathException(s"Expression ${expr.getText} does not evaluate to boolean for the given resource!")
+
+    result.map(_.asInstanceOf[FhirPathBoolean]).map(_.b)
+  }
+
   def evaluateOptionalBoolean(expr:String, on:JValue):Option[Boolean] = {
     val parsedExpr = FhirPathEvaluator.parse(expr)
     evaluateOptionalBoolean(parsedExpr, on)
