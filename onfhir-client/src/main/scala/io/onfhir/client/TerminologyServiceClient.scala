@@ -1,0 +1,331 @@
+package io.onfhir.client
+
+import io.onfhir.api.client.IOnFhirClient
+import io.onfhir.api.service.IFhirTerminologyService
+import io.onfhir.client.TerminologyServiceClient.{LOOKUP_OPERATION_NAME, LOOKUP_OPERATION_REQUEST_PARAMS, TRANSLATE_OPERATION_NAME, TRANSLATE_OPERATION_REQUEST_PARAMS}
+import org.json4s.JObject
+import org.slf4j.LoggerFactory
+
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.Duration
+import scala.concurrent.{ExecutionContext, Future}
+
+/**
+ * A simple client for FHIR terminology service
+ *
+ * @param onFhirClient
+ * @param ec
+ */
+class TerminologyServiceClient(onFhirClient: IOnFhirClient)(implicit ec: ExecutionContext) extends IFhirTerminologyService {
+  val logger = LoggerFactory.getLogger(this.getClass)
+  /**
+   * Return timeout specified for the terminology service calls
+   * //TODO
+   *
+   * @return
+   */
+  override def getTimeout: Duration = Duration.apply(1, TimeUnit.MINUTES)
+
+  /**
+   * Translate the given code + system based on given conceptMapUrl
+   *
+   * @param code          A FHIR code value
+   * @param system        FHIR Code system url
+   * @param conceptMapUrl A canonical URL for a concept map
+   * @return Resulting Parameters resource
+   */
+  override def translate(code: String, system: String, conceptMapUrl: String): Future[Option[JObject]] = translate(code, system, conceptMapUrl, None, None, false)
+
+  /**
+   * Translate the given code + system based on given conceptMapUrl
+   *
+   * @param code              A FHIR code value
+   * @param system            FHIR Code system url
+   * @param conceptMapUrl     A canonical URL for a concept map
+   * @param version           The version of the system, if one was provided in the source data
+   * @param conceptMapVersion The identifier that is used to identify a specific version of the concept map to be used for the translation.
+   * @param reverse           If this is true, then the operation should return all the codes that might be mapped to this code.
+   * @return
+   */
+  override def translate(code: String, system: String, conceptMapUrl: String, version: Option[String], conceptMapVersion: Option[String], reverse: Boolean):Future[Option[JObject]]  = {
+    var request =
+      onFhirClient
+        .operation(TRANSLATE_OPERATION_NAME)
+        .on("ConceptMap")
+        .addSimpleParam(TRANSLATE_OPERATION_REQUEST_PARAMS.CODE, code)
+        .addSimpleParam(TRANSLATE_OPERATION_REQUEST_PARAMS.SYSTEM, system)
+        .addSimpleParam(TRANSLATE_OPERATION_REQUEST_PARAMS.CONCEPT_MAP_URL, conceptMapUrl)
+    //Optional parameters
+    version.foreach(v => request = request.addSimpleParam(TRANSLATE_OPERATION_REQUEST_PARAMS.VERSION, v))
+    conceptMapVersion.foreach(v => request = request.addSimpleParam(TRANSLATE_OPERATION_REQUEST_PARAMS.CONCEPT_MAP_VERSION, v))
+    if (reverse)
+      request = request.addSimpleParam(TRANSLATE_OPERATION_REQUEST_PARAMS.REVERSE, "true")
+
+    request
+      .executeAndReturnResource()
+      .map(Some(_))
+      .recover {
+        case t:Throwable =>
+          logger.error("Problem while calling translate on configured terminology service!", t)
+          None
+      }
+  }
+
+
+  /**
+   * Translate the given Coding or codeable concept based on given conceptMapUrl
+   *
+   * @param codingOrCodeableConcept FHIR Coding or CodeableConcept
+   * @param conceptMapUrl           A canonical URL for a concept map
+   * @return Resulting Parameters resource
+   */
+  override def translate(codingOrCodeableConcept: JObject, conceptMapUrl: String): Future[Option[JObject]] = translate(codingOrCodeableConcept, conceptMapUrl, None, false)
+
+  /**
+   * Translate the given Coding or codeable concept based on given conceptMapUrl
+   *
+   * @param codingOrCodeableConcept FHIR Coding or CodeableConcept
+   * @param conceptMapUrl           A canonical URL for a concept map
+   * @param conceptMapVersion       The identifier that is used to identify a specific version of the concept map to be used for the translation.
+   * @param reverse                 If this is true, then the operation should return all the codes that might be mapped to this code.
+   * @return
+   */
+  override def translate(codingOrCodeableConcept: JObject, conceptMapUrl: String, conceptMapVersion: Option[String], reverse: Boolean): Future[Option[JObject]] = {
+    val isCodeableConcept = codingOrCodeableConcept.obj.exists(_._1 == "coding")
+
+    var request =
+      onFhirClient
+        .operation(TRANSLATE_OPERATION_NAME)
+        .on("ConceptMap")
+        .addSimpleParam(TRANSLATE_OPERATION_REQUEST_PARAMS.CONCEPT_MAP_URL, conceptMapUrl)
+    //Add the coding or codeableconcept
+    request =
+      if (isCodeableConcept)
+        request.addParam(TRANSLATE_OPERATION_REQUEST_PARAMS.CODEABLE_CONCEPT, "CodeableConcept" -> codingOrCodeableConcept)
+      else
+        request.addParam(TRANSLATE_OPERATION_REQUEST_PARAMS.CODING, "Coding" -> codingOrCodeableConcept)
+
+    //Optional parameters
+    conceptMapVersion.foreach(v => request = request.addSimpleParam(TRANSLATE_OPERATION_REQUEST_PARAMS.CONCEPT_MAP_VERSION, v))
+    if (reverse)
+      request = request.addSimpleParam(TRANSLATE_OPERATION_REQUEST_PARAMS.REVERSE, "true")
+
+    request
+      .executeAndReturnResource()
+      .map(Some(_))
+      .recover {
+        case t:Throwable =>
+          logger.error("Problem while calling translate on configured terminology service!", t)
+          None
+      }
+  }
+
+  /**
+   * Translate the given code + system based on given source and target value sets
+   *
+   * @param code   A FHIR code value
+   * @param system FHIR Code system url
+   * @param source Identifies the value set used when the concept (system/code pair) was chosen. May be a canonical url for the valueset, or an absolute or relative location.
+   * @param target Identifies the value set in which a translation is sought.
+   * @return Resulting Parameters resource
+   */
+  override def translate(code: String, system: String, source: Option[String], target: Option[String]): Future[Option[JObject]] = translate(code, system, source, target, None, false)
+
+  /**
+   * Translate the given code + system based on given source and target value sets
+   *
+   * @param code    A FHIR code value
+   * @param system  FHIR Code system url
+   * @param source  Identifies the value set used when the concept (system/code pair) was chosen. May be a canonical url for the valueset, or an absolute or relative location.
+   * @param target  Identifies the value set in which a translation is sought.
+   * @param version The version of the system, if one was provided in the source data
+   * @param reverse If this is true, then the operation should return all the codes that might be mapped to this code.
+   * @return
+   */
+  override def translate(code: String, system: String, source: Option[String], target: Option[String], version: Option[String], reverse: Boolean): Future[Option[JObject]] = {
+    var request =
+      onFhirClient
+        .operation(TRANSLATE_OPERATION_NAME)
+        .on("ConceptMap")
+        .addSimpleParam(TRANSLATE_OPERATION_REQUEST_PARAMS.CODE, code)
+        .addSimpleParam(TRANSLATE_OPERATION_REQUEST_PARAMS.SYSTEM, system)
+
+    //Optional parameters
+    source.foreach(s => request = request.addSimpleParam(TRANSLATE_OPERATION_REQUEST_PARAMS.SOURCE, s))
+    target.foreach(t => request = request.addSimpleParam(TRANSLATE_OPERATION_REQUEST_PARAMS.TARGET, t))
+    version.foreach(v => request = request.addSimpleParam(TRANSLATE_OPERATION_REQUEST_PARAMS.VERSION, v))
+
+    if (reverse)
+      request = request.addSimpleParam(TRANSLATE_OPERATION_REQUEST_PARAMS.REVERSE, "true")
+
+    request
+      .executeAndReturnResource()
+      .map(Some(_))
+      .recover {
+        case t:Throwable =>
+          logger.error("Problem while calling translate on configured terminology service!", t)
+          None
+      }
+  }
+
+  /**
+   * Translate the given Coding or codeable concept based on given source and target value sets
+   *
+   * @param codingOrCodeableConcept FHIR Coding or CodeableConcept
+   * @param source                  Identifies the value set used when the concept (system/code pair) was chosen. May be a canonical url for the valueset, or an absolute or relative location.
+   * @param target                  Identifies the value set in which a translation is sought.
+   * @return Resulting Parameters resource
+   */
+  override def translate(codingOrCodeableConcept: JObject, source: Option[String], target: Option[String]): Future[Option[JObject]] = translate(codingOrCodeableConcept, source, target, false)
+
+  /**
+   * Translate the given Coding or codeable concept based on given source and target value sets
+   *
+   * @param codingOrCodeableConcept FHIR Coding or CodeableConcept
+   * @param source                  Identifies the value set used when the concept (system/code pair) was chosen. May be a canonical url for the valueset, or an absolute or relative location.
+   * @param target                  Identifies the value set in which a translation is sought.
+   * @param reverse                 If this is true, then the operation should return all the codes that might be mapped to this code.
+   * @return
+   */
+  override def translate(codingOrCodeableConcept: JObject, source: Option[String], target: Option[String], reverse: Boolean): Future[Option[JObject]] = {
+    val isCodeableConcept = codingOrCodeableConcept.obj.exists(_._1 == "coding")
+
+    var request =
+      onFhirClient
+        .operation(TRANSLATE_OPERATION_NAME)
+        .on("ConceptMap")
+
+    //Add the coding or codeableconcept
+    request =
+      if (isCodeableConcept)
+        request.addParam(TRANSLATE_OPERATION_REQUEST_PARAMS.CODEABLE_CONCEPT, "CodeableConcept" -> codingOrCodeableConcept)
+      else
+        request.addParam(TRANSLATE_OPERATION_REQUEST_PARAMS.CODING, "Coding" -> codingOrCodeableConcept)
+
+    //Optional parameters
+    source.foreach(s => request = request.addSimpleParam(TRANSLATE_OPERATION_REQUEST_PARAMS.SOURCE, s))
+    target.foreach(t => request = request.addSimpleParam(TRANSLATE_OPERATION_REQUEST_PARAMS.TARGET, t))
+    if (reverse)
+      request = request.addSimpleParam(TRANSLATE_OPERATION_REQUEST_PARAMS.REVERSE, "true")
+
+    request
+      .executeAndReturnResource()
+      .map(Some(_))
+      .recover {
+        case t:Throwable =>
+          logger.error("Problem while calling translate on configured terminology service!", t)
+          None
+      }
+  }
+
+  /**
+   * Given a code/system, get additional details about the concept, including definition, status, designations, and properties.
+   *
+   * @param code   A FHIR code value
+   * @param system FHIR Code system url
+   * @return Resulting Parameters resource
+   */
+  override def lookup(code: String, system: String):Future[Option[JObject]] = lookup(code, system, None, None, None, Nil)
+
+  /**
+   * Given a code/system, get additional details about the concept, including definition, status, designations, and properties.
+   *
+   * @param code       A FHIR code value
+   * @param system     FHIR Code system url
+   * @param version    The version of the system, if one was provided in the source data
+   * @param date       The date for which the information should be returned. Normally, this is the current conditions (which is the default value) but under some circumstances, systems need to acccess this information as it would have been in the past
+   * @param properties A property that the client wishes to be returned in the output. If no properties are specified, the server chooses what to return.
+   * @return
+   */
+  override def lookup(code: String, system: String, version: Option[String], date: Option[String], displayLanguage:Option[String], properties: Seq[String]): Future[Option[JObject]] = {
+    var request =
+      onFhirClient
+        .operation(LOOKUP_OPERATION_NAME)
+        .on("CodeSystem")
+        .addSimpleParam(LOOKUP_OPERATION_REQUEST_PARAMS.CODE, code)
+        .addSimpleParam(LOOKUP_OPERATION_REQUEST_PARAMS.SYSTEM, system)
+
+    version.foreach(v => request = request.addSimpleParam(LOOKUP_OPERATION_REQUEST_PARAMS.VERSION, v))
+    date.foreach(d => request = request.addSimpleParam(LOOKUP_OPERATION_REQUEST_PARAMS.DATE, d))
+    displayLanguage.foreach(d => request = request.addSimpleParam(LOOKUP_OPERATION_REQUEST_PARAMS.DISPLAY_LANGUAGE, d))
+
+    if (properties.nonEmpty)
+      request = request.addSimpleParam(LOOKUP_OPERATION_REQUEST_PARAMS.PROPERTIES, properties: _*)
+
+    request
+      .executeAndReturnResource()
+      .map(Some(_))
+      .recover {
+        case t:Throwable =>
+          logger.error("Problem while calling lookup on configured terminology service!", t)
+          None
+      }
+  }
+
+  /**
+   * Given a Coding, get additional details about the concept, including definition, status, designations, and properties.
+   *
+   * @param coding FHIR Coding
+   * @return Resulting Parameters resource
+   */
+  override def lookup(coding: JObject):Future[Option[JObject]] = lookup(coding, None, None, Nil)
+
+  /**
+   * Given a Coding, get additional details about the concept, including definition, status, designations, and properties.
+   *
+   * @param coding     FHIR Coding
+   * @param date       The date for which the information should be returned. Normally, this is the current conditions (which is the default value) but under some circumstances, systems need to acccess this information as it would have been in the past
+   * @param properties A property that the client wishes to be returned in the output. If no properties are specified, the server chooses what to return.
+   * @return
+   */
+  override def lookup(coding: JObject, date: Option[String], displayLanguage:Option[String], properties: Seq[String]): Future[Option[JObject]] = {
+    var request =
+      onFhirClient
+        .operation(LOOKUP_OPERATION_NAME)
+        .on("CodeSystem")
+        .addParam(LOOKUP_OPERATION_REQUEST_PARAMS.CODING, "Coding" -> coding)
+
+    date.foreach(d => request = request.addSimpleParam(LOOKUP_OPERATION_REQUEST_PARAMS.DATE, d))
+    displayLanguage.foreach(d => request = request.addSimpleParam(LOOKUP_OPERATION_REQUEST_PARAMS.DISPLAY_LANGUAGE, d))
+
+    if (properties.nonEmpty)
+      request = request.addSimpleParam(LOOKUP_OPERATION_REQUEST_PARAMS.PROPERTIES, properties: _*)
+
+    request
+      .executeAndReturnResource()
+      .map(Some(_))
+      .recover {
+        case t:Throwable =>
+          logger.error("Problem while calling lookup on configured terminology service!", t)
+          None
+      }
+  }
+}
+
+object TerminologyServiceClient {
+  final val TRANSLATE_OPERATION_NAME = "translate"
+  final val LOOKUP_OPERATION_NAME = "lookup"
+
+  final object TRANSLATE_OPERATION_REQUEST_PARAMS {
+    val CONCEPT_MAP_URL = "url"
+    val CODE = "code"
+    val SYSTEM = "system"
+    val VERSION = "version"
+    val CONCEPT_MAP_VERSION = "conceptMapVersion"
+    val SOURCE = "source"
+    val TARGET = "target"
+    val REVERSE = "reverse"
+    val CODING = "coding"
+    val CODEABLE_CONCEPT = "codeableConcept"
+  }
+
+  final object LOOKUP_OPERATION_REQUEST_PARAMS {
+    val CODE = "code"
+    val SYSTEM = "system"
+    val VERSION = "version"
+    val DATE = "date"
+    val PROPERTIES = "property"
+    val CODING = "coding"
+    val DISPLAY_LANGUAGE = "displayLanguage"
+  }
+}

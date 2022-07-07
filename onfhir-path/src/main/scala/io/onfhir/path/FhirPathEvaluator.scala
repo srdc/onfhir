@@ -1,5 +1,7 @@
 package io.onfhir.path
 
+import io.onfhir.api.service.IFhirTerminologyService
+
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
 import java.time.{LocalTime, ZoneId}
@@ -7,7 +9,7 @@ import java.time.temporal.Temporal
 import io.onfhir.api.validation.IReferenceResolver
 import io.onfhir.path.grammar.{FhirPathExprLexer, FhirPathExprParser}
 import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
-import org.json4s.JsonAST.{JArray, JValue}
+import org.json4s.JsonAST.{JArray, JBool, JValue}
 import org.slf4j.{Logger, LoggerFactory}
 
 /**
@@ -19,9 +21,19 @@ import org.slf4j.{Logger, LoggerFactory}
 case class FhirPathEvaluator (
                                referenceResolver:Option[IReferenceResolver] = None,
                                environmentVariables:Map[String, JValue] = Map.empty,
-                               functionLibraries:Map[String, IFhirPathFunctionLibraryFactory] = Map.empty
+                               functionLibraries:Map[String, IFhirPathFunctionLibraryFactory] = Map.empty,
+                               terminologyService:Option[IFhirTerminologyService] = None
                              ) {
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
+
+  /**
+   * Initialize the fhir path evaluator with an attached terminology service
+   * @param terminologyService
+   * @return
+   */
+  def withTerminologyService(terminologyService: IFhirTerminologyService):FhirPathEvaluator =
+    this.copy(terminologyService = Some(terminologyService))
+      .withEnvironmentVariable("terminologies", JBool(true))
 
   /**
    * Append a new environment variable and return the new evaluator
@@ -52,7 +64,8 @@ case class FhirPathEvaluator (
       Map(
         FhirPathAggFunctionsFactory.defaultPrefix -> FhirPathAggFunctionsFactory,
         FhirPathUtilFunctionsFactory.defaultPrefix -> FhirPathUtilFunctionsFactory,
-        FhirPathNavFunctionsFactory.defaultPrefix -> FhirPathNavFunctionsFactory
+        FhirPathNavFunctionsFactory.defaultPrefix -> FhirPathNavFunctionsFactory,
+        FhirPathTerminologyServiceFunctionsFactory.defaultPrefix -> FhirPathTerminologyServiceFunctionsFactory
       )
     )
   }
@@ -67,11 +80,13 @@ case class FhirPathEvaluator (
     logger.debug(s"Evaluating FHIR path expression '${expr.getText}' ...")
     val resource = FhirPathValueTransformer.transform(on)
     val environment =
-      new FhirPathEnvironment(
+      FhirPathEnvironment(
         resource,
         referenceResolver,
         environmentVariables.map(e => e._1 -> FhirPathValueTransformer.transform(e._2)),
-        functionLibraries)
+        functionLibraries,
+        terminologyService
+      )
     val evaluator = new FhirPathExpressionEvaluator(environment, resource)
     evaluator.visit(expr)
   }

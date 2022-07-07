@@ -381,6 +381,11 @@
                 <artifactId>onfhir-validation_${scala.binary.version}</artifactId>
                 <version>3.2-SNAPSHOT</version>
             </dependency>
+            <dependency>
+                <groupId>io.onfhir</groupId>
+                <artifactId>onfhir-client_${scala.binary.version}</artifactId>
+                <version>3.2-SNAPSHOT</version>
+            </dependency>
             <!-- Akka HTTP Suite -->
             <dependency>
                 <groupId>com.typesafe.akka</groupId>

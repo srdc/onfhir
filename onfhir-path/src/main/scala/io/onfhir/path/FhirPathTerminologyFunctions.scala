@@ -9,6 +9,8 @@ import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
  * @param current Current evaluated FhirPath result (the function will execute on this results)
  */
 class FhirPathTerminologyFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResult]) extends AbstractFhirPathFunctionLibrary {
+
+
   /**
    * For FHIR coding elements, filter the ones that match the given coding list as FHIR code query
    * @param codingList  Expression that evaluates to Seq[FhirPathString] in FHIR token query format [system]|[code]

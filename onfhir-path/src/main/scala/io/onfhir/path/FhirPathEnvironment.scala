@@ -1,5 +1,6 @@
 package io.onfhir.path
 
+import io.onfhir.api.service.IFhirTerminologyService
 import io.onfhir.api.validation.IReferenceResolver
 
 import scala.collection.mutable
@@ -11,6 +12,7 @@ import scala.util.matching.Regex
  * @param referenceResolver     onFhir reference resolver
  * @param environmentVariables  Other external variables supplied
  * @param functionLibraries     External function libraries registered with a prefix
+ * @param terminologyService    Terminology service to use for FHIR Path terminology service functions e.g. %terminologies.translate(...)
  * @param _index                Index of current item to be processed on ($index variable in FHIR Path)
  * @param _total                Total variable for aggregate ($total)
  */
@@ -19,6 +21,7 @@ case class FhirPathEnvironment(
                            val referenceResolver: Option[IReferenceResolver],
                            val environmentVariables:Map[String, Seq[FhirPathResult]] = Map.empty[String, Seq[FhirPathResult]],
                            val functionLibraries:Map[String, IFhirPathFunctionLibraryFactory] = Map.empty,
+                           val terminologyService:Option[IFhirTerminologyService] = None,
                            val _index:Int = 0,
                            val _total:Option[FhirPathResult] = None
                          ) {

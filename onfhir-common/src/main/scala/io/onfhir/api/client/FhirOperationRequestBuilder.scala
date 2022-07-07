@@ -1,5 +1,6 @@
 package io.onfhir.api.client
 
+import akka.http.scaladsl.model.HttpMethods
 import io.onfhir.api.model.{FHIRMultiOperationParam, FHIROperationResponse, FHIRRequest}
 import org.json4s.JsonAST.{JArray, JObject, JString, JValue}
 
@@ -16,23 +17,28 @@ class FhirOperationRequestBuilder(onFhirClient: IOnFhirClient, operation:String)
 
   override protected def compile(): Unit = {
     super.compile()
-    request.resource =Some(JObject(
-      "resourceType" -> JString("Parameters"),
-      "parameter" ->
+    //If there is no complex param
+    if(params.isEmpty){
+      request.httpMethod = Some(HttpMethods.GET)
+    } else {
+      request.httpMethod = Some(HttpMethods.POST)
+      request.resource = Some(JObject(
+        "resourceType" -> JString("Parameters"),
+        "parameter" ->
           JArray(
             params.map(p =>
-              (p._2 : @unchecked) match {
+              (p._2: @unchecked) match {
                 case (Some(dt), v) =>
                   JObject(
                     "name" -> JString(p._1),
-                    "value"+ dt.capitalize -> v
+                    "value" + dt.capitalize -> v
                   )
-                case (None, o:JObject) =>
+                case (None, o: JObject) =>
                   JObject(
                     "name" -> JString(p._1),
                     "resource" -> o
                   )
-                case (None, a:JArray) =>
+                case (None, a: JArray) =>
                   JObject(
                     "name" -> JString(p._1),
                     "part" -> a
@@ -40,7 +46,8 @@ class FhirOperationRequestBuilder(onFhirClient: IOnFhirClient, operation:String)
               }
             ).toList
           )
-    ))
+      ))
+    }
   }
 
   /**

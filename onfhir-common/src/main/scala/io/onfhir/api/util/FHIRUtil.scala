@@ -1088,4 +1088,57 @@ object FHIRUtil {
 
     indexOfRestrictions
   }
+
+  /**
+   * Extract the value from the Parameters.parameter
+   * @param paramObj
+   * @return
+   */
+  def getValueFromParameter(paramObj:JObject):Option[JValue] = {
+    paramObj.obj
+      .find(f => f._1.startsWith(FHIR_COMMON_FIELDS.VALUE))
+      .orElse(
+        paramObj.obj
+          .find(_._1 == FHIR_COMMON_FIELDS.RESOURCE)
+      ).orElse(
+      paramObj.obj
+        .find(_._1 == "part")
+    ).map(_._2)
+  }
+
+  /**
+   * Get a parameter's value (simple or resource or multi) from Parameters resource by its name
+   * @param parametersResource  FHIR Parameters resource content
+   * @param paramName           Parameter name
+   * @return
+   */
+  def getParameterValueByName(parametersResource:Resource, paramName:String):Option[JValue] = {
+    (parametersResource \ FHIR_COMMON_FIELDS.PARAMETER) match {
+      case JArray(values) =>
+        values
+          .filter(p => (p \ FHIR_COMMON_FIELDS.NAME).extract[String] == paramName) match {
+          case List(obj:JObject) =>
+            getValueFromParameter(obj)
+
+          case l =>
+            l.map(_.asInstanceOf[JObject]).map(obj =>
+              getValueFromParameter(obj)
+            ).filter(_.isDefined).map(_.get) match {
+              case Nil => None
+              case oth => Some(JArray(oth))
+            }
+        }
+      case _ => None
+    }
+  }
+
+  /**
+   * Parse Parameters.parameter into name -> value
+   * @param param
+   * @return
+   */
+  def parseParameter(param:JObject):(String, JValue) = {
+    FHIRUtil.extractValue[String](param, "name") ->
+      getValueFromParameter(param)
+  }
 }

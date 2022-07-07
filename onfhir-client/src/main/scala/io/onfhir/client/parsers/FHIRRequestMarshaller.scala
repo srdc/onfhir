@@ -240,7 +240,7 @@ object FHIRRequestMarshaller {
           var temp = basePath
           fhirRequest.resourceType.foreach(rt => temp = temp./(rt))
           fhirRequest.resourceId.foreach(rid => temp = temp./(rid))
-          temp./(opr) -> (if (method == HttpMethods.GET) getQuery(fhirRequest.queryParams) else None)
+          temp./(opr) -> (if (fhirRequest.queryParams.nonEmpty) getQuery(fhirRequest.queryParams) else None)
       }
 
     var resultUri = fhirServerBaseUri.withPath(path)

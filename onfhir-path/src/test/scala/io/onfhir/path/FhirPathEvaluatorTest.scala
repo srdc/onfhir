@@ -1,9 +1,13 @@
 package io.onfhir.path
 
+import akka.actor.ActorSystem
+
 import java.time.{LocalDate, LocalDateTime, LocalTime, Year, YearMonth, ZoneId, ZonedDateTime}
 import io.onfhir.api.Resource
 import io.onfhir.api.model.{FhirCanonicalReference, FhirLiteralReference, FhirReference}
 import io.onfhir.api.validation.IReferenceResolver
+import io.onfhir.client.{OnFhirNetworkClient, TerminologyServiceClient}
+import io.onfhir.client.intrcp.BasicAuthenticationInterceptor
 import io.onfhir.util.JsonFormatter._
 import org.json4s.JsonAST.{JArray, JNull, JObject, JString}
 import org.junit.runner.RunWith
@@ -466,7 +470,7 @@ class FhirPathEvaluatorTest extends Specification {
       FhirPathEvaluator().evaluateNumerical("Observation.component.code.coding[1].code.toInteger().toInteger()", observation2) mustEqual Seq(249227004) //from integer
       FhirPathEvaluator().evaluateNumerical("Observation.component.exists().toInteger()", observation2) mustEqual Seq(1) //from boolean
       FhirPathEvaluator().evaluateNumerical("Observation.component.empty().toInteger()", observation2) mustEqual Seq(0) //from boolean
-      FhirPathEvaluator().evaluate("Observation.effectiveDateTime.toInteger()", observation2) must beEmpty
+      FhirPathEvaluator().evaluate("Observation.effectiveDateTime.toInteger()", observation2).isEmpty mustEqual true
       //toDecimal
       FhirPathEvaluator().evaluateNumerical("Observation.component.code.coding[1].code.toDecimal()", observation2) mustEqual Seq(249227004) //from string
       FhirPathEvaluator().evaluateNumerical("Observation.valueQuantity.value.toDecimal()", observation) mustEqual Seq(6.3)
@@ -866,5 +870,30 @@ class FhirPathEvaluatorTest extends Specification {
       FhirPathLiteralEvaluator.parseFhirQuantity("1 'mg'") must beSome(FhirPathQuantity(FhirPathNumber(1), "mg"))
       FhirPathLiteralEvaluator.parseFhirQuantity("3 days") must beSome(FhirPathQuantity(FhirPathNumber(3), "d"))
     }
+    /*
+    "evaluate terminology service functions" in {
+      //Test with LOINC's terminology server
+      val baseUrl = "https://fhir.loinc.org/"
+      val username = "<FILL THIS PART>"
+      val password = "<FILL THIS PART>"
+      implicit val actorSystem = ActorSystem("FhirPathTest")
+      val terminologyServiceClient = new TerminologyServiceClient(OnFhirNetworkClient.apply(baseUrl, new BasicAuthenticationInterceptor(username, password)))
+      val evaluator = FhirPathEvaluator().withDefaultFunctionLibraries().withTerminologyService(terminologyServiceClient)
+
+      var result = evaluator.evaluate("%terminologies.lookup(Observation.code.coding.where(system='http://loinc.org').first(), {})", observation)
+      result.nonEmpty shouldEqual(true)
+
+      var loincDisplay = evaluator.evaluateOptionalString("%terminologies.lookup(Observation.code.coding.where(system='http://loinc.org').first(), {}).parameter.where(name='display').valueString", observation)
+      loincDisplay shouldEqual Some("Glucose [Moles/volume] in Blood")
+
+      loincDisplay = evaluator.evaluateOptionalString("trms:lookupDisplay('15074-8', 'http://loinc.org', {})", observation)
+      loincDisplay shouldEqual Some("Glucose [Moles/volume] in Blood")
+
+      val foundMatching = evaluator.evaluateOptionalBoolean("%terminologies.translate('https://www.ncbi.nlm.nih.gov/clinvar', Observation.code.coding.where(system='http://loinc.org').first(), {}).parameter.exists(name='result' and valueBoolean=true)", observation)
+      foundMatching shouldEqual Some(true)
+
+      result = evaluator.evaluate("trms:translateToCoding(Observation.code.coding.where(system='http://loinc.org').first(), 'https://www.ncbi.nlm.nih.gov/clinvar')", observation)
+      result.length shouldEqual(2)
+    }*/
   }
 }
