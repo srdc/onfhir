@@ -73,12 +73,11 @@
             <groupId>io.onfhir</groupId>
             <artifactId>onfhir-common_${scala.binary.version}</artifactId>
         </dependency>
-
-        <dependency>
+        <!--dependency>
             <groupId>io.onfhir</groupId>
             <artifactId>onfhir-client_${scala.binary.version}</artifactId>
             <scope>test</scope>
-        </dependency>
+        </dependency-->
         <dependency>
             <groupId>org.antlr</groupId>
             <artifactId>antlr4-runtime</artifactId>

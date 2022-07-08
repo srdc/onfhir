@@ -21,8 +21,6 @@ import org.json4s.JsonAST.{JNothing, JObject, JValue}
 import org.json4s.JsonDSL._
 import org.json4s.{JsonAST, _}
 
-import scala.util.Try
-
 object FHIRUtil {
   /**
    * Regular expression for FHIR RESTfull resource url

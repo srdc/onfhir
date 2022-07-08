@@ -1,6 +1,6 @@
 package io.onfhir.path
 
-import io.onfhir.api.service.IFhirTerminologyService
+import io.onfhir.api.service.{IFhirIdentityService, IFhirTerminologyService}
 
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
@@ -17,23 +17,38 @@ import org.slf4j.{Logger, LoggerFactory}
  * @param referenceResolver     onFhir reference resolver (resolving literal and inter-bundle references)
  * @param environmentVariables  Supplied environment variables
  * @param functionLibraries     External function libraries registered
+ * @param terminologyService    Terminology service to use for using terminology service functions within FHIR Path expressions
  */
 case class FhirPathEvaluator (
                                referenceResolver:Option[IReferenceResolver] = None,
                                environmentVariables:Map[String, JValue] = Map.empty,
                                functionLibraries:Map[String, IFhirPathFunctionLibraryFactory] = Map.empty,
-                               terminologyService:Option[IFhirTerminologyService] = None
+                               terminologyService:Option[IFhirTerminologyService] = None,
+                               identityService:Option[IFhirIdentityService] = None
                              ) {
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   /**
+   * Initialize the fhir path evaluator with an attached identity service
+   * @param identityService Identity service implementation
+   * @return
+   */
+  def withIdentityService(identityService:IFhirIdentityService):FhirPathEvaluator = {
+    this
+      .copy(identityService = Some(identityService))
+      .withFunctionLibrary(FhirPathIdentityServiceFunctionsFactory.defaultPrefix, FhirPathIdentityServiceFunctionsFactory)
+  }
+
+  /**
    * Initialize the fhir path evaluator with an attached terminology service
-   * @param terminologyService
+   * @param terminologyService  Terminology service implementation
    * @return
    */
   def withTerminologyService(terminologyService: IFhirTerminologyService):FhirPathEvaluator =
-    this.copy(terminologyService = Some(terminologyService))
-      .withEnvironmentVariable("terminologies", JBool(true))
+    this
+      .copy(terminologyService = Some(terminologyService))
+      .withEnvironmentVariable("terminologies", JBool(true)) //This is to confor with the FHIR path standard so that we can execute like this %terminologies.translate(..
+      .withFunctionLibrary(FhirPathTerminologyServiceFunctionsFactory.defaultPrefix, FhirPathTerminologyServiceFunctionsFactory)
 
   /**
    * Append a new environment variable and return the new evaluator
@@ -47,8 +62,8 @@ case class FhirPathEvaluator (
 
   /**
    * Register a function library
-   * @param prefix
-   * @param factory
+   * @param prefix      Prefix for the functions in the library
+   * @param factory     Factory for the library
    * @return
    */
   def withFunctionLibrary(prefix:String, factory:IFhirPathFunctionLibraryFactory):FhirPathEvaluator = {
@@ -64,8 +79,7 @@ case class FhirPathEvaluator (
       Map(
         FhirPathAggFunctionsFactory.defaultPrefix -> FhirPathAggFunctionsFactory,
         FhirPathUtilFunctionsFactory.defaultPrefix -> FhirPathUtilFunctionsFactory,
-        FhirPathNavFunctionsFactory.defaultPrefix -> FhirPathNavFunctionsFactory,
-        FhirPathTerminologyServiceFunctionsFactory.defaultPrefix -> FhirPathTerminologyServiceFunctionsFactory
+        FhirPathNavFunctionsFactory.defaultPrefix -> FhirPathNavFunctionsFactory
       )
     )
   }
@@ -85,7 +99,8 @@ case class FhirPathEvaluator (
         referenceResolver,
         environmentVariables.map(e => e._1 -> FhirPathValueTransformer.transform(e._2)),
         functionLibraries,
-        terminologyService
+        terminologyService,
+        identityService
       )
     val evaluator = new FhirPathExpressionEvaluator(environment, resource)
     evaluator.visit(expr)
@@ -364,10 +379,10 @@ case class FhirPathEvaluator (
    * @return      List of paths consist of element names in order and their array index if exist
    */
   def evaluateToFindPaths(expr:String, on:JValue):Seq[Seq[(String, Option[Int])]] = {
-    logger.debug(s"Evaluating FHIR path expression '${expr}' to find indicated paths  ...")
+    logger.debug(s"Evaluating FHIR path expression '$expr' to find indicated paths  ...")
     val parsedExpr = FhirPathEvaluator.parse(expr)
     val resource = FhirPathValueTransformer.transform(on)
-    val environment = new FhirPathEnvironment(resource, referenceResolver,environmentVariables.map(e => e._1 -> FhirPathValueTransformer.transform(e._2)))
+    val environment = FhirPathEnvironment(resource, referenceResolver,environmentVariables.map(e => e._1 -> FhirPathValueTransformer.transform(e._2)))
     val evaluator = new FhirPathPathFinder(environment, resource)
     evaluator.visit(parsedExpr)
     evaluator.getFoundPaths
@@ -398,7 +413,7 @@ case class FhirPathEvaluator (
 
   /**
    * Extract path parts from a FHIR Path path expression (SearchParameter.expression) which indicates a path in FHIR content
-   * @param expr
+   * @param expr  FHIR Path expression
    * @return
    */
   def getPathItemsWithRestrictions(expr:String):Seq[(String, Seq[(String, String)])] = {

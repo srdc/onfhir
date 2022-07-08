@@ -1,13 +1,9 @@
 package io.onfhir.path
 
-import akka.actor.ActorSystem
-
 import java.time.{LocalDate, LocalDateTime, LocalTime, Year, YearMonth, ZoneId, ZonedDateTime}
 import io.onfhir.api.Resource
 import io.onfhir.api.model.{FhirCanonicalReference, FhirLiteralReference, FhirReference}
 import io.onfhir.api.validation.IReferenceResolver
-import io.onfhir.client.{OnFhirNetworkClient, TerminologyServiceClient}
-import io.onfhir.client.intrcp.BasicAuthenticationInterceptor
 import io.onfhir.util.JsonFormatter._
 import org.json4s.JsonAST.{JArray, JNull, JObject, JString}
 import org.junit.runner.RunWith
@@ -870,15 +866,17 @@ class FhirPathEvaluatorTest extends Specification {
       FhirPathLiteralEvaluator.parseFhirQuantity("1 'mg'") must beSome(FhirPathQuantity(FhirPathNumber(1), "mg"))
       FhirPathLiteralEvaluator.parseFhirQuantity("3 days") must beSome(FhirPathQuantity(FhirPathNumber(3), "d"))
     }
-    /*
+
+    /**
+    * This a integration test and needs a terminology service
     "evaluate terminology service functions" in {
       //Test with LOINC's terminology server
       val baseUrl = "https://fhir.loinc.org/"
-      val username = "<FILL THIS PART>"
-      val password = "<FILL THIS PART>"
+      val username = "<FILL HERE>"
+      val password = "<FILL HERE>"
       implicit val actorSystem = ActorSystem("FhirPathTest")
       val terminologyServiceClient = new TerminologyServiceClient(OnFhirNetworkClient.apply(baseUrl, new BasicAuthenticationInterceptor(username, password)))
-      val evaluator = FhirPathEvaluator().withDefaultFunctionLibraries().withTerminologyService(terminologyServiceClient)
+      val evaluator = FhirPathEvaluator().withTerminologyService(terminologyServiceClient)
 
       var result = evaluator.evaluate("%terminologies.lookup(Observation.code.coding.where(system='http://loinc.org').first(), {})", observation)
       result.nonEmpty shouldEqual(true)
@@ -895,5 +893,17 @@ class FhirPathEvaluatorTest extends Specification {
       result = evaluator.evaluate("trms:translateToCoding(Observation.code.coding.where(system='http://loinc.org').first(), 'https://www.ncbi.nlm.nih.gov/clinvar')", observation)
       result.length shouldEqual(2)
     }*/
+    /**
+     * This a integration test and needs a fhir server
+    "evaluate identity service functions" in {
+      val baseUrl = "http://localhost:8080/fhir"
+      implicit val actorSystem = ActorSystem("FhirPathTest")
+      val onFhirClient = OnFhirNetworkClient.apply(baseUrl)
+      val identityService = new IdentityServiceClient(onFhirClient)
+      val evaluator = FhirPathEvaluator().withIdentityService(identityService)
+
+      evaluator.evaluateOptionalString("idxs:resolveIdentifier('Patient', '12345', 'urn:oid:1.2.36.146.595.217.0.1')", observation) shouldEqual Some("580daafe-bed7-43db-a74b-e8d74a62eeb0")
+    }*/
+
   }
 }

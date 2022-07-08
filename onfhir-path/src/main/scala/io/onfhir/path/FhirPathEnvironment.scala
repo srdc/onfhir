@@ -1,6 +1,6 @@
 package io.onfhir.path
 
-import io.onfhir.api.service.IFhirTerminologyService
+import io.onfhir.api.service.{IFhirIdentityService, IFhirTerminologyService}
 import io.onfhir.api.validation.IReferenceResolver
 
 import scala.collection.mutable
@@ -17,13 +17,14 @@ import scala.util.matching.Regex
  * @param _total                Total variable for aggregate ($total)
  */
 case class FhirPathEnvironment(
-                           val _this:Seq[FhirPathResult],
-                           val referenceResolver: Option[IReferenceResolver],
-                           val environmentVariables:Map[String, Seq[FhirPathResult]] = Map.empty[String, Seq[FhirPathResult]],
-                           val functionLibraries:Map[String, IFhirPathFunctionLibraryFactory] = Map.empty,
-                           val terminologyService:Option[IFhirTerminologyService] = None,
-                           val _index:Int = 0,
-                           val _total:Option[FhirPathResult] = None
+                                val _this:Seq[FhirPathResult],
+                                val referenceResolver: Option[IReferenceResolver],
+                                val environmentVariables:Map[String, Seq[FhirPathResult]] = Map.empty[String, Seq[FhirPathResult]],
+                                val functionLibraries:Map[String, IFhirPathFunctionLibraryFactory] = Map.empty,
+                                val terminologyService:Option[IFhirTerminologyService] = None,
+                                val identityService:Option[IFhirIdentityService] = None,
+                                val _index:Int = 0,
+                                val _total:Option[FhirPathResult] = None
                          ) {
   val vsPattern:Regex = "'vs-[A-Za-z0-9\\-]+'".r
   val extPattern:Regex = "'ext-[A-Za-z0-9\\-]+'".r

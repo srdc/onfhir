@@ -5,6 +5,9 @@ import org.json4s.JObject
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 
+/**
+ * Interface for FHIR terminology service
+ */
 trait IFhirTerminologyService extends IFhirTerminologyTranslationService with IFhirTerminologyLookupService {
   /**
    * Return timeout specified for the terminology service calls
@@ -15,6 +18,9 @@ trait IFhirTerminologyService extends IFhirTerminologyTranslationService with IF
 
 //TODO Other terminology service interfaces
 
+/**
+ * Interface for Terminology service lookup functionality
+ */
 trait IFhirTerminologyLookupService {
   /**
    * Given a code/system, get additional details about the concept, including definition, status, designations, and properties.

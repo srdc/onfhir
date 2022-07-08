@@ -48,26 +48,33 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
         getParam("system", paramsOpt) match {
           case None => throw FhirPathException("Invalid function call 'translate'. The system should be provided within params expression as code is given.")
           case Some(system) =>
-            Await.result(
-              terminologyService
-                .translate(code, system, conceptMapUrl,
-                  version = getParam("version", paramsOpt),
-                  conceptMapVersion = getParam("conceptMapVersion", paramsOpt),
-                  reverse = getParam("reverse", paramsOpt).flatMap(p => Try(p.toBoolean).toOption).getOrElse(false)
-                ),
-              terminologyService.getTimeout
-            )
-
+            try{
+              Await.result(
+                terminologyService
+                  .translate(code, system, conceptMapUrl,
+                    version = getParam("version", paramsOpt),
+                    conceptMapVersion = getParam("conceptMapVersion", paramsOpt),
+                    reverse = getParam("reverse", paramsOpt).flatMap(p => Try(p.toBoolean).toOption).getOrElse(false)
+                  ),
+                terminologyService.getTimeout
+              )
+            } catch {
+              case t:Throwable => throw FhirPathException("Problem while calling terminology service!", t)
+            }
         }
       case FhirPathComplex(codingOrCodeableConcept) =>
-        Await.result(
-          terminologyService
-            .translate(codingOrCodeableConcept, conceptMapUrl,
-              conceptMapVersion = getParam("conceptMapVersion", paramsOpt),
-              reverse = getParam("reverse", paramsOpt).flatMap(p => Try(p.toBoolean).toOption).getOrElse(false)
-            ),
-          terminologyService.getTimeout
-        )
+          try{
+              Await.result(
+                terminologyService
+                  .translate(codingOrCodeableConcept, conceptMapUrl,
+                    conceptMapVersion = getParam("conceptMapVersion", paramsOpt),
+                    reverse = getParam("reverse", paramsOpt).flatMap(p => Try(p.toBoolean).toOption).getOrElse(false)
+                  ),
+                terminologyService.getTimeout
+              )
+          } catch {
+            case t:Throwable => throw FhirPathException("Problem while calling terminology service!", t)
+          }
       case _ => throw FhirPathException("Invalid function call 'translate'. The code expression (the function parameter) should evaluate to a single string value.")
     }
     responseParameters match {
@@ -99,28 +106,35 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
         getParam("system", paramsOpt) match {
           case None => throw FhirPathException("Invalid function call 'translate'. The system should be provided within params expression as code is given.")
           case Some(system) =>
-            Await.result(
-              terminologyService
-                .translate(code, system,
-                  source = getParam("source", paramsOpt),
-                  target = getParam("target", paramsOpt),
-                  version = getParam("version", paramsOpt),
-                  reverse = getParam("reverse", paramsOpt).flatMap(p => Try(p.toBoolean).toOption).getOrElse(false)
-                ),
-              terminologyService.getTimeout
-            )
-
+            try{
+              Await.result(
+                terminologyService
+                  .translate(code, system,
+                    source = getParam("source", paramsOpt),
+                    target = getParam("target", paramsOpt),
+                    version = getParam("version", paramsOpt),
+                    reverse = getParam("reverse", paramsOpt).flatMap(p => Try(p.toBoolean).toOption).getOrElse(false)
+                  ),
+                terminologyService.getTimeout
+              )
+            } catch {
+              case t:Throwable => throw FhirPathException("Problem while calling terminology service!", t)
+            }
         }
       case FhirPathComplex(codingOrCodeableConcept) =>
-        Await.result(
-          terminologyService
-            .translate(codingOrCodeableConcept,
-              source = getParam("source", paramsOpt),
-              target = getParam("target", paramsOpt),
-              reverse = getParam("reverse", paramsOpt).flatMap(p => Try(p.toBoolean).toOption).getOrElse(false)
-            ),
-          terminologyService.getTimeout
-        )
+        try{
+          Await.result(
+            terminologyService
+              .translate(codingOrCodeableConcept,
+                source = getParam("source", paramsOpt),
+                target = getParam("target", paramsOpt),
+                reverse = getParam("reverse", paramsOpt).flatMap(p => Try(p.toBoolean).toOption).getOrElse(false)
+              ),
+            terminologyService.getTimeout
+          )
+        } catch {
+          case t:Throwable => throw FhirPathException("Problem while calling terminology service!", t)
+        }
       case _ => throw FhirPathException("Invalid function call 'translate'. The code expression (the function parameter) should evaluate to a single string value.")
     }
     responseParameters match {
@@ -153,27 +167,35 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
         getParam("system", paramsOpt) match {
           case None => throw FhirPathException("Invalid function call 'lookup'. The system should be provided within params expression as code is given.")
           case Some(system) =>
-            Await.result(
-              terminologyService
-                .lookup(code, system,
-                  version = getParam("version", paramsOpt),
-                  date = getParam("date", paramsOpt),
-                  displayLanguage = getParam("displayLanguage", paramsOpt),
-                  properties = getParamList("property", paramsOpt)
-                ),
-              terminologyService.getTimeout
-            )
+           try{
+              Await.result(
+                terminologyService
+                  .lookup(code, system,
+                    version = getParam("version", paramsOpt),
+                    date = getParam("date", paramsOpt),
+                    displayLanguage = getParam("displayLanguage", paramsOpt),
+                    properties = getParamList("property", paramsOpt)
+                  ),
+                terminologyService.getTimeout
+              )
+           } catch {
+              case t:Throwable => throw FhirPathException("Problem while calling terminology service!", t)
+          }
         }
       case FhirPathComplex(codingOrCodeableConcept) =>
-        Await.result(
-          terminologyService
-            .lookup(codingOrCodeableConcept,
-              date = getParam("date", paramsOpt),
-              displayLanguage = getParam("displayLanguage", paramsOpt),
-              properties = getParamList("property", paramsOpt)
-            ),
-          terminologyService.getTimeout
-        )
+        try{
+          Await.result(
+            terminologyService
+              .lookup(codingOrCodeableConcept,
+                date = getParam("date", paramsOpt),
+                displayLanguage = getParam("displayLanguage", paramsOpt),
+                properties = getParamList("property", paramsOpt)
+              ),
+            terminologyService.getTimeout
+          )
+        } catch {
+          case t:Throwable => throw FhirPathException("Problem while calling terminology service!", t)
+        }
       case _ => throw FhirPathException("Invalid function call 'lookup'. The code expression (the function parameter) should evaluate to a single string value.")
     }
     responseParameters match {
@@ -202,7 +224,13 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
     if(code.isEmpty || system.isEmpty)
       throw FhirPathException(s"Invalid function call lookupDisplay. 'code' and 'system' parameters are mandatory!")
 
-    val resultParameters = Await.result(terminologyService.lookup(code.get, system.get, None, None, displayLanguage, Nil), terminologyService.getTimeout)
+    val resultParameters =
+      try{
+        Await.result(terminologyService.lookup(code.get, system.get, None, None, displayLanguage, Nil), terminologyService.getTimeout)
+      } catch {
+        case t:Throwable => throw FhirPathException("Problem while calling terminology service!", t)
+      }
+
     resultParameters match {
       case None => throw FhirPathException("Problem while calling lookupDisplay in the configured terminology service!")
       case Some(parameters) =>
@@ -228,7 +256,12 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
       throw FhirPathException(s"Invalid function call translateToCoding. 'coding' parameter should evaluate to FHIR Coding object!")
 
     //Execute the terminology service
-    val resultParameters = Await.result(terminologyService.translate(codingResult.asInstanceOf[FhirPathComplex].json, conceptMapUrl.get), terminologyService.getTimeout)
+    val resultParameters =
+      try{
+        Await.result(terminologyService.translate(codingResult.asInstanceOf[FhirPathComplex].json, conceptMapUrl.get), terminologyService.getTimeout)
+      } catch {
+        case t:Throwable => throw FhirPathException("Problem while calling terminology service!", t)
+      }
     handleTranslationResult(resultParameters)
   }
 
@@ -247,7 +280,12 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
     if(code.isEmpty || system.isEmpty || conceptMapUrl.isEmpty)
       throw FhirPathException(s"Invalid function call translateToCoding. 'code','system' and 'conceptMapUrl' parameters are mandatory!")
     //Execute the terminology service
-    val resultParameters = Await.result(terminologyService.translate(code.get, system.get, conceptMapUrl.get), terminologyService.getTimeout)
+    val resultParameters =
+      try{
+        Await.result(terminologyService.translate(code.get, system.get, conceptMapUrl.get), terminologyService.getTimeout)
+      } catch {
+        case t:Throwable => throw FhirPathException("Problem while calling terminology service!", t)
+      }
     handleTranslationResult(resultParameters)
   }
 
@@ -273,7 +311,13 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
     if(code.isEmpty || system.isEmpty || sourceVsUrl.isEmpty)
       throw FhirPathException(s"Invalid function call translateToCoding. 'code','system' and 'sourceValueSetUrl' parameters are mandatory!")
     //Execute the terminology service
-    val resultParameters = Await.result(terminologyService.translate(code.get, system.get, sourceVsUrl, targetValueSetUrl), terminologyService.getTimeout)
+    val resultParameters =
+      try {
+        Await.result(terminologyService.translate(code.get, system.get, sourceVsUrl, targetValueSetUrl), terminologyService.getTimeout)
+      } catch {
+        case t:Throwable => throw FhirPathException("Problem while calling terminology service!", t)
+      }
+
     handleTranslationResult(resultParameters)
   }
 
