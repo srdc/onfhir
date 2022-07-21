@@ -1115,19 +1115,54 @@ object FHIRUtil {
       case JArray(values) =>
         values
           .filter(p => (p \ FHIR_COMMON_FIELDS.NAME).extract[String] == paramName) match {
-          case List(obj:JObject) =>
-            getValueFromParameter(obj)
-
-          case l =>
-            l.map(_.asInstanceOf[JObject]).map(obj =>
+            case List(obj:JObject) =>
               getValueFromParameter(obj)
-            ).filter(_.isDefined).map(_.get) match {
-              case Nil => None
-              case oth => Some(JArray(oth))
-            }
+
+            case l =>
+              l
+                .map(_.asInstanceOf[JObject])
+                .map(obj =>
+                  getValueFromParameter(obj)
+                )
+                .filter(_.isDefined)
+                .map(_.get) match {
+                  case Nil => None
+                  case oth => Some(JArray(oth))
+                }
         }
       case _ => None
     }
+  }
+
+  /**
+   * Return the values of the parameter with given path of parameter names within FHIR Parameters resource
+   * @param parametersResource  FHIR Parameters resource
+   * @param paramPath           Parameter path splitted by dots e.g. match.concept
+   * @return
+   */
+  def getParameterValueByPath(parametersResource:Resource, paramPath:String) :Seq[JValue] = {
+    def getFromParameters(parameters:JArray, path:Seq[String]):Seq[JValue] = {
+        parameters
+          .arr
+          .map(_.asInstanceOf[JObject])
+          .map(parseParameter)
+          .filter(p => p._1 == path.head && p._2 != JNull)
+          .map(_._2)
+          .flatMap(value => {
+            path.tail match {
+              case Nil => Seq(value)
+              case remainingPath =>
+                value match {
+                    case a:JArray =>
+                      getFromParameters(a, remainingPath)
+                    case _ => Nil
+                  }
+            }
+          })
+    }
+
+    val paramNames = paramPath.split('.')
+    getFromParameters((parametersResource \ FHIR_COMMON_FIELDS.PARAMETER).asInstanceOf[JArray], paramNames)
   }
 
   /**
@@ -1137,6 +1172,6 @@ object FHIRUtil {
    */
   def parseParameter(param:JObject):(String, JValue) = {
     FHIRUtil.extractValue[String](param, "name") ->
-      getValueFromParameter(param)
+      getValueFromParameter(param).getOrElse(JNull)
   }
 }

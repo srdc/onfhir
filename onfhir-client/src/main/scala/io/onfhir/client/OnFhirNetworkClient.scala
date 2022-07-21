@@ -6,6 +6,7 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.stream.Materializer
 import io.onfhir.api.client.{BaseFhirClient, FHIRPaginatedBundle, FhirClientException, IFhirBundleReturningRequestBuilder}
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse}
+import io.onfhir.client.intrcp.{BasicAuthenticationInterceptor, BearerTokenInterceptorFromTokenEndpoint}
 import io.onfhir.client.parsers.{FHIRRequestMarshaller, FHIRResponseUnmarshaller}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -18,6 +19,34 @@ case class OnFhirNetworkClient(serverBaseUrl:String, interceptors:Seq[IHttpReque
 
   override def getBaseUrl(): String = serverBaseUrl
 
+  /**
+   * Client with basic authentication
+   * @param username  Username
+   * @param password  Password
+   * @return
+   */
+  def withBasicAuthentication(username:String, password:String):OnFhirNetworkClient = {
+    this.copy(interceptors = interceptors :+ new BasicAuthenticationInterceptor(username, password))
+  }
+
+  /**
+   * Client with OAuth2.0 Bearer Token authentication
+   * @param clientId                      Client identifier
+   * @param clientSecret                  Client secret
+   * @param requiredScopes                Required scopes for the FHIR client to access the required data
+   * @param authzServerTokenEndpoint      Authorization server token endpoint to request token
+   * @param clientAuthenticationMethod    Client authentication method (client_secret_basic | client_secret_post | client_secret_jwt)
+   * @return
+   */
+  def withOpenIdBearerTokenAuthentication(clientId:String, clientSecret:String, requiredScopes:Seq[String], authzServerTokenEndpoint:String, clientAuthenticationMethod:String = "client_secret_basic"):OnFhirNetworkClient = {
+    this.copy(interceptors = interceptors :+ new BearerTokenInterceptorFromTokenEndpoint(clientId, clientSecret, requiredScopes, authzServerTokenEndpoint, clientAuthenticationMethod))
+  }
+
+  /**
+   * Execute the FHIR request and return FHIR response
+   * @param fhirRequest FHIR request
+   *  @return
+   */
   override def execute(fhirRequest: FHIRRequest): Future[FHIRResponse] = {
     FHIRRequestMarshaller
       .marshallRequest(fhirRequest, serverBaseUrl)
@@ -30,6 +59,12 @@ case class OnFhirNetworkClient(serverBaseUrl:String, interceptors:Seq[IHttpReque
       }
   }
 
+  /**
+   * Execute the next page for the search
+   * @param bundle
+   * @tparam T
+   *  @return
+   */
   override def next[T <: FHIRPaginatedBundle](bundle: T): Future[T] = {
     FHIRRequestMarshaller
       .marshallRequest(bundle.request.request, serverBaseUrl)

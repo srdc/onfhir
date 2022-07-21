@@ -1,7 +1,6 @@
 package io.onfhir.path
 
 import akka.http.scaladsl.model.Uri
-import io.onfhir.api.model.FHIROperationParam
 import io.onfhir.api.service.IFhirTerminologyService
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
@@ -15,11 +14,11 @@ import scala.util.Try
  * Implementation of Terminology Service functions in FHIR Path + some more practical ones
  * See https://build.fhir.org/fhirpath.html#txapi
  * TODO Other terminology service functions
- * @param context
+ * @param context Context variables
  */
 class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends AbstractFhirPathFunctionLibrary {
-  //Codes indicating that codes are equivalant (normally there is no code 'equal', but some terminology servers like LOINC use them)
-  val translationEquivalenceCodes = Set("related-to", "equivalent", "source-is-narrower-than-target", "equal")
+  //Codes indicating that codes are equivalant (can be used for mappings)
+  val translationEquivalenceCodes = Set("relatedto", "equivalent", "equal", "wider", "subsumes")
   /**
    * See https://build.fhir.org/fhirpath.html#txapi
    * This calls the Terminology Service $translate operation
@@ -77,11 +76,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
           }
       case _ => throw FhirPathException("Invalid function call 'translate'. The code expression (the function parameter) should evaluate to a single string value.")
     }
-    responseParameters match {
-      //Problem in the call
-      case None => throw FhirPathException("Problem while calling translate in the configured terminology service!")
-      case Some(p) => Seq(FhirPathComplex(p))
-    }
+    Seq(FhirPathComplex(responseParameters))
   }
 
   /**
@@ -137,11 +132,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
         }
       case _ => throw FhirPathException("Invalid function call 'translate'. The code expression (the function parameter) should evaluate to a single string value.")
     }
-    responseParameters match {
-      //Problem in the call
-      case None => throw FhirPathException("Problem while calling translate in the configured terminology service!")
-      case Some(p) => Seq(FhirPathComplex(p))
-    }
+    Seq(FhirPathComplex(responseParameters))
   }
 
   /**
@@ -199,9 +190,8 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
       case _ => throw FhirPathException("Invalid function call 'lookup'. The code expression (the function parameter) should evaluate to a single string value.")
     }
     responseParameters match {
-      //Problem in the call
-      case None => throw FhirPathException("Problem while calling lookup in the configured terminology service!")
-      case Some(p) => Seq(FhirPathComplex(p))
+      case None => Nil
+      case Some(rp) => Seq(FhirPathComplex(rp))
     }
   }
 
@@ -230,11 +220,10 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
       } catch {
         case t:Throwable => throw FhirPathException("Problem while calling terminology service!", t)
       }
-
     resultParameters match {
-      case None => throw FhirPathException("Problem while calling lookupDisplay in the configured terminology service!")
-      case Some(parameters) =>
-        FHIRUtil.getParameterValueByName(parameters, "display") match {
+      case None => Nil
+      case Some(rp) =>
+        FHIRUtil.getParameterValueByName(rp, "display") match {
           case Some(JString(display)) => Seq(FhirPathString(display))
           case _ => Nil
         }
@@ -323,19 +312,17 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
 
   /**
    * Parse the translation result Parameters resource and return the matched concepts (Coding)
-   * @param resultParameters
+   * @param parameters  Response of the translation
    * @return
    */
-  private def handleTranslationResult(resultParameters:Option[JObject]):List[FhirPathComplex] = {
-    resultParameters match {
-      case None => throw FhirPathException("Problem while calling translateToCoding in the configured terminology service!")
-      case Some(parameters) =>
-        FHIRUtil.getParameterValueByName(parameters, "result") match {
+  private def handleTranslationResult(parameters:JObject):List[FhirPathComplex] = {
+    FHIRUtil.getParameterValueByName(parameters, "result") match {
           //If there is some matching
           case Some(JBool(true)) =>
             //Get those matches
             FHIRUtil.getParameterValueByName(parameters, "match") match {
-              case Some(JArray(mtchs)) =>
+              //If multiple matches
+              case Some(JArray(mtchs)) if mtchs.forall(_.isInstanceOf[JArray]) =>
                 //For each match
                 mtchs
                   .map(_.asInstanceOf[JArray])
@@ -344,7 +331,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
                   )// Filter the match with these equivalance codes
                   .filter(parts =>
                     parts
-                      .find(_._1 == "equivalence")
+                      .find(_._1 == "relationship")
                       .map(_._2.extract[String])
                       .exists(eq => translationEquivalenceCodes.contains(eq))
                   ) //Get the matching concept
@@ -356,17 +343,23 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
                   .map(coding =>
                     FhirPathComplex(coding)
                   )
+              //If single match
+              case Some(JArray(parts)) if parts.forall(_.isInstanceOf[JObject])=>
+                val parameters = parts
+                  .map(_.asInstanceOf[JObject])
+                  .map(FHIRUtil.parseParameter)
+
+               if(parameters.exists(p => p._1 == "relationship" && translationEquivalenceCodes.contains(p._2.extract[String])))
+                  parameters.find(_._1 == "concept").map(_._2.asInstanceOf[JObject]).map(coding => FhirPathComplex(coding)).toList
+               else
+                  Nil
               //Otherwise return Nil
               case _ => Nil
             }
           //Otherwise return nil
           case _ => Nil
         }
-    }
   }
-
-
-
 
   /**
    * Check if terminology service is supplied

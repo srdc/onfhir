@@ -1,6 +1,6 @@
 package io.onfhir.client
 
-import io.onfhir.api.client.IOnFhirClient
+import io.onfhir.api.client.{FhirClientException, IOnFhirClient}
 import io.onfhir.api.service.IFhirTerminologyService
 import io.onfhir.client.TerminologyServiceClient.{LOOKUP_OPERATION_NAME, LOOKUP_OPERATION_REQUEST_PARAMS, TRANSLATE_OPERATION_NAME, TRANSLATE_OPERATION_REQUEST_PARAMS}
 import org.json4s.JObject
@@ -34,7 +34,7 @@ class TerminologyServiceClient(onFhirClient: IOnFhirClient)(implicit ec: Executi
    * @param conceptMapUrl A canonical URL for a concept map
    * @return Resulting Parameters resource
    */
-  override def translate(code: String, system: String, conceptMapUrl: String): Future[Option[JObject]] = translate(code, system, conceptMapUrl, None, None, false)
+  override def translate(code: String, system: String, conceptMapUrl: String): Future[JObject] = translate(code, system, conceptMapUrl, None, None, false)
 
   /**
    * Translate the given code + system based on given conceptMapUrl
@@ -47,7 +47,7 @@ class TerminologyServiceClient(onFhirClient: IOnFhirClient)(implicit ec: Executi
    * @param reverse           If this is true, then the operation should return all the codes that might be mapped to this code.
    * @return
    */
-  override def translate(code: String, system: String, conceptMapUrl: String, version: Option[String], conceptMapVersion: Option[String], reverse: Boolean):Future[Option[JObject]]  = {
+  override def translate(code: String, system: String, conceptMapUrl: String, version: Option[String], conceptMapVersion: Option[String], reverse: Boolean):Future[JObject]  = {
     var request =
       onFhirClient
         .operation(TRANSLATE_OPERATION_NAME)
@@ -63,12 +63,6 @@ class TerminologyServiceClient(onFhirClient: IOnFhirClient)(implicit ec: Executi
 
     request
       .executeAndReturnResource()
-      .map(Some(_))
-      .recover {
-        case t:Throwable =>
-          logger.error("Problem while calling translate on configured terminology service!", t)
-          None
-      }
   }
 
 
@@ -79,7 +73,7 @@ class TerminologyServiceClient(onFhirClient: IOnFhirClient)(implicit ec: Executi
    * @param conceptMapUrl           A canonical URL for a concept map
    * @return Resulting Parameters resource
    */
-  override def translate(codingOrCodeableConcept: JObject, conceptMapUrl: String): Future[Option[JObject]] = translate(codingOrCodeableConcept, conceptMapUrl, None, false)
+  override def translate(codingOrCodeableConcept: JObject, conceptMapUrl: String): Future[JObject] = translate(codingOrCodeableConcept, conceptMapUrl, None, false)
 
   /**
    * Translate the given Coding or codeable concept based on given conceptMapUrl
@@ -90,7 +84,7 @@ class TerminologyServiceClient(onFhirClient: IOnFhirClient)(implicit ec: Executi
    * @param reverse                 If this is true, then the operation should return all the codes that might be mapped to this code.
    * @return
    */
-  override def translate(codingOrCodeableConcept: JObject, conceptMapUrl: String, conceptMapVersion: Option[String], reverse: Boolean): Future[Option[JObject]] = {
+  override def translate(codingOrCodeableConcept: JObject, conceptMapUrl: String, conceptMapVersion: Option[String], reverse: Boolean): Future[JObject] = {
     val isCodeableConcept = codingOrCodeableConcept.obj.exists(_._1 == "coding")
 
     var request =
@@ -112,12 +106,6 @@ class TerminologyServiceClient(onFhirClient: IOnFhirClient)(implicit ec: Executi
 
     request
       .executeAndReturnResource()
-      .map(Some(_))
-      .recover {
-        case t:Throwable =>
-          logger.error("Problem while calling translate on configured terminology service!", t)
-          None
-      }
   }
 
   /**
@@ -129,7 +117,7 @@ class TerminologyServiceClient(onFhirClient: IOnFhirClient)(implicit ec: Executi
    * @param target Identifies the value set in which a translation is sought.
    * @return Resulting Parameters resource
    */
-  override def translate(code: String, system: String, source: Option[String], target: Option[String]): Future[Option[JObject]] = translate(code, system, source, target, None, false)
+  override def translate(code: String, system: String, source: Option[String], target: Option[String]): Future[JObject] = translate(code, system, source, target, None, false)
 
   /**
    * Translate the given code + system based on given source and target value sets
@@ -142,7 +130,7 @@ class TerminologyServiceClient(onFhirClient: IOnFhirClient)(implicit ec: Executi
    * @param reverse If this is true, then the operation should return all the codes that might be mapped to this code.
    * @return
    */
-  override def translate(code: String, system: String, source: Option[String], target: Option[String], version: Option[String], reverse: Boolean): Future[Option[JObject]] = {
+  override def translate(code: String, system: String, source: Option[String], target: Option[String], version: Option[String], reverse: Boolean): Future[JObject] = {
     var request =
       onFhirClient
         .operation(TRANSLATE_OPERATION_NAME)
@@ -160,12 +148,6 @@ class TerminologyServiceClient(onFhirClient: IOnFhirClient)(implicit ec: Executi
 
     request
       .executeAndReturnResource()
-      .map(Some(_))
-      .recover {
-        case t:Throwable =>
-          logger.error("Problem while calling translate on configured terminology service!", t)
-          None
-      }
   }
 
   /**
@@ -176,7 +158,7 @@ class TerminologyServiceClient(onFhirClient: IOnFhirClient)(implicit ec: Executi
    * @param target                  Identifies the value set in which a translation is sought.
    * @return Resulting Parameters resource
    */
-  override def translate(codingOrCodeableConcept: JObject, source: Option[String], target: Option[String]): Future[Option[JObject]] = translate(codingOrCodeableConcept, source, target, false)
+  override def translate(codingOrCodeableConcept: JObject, source: Option[String], target: Option[String]): Future[JObject] = translate(codingOrCodeableConcept, source, target, false)
 
   /**
    * Translate the given Coding or codeable concept based on given source and target value sets
@@ -187,7 +169,7 @@ class TerminologyServiceClient(onFhirClient: IOnFhirClient)(implicit ec: Executi
    * @param reverse                 If this is true, then the operation should return all the codes that might be mapped to this code.
    * @return
    */
-  override def translate(codingOrCodeableConcept: JObject, source: Option[String], target: Option[String], reverse: Boolean): Future[Option[JObject]] = {
+  override def translate(codingOrCodeableConcept: JObject, source: Option[String], target: Option[String], reverse: Boolean): Future[JObject] = {
     val isCodeableConcept = codingOrCodeableConcept.obj.exists(_._1 == "coding")
 
     var request =
@@ -210,12 +192,6 @@ class TerminologyServiceClient(onFhirClient: IOnFhirClient)(implicit ec: Executi
 
     request
       .executeAndReturnResource()
-      .map(Some(_))
-      .recover {
-        case t:Throwable =>
-          logger.error("Problem while calling translate on configured terminology service!", t)
-          None
-      }
   }
 
   /**
@@ -256,9 +232,10 @@ class TerminologyServiceClient(onFhirClient: IOnFhirClient)(implicit ec: Executi
       .executeAndReturnResource()
       .map(Some(_))
       .recover {
-        case t:Throwable =>
-          logger.error("Problem while calling lookup on configured terminology service!", t)
+        case fce:FhirClientException if fce.serverResponse.map(_.httpStatus.intValue()).exists(r => r == 404 || r == 400) =>
           None
+        case t:Throwable =>
+          throw t
       }
   }
 
@@ -268,7 +245,7 @@ class TerminologyServiceClient(onFhirClient: IOnFhirClient)(implicit ec: Executi
    * @param coding FHIR Coding
    * @return Resulting Parameters resource
    */
-  override def lookup(coding: JObject):Future[Option[JObject]] = lookup(coding, None, None, Nil)
+  override def lookup(coding: JObject):Future[Option[JObject]]  = lookup(coding, None, None, Nil)
 
   /**
    * Given a Coding, get additional details about the concept, including definition, status, designations, and properties.
@@ -295,9 +272,10 @@ class TerminologyServiceClient(onFhirClient: IOnFhirClient)(implicit ec: Executi
       .executeAndReturnResource()
       .map(Some(_))
       .recover {
-        case t:Throwable =>
-          logger.error("Problem while calling lookup on configured terminology service!", t)
+        case fce:FhirClientException if fce.serverResponse.map(_.httpStatus.intValue()).exists(r => r == 404 || r == 400) =>
           None
+        case t:Throwable =>
+          throw t
       }
   }
 }

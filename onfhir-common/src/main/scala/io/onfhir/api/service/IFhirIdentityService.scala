@@ -1,13 +1,13 @@
 package io.onfhir.api.service
 
 import java.util.concurrent.TimeUnit
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Duration
 
 /**
  * Interface to resolve identities (e.g. Patient identities, Encounter identities)
  */
-trait IFhirIdentityService {
+trait IFhirIdentityService extends Serializable{
   /**
    *
    * @return

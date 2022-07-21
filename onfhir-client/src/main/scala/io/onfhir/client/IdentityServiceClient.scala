@@ -3,6 +3,7 @@ package io.onfhir.client
 import io.onfhir.api.client.IOnFhirClient
 import io.onfhir.api.service.{IFhirIdentityCache, IFhirIdentityService}
 import io.onfhir.api.util.FHIRUtil
+
 import scala.concurrent.{ExecutionContext, Future}
 
 /**

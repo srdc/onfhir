@@ -1,14 +1,22 @@
 package io.onfhir.path
 
-import io.onfhir.api.service.{IFhirIdentityService, IFhirTerminologyService}
+import io.onfhir.api.service.IFhirIdentityService
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
 
 import scala.concurrent.Await
 
+/**
+ * Function library to access identity service functionalities
+ * @param context FHIR Path context
+ */
 class FhirPathIdentityServiceFunctions(context:FhirPathEnvironment) extends AbstractFhirPathFunctionLibrary {
+
   /**
-   * Resolve the given business identifier and return the FHIR Resource identifier by using the supplied identity service
-   * @return
+   * Resolve the given business identifier and return the FHIR Resource identifier (together with the resource type) by using the supplied identity service
+   * @param resourceTypeExpr        FHIR resource type
+   * @param identifierValueExpr     Business identifier  value (Identifier.value)
+   * @param identifierSystemExpr    Business identifier system (Identifier.system)
+   * @return                       Identifier for the resource e.g. Patient/455435464698
    */
   def resolveIdentifier(resourceTypeExpr:ExpressionContext, identifierValueExpr:ExpressionContext, identifierSystemExpr:ExpressionContext):Seq[FhirPathResult] = {
     val identityService = checkIdentityService()
@@ -21,7 +29,7 @@ class FhirPathIdentityServiceFunctions(context:FhirPathEnvironment) extends Abst
 
     try {
       Await.result(identityService.findMatching(resourceType.get, identifierValue.get, identifierSystem), identityService.getTimeout)
-        .map(matchingId => FhirPathString(matchingId))
+        .map(matchingId => FhirPathString(s"${resourceType.get}/$matchingId"))
         .toSeq
     } catch {
       case t:Throwable => throw FhirPathException("Problem while calling identity service!", t)
@@ -48,6 +56,9 @@ class FhirPathIdentityServiceFunctions(context:FhirPathEnvironment) extends Abst
 
 }
 
+/**
+ * Function library factory for this library
+ */
 object FhirPathIdentityServiceFunctionsFactory extends IFhirPathFunctionLibraryFactory {
   final val defaultPrefix:String = "idxs"
   /**

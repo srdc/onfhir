@@ -31,8 +31,7 @@ class TerminologyServiceClientTest extends Specification {
 
     "handle translate operation with given concept map on code and system" in {
       val result = Await.result(terminologyServiceClient.translate("LP129054-5", "http://loinc.org", "https://www.ncbi.nlm.nih.gov/clinvar"), Duration.Inf)
-      result.isEmpty shouldEqual false
-      FHIRUtil.getParameterValueByName(result.get, "result") shouldEqual Some(JBool(true))
+      FHIRUtil.getParameterValueByName(result, "result") shouldEqual Some(JBool(true))
     }
 
     "handle translate operation with given concept map on coding" in {
@@ -41,8 +40,7 @@ class TerminologyServiceClientTest extends Specification {
         "system" -> JString("http://loinc.org")
       )
       val result = Await.result(terminologyServiceClient.translate(coding, "https://www.ncbi.nlm.nih.gov/clinvar"), Duration.Inf)
-      result.isEmpty shouldEqual false
-      FHIRUtil.getParameterValueByName(result.get, "result") shouldEqual Some(JBool(true))
+      FHIRUtil.getParameterValueByName(result, "result") shouldEqual Some(JBool(true))
     }
   }
 
