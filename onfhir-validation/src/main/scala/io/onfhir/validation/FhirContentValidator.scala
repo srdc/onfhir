@@ -592,7 +592,14 @@ class FhirContentValidator(
           }
       //Otherwise
       case m =>
-        val matcherPath = m._1.replaceAll("\\[x\\]", "") //remove
+        var matcherPath = m._1.replaceAll("\\[x\\]", "") //remove
+        //TODO Better handle this part
+        if(!matcherPath.contains("extension(") && matcherPath.contains(":"))
+          matcherPath =
+            matcherPath
+              .split('.')
+              .map(pathItem => pathItem.takeWhile(_ != ':'))
+              .mkString(".")
 
         val result = FhirPathEvaluator(referenceResolver).evaluate(matcherPath, value) //Evaluate the Discriminator path
         result.exists(cv => //A result should exist, which match the the given restriction
@@ -803,7 +810,8 @@ class FhirContentValidator(
     else {
       val (defPath,actualPath) = findDefinitionAndActualPath(discPathItems, sliceSubElements)
       defPath match {
-        case "$this" => Left(Nil)
+        case "$this" =>
+          Left(Seq(Seq(defPath -> sliceRestriction)))
         case "url" if sliceRestriction.path.contains("extension") =>  Left(Nil)
         case _ =>
           Left(
@@ -905,6 +913,24 @@ class FhirContentValidator(
       .reverse //Order of slice definitions are important, so we start from the parent
       .flatMap(rm => rm.filter(i => i._2.sliceName.isDefined && !i._1.contains('.'))) // Slice should be on this element not childs
       .map(s => s._2.sliceName.get -> s._2)
+  }
+
+  /**
+   * Find out all slices and index of profile where they are first defined (0 --> leaf profile) with the definition
+   * @param subElementRestrictions All sub element restrictions
+   * @return  Map of (slice name -> Profile index it is defined first and the definition)
+   */
+  private def findSlicesAndProfileIndex(subElementRestrictions: Seq[Seq[(String, ElementRestrictions)]]): Map[String, (Int, ElementRestrictions)] = {
+    subElementRestrictions
+      .zipWithIndex
+      .flatMap {
+        case (profileElemRestrictions, profileIndex) =>
+          profileElemRestrictions
+            .filter(r => r._2.sliceName.isDefined && !r._1.contains('.')) // Slice should be on this element not childs
+            .map(r => r._2.sliceName.get -> (profileIndex -> r._2))
+      }
+      .groupBy(_._1) //Group by slice name
+      .map(g => g._1 -> g._2.maxBy(_._2._1)._2) //Get the earliest definition of this slice
   }
 
   /**
