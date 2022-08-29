@@ -2,9 +2,10 @@ package io.onfhir.api.client
 
 import akka.http.scaladsl.model.{DateTime, StatusCode, Uri}
 import io.onfhir.api.Resource
-import io.onfhir.api.model.FHIRResponse
+import io.onfhir.api.model.{FHIRResponse, OutcomeIssue}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.util.DateTimeUtil
+import io.onfhir.util.JsonFormatter.formats
 import org.json4s.JsonAST.{JArray, JObject}
 
 /**
@@ -199,12 +200,20 @@ class FHIRTransactionBatchBundle(val bundle:Resource) extends FHIRBundle(bundle)
     val resource = getResourceFromEntry(entry)
     val rsp = (entry \ "response").asInstanceOf[JObject]
 
+    val statusCode = StatusCode.int2StatusCode(FHIRUtil.extractValue[String](rsp, "status").trim.split(' ').head.toInt)
+
+    val outcomeIssues =
+      if(statusCode.isFailure())
+        (rsp \ "outcome" \ "issue").extract[Seq[OutcomeIssue]]
+      else Nil
+
     new FHIRResponse(
-      httpStatus = StatusCode.int2StatusCode(FHIRUtil.extractValue[String](rsp, "status").trim.split(' ').head.toInt),
+      httpStatus = statusCode,
       responseBody = resource,
       location = FHIRUtil.extractValueOption[String](rsp, "location").map(Uri.apply),
       lastModified = FHIRUtil.extractValueOption[String](rsp, "lastModified").map(l=> DateTimeUtil.instantToDateTime(DateTimeUtil.parseFhirDateTimeOrInstant(l))),
       newVersion = FHIRUtil.extractValueOption[String](rsp, "etag").map(e => e.drop(3).dropRight(1).toLong),
+      outcomeIssues = outcomeIssues
     )
   }
 
