@@ -69,7 +69,7 @@ class FHIRUpdateEndpointTest extends OnFhirTest with FHIREndpoint {
     "create a new version for given resource in database for correct mime type" in {
       Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId + "?_format=application/fhir+json", HttpEntity(patient)) ~> fhirRoute ~> check {
         status === OK
-        responseEntity.contentType.value === "application/fhir+json; charset=UTF-8"
+        responseEntity.contentType.mediaType.subType === "fhir+json"
 
         val response = responseAs[Resource]
         checkIdAndMeta(response, resourceId, "4")
@@ -78,7 +78,7 @@ class FHIRUpdateEndpointTest extends OnFhirTest with FHIREndpoint {
 
       Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId + "?_format=application/fhir+xml", HttpEntity(patient)) ~> fhirRoute ~> check {
         status === OK
-        responseEntity.contentType.value === "application/fhir+xml; charset=UTF-8"
+        responseEntity.contentType.mediaType.subType === "fhir+xml"
 
         val response = responseAs[Resource]
         checkIdAndMeta(response, resourceId, "5")

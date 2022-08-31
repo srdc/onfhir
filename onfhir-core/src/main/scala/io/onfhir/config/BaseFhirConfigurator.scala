@@ -140,6 +140,7 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
     //Parse all as bundle
     val valueSets = parseValueSetAndCodeSystems(valueSetResources ++ codeSystemResources ++ baseValueSetsAndCodeSystems)
 
+    fhirConfig.fhirVersion = conformance.fhirVersion
     logger.info("Configuring supported FHIR resources and profiles ...")
     fhirConfig = validateAndConfigureProfiles(fhirConfig, conformance, profiles, baseProfiles)
 
@@ -172,10 +173,11 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
       logger.error(s"Formats $unsupportedFormats is/are not supported by onFHIR.io yet, please correct your CapabilityStatement.format part!")
       throw new InitializationException(s"Formats $unsupportedFormats is/are not supported by onFHIR.io yet, please correct your CapabilityStatement.format part!")
     }
+    val majorFhirVersion = fhirConfig.fhirVersion.split('.').take(2).mkString(".")
     //If supported json format
-    fhirConfig.FHIR_JSON_MEDIA_TYPES = if(conformance.formats.intersect(FHIR_FORMATS.JSON).nonEmpty) FHIR_JSON_MEDIA_TYPES else Nil
+    fhirConfig.FHIR_JSON_MEDIA_TYPES = if(conformance.formats.intersect(FHIR_FORMATS.JSON).nonEmpty) FHIR_JSON_MEDIA_TYPES(majorFhirVersion) else Nil
     //If supported xml format
-    fhirConfig.FHIR_XML_MEDIA_TYPES = if(conformance.formats.intersect(FHIR_FORMATS.XML).nonEmpty) FHIR_XML_MEDIA_TYPES else Nil
+    fhirConfig.FHIR_XML_MEDIA_TYPES = if(conformance.formats.intersect(FHIR_FORMATS.XML).nonEmpty) FHIR_XML_MEDIA_TYPES(majorFhirVersion) else Nil
 
     fhirConfig.FHIR_FORMAT_MIME_TYPE_MAP = FHIR_FORMAT_MIME_TYPE_MAP
 

@@ -14,6 +14,8 @@ import org.json4s._
 import io.onfhir.util.JsonFormatter.formats
 
 class FhirSTU3Configurator extends FhirR4Configurator {
+  override val fhirVersion: String = "STU3"
+
   override val FHIR_SUMMARIZATION_INDICATOR_CODE_SYSTEM = "http://hl7.org/fhir/v3/ObservationValue"
   /**
    * Return a class that implements the interface to create AuditEvents conformant to the given base specification
@@ -35,6 +37,7 @@ class FhirSTU3Configurator extends FhirR4Configurator {
     val resourceDefs = (restDef \ "resource").asInstanceOf[JArray]
 
     FHIRCapabilityStatement(
+      fhirVersion = (capabilityStmt \ "fhirVersion").extract[String],
       restResourceConf = resourceDefs.arr.map(_.asInstanceOf[JObject]).map(resourceDef =>
         ResourceConf(
           resource = (resourceDef \ "type").extract[String],
