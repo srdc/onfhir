@@ -13,6 +13,10 @@ import scala.collection.LazyZip3
   * @param version FHIR version
   */
 class FhirConfig(version:String) {
+  /**
+   * Numeric FHIR version supported
+   */
+  var fhirVersion:String = _
   /***
     *  Dynamic configurations for this instance of FHIR repository
     */

@@ -8,6 +8,7 @@ import io.onfhir.audit.IFhirAuditCreator
 
 /**
  * Compact form for FHIR CapabilityStatement
+ * @param fhirVersion                 FHIR numeric version supporting e.g. 4.0.1
  * @param restResourceConf        REST configurations for each supported resource
  * @param searchParamDefUrls      Common search parameter definition URLs
  * @param operationDefUrls        All operation definition URLs
@@ -17,6 +18,7 @@ import io.onfhir.audit.IFhirAuditCreator
  * @param patchFormats            Patch formats supported by FHIR repository
  */
 case class FHIRCapabilityStatement(
+                                    fhirVersion:String,
                                     restResourceConf:Seq[ResourceConf],
                                     searchParamDefUrls:Set[String],
                                     operationDefUrls:Set[String],
@@ -117,14 +119,16 @@ trait IFhirVersionConfigurator {
 
   /** MediaType configurations for this FHIR version */
   // List of Supported FHIR JSON Media Types
-  val FHIR_JSON_MEDIA_TYPES:Seq[MediaType] = Seq(
+  def FHIR_JSON_MEDIA_TYPES(fhirVersion:String):Seq[MediaType] = Seq(
     MediaTypes.`application/json`,
-    FHIR_JSON_MEDIA_TYPE
+    FHIR_JSON_MEDIA_TYPE,
+    FHIR_JSON_MEDIA_TYPE.withParams(Map("fhirVersion" -> fhirVersion))
   )
   // List of Supported FHIR XML Media Types
-  val FHIR_XML_MEDIA_TYPES:Seq[MediaType] = Seq(
+  def FHIR_XML_MEDIA_TYPES(fhirVersion:String):Seq[MediaType] = Seq(
     MediaTypes.`application/xml`,
-    FHIR_XML_MEDIA_TYPE
+    FHIR_XML_MEDIA_TYPE,
+    FHIR_XML_MEDIA_TYPE.withParams(Map("fhirVersion" -> fhirVersion))
   )
   // Patch media types supported by onFHIR
   val FHIR_PATCH_MEDIA_TYPES:Seq[MediaType] = Seq(FHIR_MEDIA_TYPES.FHIR_JSON_PATCH_MEDIA_TYPE)

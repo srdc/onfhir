@@ -40,6 +40,7 @@ class R4Parser(
     val resourceDefs = (restDef \ "resource").asInstanceOf[JArray]
 
     FHIRCapabilityStatement(
+      fhirVersion = (capabilityStmt \ "fhirVersion").extract[String],
       restResourceConf = resourceDefs.arr.map(_.asInstanceOf[JObject]).map(resourceDef =>
         ResourceConf(
           resource = (resourceDef \ "type").extract[String],

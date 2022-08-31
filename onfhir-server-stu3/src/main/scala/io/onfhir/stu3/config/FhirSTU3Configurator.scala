@@ -8,6 +8,7 @@ import io.onfhir.stu3.parsers.STU3Parser
 
 
 class FhirSTU3Configurator extends BaseFhirConfigurator {
+  override val fhirVersion: String = "STU3"
   override val FHIR_SUMMARIZATION_INDICATOR_CODE_SYSTEM = "http://hl7.org/fhir/v3/ObservationValue"
   /**
    * Return a class that implements the interface to create AuditEvents conformant to the given base specification

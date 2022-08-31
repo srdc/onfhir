@@ -22,6 +22,7 @@ class STU3Parser(complexTypes:Set[String], primitiveTypes:Set[String]) extends R
     val resourceDefs = (restDef \ "resource").asInstanceOf[JArray]
 
     FHIRCapabilityStatement(
+      fhirVersion = (capabilityStmt \ "fhirVersion").extract[String],
       restResourceConf = resourceDefs.arr.map(_.asInstanceOf[JObject]).map(resourceDef =>
         ResourceConf(
           resource = (resourceDef \ "type").extract[String],
