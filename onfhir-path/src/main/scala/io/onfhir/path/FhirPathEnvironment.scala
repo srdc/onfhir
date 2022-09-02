@@ -24,7 +24,8 @@ case class FhirPathEnvironment(
                                 val terminologyService:Option[IFhirTerminologyService] = None,
                                 val identityService:Option[IFhirIdentityService] = None,
                                 val _index:Int = 0,
-                                val _total:Option[FhirPathResult] = None
+                                val _total:Option[FhirPathResult] = None,
+                                val isContentFhir:Boolean = true
                          ) {
   val vsPattern:Regex = "'vs-[A-Za-z0-9\\-]+'".r
   val extPattern:Regex = "'ext-[A-Za-z0-9\\-]+'".r

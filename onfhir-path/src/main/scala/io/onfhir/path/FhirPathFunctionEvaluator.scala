@@ -562,6 +562,25 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   }
 
   /**
+   * Check if the current item can be converted to decimal
+   * @return
+   */
+  def convertsToDecimal():Seq[FhirPathResult] = {
+    current match {
+      case Nil => Nil
+      case Seq(FhirPathNumber(_)) => Seq(FhirPathBoolean(true))
+      case Seq(FhirPathBoolean(_)) => Seq(FhirPathBoolean(true))
+      case Seq(FhirPathString(s)) =>
+        Try(s.toDouble).toOption match {
+          case Some(d) => Seq(FhirPathBoolean(true))
+          case None => Seq(FhirPathBoolean(false))
+        }
+      case Seq(oth) => Seq(FhirPathBoolean(false))
+      case _ => throw new FhirPathException(s"Invalid function call 'toDecimal' on multiple values!!!")
+    }
+  }
+
+  /**
    * Boolean conversion function
    * @return
    */

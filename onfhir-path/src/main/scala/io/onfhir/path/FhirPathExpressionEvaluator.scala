@@ -37,11 +37,14 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
       case mi:MemberInvocationContext =>
         val pathOrResourceType = FhirPathLiteralEvaluator.parseIdentifier(mi.identifier().getText)
         //If it is a resource type
-        if(pathOrResourceType.head.isUpper){
+        if(context.isContentFhir && pathOrResourceType.head.isUpper){
           current
             .filter(c => c.isInstanceOf[FhirPathComplex])
             .map(c => c.asInstanceOf[FhirPathComplex])
-            .filter(c => FHIRUtil.extractValueOption[String](c.json, FHIR_COMMON_FIELDS.RESOURCE_TYPE).contains(pathOrResourceType)) //Resource type should match
+            .filter(c =>
+              FHIRUtil.extractValueOption[String](c.json, FHIR_COMMON_FIELDS.RESOURCE_TYPE)
+                .contains(pathOrResourceType)
+            ) //Resource type should match
         } else
           visitMemberInvocation(mi) //Otherwise it is just element path
 

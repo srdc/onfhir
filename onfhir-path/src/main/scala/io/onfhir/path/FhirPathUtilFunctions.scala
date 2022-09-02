@@ -28,6 +28,17 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
   }
 
   /**
+   * Trim the strings in the current set
+   * @return
+   */
+  def trim():Seq[FhirPathResult] = {
+    current.map {
+      case FhirPathString(s) => FhirPathString(s.trim)
+      case oth => oth
+    }
+  }
+
+  /**
    * Create FHIR Reference object(s) with given resource type and id(s)
    * If ridExp returns Nil, the function also returns Nil
    *
@@ -146,6 +157,42 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
     else
       Seq(FhirPathComplex(JObject(List("value" -> value.head.toJson, "system" -> system.head.toJson, "unit" -> unit.head.toJson, "code" -> unit.head.toJson))))
   }
+
+  /**
+   * Create FHIR Quantity json object with given value unit and optional system and code
+   * If value or unit parameter expression returns Nil, the function will also return Nil
+   *
+   * @param valueExpr Expression to return the quantity value
+   * @param unitExpr    Expression to return the unit
+   * @param systemExpr  Expression to return the system for the unit
+   * @param codeExpr    Expression to return the unit code
+   * @return
+   */
+  def createFhirQuantity(valueExpr: ExpressionContext, unitExpr: ExpressionContext, systemExpr: ExpressionContext, codeExpr:ExpressionContext): Seq[FhirPathResult] = {
+    val value = new FhirPathExpressionEvaluator(context, current).visit(valueExpr)
+    if (value.length > 1 || !value.forall(_.isInstanceOf[FhirPathNumber]))
+      throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter value expression should return 0 or 1 numeric value!")
+
+    val unit = new FhirPathExpressionEvaluator(context, current).visit(unitExpr)
+    if (unit.length > 1 || !unit.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter unit expression should return 0 or 1 string value!")
+
+    val code = new FhirPathExpressionEvaluator(context, current).visit(codeExpr)
+    if (code.length > 1 || !code.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter code expression should return 0 or 1 string value!")
+
+    val system = new FhirPathExpressionEvaluator(context, current).visit(systemExpr)
+    if (system.length > 1 || !system.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter system expression should return 0 or 1 string value!")
+
+    if (value.isEmpty || unit.isEmpty)
+      Nil
+    else if(code.isEmpty || system.isEmpty)
+      Seq(FhirPathComplex(JObject(List(JField("value", value.head.toJson), "unit" -> unit.head.toJson))))
+    else
+      Seq(FhirPathComplex(JObject(List("value" -> value.head.toJson, "system" -> system.head.toJson, "unit" -> unit.head.toJson, "code" -> code.head.toJson))))
+  }
+
 
   /**
    * Retrieve the duration between given FHIR dateTimes as FHIR Duration with a suitable duration unit (either minute, day, or month)
@@ -409,11 +456,35 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
     _toFhirDateTime(Seq(pattern.head.asInstanceOf[FhirPathString].s))
   }
 
-  private def _toFhirDateTime(patternsToTry: Seq[String]): Seq[FhirPathResult] = {
+  /**
+   *  Convert the current string value to string representation of Fhir DateTime format (ISO DATE TIME) with the given time zone. The current string
+   * representation of the date-time is expected to be in the format given with sourcePattern.
+   *
+   * @param sourcePattern The format pattern of the date-time string to be converted.
+   * @param zoneId        Java ZoneId representation e.g. Europe/Berlin
+   * @return
+   */
+  def toFhirDateTime(sourcePattern:ExpressionContext, zoneId:ExpressionContext):Seq[FhirPathResult] = {
+    val pattern = new FhirPathExpressionEvaluator(context, current).visit(sourcePattern)
+    if (pattern.length != 1 || !pattern.head.isInstanceOf[FhirPathString]) {
+      throw FhirPathException("Invalid function call to 'toFhirDateTime'. The sourcePattern expression (the function parameter) should evaluate to a single string value.")
+    }
+    val zoneIdStr =  new FhirPathExpressionEvaluator(context, current).visit(zoneId)
+
+    if (pattern.length != 1 || !pattern.head.isInstanceOf[FhirPathString]) {
+      throw FhirPathException("Invalid function call to 'toFhirDateTime'. The zoneId expression (the function parameter) should evaluate to a single string value.")
+    }
+    Try(ZoneId.of(zoneIdStr.head.asInstanceOf[FhirPathString].s)).toOption match {
+      case None => throw FhirPathException("Invalid function call to 'toFhirDateTime'. The zoneId expression (the function parameter) should evaluate to a valid Java ZoneId string!")
+      case Some(zid) => _toFhirDateTime(Seq(pattern.head.asInstanceOf[FhirPathString].s), zid)
+    }
+  }
+
+  private def _toFhirDateTime(patternsToTry: Seq[String], zoneId:ZoneId = ZoneId.systemDefault()): Seq[FhirPathResult] = {
     current.map {
       case dt: FhirPathDateTime => dt
       case FhirPathString(st) =>
-        val formatsToTry = patternsToTry.map(DateTimeFormatter.ofPattern(_).withZone(ZoneId.systemDefault()))
+        val formatsToTry = patternsToTry.map(DateTimeFormatter.ofPattern(_).withZone(zoneId))
         val dateTime = formatsToTry.collectFirst {
           case format if Try(ZonedDateTime.parse(st, format)).isSuccess => ZonedDateTime.parse(st, format)
         }

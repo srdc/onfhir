@@ -24,7 +24,8 @@ case class FhirPathEvaluator (
                                environmentVariables:Map[String, JValue] = Map.empty,
                                functionLibraries:Map[String, IFhirPathFunctionLibraryFactory] = Map.empty,
                                terminologyService:Option[IFhirTerminologyService] = None,
-                               identityService:Option[IFhirIdentityService] = None
+                               identityService:Option[IFhirIdentityService] = None,
+                               isContentFhir:Boolean = true
                              ) {
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
@@ -100,7 +101,8 @@ case class FhirPathEvaluator (
         environmentVariables.map(e => e._1 -> FhirPathValueTransformer.transform(e._2)),
         functionLibraries,
         terminologyService,
-        identityService
+        identityService,
+        isContentFhir = isContentFhir
       )
     val evaluator = new FhirPathExpressionEvaluator(environment, resource)
     evaluator.visit(expr)
@@ -464,5 +466,5 @@ object FhirPathEvaluator {
 
   def apply(environmentVariables:Map[String, JValue]): FhirPathEvaluator = new FhirPathEvaluator(None, environmentVariables)
 
-  def apply(environmentVariables:Map[String, JValue], functionLibraries:Map[String, IFhirPathFunctionLibraryFactory]):FhirPathEvaluator = new FhirPathEvaluator(None, environmentVariables, functionLibraries)
+  def apply(environmentVariables:Map[String, JValue], functionLibraries:Map[String, IFhirPathFunctionLibraryFactory], isContentFhir:Boolean):FhirPathEvaluator = new FhirPathEvaluator(None, environmentVariables, functionLibraries, isContentFhir = isContentFhir)
 }
