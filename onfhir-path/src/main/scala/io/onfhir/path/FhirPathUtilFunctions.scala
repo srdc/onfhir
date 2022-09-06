@@ -1,7 +1,8 @@
 package io.onfhir.path
 
+import io.onfhir.api.util.FHIRUtil
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
-import org.json4s.{JArray, JField, JObject, JString}
+import org.json4s.{JArray, JField, JObject, JString, JValue}
 
 import java.time.format.DateTimeFormatter
 import java.time.temporal.{ChronoUnit, Temporal}
@@ -63,6 +64,42 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
   }
 
   /**
+   * Create a FHIR Coding content with given system code and optional display
+   * If system or code parameters return nil, the function returns Nil
+   * All parameters should return 0 or 1 string value
+   *
+   * @param systemExp   Expression to give the system value
+   * @param codeExpr    Expression to give the code value
+   * @param displayExpr Expression to give the display value (optional)
+   * @return
+   */
+  def createFhirCoding(systemExp: ExpressionContext, codeExpr: ExpressionContext, displayExpr: ExpressionContext):Seq[FhirPathResult] = {
+    val system = new FhirPathExpressionEvaluator(context, current).visit(systemExp)
+    if (system.length > 1 || !system.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'createFhirCoding', expression for system should return 0 or 1 string value!")
+
+    val code = new FhirPathExpressionEvaluator(context, current).visit(codeExpr)
+    if (code.length > 1 || !code.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'createFhirCoding', expression for code should return 0 or 1 string value!")
+
+    val display = new FhirPathExpressionEvaluator(context, current).visit(displayExpr)
+    if (display.length > 1 || !code.forall(_.isInstanceOf[FhirPathString]))
+      throw new FhirPathException(s"Invalid function call 'createFhirCoding', expression for display should return 0 or 1 string value!")
+
+    if (system.isEmpty || code.isEmpty)
+      Nil
+    else {
+      var codingElems =
+        List(
+          JField("system", system.head.toJson),
+          JField("code", code.head.toJson)
+        )
+      display.headOption.foreach(d => codingElems = codingElems :+ JField("display", d.toJson))
+      Seq(FhirPathComplex(JObject(codingElems)))
+    }
+  }
+
+  /**
    * Create a FHIR CodeableConcept content with given system code and optional display
    * If system or code parameters return nil, the function returns Nil
    * All parameters should return 0 or 1 string value
@@ -116,10 +153,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   def createFhirQuantity(valueExpr: ExpressionContext, unitExpr: ExpressionContext): Seq[FhirPathResult] = {
-    val value = new FhirPathExpressionEvaluator(context, current).visit(valueExpr)
-    if (value.length > 1 || !value.forall(_.isInstanceOf[FhirPathNumber]))
-      throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter value expression should return 0 or 1 numeric value!")
-
+    val value = handleFhirQuantityValue(valueExpr)
     val unit = new FhirPathExpressionEvaluator(context, current).visit(unitExpr)
     if (unit.length > 1 || !unit.forall(_.isInstanceOf[FhirPathString]))
       throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter unit expression should return 0 or 1 string value!")
@@ -127,7 +161,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
     if (value.isEmpty || unit.isEmpty)
       Nil
     else
-      Seq(FhirPathComplex(JObject(List(JField("value", value.head.toJson), "unit" -> unit.head.toJson))))
+      Seq(FhirPathComplex(constructFhirQuantity(value.get._1, unit.head.toJson, None,None, value.get._2) ))
   }
 
   /**
@@ -136,26 +170,24 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    *
    * @param valueExpr  Expression to return the quantity value
    * @param systemExpr Expression to return the system for the unit
-   * @param unitExpr   Expression to return the the unit
+   * @param codeExpr   Expression to return the the unit
    * @return
    */
-  def createFhirQuantity(valueExpr: ExpressionContext, systemExpr: ExpressionContext, unitExpr: ExpressionContext): Seq[FhirPathResult] = {
-    val value = new FhirPathExpressionEvaluator(context, current).visit(valueExpr)
-    if (value.length > 1 || !value.forall(_.isInstanceOf[FhirPathNumber]))
-      throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter value expression should return 0 or 1 numeric value!")
+  def createFhirQuantity(valueExpr: ExpressionContext, systemExpr: ExpressionContext, codeExpr: ExpressionContext): Seq[FhirPathResult] = {
+    val value = handleFhirQuantityValue(valueExpr)
 
     val system = new FhirPathExpressionEvaluator(context, current).visit(systemExpr)
     if (system.length > 1 || !system.forall(_.isInstanceOf[FhirPathString]))
       throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter system expression should return 0 or 1 string value!")
 
-    val unit = new FhirPathExpressionEvaluator(context, current).visit(unitExpr)
+    val unit = new FhirPathExpressionEvaluator(context, current).visit(codeExpr)
     if (unit.length > 1 || !unit.forall(_.isInstanceOf[FhirPathString]))
       throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter unit expression should return 0 or 1 string value!")
 
     if (value.isEmpty || system.isEmpty || unit.isEmpty)
       Nil
     else
-      Seq(FhirPathComplex(JObject(List("value" -> value.head.toJson, "system" -> system.head.toJson, "unit" -> unit.head.toJson, "code" -> unit.head.toJson))))
+      Seq(FhirPathComplex(constructFhirQuantity(value.get._1, unit.head.toJson, system.headOption.map(_.toJson), unit.headOption.map(_.toJson), value.get._2) ))
   }
 
   /**
@@ -168,10 +200,12 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param codeExpr    Expression to return the unit code
    * @return
    */
-  def createFhirQuantity(valueExpr: ExpressionContext, unitExpr: ExpressionContext, systemExpr: ExpressionContext, codeExpr:ExpressionContext): Seq[FhirPathResult] = {
-    val value = new FhirPathExpressionEvaluator(context, current).visit(valueExpr)
-    if (value.length > 1 || !value.forall(_.isInstanceOf[FhirPathNumber]))
-      throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter value expression should return 0 or 1 numeric value!")
+  def createFhirQuantity(valueExpr: ExpressionContext,
+                         unitExpr: ExpressionContext,
+                         systemExpr: ExpressionContext,
+                         codeExpr:ExpressionContext
+                        ): Seq[FhirPathResult] = {
+    val value = handleFhirQuantityValue(valueExpr)
 
     val unit = new FhirPathExpressionEvaluator(context, current).visit(unitExpr)
     if (unit.length > 1 || !unit.forall(_.isInstanceOf[FhirPathString]))
@@ -187,10 +221,93 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
 
     if (value.isEmpty || unit.isEmpty)
       Nil
-    else if(code.isEmpty || system.isEmpty)
-      Seq(FhirPathComplex(JObject(List(JField("value", value.head.toJson), "unit" -> unit.head.toJson))))
     else
-      Seq(FhirPathComplex(JObject(List("value" -> value.head.toJson, "system" -> system.head.toJson, "unit" -> unit.head.toJson, "code" -> code.head.toJson))))
+      Seq(FhirPathComplex(constructFhirQuantity(value.get._1, unit.head.toJson, system.headOption.map(_.toJson), code.headOption.map(_.toJson), value.get._2) ))
+  }
+
+  /**
+   * Construct a FHIR Quantity object from given values
+   * @param value       Json number
+   * @param unit        Json string for unit
+   * @param system      Optional system JString
+   * @param code        Optional code JString
+   * @param comparator  Optional comparator
+   * @return
+   */
+  private def constructFhirQuantity(value:JValue, unit:JValue, system:Option[JValue], code:Option[JValue], comparator:Option[String]):JObject = {
+    var fields = List("value" -> value, "unit" -> unit)
+    if(code.isDefined && system.isDefined)
+      fields = fields ++ Seq("system" -> system.get,"code" -> code.get)
+    comparator.foreach(c => fields = fields :+ ("comparator" -> JString(c)))
+    JObject(fields)
+  }
+
+  /**
+   * Check if the given value is a FHIR Quantity expression e.g. 5.2, >7.1, etc
+   * Returns true if given value is numeric
+   * Returns true if given value evaluates to string but can be converted to numeric value
+   * Returns true if given value is string starting with comparators and then remaining string can be converted to numeric
+   * Returns false otherwise
+   * If current value return multiple values, throws exception
+   * @param valueExpr Expression to return the value
+   * @return
+   */
+  def isFhirQuantityExpression():Seq[FhirPathResult] = {
+    current match {
+      case Nil => Nil
+      case Seq(FhirPathDateTime(_: Year)) => Seq(FhirPathBoolean(true))
+      case Seq(FhirPathNumber(_)) => Seq(FhirPathBoolean(true))
+      case Seq(FhirPathString(s)) if s.startsWith(">") || s.startsWith("<") =>
+        Try(s.drop(1).toDouble).toOption match {
+          case Some(_) => Seq(FhirPathBoolean(true))
+          case None => Seq(FhirPathBoolean(false))
+        }
+      case Seq(FhirPathString(s)) if s.startsWith(">=") || s.startsWith("<=") =>
+        Try(s.drop(2).toDouble).toOption match {
+          case Some(_) => Seq(FhirPathBoolean(true))
+          case None => Seq(FhirPathBoolean(false))
+        }
+      case Seq(FhirPathString(s)) =>
+        Try(s.toDouble).toOption match {
+          case Some(_) => Seq(FhirPathBoolean(true))
+          case None => Seq(FhirPathBoolean(false))
+        }
+      case Seq(oth) => Seq(FhirPathBoolean(false))
+      case _ => throw new FhirPathException(s"Invalid function call 'toDecimal' on multiple values!!!")
+    }
+  }
+
+  /**
+   * Handle parsing the FHIR quantity value
+   * @param valueExpr
+   * @return
+   */
+  private def handleFhirQuantityValue(valueExpr:ExpressionContext):Option[(JValue, Option[String])] = {
+    val value = new FhirPathExpressionEvaluator(context, current).visit(valueExpr)
+    value match {
+      case Nil => None
+      case Seq(n:FhirPathNumber) => Some(n.toJson -> None)
+      case Seq(FhirPathString(s)) if s.startsWith(">") || s.startsWith("<") =>
+        Try(s.drop(1).toDouble)
+          .toOption match {
+            case None => throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter value expression should return 0 or 1 numeric value or nuneric value with comparator prefix (e.g. >, <) !")
+            case Some(d) => Some(FhirPathNumber(d).toJson -> Some(s.take(1)))
+          }
+      case Seq(FhirPathString(s)) if s.startsWith(">=") || s.startsWith("<=") =>
+        Try(s.drop(2).toDouble)
+          .toOption match {
+            case None => throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter value expression should return 0 or 1 numeric value or nuneric value with comparator prefix (e.g. >, <) !")
+            case Some(d) => Some(FhirPathNumber(d).toJson -> Some(s.take(2)))
+        }
+      case Seq(FhirPathString(s)) =>
+        Try(s.toDouble)
+          .toOption match {
+            case None => throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter value expression should return 0 or 1 numeric value or nuneric value with comparator prefix (e.g. >, <) !")
+            case Some(d) => Some(FhirPathNumber(d).toJson -> None)
+          }
+      case _ =>
+        throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter value expression should return 0 or 1 numeric value or nuneric value with comparator prefix (e.g. >, <) !")
+    }
   }
 
 
@@ -430,6 +547,29 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
   }
 
   /**
+   * Paster a custom date string
+   * @param sourcePattern Java time date pattern e.g. dd.MM.yyyy
+   * @return
+   */
+  def toFhirDate(sourcePattern: ExpressionContext):Seq[FhirPathResult] = {
+    val pattern = new FhirPathExpressionEvaluator(context, current).visit(sourcePattern)
+    if (pattern.length != 1 || !pattern.head.isInstanceOf[FhirPathString]) {
+      throw FhirPathException("Invalid function call to 'toFhirDate'. The sourcePattern expression (the function parameter) should evaluate to a single string value.")
+    }
+    current.map {
+      case FhirPathString(st) =>
+        val formatToTry:DateTimeFormatter = DateTimeFormatter.ofPattern(pattern.head.asInstanceOf[FhirPathString].s)
+        Try(formatToTry.parseBest(st, LocalDate.from(_), YearMonth.from(_), Year.from(_)).asInstanceOf[Temporal])
+          .toOption match {
+            case None => throw FhirPathException(s"Invalid function call 'toFhirDate'. Given date is not recognized according to the format ${formatToTry.toString} !")
+            case Some(temporal) => FhirPathDateTime(temporal)
+          }
+      case dt:FhirPathDateTime => dt
+      case _ =>   throw FhirPathException(s"Invalid function call 'toFhirDate'. It should be used on string values !")
+    }
+  }
+
+  /**
    * Convert the current string value to string representation of Fhir DateTime format (ISO DATE TIME). The current
    * string representation of the date-time is expected to be in one of these formats:
    * "yyyy-MM-dd HH:mm:ss", "yyyy-MM-ddHH:mm:ss"
@@ -480,6 +620,12 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
     }
   }
 
+  /**
+   * Handler for Date time to FHIR date time conversions
+   * @param patternsToTry
+   * @param zoneId
+   * @return
+   */
   private def _toFhirDateTime(patternsToTry: Seq[String], zoneId:ZoneId = ZoneId.systemDefault()): Seq[FhirPathResult] = {
     current.map {
       case dt: FhirPathDateTime => dt
@@ -495,6 +641,57 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
         }
     }
   }
+
+  /**
+   * For FHIR coding elements, filter the ones that match the given coding list as FHIR code query
+   *
+   * @param codingList Expression that evaluates to Seq[FhirPathString] in FHIR token query format [system]|[code]
+   * @return
+   */
+  def isCodingIn(codingList: ExpressionContext): Seq[FhirPathResult] = {
+    val systemAndCodes: Seq[(Option[String], Option[String])] = new FhirPathExpressionEvaluator(context, current).visit(codingList) match {
+      case s: Seq[_] if s.forall(i => i.isInstanceOf[FhirPathString]) =>
+        s
+          .map(_.asInstanceOf[FhirPathString])
+          .map(i =>
+            try {
+              FHIRUtil.parseTokenValue(i.s)
+            } catch {
+              case t: Throwable => throw new FhirPathException(s"Invalid function call 'filterCodings', first expression ${codingList.getText} does not evaluate to sequence of FHIR Path Strings in FHIR token query format!", Some(t))
+            }
+          )
+      case _ => throw new FhirPathException(s"Invalid function call 'filterCodings', first expression ${codingList.getText} does not evaluate to sequence of FHIR Path Strings!")
+    }
+
+    val codingMatch =
+      current
+        .filter(_.isInstanceOf[FhirPathComplex])
+        .map(_.asInstanceOf[FhirPathComplex])
+        .exists(coding =>
+          systemAndCodes
+            .exists {
+              // |code query
+              case (Some(""), Some(c)) =>
+                FHIRUtil.extractValueOption[String](coding.json, "system").isEmpty &&
+                  FHIRUtil.extractValueOption[String](coding.json, "code").contains(c)
+              // system|code
+              case (Some(s), Some(c)) =>
+                FHIRUtil.extractValueOption[String](coding.json, "system").contains(s) &&
+                  FHIRUtil.extractValueOption[String](coding.json, "code").contains(c)
+              // code
+              case (None, Some(c)) =>
+                FHIRUtil.extractValueOption[String](coding.json, "code").contains(c)
+              // system|
+              case (Some(s), None) =>
+                FHIRUtil.extractValueOption[String](coding.json, "system").contains(s)
+              case _ =>
+                throw new FhirPathException("Invalid given system codes pairings!")
+            }
+        )
+
+    Seq(FhirPathBoolean(codingMatch))
+  }
+
 }
 
 object FhirPathUtilFunctionsFactory extends IFhirPathFunctionLibraryFactory {

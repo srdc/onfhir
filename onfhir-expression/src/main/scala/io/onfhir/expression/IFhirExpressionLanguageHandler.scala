@@ -4,7 +4,6 @@ import org.json4s.{JNothing, JValue}
 import scala.concurrent.{ExecutionContext, Future}
 
 trait IFhirExpressionLanguageHandler {
-  private val internalPlaceholderExpr = """\{\{([^"{}]+)}\}""".r
   /**
    * Support language mime type e.g. text/fhirpath, application/x-fhir-query, text/template
    */

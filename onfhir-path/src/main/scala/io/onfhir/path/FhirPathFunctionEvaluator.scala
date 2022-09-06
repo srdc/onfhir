@@ -550,6 +550,8 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   def toDecimal():Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
+      //This may be due to parsing strings
+      case Seq(FhirPathDateTime(y:Year)) => Seq(FhirPathNumber(y.getValue))
       case Seq(n:FhirPathNumber)  => Seq(n)
       case Seq(FhirPathString(s)) => Try(s.toDouble).toOption match {
         case Some(d) => Seq(FhirPathNumber(d))
@@ -568,6 +570,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   def convertsToDecimal():Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
+      case Seq(FhirPathDateTime(_:Year)) =>  Seq(FhirPathBoolean(true))
       case Seq(FhirPathNumber(_)) => Seq(FhirPathBoolean(true))
       case Seq(FhirPathBoolean(_)) => Seq(FhirPathBoolean(true))
       case Seq(FhirPathString(s)) =>
