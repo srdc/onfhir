@@ -528,10 +528,12 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
         new FhirPathExpressionEvaluator(context, current).visit(period) match {
           case Seq(FhirPathString(p)) =>
             p match {
-              case "year" | "years" => ChronoUnit.YEARS
-              case "month" | "months" => ChronoUnit.MONTHS
-              case "week" | "weeks" => ChronoUnit.WEEKS
-              case "day" | "days" => ChronoUnit.DAYS
+              case "year" | "years" | "a" => ChronoUnit.YEARS
+              case "month" | "months" | "mo" => ChronoUnit.MONTHS
+              case "week" | "weeks" | "wk" => ChronoUnit.WEEKS
+              case "day" | "days" | "d" => ChronoUnit.DAYS
+              case "hour" | "hours" | "h" => ChronoUnit.HOURS
+              case "minute" | "minutes" | "min" => ChronoUnit.MINUTES
               case _ => throw new FhirPathException(s"Invalid function call 'getPeriod', the period expression ${period.getText} does not evaluate to a valid (valid values: 'years', 'months', 'weeks', 'days') time-valued quantity !")
             }
           case _ =>
