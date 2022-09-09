@@ -1,6 +1,6 @@
 package io.onfhir.db
 
-import com.mongodb.connection.ClusterConnectionMode
+
 import io.onfhir.Onfhir
 import io.onfhir.config.OnfhirConfig
 import org.mongodb.scala.bson.collection.immutable.Document
@@ -21,7 +21,9 @@ object MongoDB {
 
   private val dbHosts = OnfhirConfig.mongodbHosts
 
-  val transactionOptions:TransactionOptions = TransactionOptions.builder()
+  val transactionOptions:TransactionOptions =
+    TransactionOptions
+    .builder()
     .readPreference(ReadPreference.primary())
     .readConcern(ReadConcern.LOCAL)
     .writeConcern(WriteConcern.ACKNOWLEDGED)
@@ -35,9 +37,10 @@ object MongoDB {
     clientSettingsBuilder = clientSettingsBuilder
       .applicationName("onFhir.io")
       .applyToClusterSettings(b => b.applySettings(
-        ClusterSettings.builder()
+        ClusterSettings
+          .builder()
           .hosts(dbHosts.toList.map(h => new ServerAddress(h)).asJava)
-          .mode(if(dbHosts.length > 1) ClusterConnectionMode.MULTIPLE else ClusterConnectionMode.SINGLE)
+          //.mode(if(dbHosts.length > 1) ClusterConnectionMode.MULTIPLE else ClusterConnectionMode.SINGLE)
           .build()
       ))
 

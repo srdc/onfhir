@@ -1,26 +1,30 @@
 package io.onfhir.db
 
+import com.mongodb.MongoClientSettings
+import com.mongodb.bulk.BulkWriteUpsert
+import org.mongodb.scala.model.{Field, InsertOneModel}
+import org.mongodb.scala.result.InsertOneResult
+
 import java.time.Instant
 import java.util.UUID
 
-import com.mongodb.MongoClientSettings
-import com.mongodb.bulk.BulkWriteUpsert
-import com.mongodb.client.model.{BsonField, Field, InsertOneModel}
+//import com.mongodb.client.model.{BsonField, Field, InsertOneModel}
 import io.onfhir.Onfhir
 import io.onfhir.api._
 import io.onfhir.config.OnfhirConfig
 import io.onfhir.exception.{ConflictException, InternalServerException}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.conversions.Bson
-import org.mongodb.scala.bson.{BsonArray, BsonDateTime, BsonDocument, BsonString, BsonValue, _}
+import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonString, BsonValue, _}
 import org.mongodb.scala.model.Filters.{and, equal, in, nin, notEqual}
 import org.mongodb.scala.model.Projections.{exclude, include}
 import org.mongodb.scala.model.Sorts.{ascending, descending}
+
 import com.mongodb.client.model.Updates.setOnInsert
 import io.onfhir.api.model.{FHIRResponse, OutcomeIssue}
 import io.onfhir.util.DateTimeUtil
-import org.mongodb.scala.model.{Accumulators, Aggregates, BsonField, BulkWriteOptions, Filters, Projections, Sorts, UpdateOptions, Updates}
-import org.mongodb.scala.{Completed, FindObservable, MongoCollection, bson}
+import org.mongodb.scala.model.{Accumulators, Aggregates,  BulkWriteOptions, Projections, Sorts, UpdateOptions, Updates}
+import org.mongodb.scala.{FindObservable, MongoCollection}
 
 import scala.jdk.CollectionConverters._
 import scala.collection.mutable.ListBuffer
@@ -247,11 +251,12 @@ object DocumentManager {
 
     //We will start from the first resource type
     val firstAggregation = aggregatesForEachResourceType.head
+
     //Then call unionWith operator for others
     val unionWithAggregations:Seq[Bson] =
       aggregatesForEachResourceType
         .tail
-        .map(a => constructUnionWithExpression(a._1, a._2.map(_.toBsonDocument[BsonDocument](classOf[BsonDocument],MongoClientSettings.getDefaultCodecRegistry)).toSeq))
+        .map(a => constructUnionWithExpression(a._1, a._2.map(_.toBsonDocument[BsonDocument](classOf[BsonDocument],  MongoClientSettings.getDefaultCodecRegistry)).toSeq))
         .toSeq
     //Sorting aggregations
     val sortingAggregations = sortingPaths.head._2.map(sp => Aggregates.sort( if(sp._2 > 0) ascending(s"__sort_${sp._1}") else descending(s"__sort_${sp._1}")))
@@ -775,7 +780,7 @@ object DocumentManager {
     * @param document document to be inserted
     * @return a future indicating the completion of insert operation
     */
-  def insertDocument(rtype:String, document:Document)(implicit transactionSession: Option[TransactionSession] = None):Future[Completed] = {
+  def insertDocument(rtype:String, document:Document)(implicit transactionSession: Option[TransactionSession] = None):Future[InsertOneResult] = {
     transactionSession match {
       //Normal execution
       case None =>
@@ -800,8 +805,8 @@ object DocumentManager {
     * @return
     */
   def insertDocuments(rtype:String, documents:Seq[Document], ordered:Boolean = false):Future[Seq[BulkWriteUpsert]] = {
-    MongoDB.
-      getCollection(rtype)
+    MongoDB
+      .getCollection(rtype)
       .bulkWrite(documents.map(d => new InsertOneModel[Document](d)), BulkWriteOptions.apply().ordered(ordered))
       .toFuture()
       .map(br => br.getUpserts.asScala.toSeq)
@@ -815,7 +820,7 @@ object DocumentManager {
     * @param newDocumentOrDeleted New version of document or status code for deletion
     * @return
     */
-  def insertNewVersion(rtype:String, rid:String, newDocumentOrDeleted:Either[Document, (String, Instant)], oldDocument:(Long, Document), shardQuery:Option[Bson] = None)(implicit transactionSession: Option[TransactionSession] = None):Future[Completed] = {
+  def insertNewVersion(rtype:String, rid:String, newDocumentOrDeleted:Either[Document, (String, Instant)], oldDocument:(Long, Document), shardQuery:Option[Bson] = None)(implicit transactionSession: Option[TransactionSession] = None):Future[Unit] = {
     val needTransaction = transactionSession.isEmpty && OnfhirConfig.mongoUseTransaction
     //Create a transaction session if we support it but it is not part of a transaction
     val tempTransaction =
@@ -825,10 +830,11 @@ object DocumentManager {
         .flatMap {
           case false =>
             //Abort the transaction, if any
-            val transactionFinalize = if(needTransaction)
-              tempTransaction.get.abort()
-            else
-              Future.apply(Completed())
+            val transactionFinalize =
+              if(needTransaction)
+                tempTransaction.get.abort()
+              else
+                Future.apply(())
             transactionFinalize.map(_ => {
               //Schedule a check on persistency in case there is a invalid state, and we don't support Mongo transactions
               if(!OnfhirConfig.mongoUseTransaction)
@@ -851,9 +857,9 @@ object DocumentManager {
               case Right((sc, lastModified)) => deleteCurrent(rtype, rid, sc, oldDocument._1 + 1, lastModified, shardQuery)
             }).flatMap( _ =>
               if(needTransaction)
-                tempTransaction.get.commit()
+                tempTransaction.get.commit().map(_ => ())
               else
-                Future.apply(Completed())
+                Future.apply(())
             )
         }
   }

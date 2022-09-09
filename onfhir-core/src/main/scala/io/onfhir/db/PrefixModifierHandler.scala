@@ -2,15 +2,15 @@ package io.onfhir.db
 
 import java.net.URL
 import java.util.regex.Pattern
-
 import io.onfhir.api._
-import com.mongodb.client.model.Filters
+
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.FhirConfigurationManager
 import io.onfhir.exception.{InvalidParameterException, UnsupportedParameterException}
 import io.onfhir.util.DateTimeUtil
 import org.mongodb.scala.bson.{BsonDateTime, BsonValue}
 import org.mongodb.scala.bson.conversions.Bson
+import org.mongodb.scala.model.Filters
 import org.mongodb.scala.model.Filters.{exists, _}
 
 import scala.collection.mutable.ListBuffer
@@ -352,8 +352,8 @@ object PrefixModifierHandler {
   private def handleTokenStartsWithModifier(systemPath:String, codePath:String, system:Option[String], code:Option[String], isNot:Boolean):Bson = {
     if(code.isEmpty)
       throw new InvalidParameterException(s"Code value should be given when modifier ':sw' is used!")
-    val pattern = Pattern.compile("^"+code.get+"")
-    var codeStartsWithQuery = Filters.regex(codePath,  pattern )
+    //val pattern = Pattern.compile("^"+code.get+"")
+    var codeStartsWithQuery = Filters.regex(codePath,  "^"+code.get+"" )
     if(isNot)
       codeStartsWithQuery = Filters.not(codeStartsWithQuery)
 

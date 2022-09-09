@@ -2,7 +2,6 @@ package io.onfhir.db
 
 import akka.http.scaladsl.model.DateTime
 import io.onfhir.api.util.FHIRUtil
-import org.bson.BsonValue
 import org.json4s.JsonAST._
 import org.mongodb.scala.bson._
 import org.mongodb.scala.bson.collection.immutable

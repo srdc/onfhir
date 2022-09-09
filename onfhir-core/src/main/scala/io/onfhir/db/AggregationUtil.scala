@@ -1,7 +1,6 @@
 package io.onfhir.db
 
-import org.bson.BsonInt32
-import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonString, BsonValue}
+import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonString, BsonValue}
 
 object AggregationUtil {
 

@@ -112,7 +112,7 @@
         <scala.pcombinators>1.1.2</scala.pcombinators>
         <akka-http.version>10.2.9</akka-http.version>
         <akka.version>2.6.18</akka.version>
-        <mongodb.scala.version>2.9.0</mongodb.scala.version>
+        <mongodb.scala.version>4.6.1</mongodb.scala.version>
         <mongo.embedded.version>3.2.4</mongo.embedded.version>
         <json4s.version>3.7.0-M11</json4s.version>
         <logback.version>1.2.11</logback.version>
@@ -438,6 +438,26 @@
             <dependency>
                 <groupId>org.mongodb.scala</groupId>
                 <artifactId>mongo-scala-driver_${scala.binary.version}</artifactId>
+                <version>${mongodb.scala.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mongodb.scala</groupId>
+                <artifactId>mongo-scala-bson_${scala.binary.version}</artifactId>
+                <version>${mongodb.scala.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mongodb</groupId>
+                <artifactId>bson</artifactId>
+                <version>${mongodb.scala.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mongodb</groupId>
+                <artifactId>mongodb-driver-core</artifactId>
+                <version>${mongodb.scala.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mongodb</groupId>
+                <artifactId>mongodb-driver-reactivestreams</artifactId>
                 <version>${mongodb.scala.version}</version>
             </dependency>
 

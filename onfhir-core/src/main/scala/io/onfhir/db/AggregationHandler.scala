@@ -1,14 +1,14 @@
 package io.onfhir.db
 
-import akka.http.scaladsl.server.util.Tuple
 import io.onfhir.api.{FHIR_DATA_TYPES, FHIR_PARAMETER_TYPES, FHIR_PREFIXES_MODIFIERS}
 import io.onfhir.api.model.Parameter
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.SearchParameterConf
 import io.onfhir.exception.InternalServerException
-import org.bson.{BsonNull, BsonValue}
-import org.mongodb.scala.bson.{BsonArray, BsonDateTime, BsonDocument, BsonString, BsonValue}
-import org.mongodb.scala.model.Projections
+import org.mongodb.scala.bson.BsonNull
+//import org.bson.{BsonNull, BsonValue}
+import org.mongodb.scala.bson.{BsonString, BsonValue}
+
 object AggregationHandler {
 
   private def findRelatedSearchParameter(paramName:String, parameters:List[Parameter]):Option[Parameter] = {

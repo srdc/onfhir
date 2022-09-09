@@ -1,16 +1,17 @@
 package io.onfhir.db
 
 import java.time.Instant
-
 import akka.http.scaladsl.model.{DateTime, StatusCodes}
-import com.mongodb.client.model.IndexOptions
+import org.mongodb.scala.bson.conversions.Bson
+import org.mongodb.scala.model.IndexOptions
+//import com.mongodb.client.model.IndexOptions
 import io.onfhir.api._
 import io.onfhir.Onfhir
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.IndexConfigurator.ResourceIndexConfiguration
 import io.onfhir.config.{IndexConfigurator, OnfhirConfig, SearchParameterConf}
 import io.onfhir.exception.InitializationException
-import org.bson.conversions.Bson
+//import org.bson.conversions.Bson
 import org.mongodb.scala.model.{Filters, IndexModel, Indexes}
 import org.slf4j.{Logger, LoggerFactory}
 
