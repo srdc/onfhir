@@ -155,7 +155,13 @@ object ResourceQueryBuilder {
                 compParamConf
                   .extractElementPathsAndTargetTypes(withArrayIndicators = true)
                   .filter(p => p._1.startsWith(commonPath))
-                  .map(p => p._1.replace(commonPath +".", "") -> p._2)
+                  .map(p =>
+                    //Get rid of from common path
+                    (p._1.drop(commonPath.length) match {
+                      case startWithDot if startWithDot.headOption.contains('.') => startWithDot.tail
+                      case oth => oth
+                    }) -> p._2
+                  )
             }
             //Construct query for this param
             val queriesForCombParam =
