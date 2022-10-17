@@ -76,9 +76,11 @@ class SearchParameterConfigurator(
 
         pathAndRestrictions
           .flatMap(par => {
-            val extensionPaths = par.filter(_._1.contains("extension[i]"))
-            val extensionTargetTypes = extensionPaths.map(e => SearchParameterConfigurator.findOutTargetTypeForExtensionPath(fhirConfig, e._1))
-            val nonExtensionPathDetails = par.diff(extensionPaths)
+            //Handle Paths that are over some extensions
+            val (extensionPaths, extensionTargetTypes)  = getPathsForExtensions(par)
+
+            //Handle other paths
+            val nonExtensionPathDetails = par.filterNot(_._1.contains("extension[i]"))
             //Find out the target types for paths or target type for references
             val (nonExtensionPaths, nonExtensionTargetTypes, restrictions, targetReferencedProfiles) = transformPathsAndExtractTargetTypes(searchParameterDef.ptype, nonExtensionPathDetails)
 
@@ -99,6 +101,54 @@ class SearchParameterConfigurator(
             )
           })
     }
+  }
+
+  /**
+   * Get the final paths and target types that includes extensions
+   * @param pathsAndRestrictions All paths and their restrictions
+   * @return
+   */
+  private def getPathsForExtensions(pathsAndRestrictions:Seq[(String, Seq[(String, String)])]) = {
+    // Filter out the paths on extensions
+    val extensionPaths = pathsAndRestrictions.filter(_._1.contains("extension[i]"))
+    //Find their target types
+    val extensionTargetTypes = extensionPaths.map(e => SearchParameterConfigurator.findOutTargetTypeForExtensionPath(fhirConfig, e._1))
+
+    val finalExtensionPaths =
+      extensionPaths.map(ep => {
+        val parts = ep._1.split('.')
+        //Find the root path parts apart e.g. recipient.extension[i].valueBoolean --> recipient
+        val mainParts = parts.takeWhile(_ != "extension[i]")
+        //Find the final path of that main part with array indicators e.g. recipient --> recipient[i]
+        val finalMainPart = findFinalPathWithArrayIndicators(mainParts)
+        //Join again the whole path
+        val finalPath = finalMainPart + "." + parts.dropWhile(_ != "extension[i]").mkString(".")
+        finalPath -> ep._2
+      })
+
+    finalExtensionPaths -> extensionTargetTypes
+  }
+
+  /**
+   * Given path parts of a target FHIR element, find whole path with additional array indicators
+   * @param pathParts e.g. component.code --> component[i].code
+   * @return
+   */
+  def findFinalPathWithArrayIndicators(pathParts: Seq[String]): String = {
+    val arrayIndicators =
+      pathParts.indices
+        .reverse
+        .map(i => findPathCardinality(pathParts.dropRight(i).mkString("."), baseProfileChain))
+    //If it is an array, add [i] indicator
+    val finalPath =
+      pathParts
+        .zip(arrayIndicators)
+        .map {
+          case (pp, false) => pp
+          case (pp, true) => if (pp.last != ']') pp + "[i]" else pp //if array add the array indicator
+        }
+        .mkString(".") //Merge path again
+    finalPath
   }
 
   /**
