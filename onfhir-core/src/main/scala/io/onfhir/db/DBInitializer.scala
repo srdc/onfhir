@@ -215,7 +215,7 @@ object DBInitializer {
 
             // Group the resourcesToUpdate into chunks so that within each chunk processing occurs in parallel,
             // but the next chunk can only start after the previous chunk joins all parallel threads and completes.
-            resourcesToUpdate.grouped(128).map { chunk =>
+            resourcesToUpdate.grouped(128).toArray.map { chunk =>
               //Replace those
               val updatesFutureChunk = chunk.map(r => {
                 //If versions are same, replace the document
