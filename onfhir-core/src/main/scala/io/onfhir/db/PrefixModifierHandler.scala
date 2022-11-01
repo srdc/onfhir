@@ -334,6 +334,9 @@ object PrefixModifierHandler {
         handleTokenStartsWithModifier(systemPath, codePath, system, code, modifier == FHIR_PREFIXES_MODIFIERS.NOT_STARTS_WITH)
       case FHIR_PREFIXES_MODIFIERS.IN | FHIR_PREFIXES_MODIFIERS.NOT_IN =>
         handleTokenInModifier(systemPath, codePath, code.get, modifier)
+      //If this is one of those code systems that syntactically hierarchical, use it like startsWith
+      case FHIR_PREFIXES_MODIFIERS.BELOW if system.exists(s => COMMON_SYNTACTICALLY_HIERARCHICAL_CODE_SYSTEMS.contains(s)) =>
+        handleTokenStartsWithModifier(systemPath, codePath, system, code, isNot = false)
       case FHIR_PREFIXES_MODIFIERS.BELOW | FHIR_PREFIXES_MODIFIERS.ABOVE =>
         throw new UnsupportedParameterException("Modifier is not supported by onFhir.io system yet!")
       case other =>

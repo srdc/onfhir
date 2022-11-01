@@ -703,5 +703,10 @@ package object api {
   final val AUTHZ_DISCOVERY_OAUTH = "oauth2"
   final val AUTHZ_DISCOVERY_OPENID_CONNECT = "oidc"
 
+  final val COMMON_SYNTACTICALLY_HIERARCHICAL_CODE_SYSTEMS = Set(
+    "http://hl7.org/fhir/sid/icd-10",
+    "http://hl7.org/fhir/sid/icd-9-cm",
+    "http://www.whocc.no/atc"
+  )
 }
 
