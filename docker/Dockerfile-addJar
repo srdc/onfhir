@@ -1,0 +1,11 @@
+FROM openjdk:11-jre-slim
+
+ENV ONFHIR_HOME /usr/local/onfhir
+RUN mkdir -p "$ONFHIR_HOME"
+WORKDIR $ONFHIR_HOME
+
+COPY ./onfhir-server-r4/target/onfhir-server-standalone.jar .
+COPY ./docker/docker-entrypoint.sh .
+RUN chmod +x docker-entrypoint.sh
+
+ENTRYPOINT ["./docker-entrypoint.sh"]
