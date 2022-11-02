@@ -1,7 +1,6 @@
 package io.onfhir.validation
 
 import java.net.URI
-
 import io.onfhir.api
 import io.onfhir.api.{FHIR_DATA_TYPES, FHIR_ROOT_URL_FOR_DEFINITIONS, Resource}
 import io.onfhir.api.model.FHIRResponse.{OUTCOME_CODES, SEVERITY_CODES}
@@ -11,7 +10,7 @@ import io.onfhir.api.validation._
 import io.onfhir.config.FhirConfig
 import io.onfhir.exception.InitializationException
 import io.onfhir.path.{FhirPathComplex, FhirPathEvaluator}
-import org.json4s.JInt
+import org.json4s.{JInt, JNothing}
 import org.json4s.JsonAST.{JArray, JBool, JDecimal, JDouble, JLong, JObject, JString, JValue}
 import io.onfhir.util.JsonFormatter.formats
 import org.slf4j.{Logger, LoggerFactory}
@@ -175,7 +174,7 @@ class FhirContentValidator(
                   validatedFields += fieldName
                   //Find all restrictions chain defined for the field (in priority order)
                   val elementRestrictions = findElementRestrictionsChain(fieldName, allRestrictions)
-                  val cardinalityIssues = evaluateCardinalityConstraints(dataType, fieldValue, elementRestrictions.flatMap(_._1))
+                  val cardinalityIssues = evaluateCardinalityAndTypeConstraints(dataType, fieldValue, elementRestrictions.flatMap(_._1))
                   if(cardinalityIssues.nonEmpty)
                     Future.apply(FhirContentValidator.convertToOutcomeIssue(FHIRUtil.mergeElementPath(parentPath, s"_$field"), cardinalityIssues))
                   else
@@ -231,7 +230,7 @@ class FhirContentValidator(
   private def validateElement(path: String, fieldName: String, dataType: String, value: JValue, elementRestrictions: Seq[(Option[ElementRestrictions], Seq[(String, ElementRestrictions)])], possiblePrimitiveExtension:Option[JValue]): Future[Seq[OutcomeIssue]] = {
     logger.debug(s"Validating element at path $path with field $fieldName and data type $dataType...")
     //First perform cardinality validations
-    val cardinalityValidations = evaluateCardinalityConstraints(dataType, value, elementRestrictions.flatMap(_._1))
+    val cardinalityValidations = evaluateCardinalityAndTypeConstraints(dataType, value, elementRestrictions.flatMap(_._1))
     //If there is an error in cardinality directly return it
     if (cardinalityValidations.nonEmpty)
       Future.apply(FhirContentValidator.convertToOutcomeIssue(path, cardinalityValidations))
@@ -362,9 +361,14 @@ class FhirContentValidator(
                 None
             failures = failures ++ orderFailure.toSeq
 
+            val matchedValues  = sliceValues match {
+              case Nil => JNothing
+              case oth => JArray(oth.map(_._1).toList)
+            }
+
             //Cardinality checks on the slice values
             failures = failures ++
-              evaluateCardinalityConstraints(dataType, JArray(sliceValues.map(_._1).toList), Seq(svm._4), testArray = false)
+              evaluateCardinalityConstraints(matchedValues, Seq(svm._4), testArray = false)
                 .map(cf => ConstraintFailure(s"Based on the slice definition '${svm._1}': ${cf.errorOrWarningMessage}"))
 
             failures
@@ -1015,9 +1019,20 @@ class FhirContentValidator(
    * @param elementRestrictions
    * @return
    */
-  private def evaluateCardinalityConstraints(dataType: String, value: JValue, elementRestrictions: Seq[ElementRestrictions], testArray: Boolean = true): Seq[ConstraintFailure] = {
+  private def evaluateCardinalityAndTypeConstraints(dataType: String, value: JValue, elementRestrictions: Seq[ElementRestrictions], testArray: Boolean = true): Seq[ConstraintFailure] = {
+      evaluateDataTypeConstraint(dataType, value, elementRestrictions) ++
+        evaluateCardinalityConstraints(value, elementRestrictions, testArray)
+  }
+
+  /**
+   * Evaluate cardinality constraints on the element
+   * @param value                 Value provided for the element
+   * @param elementRestrictions   Element restrictions given for the element
+   * @param testArray             Whether to test being array or not
+   * @return
+   */
+  private def evaluateCardinalityConstraints(value: JValue, elementRestrictions: Seq[ElementRestrictions], testArray: Boolean = true): Seq[ConstraintFailure] = {
     Seq(
-      evaluateDataTypeConstraint(dataType, value, elementRestrictions),
       //Evaluate Minimum cardinality restriction if exist
       findFirstFhirRestriction(ConstraintKeys.MIN, elementRestrictions).map(_.evaluate(value, this)).getOrElse(Nil),
       //Evaluate Maximum cardinality restriction if exist
