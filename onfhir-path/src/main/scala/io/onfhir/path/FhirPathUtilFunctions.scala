@@ -389,18 +389,24 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   def split(splitCharExpr: ExpressionContext): Seq[FhirPathResult] = {
-    if (!current.forall(_.isInstanceOf[FhirPathString]))
-      throw new FhirPathException(s"Invalid function call 'split' on non string value!")
 
-    val splitChar = new FhirPathExpressionEvaluator(context, current).visit(splitCharExpr)
-    if (splitChar.length != 1 || !splitChar.head.isInstanceOf[FhirPathString])
-      throw new FhirPathException(s"Invalid function call 'split', given expression should return a string value!")
+    val splitChar =
+      new FhirPathExpressionEvaluator(context, current).visit(splitCharExpr) match {
+        case Seq(FhirPathString(s)) if s.length == 1 => s.head
+        case _ =>
+          throw new FhirPathException(s"Invalid function call 'split', given expression should return a character to use for the split!")
+      }
 
-    val splitter = splitChar.head.asInstanceOf[FhirPathString].s
-    current
-      .map(_.asInstanceOf[FhirPathString])
-      .map(_.s.trim.split(splitter))
-      .flatMap(_.map(s => FhirPathString(s)))
+    current match {
+      case Nil => Nil
+      case Seq(FhirPathString(s)) =>
+        s
+          .trim()
+          .split(splitChar)
+          .map(FhirPathString)
+      case _ =>
+        throw new FhirPathException(s"Invalid function call 'split' on non string value or sequence of values!")
+    }
   }
 
   /**

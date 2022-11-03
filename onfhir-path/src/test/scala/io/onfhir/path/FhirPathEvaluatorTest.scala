@@ -740,6 +740,8 @@ class FhirPathEvaluatorTest extends Specification {
       val splittedStr = evaluator.evaluateString("code.coding.first().code.utl:split('-')", observation)
       splittedStr mustEqual Seq("15074", "8")
 
+      evaluator.evaluateString("'1+1+2'.utl:split('+')", observation) mustEqual Seq("1","1","2")
+
       val decs =  evaluator.evaluateNumerical("code.coding.first().code.utl:split('-').select($this.toDecimal())", observation)
       decs mustEqual Seq(15074, 8)
 
