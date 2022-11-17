@@ -1,15 +1,14 @@
 package io.onfhir.config
 
+import io.onfhir.api._
 import io.onfhir.api.service.FHIROperationHandler
-import io.onfhir.api.{DEFAULT_RESOURCE_PATHS, FHIR_ROOT_URL_FOR_DEFINITIONS, Resource, SERVER_CONFORMANCE_STATEMENT_ID}
-import io.onfhir.db.DBInitializer
-import org.slf4j.{Logger, LoggerFactory}
 import io.onfhir.api.util.{FHIRUtil, IOUtil}
-import io.onfhir.api.validation.{ConstraintKeys, FHIRResourceValidator, IFhirResourceValidator, IFhirTerminologyValidator, ProfileRestrictions, ReferenceResolver}
+import io.onfhir.api.validation._
+import io.onfhir.db.DBInitializer
 import io.onfhir.exception.InitializationException
 import io.onfhir.validation.{FhirContentValidator, FhirTerminologyValidator, ReferenceRestrictions, TypeRestriction}
 import org.json4s.Extraction
-import io.onfhir.api._
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -55,6 +54,8 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
    * @return
    */
   override def initializePlatform(fromConfig:Boolean = false, fhirOperationImplms:Map[String, String]):FhirConfig = {
+
+    import io.onfhir.util.JsonFormatter._
 
     logger.info("Reading base FHIR foundation resources (base standard) to start configuration of onFhir server ...")
     //Read base resource profiles defined in the standard
@@ -107,8 +108,8 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
 
     logger.info("Parsing base FHIR foundation resources (base standard) ...")
     //Parsing base definitions
-    val baseResourceProfiles = baseResourceProfileResources.map(foundationResourceParser.parseStructureDefinition).map(p => p.url -> p).toMap
-    val baseDataTypeProfiles = baseDataTypeProfileResources.map(foundationResourceParser.parseStructureDefinition).map(p => p.url -> p).toMap
+    val baseResourceProfiles = baseResourceProfileResources.map(foundationResourceParser.parseStructureDefinition(_, includeElementMetadata = true)).map(p => p.url -> p).toMap
+    val baseDataTypeProfiles = baseDataTypeProfileResources.map(foundationResourceParser.parseStructureDefinition(_, includeElementMetadata = true)).map(p => p.url -> p).toMap
     val baseProfiles =
       baseResourceProfiles ++
         baseDataTypeProfiles.filter(_._1.split('/').last.head.isUpper) ++

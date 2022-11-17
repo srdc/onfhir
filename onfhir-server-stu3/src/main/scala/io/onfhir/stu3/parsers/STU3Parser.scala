@@ -101,7 +101,7 @@ class STU3Parser(complexTypes:Set[String], primitiveTypes:Set[String]) extends R
     )
   }
 
-  override def parseStructureDefinition(structureDefinition: Resource): ProfileRestrictions = {
+  override def parseStructureDefinition(structureDefinition: Resource, includeElementMetadata: Boolean): ProfileRestrictions = {
     new STU3StructureDefinitionParser(complexTypes, primitiveTypes).parseProfile(structureDefinition)
   }
 

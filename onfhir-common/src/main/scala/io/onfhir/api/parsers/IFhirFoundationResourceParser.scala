@@ -69,14 +69,24 @@ trait IFhirFoundationResourceParser {
    */
   protected def extractResourcesFromBundle(bundle: Resource, rtype: String): Seq[Resource]
 
+  /**
+   * Parse a FHIR StructureDefinition into our compact form
+   *
+   * @param structureDefinition    Parsed JSON object for FHIR StructureDefinition
+   * @return
+   */
+  def parseStructureDefinition(structureDefinition: Resource): ProfileRestrictions = {
+    parseStructureDefinition(structureDefinition, includeElementMetadata = false)
+  }
 
   /**
    * Parse a FHIR StructureDefinition into our compact form
    *
    * @param structureDefinition   Parsed JSON object for FHIR StructureDefinition
+   * @param includeElementMetadata Whether to include the #ElementMetadata to the parsed ElementRestrictions under ProfileRestrictions
    * @return
    */
-  def parseStructureDefinition(structureDefinition: Resource): ProfileRestrictions
+  def parseStructureDefinition(structureDefinition: Resource, includeElementMetadata: Boolean): ProfileRestrictions
 
   /**
    * Parse a bundle of FHIR ValueSet and CodeSystem into a compact form for validation

@@ -1,18 +1,19 @@
 package io.onfhir.db
 
-import java.time.Instant
-import akka.http.scaladsl.model.{DateTime, StatusCodes}
+import akka.http.scaladsl.model.StatusCodes
 import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.IndexOptions
+
+import java.time.Instant
 //import com.mongodb.client.model.IndexOptions
-import io.onfhir.api._
 import io.onfhir.Onfhir
+import io.onfhir.api._
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.IndexConfigurator.ResourceIndexConfiguration
-import io.onfhir.config.{IndexConfigurator, OnfhirConfig, SearchParameterConf}
+import io.onfhir.config.{OnfhirConfig, SearchParameterConf}
 import io.onfhir.exception.InitializationException
 //import org.bson.conversions.Bson
-import org.mongodb.scala.model.{Filters, IndexModel, Indexes}
+import org.mongodb.scala.model.{IndexModel, Indexes}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.duration._
@@ -204,7 +205,7 @@ object DBInitializer {
             val createFuture = if(resourcesDoesNotExist.nonEmpty) ResourceManager.createResources(resourceType, resourcesDoesNotExist).map(_ => ()) else Future(())
 
             // Wait for the creation of the resources
-            Await.result(createFuture, 5 seconds)
+            Await.result(createFuture, 10 seconds)
 
             //Filter resources that exist
             val resourcesExist =
