@@ -410,6 +410,28 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
   }
 
   /**
+   * Take the prefix of a string until one of the given stop character
+   * - If stopCharExpr returns empty list, return the whole string
+   * - If given stopCharExpr does not return single character string, throws an exception
+   * - If current is not a string, throws an exception
+   * @param stopCharExpr  List of stop characters
+   * @return
+   */
+  def takeUntil(stopCharExpr: ExpressionContext): Seq[FhirPathResult] = {
+    val stopChars:Set[Char] =
+      (new FhirPathExpressionEvaluator(context, current)
+        .visit(stopCharExpr) map {
+          case FhirPathString(stopChar) if stopChar.length == 1 => stopChar.head
+          case _ => throw new FhirPathException(s"Invalid function call 'takeUntil', 'stopCharExpr' returns non-character value!")
+        }).toSet
+
+    current map {
+      case FhirPathString(s) => FhirPathString(s.takeWhile(p=> !stopChars.contains(p)))
+      case _ =>  throw new FhirPathException(s"Invalid function call 'takeUntil', called on a non-string value!")
+    }
+  }
+
+  /**
    * Create a sequence of indices between from-to integers
    * e.g. indices(1, 10) -> Seq(1,2,....10)
    *

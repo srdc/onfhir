@@ -745,6 +745,13 @@ class FhirPathEvaluatorTest extends Specification {
       val decs =  evaluator.evaluateNumerical("code.coding.first().code.utl:split('-').select($this.toDecimal())", observation)
       decs mustEqual Seq(15074, 8)
 
+      var subStr = evaluator.evaluateString("'VERY LOW.'.utl:takeUntil('.' | '*')", observation)
+      subStr mustEqual Seq("VERY LOW")
+      subStr = evaluator.evaluateString("'VERY LOW*.'.utl:takeUntil('.' | '*')", observation)
+      subStr mustEqual Seq("VERY LOW")
+      subStr =evaluator.evaluateString("'NORMAL.  LARGE PLATELETS PRESENT.'.utl:takeUntil('.' | '*')", observation)
+      subStr mustEqual Seq("NORMAL")
+
       var qnt = evaluator.evaluateAndReturnJson("utl:createFhirQuantity(15.2, 'mg')", observation).head
       (qnt \ "unit").extract[String] mustEqual "mg"
       (qnt \ "system").extractOpt[String] must beEmpty
