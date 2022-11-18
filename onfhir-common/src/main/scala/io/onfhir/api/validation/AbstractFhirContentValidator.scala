@@ -3,7 +3,7 @@ package io.onfhir.api.validation
 import io.onfhir.api.FHIR_ROOT_URL_FOR_DEFINITIONS
 import io.onfhir.api.model.{FhirReference, OutcomeIssue}
 import io.onfhir.config.FhirConfig
-import org.json4s.JsonAST.{JObject, JValue}
+import org.json4s.JsonAST.JObject
 
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -60,18 +60,18 @@ abstract class AbstractFhirContentValidator(val fhirConfig:FhirConfig, val profi
   def findProfile(profileUrl: String):Option[ProfileRestrictions] = {
     fhirConfig.profileRestrictions.get(profileUrl)
   }
-  /**
-   * Find a chain of parent profiles until the base FHIR spec given the profile
-   *
-   * @param profileUrl Profile definition
-   * @return Profiles in order of evaluation (inner profile - base profile)
-   */
-  def findProfileChain(profileUrl: String): Seq[ProfileRestrictions] = {
-    findProfile(profileUrl) match {
-      case None => Nil
-      case Some(profile) => findChain(fhirConfig.profileRestrictions)(profile)
-    }
-  }
+//  /**
+//   * Find a chain of parent profiles until the base FHIR spec given the profile
+//   *
+//   * @param profileUrl Profile definition
+//   * @return Profiles in order of evaluation (inner profile - base profile)
+//   */
+//  def findProfileChain(profileUrl: String): Seq[ProfileRestrictions] = {
+//    findProfile(profileUrl) match {
+//      case None => Nil
+//      case Some(profile) => findChain(fhirConfig.profileRestrictions)(profile)
+//    }
+//  }
 
   /**
    * Supplementary method for profile chain finding

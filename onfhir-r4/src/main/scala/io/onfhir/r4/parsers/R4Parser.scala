@@ -216,10 +216,11 @@ class R4Parser(
    * Parse a FHIR StructureDefinition into our compact form
    *
    * @param structureDefinition Parsed JSON object for FHIR StructureDefinition
+   * @param includeElementMetadata Whether to include the #ElementMetadata to the parsed ElementRestrictions under ProfileRestrictions
    * @return
    */
-  override def parseStructureDefinition(structureDefinition: Resource): ProfileRestrictions = {
-    new StructureDefinitionParser(fhirComplexTypes, fhirPrimitiveTypes).parseProfile(structureDefinition)
+  override def parseStructureDefinition(structureDefinition: Resource, includeElementMetadata: Boolean): ProfileRestrictions = {
+    new StructureDefinitionParser(fhirComplexTypes, fhirPrimitiveTypes).parseProfile(structureDefinition, includeElementMetadata)
   }
 
   /**

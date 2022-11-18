@@ -2,7 +2,7 @@ package io.onfhir.validation
 
 import io.onfhir.api.DEFAULT_RESOURCE_PATHS
 import io.onfhir.api.util.{FHIRUtil, IOUtil}
-import io.onfhir.config.{FhirConfig, OnfhirConfig}
+import io.onfhir.config.OnfhirConfig
 import io.onfhir.r4.config.FhirR4Configurator
 import io.onfhir.r4.parsers.StructureDefinitionParser
 import org.junit.runner.RunWith
@@ -39,7 +39,7 @@ class StructureDefinitionParserTest extends Specification {
 
     "parse the other profiles" in {
       var lipidProfileSd = otherProfiles.find(r => FHIRUtil.extractValue[String](r, "url") == "http://hl7.org/fhir/StructureDefinition/lipidprofile").get
-      val lipidProfile = new StructureDefinitionParser(FHIR_COMPLEX_TYPES, FHIR_PRIMITIVE_TYPES).parseProfile(lipidProfileSd)
+      val lipidProfile = new StructureDefinitionParser(FHIR_COMPLEX_TYPES, FHIR_PRIMITIVE_TYPES).parseProfile(lipidProfileSd, includeElementMetadata = true)
       lipidProfile mustNotEqual(null)
       //val profiles = otherProfiles.flatMap(StructureDefinitionParser.parseProfile)
       //profiles.length mustEqual furtherProfiles.length
