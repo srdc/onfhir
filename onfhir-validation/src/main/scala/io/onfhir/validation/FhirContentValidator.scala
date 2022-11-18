@@ -10,7 +10,7 @@ import io.onfhir.api.validation._
 import io.onfhir.config.FhirConfig
 import io.onfhir.exception.InitializationException
 import io.onfhir.path.{FhirPathComplex, FhirPathEvaluator}
-import org.json4s.{JInt, JNothing}
+import org.json4s.{JInt, JNothing, JNull}
 import org.json4s.JsonAST.{JArray, JBool, JDecimal, JDouble, JLong, JObject, JString, JValue}
 import io.onfhir.util.JsonFormatter.formats
 import org.slf4j.{Logger, LoggerFactory}
@@ -1416,10 +1416,10 @@ object FhirContentValidator {
     */
   def validatePrimitive(value: JValue, ptype: String): Boolean = {
     ptype match {
-      case FHIR_DATA_TYPES.STRING => value.extract[String].nonEmpty //OK
+      case FHIR_DATA_TYPES.STRING => checkIfNonEmptyString(value)
       case FHIR_DATA_TYPES.INTEGER => value.isInstanceOf[JInt]
-      case FHIR_DATA_TYPES.URI => value.extract[String].nonEmpty//Try(new URI(value.extract[String])).isSuccess
-      case FHIR_DATA_TYPES.URL =>  value.extract[String].nonEmpty
+      case FHIR_DATA_TYPES.URI => checkIfNonEmptyString(value)//Try(new URI(value.extract[String])).isSuccess
+      case FHIR_DATA_TYPES.URL =>  checkIfNonEmptyString(value)
         //Try(new URL(value.extract[String])).isSuccess //TODO even FHIR does not conform to this in its StructureDefinition
       case FHIR_DATA_TYPES.CANONICAL => value.extract[String].split('|') match {
         case Array(url) => Try(new URI(url)).isSuccess
@@ -1442,12 +1442,24 @@ object FhirContentValidator {
       case FHIR_DATA_TYPES.UNSIGNEDINT => value.isInstanceOf[JInt] && value.extract[Int].intValue() >= 0 //"""[0]|([1-9][0-9]*)$""".r.findFirstMatchIn(value.extract[String]).isDefined
       case FHIR_DATA_TYPES.POSITIVEINT => value.isInstanceOf[JInt] && value.extract[Int].intValue() >= 1 //"""+?[1-9][0-9]*$""".r.findFirstMatchIn(value).isDefined
       case FHIR_DATA_TYPES.BASE64BINARY => true
-      case FHIR_DATA_TYPES.MARKDOWN => value.extract[String].length > 0
+      case FHIR_DATA_TYPES.MARKDOWN => checkIfNonEmptyString(value)
       case FHIR_DATA_TYPES.XHTML => true //TODO Check FHIR XHTML restrictions
       case _ => true
     }
   }
 
+  /**
+   * Check if given JValue is non-empty string or not
+   * @param v
+   * @return
+   */
+  def checkIfNonEmptyString(v: JValue): Boolean = {
+    v match {
+      case JString(s) if s.nonEmpty => true
+      case JNull | JNothing => true
+      case _ => false
+    }
+  }
 
 
   /**

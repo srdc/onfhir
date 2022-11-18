@@ -30,12 +30,18 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
 
   /**
    * Trim the strings in the current set
+   * - If the string is all white spaces then it is eliminated (return Nil)
    * @return
    */
   def trim():Seq[FhirPathResult] = {
-    current.map {
-      case FhirPathString(s) => FhirPathString(s.trim)
-      case oth => oth
+    current.flatMap {
+      case FhirPathString(s) =>
+        s.trim() match {
+          case "" => None
+          case oth => Some(FhirPathString(oth))
+        }
+
+      case oth => Some(oth)
     }
   }
 
@@ -146,7 +152,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
 
   /**
    * Create FHIR Quantity json object with given value and unit (system or code not set)
-   * If value or unit expression returns Nil, the function also returns Nil
+   * If value expression returns Nil, the function also returns Nil
    *
    * @param valueExpr Expression for quantity value
    * @param unitExpr  Expression for quantity unit
@@ -158,10 +164,10 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
     if (unit.length > 1 || !unit.forall(_.isInstanceOf[FhirPathString]))
       throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter unit expression should return 0 or 1 string value!")
 
-    if (value.isEmpty || unit.isEmpty)
+    if (value.isEmpty)
       Nil
     else
-      Seq(FhirPathComplex(constructFhirQuantity(value.get._1, unit.head.toJson, None,None, value.get._2) ))
+      Seq(FhirPathComplex(constructFhirQuantity(value.get._1, unit.map(_.toJson).headOption, None,None, value.get._2) ))
   }
 
   /**
@@ -184,10 +190,10 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
     if (unit.length > 1 || !unit.forall(_.isInstanceOf[FhirPathString]))
       throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter unit expression should return 0 or 1 string value!")
 
-    if (value.isEmpty || system.isEmpty || unit.isEmpty)
+    if (value.isEmpty)
       Nil
     else
-      Seq(FhirPathComplex(constructFhirQuantity(value.get._1, unit.head.toJson, system.headOption.map(_.toJson), unit.headOption.map(_.toJson), value.get._2) ))
+      Seq(FhirPathComplex(constructFhirQuantity(value.get._1, unit.map(_.toJson).headOption, system.headOption.map(_.toJson), unit.headOption.map(_.toJson), value.get._2) ))
   }
 
   /**
@@ -219,10 +225,10 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
     if (system.length > 1 || !system.forall(_.isInstanceOf[FhirPathString]))
       throw new FhirPathException(s"Invalid function call 'createFhirQuantity', parameter system expression should return 0 or 1 string value!")
 
-    if (value.isEmpty || unit.isEmpty)
+    if (value.isEmpty)
       Nil
     else
-      Seq(FhirPathComplex(constructFhirQuantity(value.get._1, unit.head.toJson, system.headOption.map(_.toJson), code.headOption.map(_.toJson), value.get._2) ))
+      Seq(FhirPathComplex(constructFhirQuantity(value.get._1, unit.map(_.toJson).headOption, system.headOption.map(_.toJson), code.headOption.map(_.toJson), value.get._2) ))
   }
 
   /**
@@ -234,8 +240,8 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param comparator  Optional comparator
    * @return
    */
-  private def constructFhirQuantity(value:JValue, unit:JValue, system:Option[JValue], code:Option[JValue], comparator:Option[String]):JObject = {
-    var fields = List("value" -> value, "unit" -> unit)
+  private def constructFhirQuantity(value:JValue, unit:Option[JValue], system:Option[JValue], code:Option[JValue], comparator:Option[String]):JObject = {
+    var fields = List("value" -> value) ++ unit.map(u => "unit" -> u).toSeq
     if(code.isDefined && system.isDefined)
       fields = fields ++ Seq("system" -> system.get,"code" -> code.get)
     comparator.foreach(c => fields = fields :+ ("comparator" -> JString(c)))
