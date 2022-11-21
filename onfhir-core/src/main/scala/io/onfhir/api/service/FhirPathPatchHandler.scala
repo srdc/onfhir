@@ -1,11 +1,13 @@
 package io.onfhir.api.service
 import io.onfhir.api.Resource
 import io.onfhir.api.model.{FHIRResponse, OutcomeIssue}
-import io.onfhir.api.util.{BaseFhirProfileHandler, FHIRUtil, FhirPatchUtil}
+import io.onfhir.api.util.{FHIRUtil, FhirPatchUtil}
 import io.onfhir.api.validation.ReferenceResolver
+import io.onfhir.config.IFhirConfigurationManager
 import io.onfhir.exception.BadRequestException
 import io.onfhir.path.FhirPathEvaluator
 import io.onfhir.util.JsonFormatter._
+import io.onfhir.validation.BaseFhirProfileHandler
 import org.json4s.JsonAST.{JArray, JObject, JValue}
 import org.json4s.JsonDSL._
 import org.json4s._
@@ -22,7 +24,7 @@ case class FhirPathPatchDelete(path:Seq[(String, Option[Int])]) extends FhirPatc
 case class FhirPathPatchReplace(path:Seq[(String, Option[Int])], value:JValue) extends FhirPatchPatch
 case class FhirPathPatchMove(path:Seq[(String, Option[Int])], source:Int, destination:Int) extends FhirPatchPatch
 
-class FhirPathPatchHandler(profileHandler:BaseFhirProfileHandler) extends IFHIRPatchHandler {
+class FhirPathPatchHandler(fhirConfigurationManager: IFhirConfigurationManager, profileHandler:BaseFhirProfileHandler) extends IFHIRPatchHandler {
   val opTypes = Set("add", "insert", "delete", "replace", "move")
 
   /**
@@ -255,7 +257,7 @@ class FhirPathPatchHandler(profileHandler:BaseFhirProfileHandler) extends IFHIRP
    * @return
    */
   private def evaluateFhirPathExpressionToGetValue(e:String, resource: Resource, ind:Int):JValue = {
-    val fpe = FhirPathEvaluator(new ReferenceResolver(profileHandler.fhirConfig, resource))
+    val fpe = FhirPathEvaluator(new ReferenceResolver(fhirConfigurationManager, resource))
     fpe.evaluateAndReturnJson(e, resource) match {
       case None | Some(JArray(_)) => throw new BadRequestException(Seq(
         OutcomeIssue(

@@ -2,8 +2,11 @@ package io.onfhir.api.service
 
 import io.onfhir.Onfhir
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse}
+import io.onfhir.api.parsers.{FHIRResultParameterResolver, FHIRSearchParameterValueParser}
+import io.onfhir.api.util.FHIRServerUtil
 import io.onfhir.authz.AuthzContext
-import io.onfhir.db.TransactionSession
+import io.onfhir.config.{FhirConfigurationManager, IFhirConfigurationManager}
+import io.onfhir.db.{ResourceManager, TransactionSession}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -16,6 +19,8 @@ abstract class FHIRInteractionService(val transactionSession:Option[TransactionS
   implicit val logger: Logger = LoggerFactory.getLogger(this.getClass.getName)
   //Execution context
   implicit val executionContext:ExecutionContext = Onfhir.actorSystem.dispatcher
+
+  val fhirConfigurationManager:IFhirConfigurationManager = FhirConfigurationManager
 
   /**
     * Validate if interaction is supported for the request. Throw exception if not valid.

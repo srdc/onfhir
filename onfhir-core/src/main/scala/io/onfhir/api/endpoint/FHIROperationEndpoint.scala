@@ -7,7 +7,7 @@ import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.api.service.FHIROperationHandler
 import io.onfhir.authz.{AuthContext, AuthzContext, AuthzManager}
-import io.onfhir.config.FhirConfigurationManager.fhirConfig
+import io.onfhir.config.FhirConfigurationManager.{authzManager, fhirConfig}
 import io.onfhir.config.{OnfhirConfig, OperationConf}
 /**
   * Created by tuncay on 10/2/2017.
@@ -122,7 +122,7 @@ trait FHIROperationEndpoint {
           entity(as[Resource]) { resource =>
             //Initialize operation body
             fhirRequest.resource = if (resource.obj.isEmpty) None else Some(resource)
-            AuthzManager.authorize(authContext._2, fhirRequest) {
+            authzManager.authorize(authContext._2, fhirRequest) {
               complete {
                 new FHIROperationHandler().validateAndCompleteOperation(fhirRequest, operationConf)
               }

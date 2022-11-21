@@ -4,13 +4,11 @@ import akka.http.scaladsl.model.headers.{`If-Modified-Since`, `If-None-Match`}
 import akka.http.scaladsl.model.{StatusCodes, Uri}
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
-import io.onfhir.api.parsers.FHIRResultParameterResolver
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
 import io.onfhir.db.{ResourceManager, TransactionSession}
 import io.onfhir.exception.NotFoundException
-import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 
 import scala.concurrent.Future
 
@@ -24,7 +22,7 @@ class FHIRReadService(transactionSession: Option[TransactionSession] = None) ext
   override def validateInteraction(fhirRequest: FHIRRequest): Future[Unit] = {
     Future.apply {
       validateReadInteraction(fhirRequest.resourceType.get, fhirRequest.resourceId.get, fhirRequest.versionId)
-      fhirRequest.addParsedQueryParams(FHIRSearchParameterValueParser.parseSearchParameters(fhirRequest.resourceType.get, fhirRequest.queryParams))
+      fhirRequest.addParsedQueryParams(fhirConfigurationManager.fhirSearchParameterValueParser.parseSearchParameters(fhirRequest.resourceType.get, fhirRequest.queryParams))
     }
   }
 
@@ -80,17 +78,17 @@ class FHIRReadService(transactionSession: Option[TransactionSession] = None) ext
     logger.debug(s"requesting '${if(_vid.isDefined)"v" else ""}read' for ${_type} with id ${_id} ...")
     //If exist resolve _summary or _elements parameters
     val includingExcludingFields =
-      FHIRResultParameterResolver
+      fhirConfigurationManager.fhirResultParameterResolver
         .resolveSummaryParameter(_type, queryParams)
         .orElse(
-          FHIRResultParameterResolver.resolveElementsParameter(queryParams) match {
+          fhirConfigurationManager.fhirResultParameterResolver.resolveElementsParameter(queryParams) match {
             case e if e.isEmpty => None
             case oth => Some(true -> oth)
          }
         )
 
     //2) check if resource exists with given type, id and optional version id
-    ResourceManager.getResource(_type, _id, _vid, includingExcludingFields)(transactionSession) map {
+    fhirConfigurationManager.resourceManager.getResource(_type, _id, _vid, includingExcludingFields)(transactionSession) map {
       case None =>
         logger.debug("resource not found, return 404 NotFound...")
         throw new NotFoundException(Seq(
@@ -134,7 +132,7 @@ class FHIRReadService(transactionSession: Option[TransactionSession] = None) ext
           //2.1.2.2) post process the resource
           var resource = FHIRUtil.clearExtraFields(foundResource)
           if(includingExcludingFields.nonEmpty)
-            resource = FHIRUtil.indicateSummarization(resource)
+            resource = fhirConfigurationManager.fhirServerUtil.indicateSummarization(resource)
           logger.debug("resource found, returning...")
           FHIRResponse(
             StatusCodes.OK, //HTTP Status code

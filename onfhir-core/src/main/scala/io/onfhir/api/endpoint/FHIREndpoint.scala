@@ -6,12 +6,12 @@ import akka.http.scaladsl.server.Directives._
 import io.onfhir.Onfhir
 import io.onfhir.api.FHIR_HTTP_OPTIONS
 import io.onfhir.api.model.FHIRRequest
-import io.onfhir.api.util.FHIRUtil
+import io.onfhir.api.util.{FHIRServerUtil, FHIRUtil}
 import io.onfhir.server.ErrorHandler.fhirErrorHandler
 import io.onfhir.server.FHIRRejectionHandler.fhirRejectionHandler
 import io.onfhir.audit.AuditManager
 import io.onfhir.authz.{AuthManager, AuthzConfigurationManager}
-import io.onfhir.config.OnfhirConfig
+import io.onfhir.config.{FhirConfigurationManager, OnfhirConfig}
 import io.onfhir.server.CORSHandler
 
 /**
@@ -58,7 +58,7 @@ trait FHIREndpoint
                 optionalHeaderValueByType(`X-Forwarded-Host`) { xForwardedHost =>
                   optionalHeaderValueByName("X-Intermediary") { xIntermediary =>
                     optionalHeaderValueByName("X-Request-Id") { xRequestId =>
-                      FHIRUtil.resolveResponseMediaRange(format, contentType, acceptHeader.map(_.mediaRanges).getOrElse(Seq.empty)) match {
+                      FhirConfigurationManager.fhirServerUtil.resolveResponseMediaRange(format, contentType, acceptHeader.map(_.mediaRanges).getOrElse(Seq.empty)) match {
                         //If we cannot find any Media Range to respond
                         case None => complete(HttpResponse.apply(StatusCodes.NotAcceptable))
                         case Some(resolvedMediaRange) =>

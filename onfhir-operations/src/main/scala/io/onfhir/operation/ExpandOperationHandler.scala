@@ -1,14 +1,13 @@
 package io.onfhir.operation
 
 import java.util.UUID
-
 import akka.http.scaladsl.model.{DateTime, StatusCodes, Uri}
-
 import io.onfhir.api.Resource
 import io.onfhir.api.model._
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.service.FHIROperationHandlerService
 import io.onfhir.api.util.FHIRUtil
+import io.onfhir.config.{FhirServerConfig, IFhirConfigurationManager}
 import io.onfhir.db.ResourceManager
 import io.onfhir.exception._
 import io.onfhir.util.JsonFormatter._
@@ -22,7 +21,7 @@ import scala.concurrent.Future
   * Created by mustafa on 10/26/2017.
   * Handles the $expand operation defined on ValueSet resource.
   */
-class ExpandOperationHandler extends FHIROperationHandlerService {
+class ExpandOperationHandler(fhirConfigurationManager:IFhirConfigurationManager)  extends FHIROperationHandlerService(fhirConfigurationManager) {
   private val logger: Logger = LoggerFactory.getLogger("ExpandOperationHandler")
 
   final val RESOURCE_VALUESET: String = "ValueSet"
@@ -72,9 +71,9 @@ class ExpandOperationHandler extends FHIROperationHandlerService {
 
   def handleExpand(queryParams: Map[String, List[String]], operationRequest: FHIROperationRequest): Future[FHIROperationResponse] = {
 
-    val searchParams:List[Parameter] = FHIRSearchParameterValueParser.parseSearchParameters(RESOURCE_VALUESET, queryParams)
+    val searchParams:List[Parameter] = fhirConfigurationManager.fhirSearchParameterValueParser.parseSearchParameters(RESOURCE_VALUESET, queryParams)
 
-    ResourceManager
+    fhirConfigurationManager.resourceManager
       .queryResources(RESOURCE_VALUESET, searchParams, count = 1, excludeExtraFields = true).map {
       case (0, _) =>
         logger.debug("resource not found, return 404 NotFound...")

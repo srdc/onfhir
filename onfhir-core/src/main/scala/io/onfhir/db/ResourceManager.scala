@@ -1,37 +1,34 @@
 package io.onfhir.db
 
 import java.time.Instant
-
 import akka.http.scaladsl.model.{DateTime, StatusCode, StatusCodes}
 import io.onfhir.Onfhir
 import io.onfhir.api._
 import io.onfhir.api.model.{FhirCanonicalReference, FhirLiteralReference, FhirReference, Parameter}
 import io.onfhir.api.parsers.FHIRResultParameterResolver
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.config.FhirConfigurationManager.fhirConfig
-import io.onfhir.config.OnfhirConfig
+import io.onfhir.config.{FhirServerConfig, OnfhirConfig}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.conversions.Bson
 import io.onfhir.db.OnFhirBsonTransformer._
-import io.onfhir.event.{FhirEventBus, ResourceCreated, ResourceDeleted, ResourceUpdated}
+import io.onfhir.event.{FhirEventBus, IFhirEventBus, ResourceCreated, ResourceDeleted, ResourceUpdated}
 import io.onfhir.exception.UnsupportedParameterException
 import io.onfhir.util.DateTimeUtil
 import org.json4s.JsonAST.JValue
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.Try
-
 
 /**
   * FHIR Resource Persistency Manager (Mapping FHIR operations to Mongo queries/commands)
   * //TODO Handle resolution of Logical references for chaining and includes (also reverse)
   */
-object ResourceManager {
+class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus = null) {
+
   private implicit val logger: Logger = LoggerFactory.getLogger("ResourceManager")
 
   implicit val executionContext:ExecutionContext = Onfhir.actorSystem.dispatchers.lookup("akka.actor.onfhir-blocking-dispatcher")
-
+  val fhirResultParameterResolver = new FHIRResultParameterResolver(fhirConfig)
   /**
     * FHIR Search Operation
     * @param rtype Resource Type to search
@@ -43,16 +40,16 @@ object ResourceManager {
     //Extract FHIR result parameters
     val resultParameters = parameters.filter(_.paramCategory == FHIR_PARAMETER_CATEGORIES.RESULT)
     //Check _page and _count
-    val (page, count) = FHIRResultParameterResolver.resolveCountPageParameters(resultParameters)
+    val (page, count) = fhirResultParameterResolver.resolveCountPageParameters(resultParameters)
     //Check _summary param to identify what to include or exclude
-    val summaryIncludesOrExcludes =  FHIRResultParameterResolver.resolveSummaryParameter(rtype, resultParameters)
+    val summaryIncludesOrExcludes = fhirResultParameterResolver.resolveSummaryParameter(rtype, resultParameters)
     //Check _elements param to include further
-    val elementsIncludes = FHIRResultParameterResolver.resolveElementsParameter(resultParameters)
+    val elementsIncludes = fhirResultParameterResolver.resolveElementsParameter(resultParameters)
     //Decide on final includes and excludes
     val finalIncludesOrExcludes = if(elementsIncludes.nonEmpty) Some(true -> elementsIncludes) else summaryIncludesOrExcludes
 
     //Find sorting details
-    val sortingFields = FHIRResultParameterResolver.resolveSortingParameters(rtype, resultParameters)
+    val sortingFields = fhirResultParameterResolver.resolveSortingParameters(rtype, resultParameters)
     //_total parameter, if total number of matched resource is needed or not
     val needTotal = resultParameters.find(_.name == FHIR_SEARCH_RESULT_PARAMETERS.TOTAL).forall(_.valuePrefixList.head._2 != "none")
     //Find out include and revinclude params
@@ -111,19 +108,19 @@ object ResourceManager {
         .getOrElse(List.empty[Parameter])
 
     //Check _page and _count
-    val (page, count) = FHIRResultParameterResolver.resolveCountPageParameters(commonResultParameters)
+    val (page, count) = fhirResultParameterResolver.resolveCountPageParameters(commonResultParameters)
     //_total parameter, if total number of matched resource is needed or not
     val needTotal = commonResultParameters.find(_.name == FHIR_SEARCH_RESULT_PARAMETERS.TOTAL).forall(_.valuePrefixList.head._2 != "none")
     //For each resource type find out summary and sorting fields
     val summaryFields  =
       resultParameters
         .map(rparams =>
-          rparams._1 -> FHIRResultParameterResolver.resolveSummaryParameter( rparams._1, rparams._2)
+          rparams._1 -> fhirResultParameterResolver.resolveSummaryParameter( rparams._1, rparams._2)
         )
     val sortingFields =
       resultParameters
         .map(rparams =>
-          rparams._1 -> FHIRResultParameterResolver.resolveSortingParameters(rparams._1, rparams._2)
+          rparams._1 -> fhirResultParameterResolver.resolveSortingParameters(rparams._1, rparams._2)
         )
 
     //Filter query parameters for each resource type
@@ -267,9 +264,9 @@ object ResourceManager {
     //Extract FHIR result parameters
     val resultParameters = parameters.filter(_.paramCategory == FHIR_PARAMETER_CATEGORIES.RESULT)
     //Check _summary param to identify what to include or exclude
-    val summaryIncludesOrExcludes =  FHIRResultParameterResolver.resolveSummaryParameter(rtype, resultParameters)
+    val summaryIncludesOrExcludes =  fhirResultParameterResolver.resolveSummaryParameter(rtype, resultParameters)
     //Check _elements param to include further
-    val elementsIncludes = FHIRResultParameterResolver.resolveElementsParameter(resultParameters)
+    val elementsIncludes = fhirResultParameterResolver.resolveElementsParameter(resultParameters)
     //Decide on final includes and excludes
     val finalIncludesOrExcludes = if(elementsIncludes.nonEmpty) Some(true -> elementsIncludes) else summaryIncludesOrExcludes
 
@@ -1037,7 +1034,7 @@ object ResourceManager {
     val since = searchParameters.find(_.name == FHIR_SEARCH_RESULT_PARAMETERS.SINCE).map(_.valuePrefixList.head._2)
     val at = searchParameters.find(_.name == FHIR_SEARCH_RESULT_PARAMETERS.AT).map(_.valuePrefixList.head._2)
 
-    val (page, count) = FHIRResultParameterResolver.resolveCountPageParameters(searchParameters)
+    val (page, count) = fhirResultParameterResolver.resolveCountPageParameters(searchParameters)
 
     val listQueryFuture = searchParameters.find(_.name == FHIR_SEARCH_SPECIAL_PARAMETERS.LIST) match {
       case None => Future.apply(None)
@@ -1293,7 +1290,7 @@ object ResourceManager {
     * @return
     */
   private def resourceCreated(rtype:String, rid:String, resource:Resource): Unit = {
-    FhirEventBus.publish(ResourceCreated(rtype, rid, resource))
+    fhirEventBus.publish(ResourceCreated(rtype, rid, resource))
   }
 
   /**
@@ -1304,7 +1301,7 @@ object ResourceManager {
     * @return
     */
   private def resourceUpdated(rtype:String, rid:String, resource:Resource, previous:Resource): Unit = {
-    FhirEventBus.publish(ResourceUpdated(rtype, rid, resource, previous))
+    fhirEventBus.publish(ResourceUpdated(rtype, rid, resource, previous))
   }
 
   /**
@@ -1314,6 +1311,6 @@ object ResourceManager {
     * @return
     */
   private def resourceDeleted(rtype:String, rid:String, previous:Resource):Unit = {
-    FhirEventBus.publish(ResourceDeleted(rtype, rid, previous))
+    fhirEventBus.publish(ResourceDeleted(rtype, rid, previous))
   }
 }

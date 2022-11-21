@@ -2,11 +2,13 @@ package io.onfhir.event
 
 import akka.actor.ActorRef
 import io.onfhir.api.util.ResourceChecker
+import io.onfhir.config.FhirServerConfig
 
 /**
   * FHIR Event Bus to handle event subscription for actors
   */
-object FhirEventBus extends IFhirEventBus {
+class FhirEventBus(fhirConfig: FhirServerConfig) extends IFhirEventBus {
+  val resourceChecker = new ResourceChecker(fhirConfig)
   /**
     * For ordering subscriptions
     * @param a
@@ -36,8 +38,8 @@ object FhirEventBus extends IFhirEventBus {
         classifier.rid.forall(_ == event.rid) &&  //If subscription is on a specific resource instance, it should be matched
           classifier.query.forall(parameters => //If there is a query given, it should match
             event match {
-              case rc: ResourceCreated => ResourceChecker.checkIfResourceSatisfies(event.rtype, parameters, rc.resource)
-              case ru: ResourceUpdated => ResourceChecker.checkIfResourceSatisfies(event.rtype, parameters, ru.resource)
+              case rc: ResourceCreated => resourceChecker.checkIfResourceSatisfies(event.rtype, parameters, rc.resource)
+              case ru: ResourceUpdated => resourceChecker.checkIfResourceSatisfies(event.rtype, parameters, ru.resource)
               case rd: ResourceDeleted => true
             }
           )

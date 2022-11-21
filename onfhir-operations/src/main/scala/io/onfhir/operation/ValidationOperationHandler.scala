@@ -1,19 +1,14 @@
 package io.onfhir.operation
 
 import akka.http.scaladsl.model.StatusCodes
-
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIROperationRequest, FHIROperationResponse, FHIRResponse, OutcomeIssue}
 import io.onfhir.api.service.FHIROperationHandlerService
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.api.validation.FHIRApiValidator
-import io.onfhir.config.FhirConfigurationManager.fhirConfig
-import io.onfhir.config.FhirConfigurationManager.fhirValidator
-import io.onfhir.config.OnfhirConfig
+import io.onfhir.api.validation.{FHIRApiValidator, FHIRResourceValidator}
+import io.onfhir.config.{FhirServerConfig, IFhirConfigurationManager, OnfhirConfig}
 import io.onfhir.db.ResourceManager
 import io.onfhir.exception._
-import io.onfhir.util.JsonFormatter._
-import org.json4s.JsonAST.JObject
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.Future
@@ -22,7 +17,7 @@ import scala.util.{Success, Try}
 /**
   * Handles the FHIR $validate operation; see https://www.hl7.org/fhir/resource-operations.html#validate
   */
-class ValidationOperationHandler extends FHIROperationHandlerService {
+class ValidationOperationHandler(fhirConfigurationManager:IFhirConfigurationManager)  extends FHIROperationHandlerService(fhirConfigurationManager) {
   private val logger: Logger = LoggerFactory.getLogger("ValidationOperationHandler")
 
   final val PARAMETER_RESOURCE = "resource"
@@ -117,7 +112,7 @@ class ValidationOperationHandler extends FHIROperationHandlerService {
           FHIRApiValidator.validateResourceTypeMatching(resource, resourceType)
           val resultResource = if(profileOption.isDefined) {
             //Check if we support profile, if not return not supported
-            if(!fhirConfig.isProfileSupported(profileOption.get))
+            if(!fhirConfigurationManager.fhirConfig.isProfileSupported(profileOption.get))
               throw new MethodNotAllowedException(Seq(
                 OutcomeIssue(FHIRResponse.SEVERITY_CODES.ERROR,
                   FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED,
@@ -143,7 +138,7 @@ class ValidationOperationHandler extends FHIROperationHandlerService {
     */
   private def validateContent(resource:Resource, resourceType:String, validationMode:Option[String]=None):Future[Seq[OutcomeIssue]] = {
     //Validate resource in silent mode to get only the issues (preventing exception throwing)
-    fhirValidator.validateResource(resource, resourceType, silent = true) map { issues =>
+    fhirConfigurationManager.fhirValidator.validateResource(resource, resourceType, silent = true) map { issues =>
       //If no error, add information issue that everything is ok
       if(
           !issues.exists(i => i.isError)
@@ -209,7 +204,7 @@ class ValidationOperationHandler extends FHIROperationHandlerService {
     if(issues.nonEmpty)
       Future.apply(FHIRResponse.errorResponse(StatusCodes.OK, issues))
     else {
-      ResourceManager.isResourceExist(resourceType, rid.get) flatMap {
+      fhirConfigurationManager.resourceManager.isResourceExist(resourceType, rid.get) flatMap {
         case false =>
         //If resource does not exist
           Future.apply(FHIRResponse.errorResponse(StatusCodes.OK,

@@ -2,7 +2,7 @@ package io.onfhir.api.validation
 
 import io.onfhir.api.Resource
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
-import io.onfhir.config.{FhirConfig, OnfhirConfig}
+import io.onfhir.config.{FhirServerConfig, IFhirConfigurationManager, OnfhirConfig}
 import io.onfhir.db.ResourceManager
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -14,9 +14,11 @@ import scala.concurrent.{ExecutionContext, Future}
  * @param resource   Resource itself
  * @param bundle     If resource is a part of a bundle (for inter bundle references), the root part of fullUrl of resource validated and the whole Bundle
  */
-class ReferenceResolver(fhirConfig: FhirConfig, resource: Resource, bundle: Option[(Option[String], Resource)] = None)(implicit val ec: ExecutionContext)
+class ReferenceResolver(fhirConfigurationManager: IFhirConfigurationManager,
+                        resource: Resource,
+                        bundle: Option[(Option[String], Resource)] = None)(implicit val ec: ExecutionContext)
   extends AbstractReferenceResolver(resource, bundle) {
-
+  val resourceManager = fhirConfigurationManager.resourceManager
   /**
    * Get the resource given with rtype, rid and optionall version id
    *
@@ -28,7 +30,7 @@ class ReferenceResolver(fhirConfig: FhirConfig, resource: Resource, bundle: Opti
    */
   override protected def getResource(serverUrl: Option[String], rtype: String, rid: String, version: Option[String]): Future[Option[Resource]] = {
     serverUrl match {
-      case None | Some(OnfhirConfig.fhirRootUrl) => ResourceManager.getResource(rtype, rid, version)
+      case None | Some(OnfhirConfig.fhirRootUrl) => resourceManager.getResource(rtype, rid, version)
       case Some(_) =>
         //TODO Resolving references from a Remote FHIR server is not implemented yet
         Future.apply(None)
@@ -52,9 +54,9 @@ class ReferenceResolver(fhirConfig: FhirConfig, resource: Resource, bundle: Opti
     )
     if (version.isDefined)
       query = query ++ Map("version" -> List(version.get))
-    val parameters = FHIRSearchParameterValueParser.parseSearchParameters(rtype, query)
+    val parameters = fhirConfigurationManager.fhirSearchParameterValueParser.parseSearchParameters(rtype, query)
 
-    ResourceManager
+    resourceManager
       .searchResources(rtype, parameters)
       .map(_._2.headOption)
   }
@@ -73,8 +75,8 @@ class ReferenceResolver(fhirConfig: FhirConfig, resource: Resource, bundle: Opti
       "_sort" -> List("-_lastUpdated"),
       "_count" -> List("1")
     )
-    val parameters = FHIRSearchParameterValueParser.parseSearchParameters(rtype, query)
-    ResourceManager
+    val parameters = fhirConfigurationManager.fhirSearchParameterValueParser.parseSearchParameters(rtype, query)
+    resourceManager
       .searchResources(rtype, parameters)
       .map(_._2.headOption)
   }
@@ -94,9 +96,9 @@ class ReferenceResolver(fhirConfig: FhirConfig, resource: Resource, bundle: Opti
           "_id" -> List(rid)
         )
 
-        val parameters = FHIRSearchParameterValueParser.parseSearchParameters(rtype, query)
+        val parameters = fhirConfigurationManager.fhirSearchParameterValueParser.parseSearchParameters(rtype, query)
 
-        ResourceManager
+        resourceManager
           .countResources(rtype, parameters)
           .map(_ > 0)
       case Some(_) =>
@@ -121,9 +123,9 @@ class ReferenceResolver(fhirConfig: FhirConfig, resource: Resource, bundle: Opti
     if (version.isDefined)
       query = query ++ Map("version" -> List(version.get))
 
-    val parameters = FHIRSearchParameterValueParser.parseSearchParameters(rtype, query)
+    val parameters = fhirConfigurationManager.fhirSearchParameterValueParser.parseSearchParameters(rtype, query)
 
-    ResourceManager
+    resourceManager
       .countResources(rtype, parameters)
       .map(_ > 0)
   }

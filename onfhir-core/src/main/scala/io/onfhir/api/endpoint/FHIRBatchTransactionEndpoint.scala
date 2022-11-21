@@ -8,8 +8,7 @@ import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.api.service.FHIRBatchTransactionService
 import io.onfhir.authz.{AuthContext, AuthzContext, AuthzManager}
-import io.onfhir.config.OnfhirConfig
-
+import io.onfhir.config.FhirConfigurationManager.authzManager
 
 trait FHIRBatchTransactionEndpoint {
 
@@ -26,7 +25,7 @@ trait FHIRBatchTransactionEndpoint {
               //Set the bundle into the request
               fhirRequest.initializeTransactionOrBatchRequest(resource, prefer)
               //Enforce authorization
-              AuthzManager.authorize(authContext._2, fhirRequest) {
+              authzManager.authorize(authContext._2, fhirRequest) {
                 //Execute the interaction
                 complete {
                   new FHIRBatchTransactionService().executeInteraction(fhirRequest, authContext._2)

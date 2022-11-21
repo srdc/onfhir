@@ -2,14 +2,13 @@ package io.onfhir.api.parsers
 
 import io.onfhir.api._
 import io.onfhir.api.model.Parameter
-import io.onfhir.config.FhirConfigurationManager.fhirConfig
-import io.onfhir.config.OnfhirConfig
+import io.onfhir.config.{FhirServerConfig, OnfhirConfig}
 import io.onfhir.exception.{InvalidParameterException, UnsupportedParameterException}
 
 /**
-  * Utilty class to resolve several Result parameters
+  * Utility class to resolve several FHIR Result parameters within search
   */
-object FHIRResultParameterResolver {
+class FHIRResultParameterResolver(fhirConfig:FhirServerConfig) {
   /**
     * Handle FHIR _sort parameters and return (param name, sorting direction, List of alternative paths and target types)
     * @param resultParameters Given result category parameters
@@ -50,7 +49,7 @@ object FHIRResultParameterResolver {
 
   /**
     * Handle FHIR _elements parameter
-    * @param resultParameters
+    * @param resultParameters Given result parameters
     * @return
     */
   def resolveElementsParameter(resultParameters:List[Parameter]):Set[String] = {
@@ -63,7 +62,7 @@ object FHIRResultParameterResolver {
 
   /**
     * Resolve FHIR _page and _count parameter
-    * @param resultParameters
+    * @param resultParameters Given result parameters
     * @return page -> count
     */
   def resolveCountPageParameters(resultParameters:List[Parameter]):(Int, Int) = {
@@ -83,7 +82,7 @@ object FHIRResultParameterResolver {
 
   /**
     * Reolve _total parameter
-    * @param resultParameters
+    * @param resultParameters Given result parameters
     * @return If client needs total number or not
     */
   def resolveTotalParameter(resultParameters:List[Parameter]):Boolean = {
@@ -94,8 +93,8 @@ object FHIRResultParameterResolver {
 
   /**
     * Resolve sumamary parameter
-    * @param rtype
-    * @param summary
+    * @param rtype  FHIR resource type
+    * @param summary  Summary statement
     * @return
     */
   def resolveSummary(rtype:String, summary:String):Option[(Boolean, Set[String])] = {

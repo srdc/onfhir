@@ -1,22 +1,20 @@
 package io.onfhir.event.kafka
 
 import java.util.Properties
-
 import akka.actor.{Actor, Props}
 import io.onfhir.api.util.SubscriptionUtil
-import io.onfhir.config.OnfhirConfig
-import io.onfhir.config.FhirConfigurationManager.fhirConfig
+import io.onfhir.config.{FhirServerConfig, OnfhirConfig}
 import io.onfhir.event.{FhirDataEvent, ResourceCreated, ResourceDeleted, ResourceUpdated}
 import io.onfhir.util.InternalJsonMarshallers
-import io.onfhir.util.JsonFormatter._
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import org.slf4j.{Logger, LoggerFactory}
 
 /**
   * Kafka event producer for FHIR events
   * @param kafkaConfig Configuration for Kafka integration
+  * @param fhirConfig FHIR server configuration
   */
-class KafkaEventProducer(kafkaConfig:KafkaConfig) extends Actor {
+class KafkaEventProducer(kafkaConfig:KafkaConfig, fhirConfig:FhirServerConfig) extends Actor {
   private val logger:Logger = LoggerFactory.getLogger("KafkaEventProducer")
   /**
     * Properties for Kafka connection
@@ -91,5 +89,10 @@ object KafkaEventProducer {
 
   lazy val kafkaConfig = new KafkaConfig(OnfhirConfig.config)
 
-  def props() = Props(new KafkaEventProducer(kafkaConfig))
+  /**
+   * Generate the actor
+   * @param fhirConfig
+   * @return
+   */
+  def props(fhirConfig:FhirServerConfig) = Props(new KafkaEventProducer(kafkaConfig, fhirConfig))
 }

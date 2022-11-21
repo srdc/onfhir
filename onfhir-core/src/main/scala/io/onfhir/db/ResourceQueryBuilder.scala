@@ -3,7 +3,6 @@ package io.onfhir.db
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRResponse, OutcomeIssue, Parameter}
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
-import io.onfhir.api.parsers.FHIRSearchParameterValueParser.parseSimpleValue
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
 import io.onfhir.config.{OnfhirConfig, SearchParameterConf}

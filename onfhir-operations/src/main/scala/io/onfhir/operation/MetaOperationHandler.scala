@@ -4,6 +4,7 @@ import akka.http.scaladsl.model.StatusCodes
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIROperationRequest, FHIROperationResponse, FHIRResponse, FHIRSimpleOperationParam, OutcomeIssue}
 import io.onfhir.api.service.FHIROperationHandlerService
+import io.onfhir.config.{FhirServerConfig, IFhirConfigurationManager}
 import io.onfhir.db.ResourceManager
 import io.onfhir.exception._
 import io.onfhir.util.JsonFormatter.formats
@@ -21,7 +22,7 @@ import scala.concurrent.Future
   *   - $meta-delete
   *   - $meta
   */
-class MetaOperationHandler extends FHIROperationHandlerService {
+class MetaOperationHandler(fhirConfigurationManager:IFhirConfigurationManager)  extends FHIROperationHandlerService(fhirConfigurationManager) {
   private val logger: Logger = LoggerFactory.getLogger("MetaOperationHandler")
   /**
     * Execute the operation and prepare the output parameters for the operation
@@ -50,7 +51,7 @@ class MetaOperationHandler extends FHIROperationHandlerService {
    * @return
    */
   def handleMeta(resourceType:String, resourceId:String):Future[FHIROperationResponse] = {
-    ResourceManager
+    fhirConfigurationManager.resourceManager
       .getResource(resourceType, resourceId, includingOrExcludingFields = Some(true -> Set("meta")), excludeExtraFields = true)
       .map {
         case None =>
@@ -82,7 +83,7 @@ class MetaOperationHandler extends FHIROperationHandlerService {
      //Get the input parameter "meta:Meta"
      val newMeta = operationRequest.getParam("meta").get.asInstanceOf[FHIRSimpleOperationParam].value
 
-     ResourceManager.getResource(resourceType, resourceId, excludeExtraFields = true).flatMap {
+     fhirConfigurationManager.resourceManager.getResource(resourceType, resourceId, excludeExtraFields = true).flatMap {
        case None =>
          logger.debug("resource not found, return 404 NotFound...")
          throw new NotFoundException(Seq(
@@ -98,7 +99,7 @@ class MetaOperationHandler extends FHIROperationHandlerService {
          //Update the resource with meta
          val updatedResource = resource merge (JObject() ~ (FHIR_COMMON_FIELDS.META -> newMeta.removeField(f => f._1 == FHIR_COMMON_FIELDS.VERSION_ID || f._1 == FHIR_COMMON_FIELDS.LAST_UPDATED)))
 
-         ResourceManager.replaceResource(resourceType, resourceId, updatedResource).map(isUpdated => {
+         fhirConfigurationManager.resourceManager.replaceResource(resourceType, resourceId, updatedResource).map(isUpdated => {
            if(!isUpdated) throw new InternalServerException("Problem in updating Meta in meta-add operation!!!")
            //Create the response, set the return result
            val response = new FHIROperationResponse(StatusCodes.OK)
@@ -120,7 +121,7 @@ class MetaOperationHandler extends FHIROperationHandlerService {
      //Get the input parameter "meta:Meta"
      val metaToBeDeleted = operationRequest.getParam("meta").get.asInstanceOf[FHIRSimpleOperationParam].value
 
-     ResourceManager.getResource(resourceType, resourceId).flatMap {
+     fhirConfigurationManager.resourceManager.getResource(resourceType, resourceId).flatMap {
        case None =>
          logger.debug("resource not found, return 404 NotFound...")
          throw new NotFoundException(Seq(
@@ -149,7 +150,7 @@ class MetaOperationHandler extends FHIROperationHandlerService {
              }
          }.asInstanceOf[JObject]
          //Replace the resource
-         ResourceManager.replaceResource(resourceType, resourceId, updatedResource).map(isUpdated => {
+         fhirConfigurationManager.resourceManager.replaceResource(resourceType, resourceId, updatedResource).map(isUpdated => {
            if(!isUpdated) throw new InternalServerException("Problem in updating Meta in meta-add operation!!!")
            //Create the response, set the return result
            val response = new FHIROperationResponse(StatusCodes.OK)

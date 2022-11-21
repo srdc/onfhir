@@ -3,11 +3,9 @@ package io.onfhir.api.service
 import akka.http.scaladsl.model.{StatusCode, StatusCodes, Uri}
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
-import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
-import io.onfhir.config.FhirConfigurationManager.fhirConfig
 import io.onfhir.db.{ResourceManager, TransactionSession}
 import io.onfhir.exception.PreconditionFailedException
 
@@ -25,7 +23,7 @@ class FHIRDeleteService(transactionSession: Option[TransactionSession] = None) e
       if (fhirRequest.resourceId.isDefined)
         validateDeleteInteraction(fhirRequest.resourceType.get, fhirRequest.resourceId.get)
       else {
-        fhirRequest.addParsedQueryParams(FHIRSearchParameterValueParser.parseSearchParameters(fhirRequest.resourceType.get, fhirRequest.queryParams, None))
+        fhirRequest.addParsedQueryParams(fhirConfigurationManager.fhirSearchParameterValueParser.parseSearchParameters(fhirRequest.resourceType.get, fhirRequest.queryParams, None))
         validateConditionalDeleteInteraction(fhirRequest.resourceType.get, fhirRequest.getParsedQueryParams(), fhirRequest.prefer)
       }
     }
@@ -64,7 +62,7 @@ class FHIRDeleteService(transactionSession: Option[TransactionSession] = None) e
   private def conditionalDeleteResource(_type:String, searchParameters:List[Parameter], testDelete:Boolean) : Future[FHIRResponse] = {
     logger.debug(s"Requesting a conditional 'delete' on ${_type} ...")
 
-    ResourceManager
+    fhirConfigurationManager.resourceManager
       .queryResources(_type, searchParameters) flatMap {
       //1.a: If there is no match, return 200 OK with document not exist warning
       case (0, _) =>
@@ -87,7 +85,7 @@ class FHIRDeleteService(transactionSession: Option[TransactionSession] = None) e
 
       //1.c. If more than one match
       case (_, foundResources) =>
-        fhirConfig.resourceConfigurations.apply(_type).conditionalDelete match {
+        fhirConfigurationManager.fhirConfig.resourceConfigurations.apply(_type).conditionalDelete match {
           case "single" =>
             logger.debug("Multiple matches exist and multiple conditional delete is not supported, returning 412 Precondition failed...")
             throw new PreconditionFailedException(Seq(
@@ -132,7 +130,7 @@ class FHIRDeleteService(transactionSession: Option[TransactionSession] = None) e
   private def deleteResource(_type:String, _id:String, testDelete:Boolean) : Future[FHIRResponse] = {
     logger.debug(s"requesting a 'delete' on ${_type} with id ${_id}...")
     //1) check if resource already exists
-    ResourceManager.getResource(_type, _id).flatMap {
+    fhirConfigurationManager.resourceManager.getResource(_type, _id).flatMap {
       case None =>
         logger.debug("no document with given identifier, return 204 - No Content...")
         Future(FHIRResponse(StatusCodes.NoContent))
@@ -171,7 +169,7 @@ class FHIRDeleteService(transactionSession: Option[TransactionSession] = None) e
     val id             = resourceId.getOrElse(FHIRUtil.extractIdFromResource(resource))
 
     if(!testDelete)
-      ResourceManager.deleteResource(rtype, id, currentVersion -> resource, statusCode)(transactionSession)
+      fhirConfigurationManager.resourceManager.deleteResource(rtype, id, currentVersion -> resource, statusCode)(transactionSession)
         .map(_._1)
     else
       Future(0L)

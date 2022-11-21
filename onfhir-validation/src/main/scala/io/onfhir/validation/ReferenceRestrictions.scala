@@ -1,10 +1,10 @@
 package io.onfhir.validation
 
 import io.onfhir.api.model.{FhirLiteralReference, FhirLogicalReference}
-import io.onfhir.api.{FHIR_COMMON_FIELDS}
+import io.onfhir.api.FHIR_COMMON_FIELDS
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.{AbstractFhirContentValidator, ConstraintFailure, FhirRestriction}
-import io.onfhir.config.OnfhirConfig
+import io.onfhir.config.{FhirServerConfig, OnfhirConfig}
 import org.json4s.JsonAST.{JObject, JValue}
 
 import scala.util.Try
@@ -78,41 +78,46 @@ case class ReferenceRestrictions(targetProfiles:Seq[String], versioning:Option[B
           allIssues
         else {
             //Find the Resource Type that we are working on
-            val resourceType = fhirContentValidator.getResourceOrDataType()
-            fhirContentValidator.fhirConfig.resourceConfigurations.get(resourceType) match {
-              //If we can't access profile configuration, skip other validations
-              case None =>
-                Nil
-              case Some(resourceConf) =>
-                val refIdentifier = FHIRUtil.extractValueOption[JObject](obj, FHIR_COMMON_FIELDS.IDENTIFIER)
+            val resourceType = fhirContentValidator.getResourceOrDataType
+            fhirContentValidator.fhirConfig match {
+              //If we are validating for onFHIR server also check referencing is OK according to capability statement (literal, logical, etc)
+              case serverConfig: FhirServerConfig =>
+                serverConfig.resourceConfigurations.get(resourceType) match {
+                  //If we can't access profile configuration, skip other validations
+                  case None =>
+                    Nil
+                  case Some(resourceConf) =>
+                    val refIdentifier = FHIRUtil.extractValueOption[JObject](obj, FHIR_COMMON_FIELDS.IDENTIFIER)
 
-                //If logical reference policy is not given and but used
-                if (refIdentifier.isDefined && !resourceConf.referencePolicies.contains("logical"))
-                  allIssues = allIssues :+ ConstraintFailure(s"Element uses logical referencing (with Reference.identifier) while it is not allowed for resource  '$resourceType'! ")
+                    //If logical reference policy is not given and but used
+                    if (refIdentifier.isDefined && !resourceConf.referencePolicies.contains("logical"))
+                      allIssues = allIssues :+ ConstraintFailure(s"Element uses logical referencing (with Reference.identifier) while it is not allowed for resource  '$resourceType'! ")
 
-                //If literal policy is not given and but literal policy is used
-                if(resourceConf.referencePolicies.nonEmpty && !resourceConf.referencePolicies.contains("literal") && parsedFhirReference.isDefined)
-                  allIssues = allIssues :+ ConstraintFailure(s"Element uses literal referencing (with Reference.reference) while it is not allowed for resource  '$resourceType'! ")
+                    //If literal policy is not given and but literal policy is used
+                    if (resourceConf.referencePolicies.nonEmpty && !resourceConf.referencePolicies.contains("literal") && parsedFhirReference.isDefined)
+                      allIssues = allIssues :+ ConstraintFailure(s"Element uses literal referencing (with Reference.reference) while it is not allowed for resource  '$resourceType'! ")
 
-                //If reference policy is local, all references should be local
-                if(resourceConf.referencePolicies.contains("local") && parsedFhirReference.flatMap(_._1).exists(! _.startsWith(OnfhirConfig.fhirRootUrl)))
-                  allIssues = allIssues :+ ConstraintFailure(s"Element uses referencing to a resource in a remote repository (with Reference.reference) while it is not allowed for resource  '$resourceType'! ")
+                    //If reference policy is local, all references should be local
+                    if (resourceConf.referencePolicies.contains("local") && parsedFhirReference.flatMap(_._1).exists(!_.startsWith(OnfhirConfig.fhirRootUrl)))
+                      allIssues = allIssues :+ ConstraintFailure(s"Element uses referencing to a resource in a remote repository (with Reference.reference) while it is not allowed for resource  '$resourceType'! ")
 
-                if(resourceConf.referencePolicies.contains("enforced")){
-                  if(parsedFhirReference.isDefined) {
-                    fhirContentValidator
-                        .referencesToCheck.append(
+                    if (resourceConf.referencePolicies.contains("enforced")) {
+                      if (parsedFhirReference.isDefined) {
+                        fhirContentValidator
+                          .referencesToCheck.append(
                           FhirLiteralReference(parsedFhirReference.get._1, parsedFhirReference.get._2, parsedFhirReference.get._3, parsedFhirReference.get._4) ->
                             expectedDataTypeAndProfiles.getOrElse(parsedFhirReference.get._2, Nil).toSet)
-                  } else if(refIdentifier.isDefined)
-                    fhirContentValidator
-                      .referencesToCheck.append(
-                        FhirLogicalReference(
-                          referencedResourceType,
-                          FHIRUtil.extractValueOption[String](refIdentifier.get, FHIR_COMMON_FIELDS.SYSTEM),
-                          FHIRUtil.extractValue[String](refIdentifier.get, FHIR_COMMON_FIELDS.VALUE))
-                          -> Set.empty[String])
+                      } else if (refIdentifier.isDefined)
+                        fhirContentValidator
+                          .referencesToCheck.append(
+                          FhirLogicalReference(
+                            referencedResourceType,
+                            FHIRUtil.extractValueOption[String](refIdentifier.get, FHIR_COMMON_FIELDS.SYSTEM),
+                            FHIRUtil.extractValue[String](refIdentifier.get, FHIR_COMMON_FIELDS.VALUE))
+                            -> Set.empty[String])
+                    }
                 }
+              case _ =>
             }
           //TODO handle other target profiles (not base FHIR)
           //TODO handle aggregation mode restrictions

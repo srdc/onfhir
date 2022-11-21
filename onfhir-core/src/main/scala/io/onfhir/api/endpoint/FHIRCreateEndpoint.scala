@@ -7,7 +7,7 @@ import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.api.service.FHIRCreateService
 import io.onfhir.authz.{AuthContext, AuthzContext, AuthzManager}
-import io.onfhir.config.OnfhirConfig
+import io.onfhir.config.FhirConfigurationManager.authzManager
 
 
 trait FHIRCreateEndpoint {
@@ -31,7 +31,7 @@ trait FHIRCreateEndpoint {
                 //Put the content into the FHIR Request
                 fhirRequest.resource = Some(resource)
                 //Authorize the interaction
-                AuthzManager.authorize(authContext._2, fhirRequest) {
+                authzManager.authorize(authContext._2, fhirRequest) {
                   //Complete the request
                   complete {
                     new FHIRCreateService().executeInteraction(fhirRequest)

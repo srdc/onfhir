@@ -5,10 +5,9 @@ import akka.http.scaladsl.server.{Directives, Route}
 import io.onfhir.api.FHIR_HTTP_OPTIONS
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
-import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.service.FHIRDeleteService
-import io.onfhir.authz.{AuthContext, AuthzContext, AuthzManager}
-import io.onfhir.config.OnfhirConfig
+import io.onfhir.authz.{AuthContext, AuthzContext}
+import io.onfhir.config.FhirConfigurationManager.authzManager
 
 /**
   * FHIR Delete Service endpoint
@@ -28,7 +27,7 @@ trait FHIRDeleteEndpoint {
           //Create the FHIR request object
           fhirRequest.initializeDeleteRequest(_type, Some(_id))
           //Check authorization
-          AuthzManager.authorize(authContext._2, fhirRequest) {
+          authzManager.authorize(authContext._2, fhirRequest) {
             //Complete the delete
             complete {
               new FHIRDeleteService().executeInteraction(fhirRequest)
@@ -47,7 +46,7 @@ trait FHIRDeleteEndpoint {
                 //Put the parameters into the FHIR Request
                 fhirRequest.queryParams = searchParameters
                 //Authorize and filter
-                AuthzManager.authorize(authContext._2, fhirRequest) {
+                authzManager.authorize(authContext._2, fhirRequest) {
                   //go on with the operation (further authorization may be needed)
                   complete {
                       new FHIRDeleteService().executeInteraction(fhirRequest)

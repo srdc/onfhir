@@ -1,11 +1,12 @@
-package io.onfhir.api.util
+package io.onfhir.validation
+
 import io.onfhir.api.FHIR_DATA_TYPES
+import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.{ConstraintKeys, ElementRestrictions, ProfileRestrictions}
-import io.onfhir.config.FhirConfig
-import io.onfhir.validation.{ArrayRestriction, ReferenceRestrictions, TypeRestriction}
+import io.onfhir.config.FhirServerConfig
 import org.slf4j.Logger
 
-abstract class BaseFhirProfileHandler(val fhirConfig: FhirConfig) {
+abstract class BaseFhirProfileHandler(val fhirConfig: FhirServerConfig) {
   protected val logger:Logger
   /**
    * Check if a search path match with element definition path

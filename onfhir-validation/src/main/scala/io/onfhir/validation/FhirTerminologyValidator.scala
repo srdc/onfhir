@@ -2,9 +2,9 @@ package io.onfhir.validation
 
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.{IFhirTerminologyValidator, ValueSetDef, ValueSetRestrictions}
-import io.onfhir.config.FhirConfig
+import io.onfhir.config.BaseFhirConfig
 
-class FhirTerminologyValidator(fhirConfig:FhirConfig) extends IFhirTerminologyValidator{
+class FhirTerminologyValidator(fhirConfig:BaseFhirConfig) extends IFhirTerminologyValidator{
 
   /**
    * Check if a value set is supported for validation within OnFHir setup
@@ -101,6 +101,5 @@ class FhirTerminologyValidator(fhirConfig:FhirConfig) extends IFhirTerminologyVa
 }
 
 object FhirTerminologyValidator {
-
-  def apply(fhirConfig: FhirConfig): FhirTerminologyValidator = new FhirTerminologyValidator(fhirConfig)
+  def apply(fhirConfig: BaseFhirConfig): FhirTerminologyValidator = new FhirTerminologyValidator(fhirConfig)
 }

@@ -11,7 +11,7 @@ import io.onfhir.api.endpoint.{FHIREndpoint, OnFhirInternalEndpoint}
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.audit.AuditManager
 import io.onfhir.authz._
-import io.onfhir.config.{FhirConfigurationManager, IFhirVersionConfigurator, OnfhirConfig, SSLConfig}
+import io.onfhir.config.{FhirConfigurationManager, IFhirServerConfigurator, IFhirVersionConfigurator, OnfhirConfig, SSLConfig}
 import io.onfhir.db.{DBConflictManager, EmbeddedMongo}
 import io.onfhir.event.{FhirDataEvent, FhirEventBus, FhirEventSubscription}
 import io.onfhir.event.kafka.KafkaEventProducer
@@ -35,7 +35,7 @@ import scala.io.StdIn
   * @param cdsHooksRoute         CDS-Hooks compliant CDS route (using onfhir-cds)
   */
 class Onfhir(
-              val fhirConfigurator:IFhirVersionConfigurator,
+              val fhirConfigurator:IFhirServerConfigurator,
               val fhirOperationImplms:Map[String, String],
               val customAuthorizer:Option[IAuthorizer],
               val customTokenResolver:Option[ITokenResolver],
@@ -61,7 +61,7 @@ class Onfhir(
   //Create audit manager actor, if auditing is enabled
   val auditManager =
     if(customAuditHandler.isDefined || OnfhirConfig.fhirAuditingRepository != AuditManager.AUDITING_METHOD_NONE)
-      Some(Onfhir.actorSystem.actorOf(AuditManager.props(customAuditHandler), AuditManager.ACTOR_NAME))
+      Some(Onfhir.actorSystem.actorOf(AuditManager.props(FhirConfigurationManager, customAuditHandler), AuditManager.ACTOR_NAME))
     else
       None
   //Create db conflict manager actor, if transaction is not enabled
@@ -75,7 +75,7 @@ class Onfhir(
   //Create Kafka producer if enabled or subscription is active
   val kafkaEventProducer =
     if(KafkaEventProducer.kafkaConfig.kafkaEnabled || OnfhirConfig.fhirSubscriptionActive) {
-      val actorRef = Onfhir.actorSystem.actorOf(KafkaEventProducer.props(), KafkaEventProducer.ACTOR_NAME)
+      val actorRef = Onfhir.actorSystem.actorOf(KafkaEventProducer.props(FhirConfigurationManager.fhirConfig), KafkaEventProducer.ACTOR_NAME)
 
       val fhirSubscriptionAllowedResources = if(OnfhirConfig.fhirSubscriptionActive) OnfhirConfig.fhirSubscriptionAllowedResources else Some(Nil)
       val kafkaEnabledResources = KafkaEventProducer.kafkaConfig.kafkaEnabledResources
@@ -89,7 +89,7 @@ class Onfhir(
         case (_, None) => None
       }
 
-      FhirEventBus.subscribe(actorRef, FhirEventSubscription(classOf[FhirDataEvent], resourcesToSendToKafka))
+      FhirConfigurationManager.eventManager.subscribe(actorRef, FhirEventSubscription(classOf[FhirDataEvent], resourcesToSendToKafka))
       actorRef
     }
 
@@ -213,7 +213,7 @@ object Onfhir {
     * @return
     */
   def apply(
-             fhirConfigurator:IFhirVersionConfigurator,
+             fhirConfigurator:IFhirServerConfigurator,
              fhirOperationImplms:Map[String, String] = Map.empty[String, String],
              customAuthorizer:Option[IAuthorizer] = None,
              customTokenResolver:Option[ITokenResolver] = None,

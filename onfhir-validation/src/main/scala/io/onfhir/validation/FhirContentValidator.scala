@@ -7,7 +7,7 @@ import io.onfhir.api.model.FHIRResponse.{OUTCOME_CODES, SEVERITY_CODES}
 import io.onfhir.api.model.{FhirLiteralReference, OutcomeIssue}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation._
-import io.onfhir.config.FhirConfig
+import io.onfhir.config.BaseFhirConfig
 import io.onfhir.exception.InitializationException
 import io.onfhir.path.{FhirPathComplex, FhirPathEvaluator}
 import org.json4s.{JInt, JNothing, JNull}
@@ -29,7 +29,7 @@ import scala.util.matching.Regex
  * @param resourceValidator   onFhir resource validator (if given used to recursively validate contained resources and bundle entries)
  */
 class FhirContentValidator(
-                            fhirConfig:FhirConfig,
+                            fhirConfig:BaseFhirConfig,
                             profileUrl:String,
                             referenceResolver:Option[IReferenceResolver] = None,
                             resourceValidator:Option[IFhirResourceValidator] = None
@@ -1394,7 +1394,7 @@ object FhirContentValidator {
    * @param profileUrl
    * @return
    */
-  def apply(fhirConfig: FhirConfig, profileUrl: String)(implicit ec:ExecutionContext): FhirContentValidator = new FhirContentValidator(fhirConfig, profileUrl)
+  def apply(fhirConfig: BaseFhirConfig, profileUrl: String)(implicit ec:ExecutionContext): FhirContentValidator = new FhirContentValidator(fhirConfig, profileUrl)
 
   /**
    * Constructor with reference resolver
@@ -1403,10 +1403,10 @@ object FhirContentValidator {
    * @param referenceResolver
    * @return
    */
-  def apply(fhirConfig: FhirConfig, profileUrl: String, referenceResolver: IReferenceResolver, resourceValidator:IFhirResourceValidator)(implicit ec:ExecutionContext): FhirContentValidator = new FhirContentValidator(fhirConfig, profileUrl, Some(referenceResolver), Some(resourceValidator))
+  def apply(fhirConfig: BaseFhirConfig, profileUrl: String, referenceResolver: IReferenceResolver, resourceValidator:IFhirResourceValidator)(implicit ec:ExecutionContext): FhirContentValidator = new FhirContentValidator(fhirConfig, profileUrl, Some(referenceResolver), Some(resourceValidator))
 
 
-  def apply(fhirConfig: FhirConfig, profileUrl: String, referenceResolver: IReferenceResolver)(implicit ec:ExecutionContext): FhirContentValidator = new FhirContentValidator(fhirConfig, profileUrl, Some(referenceResolver))
+  def apply(fhirConfig: BaseFhirConfig, profileUrl: String, referenceResolver: IReferenceResolver)(implicit ec:ExecutionContext): FhirContentValidator = new FhirContentValidator(fhirConfig, profileUrl, Some(referenceResolver))
   /**
     * Validate FHIR Primitive Data Types
     *

@@ -69,7 +69,10 @@ object AuthzResult{
     * @param authorizationFilterParams Restrictions indicated as FHIR query (additionally restrictions indicated as Compartment query e.g. records that belong to a specific Patient -->  (Patient -> 356589)
     * @return
     */
-  def filtering(rtype:String,  authorizationFilterParams: List[(String, String)]):AuthzResult = {
+  def filtering(rtype:String,
+                authorizationFilterParams: List[(String, String)],
+                searchParameterValueParser:FHIRSearchParameterValueParser
+               ):AuthzResult = {
     def isCompartment(pname:String):Boolean = pname.head.isLetter && pname.head.isUpper
 
     new AuthzResult(
@@ -77,9 +80,9 @@ object AuthzResult{
       //Parse the compartment search
       authorizationFilterParams
         .filter(p => isCompartment(p._1))
-        .map(cf => FHIRSearchParameterValueParser.constructCompartmentSearchParameter(cf._1, cf._2, rtype)) ++
+        .map(cf => searchParameterValueParser.constructCompartmentSearchParameter(cf._1, cf._2, rtype)) ++
         //Parse the other search parameters strictly
-        FHIRSearchParameterValueParser
+        searchParameterValueParser
           .parseSearchParameters(
             rtype,
             authorizationFilterParams.filterNot( p=> isCompartment(p._1)).groupBy(_._1).map(g => g._1 -> g._2.map(_._2)),

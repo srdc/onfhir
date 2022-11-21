@@ -2,11 +2,9 @@ package io.onfhir.api.util
 
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRResponse, FhirLiteralReference, OutcomeIssue, Parameter}
-import io.onfhir.config.SearchParameterConf
-import io.onfhir.config.FhirConfigurationManager.fhirConfig
+import io.onfhir.config.{FhirServerConfig, SearchParameterConf}
 import io.onfhir.db.ResourceManager
 import io.onfhir.exception.NotImplementedException
-
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.language.postfixOps
@@ -15,7 +13,8 @@ import scala.util.Try
 /**
   * Utility class that runs FHIR queries in memory on a specific resource
   */
-object ResourceChecker {
+class ResourceChecker(fhirConfig:FhirServerConfig) {
+  val resourceManager = new ResourceManager(fhirConfig)
   /**
     * Check if the given resource satisfies the restriction given search query
     * @param resourceType Resource type to be queried
@@ -160,7 +159,7 @@ object ResourceChecker {
       }
       val idQueryParam = Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, FHIR_PARAMETER_TYPES.TOKEN, "_id", referencedResources.map(r => "" -> r))
       //TODO Change method signature to return Future
-      Try(Await.result(ResourceManager.countResources(mainChainType, List(idQueryParam, newSearchParam)), 5 seconds))
+      Try(Await.result(resourceManager.countResources(mainChainType, List(idQueryParam, newSearchParam)), 5 seconds))
         .toOption
         .exists(_ > 0)  //At least one reference should satisfied
     }

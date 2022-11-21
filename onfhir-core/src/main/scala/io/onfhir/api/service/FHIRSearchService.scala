@@ -3,7 +3,6 @@ package io.onfhir.api.service
 import akka.http.scaladsl.model.StatusCodes
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, Parameter}
-import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
@@ -43,11 +42,11 @@ class FHIRSearchService(transactionSession: Option[TransactionSession] = None) e
       FHIRApiValidator.validateCompartmentSearchOnResourceType(fhirRequest.compartmentType.get, fhirRequest.resourceType.get)
       FHIRApiValidator.validateId(fhirRequest.compartmentId.get)
 
-      fhirRequest.addParsedQueryParams(List(FHIRSearchParameterValueParser.constructCompartmentSearchParameter(fhirRequest.compartmentType.get, fhirRequest.compartmentId.get, fhirRequest.resourceType.get)))
+      fhirRequest.addParsedQueryParams(List(fhirConfigurationManager.fhirSearchParameterValueParser.constructCompartmentSearchParameter(fhirRequest.compartmentType.get, fhirRequest.compartmentId.get, fhirRequest.resourceType.get)))
     }
 
     fhirRequest.addParsedQueryParams(
-      FHIRSearchParameterValueParser.parseSearchParameters(fhirRequest.resourceType.get, fhirRequest.queryParams, fhirRequest.prefer))
+      fhirConfigurationManager.fhirSearchParameterValueParser.parseSearchParameters(fhirRequest.resourceType.get, fhirRequest.queryParams, fhirRequest.prefer))
   }
 
   /**
@@ -75,7 +74,7 @@ class FHIRSearchService(transactionSession: Option[TransactionSession] = None) e
         FHIRApiValidator.validateCompartmentSearchOnResourceType(fhirRequest.compartmentType.get, rtype)
         //Add the compartment search parameter for each resource type
         fhirRequest
-          .addParsedQueryParams(rtype, List(FHIRSearchParameterValueParser.constructCompartmentSearchParameter(fhirRequest.compartmentType.get, fhirRequest.compartmentId.get, rtype)))
+          .addParsedQueryParams(rtype, List(fhirConfigurationManager.fhirSearchParameterValueParser.constructCompartmentSearchParameter(fhirRequest.compartmentType.get, fhirRequest.compartmentId.get, rtype)))
       })
     }
 
@@ -85,7 +84,7 @@ class FHIRSearchService(transactionSession: Option[TransactionSession] = None) e
         .addParsedQueryParams(
           rtype,
           try {
-            FHIRSearchParameterValueParser.parseSearchParameters(rtype, queryParams, Some(FHIR_HTTP_OPTIONS.FHIR_SEARCH_STRICT))
+            fhirConfigurationManager.fhirSearchParameterValueParser.parseSearchParameters(rtype, queryParams, Some(FHIR_HTTP_OPTIONS.FHIR_SEARCH_STRICT))
           } catch {
             case e:UnsupportedParameterException => throw new InvalidParameterException(e.getMessage) // What is expected from standard
           }
@@ -128,7 +127,7 @@ class FHIRSearchService(transactionSession: Option[TransactionSession] = None) e
    */
   def searchSystemAndReturnBundle(parameters:Map[String, List[Parameter]], isAllResources:Boolean):Future[Resource] = {
     val rtypes = if(isAllResources) Nil else parameters.keys.toSeq
-    ResourceManager
+    fhirConfigurationManager.resourceManager
       .searchResourcesFromMultipleResourceTypes(parameters)(transactionSession)
       .map(searchResult =>
         constructBundle(searchResult._1, searchResult._2, Nil, rtypes, parameters.headOption.map(_._2).getOrElse(List.empty[Parameter]))
@@ -141,7 +140,7 @@ class FHIRSearchService(transactionSession: Option[TransactionSession] = None) e
     * @return
     */
   def searchAndReturnBundle(rtype:String, parameters:List[Parameter]):Future[Resource] = {
-    ResourceManager
+    fhirConfigurationManager.resourceManager
       .searchResources(rtype, parameters)(transactionSession)
       .map(searchResult =>
         constructBundle(searchResult._1, searchResult._2, searchResult._3, Seq(rtype), parameters)
@@ -164,7 +163,7 @@ class FHIRSearchService(transactionSession: Option[TransactionSession] = None) e
                                rtype:Seq[String],
                                parameters:List[Parameter]):Resource = {
     //Construct paging links
-    val pagingLinks = FHIRUtil.generateBundleLinks(rtype, None, totalNumOfMatched, matchedResources.length, parameters, isHistory = false)
+    val pagingLinks = fhirConfigurationManager.fhirServerUtil.generateBundleLinks(rtype, None, totalNumOfMatched, matchedResources.length, parameters, isHistory = false)
 
     //Whether search results are summarized or not
     val summaryParamValue = parameters.find(p => p.name == FHIR_SEARCH_RESULT_PARAMETERS.SUMMARY).map(_.valuePrefixList.head._2)
@@ -173,8 +172,8 @@ class FHIRSearchService(transactionSession: Option[TransactionSession] = None) e
 
     //Create FHIR bundle entries
     val bundleEntries =
-      matchedResources.map(matchedResource => FHIRUtil.createBundleEntry(matchedResource, FHIR_BUNDLE_TYPES.SEARCH_SET, isSummarized)) ++
-        includedResources.map(includedResource => FHIRUtil.createBundleEntry(includedResource, FHIR_BUNDLE_TYPES.SEARCH_SET, isSummarized, isMatched = false))
+      matchedResources.map(matchedResource => fhirConfigurationManager.fhirServerUtil.createBundleEntry(matchedResource, FHIR_BUNDLE_TYPES.SEARCH_SET, isSummarized)) ++
+        includedResources.map(includedResource => fhirConfigurationManager.fhirServerUtil.createBundleEntry(includedResource, FHIR_BUNDLE_TYPES.SEARCH_SET, isSummarized, isMatched = false))
 
     logger.debug(s"Returning ${matchedResources.length} resources from $totalNumOfMatched and ${includedResources.length} documents are marked as include...")
     //Create and return bundle

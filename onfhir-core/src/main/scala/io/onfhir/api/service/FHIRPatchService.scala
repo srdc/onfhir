@@ -4,14 +4,13 @@ import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.model.headers.`If-Match`
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
-import io.onfhir.api.parsers.FHIRSearchParameterValueParser
-import io.onfhir.api.util.{BaseFhirProfileHandler, FHIRUtil}
+import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
-import io.onfhir.config.FhirConfigurationManager.fhirValidator
-import io.onfhir.config.FhirConfigurationManager.fhirConfig
+
 import io.onfhir.db.{ResourceManager, TransactionSession}
 import io.onfhir.exception.{NotFoundException, PreconditionFailedException}
+import io.onfhir.validation.BaseFhirProfileHandler
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.Future
@@ -31,7 +30,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
         if (fhirRequest.resourceId.isDefined)
           validatePatchInteraction(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.ifNoneExist)
         else {
-          fhirRequest.addParsedQueryParams(FHIRSearchParameterValueParser.parseSearchParameters(fhirRequest.resourceType.get, fhirRequest.queryParams, None))
+          fhirRequest.addParsedQueryParams(fhirConfigurationManager.fhirSearchParameterValueParser.parseSearchParameters(fhirRequest.resourceType.get, fhirRequest.queryParams, None))
           validateConditionalPatchInteraction(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.getParsedQueryParams(), fhirRequest.prefer)
         }
 
@@ -96,7 +95,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
     logger.debug(s"requesting 'patch' for ${_type} with ${_id}...")
 
     //2) check if resource already exists
-    ResourceManager.getResource(_type, _id).flatMap {
+    fhirConfigurationManager.resourceManager.getResource(_type, _id).flatMap {
       //If no such document, return No content
       case None => Future(FHIRResponse(StatusCodes.NoContent))
       //Otherwise
@@ -110,7 +109,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
         val updatedResource = getPatchHandler(patch).applyPatch(patch, _type, FHIRUtil.clearExtraFields(foundResource))
 
         //4) Validate if new changes are valid
-        fhirValidator.validateResource(updatedResource, _type) flatMap { _ =>
+        fhirConfigurationManager.fhirValidator.validateResource(updatedResource, _type) flatMap { _ =>
           //5) Perform the update operation
           new FHIRUpdateService(transactionSession).performUpdate(updatedResource, _type, Some(_id), prefer, isTesting, Some(currentVersion -> foundResource), wasDeleted)
         }
@@ -135,7 +134,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
                                       ) : Future[FHIRResponse] = {
     logger.debug(s"requesting conditional 'patch' for ${_type}...")
 
-    ResourceManager.queryResources(_type, searchParameters, count =1).flatMap {
+    fhirConfigurationManager.resourceManager.queryResources(_type, searchParameters, count =1).flatMap {
       //No matching
       case (0, _) => throw new NotFoundException(Seq(
         OutcomeIssue(
@@ -156,7 +155,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
         val updatedResource = getPatchHandler(patch).applyPatch(patch, _type, FHIRUtil.clearExtraFields(foundResource))
 
         //4) Validate if new changes are valid
-        fhirValidator.validateResource(updatedResource, _type) flatMap { _ =>
+        fhirConfigurationManager.fhirValidator.validateResource(updatedResource, _type) flatMap { _ =>
           //5) Perform the actual update operation
           new FHIRUpdateService(transactionSession).performUpdate(updatedResource, _type, Some(rid), prefer, isTesting, Some(currentVersion -> foundResource))
         }
@@ -185,10 +184,10 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
     //If content is given with Parameters
     if(FHIRUtil.extractValueOption[String](patch, "resourceType")
       .contains("Parameters")) {
-      val profileHandler = new BaseFhirProfileHandler(fhirConfig) {
+      val profileHandler = new BaseFhirProfileHandler(fhirConfigurationManager.fhirConfig) {
         override protected val logger: Logger = LoggerFactory.getLogger(classOf[FHIRPatchService])
       }
-      new FhirPathPatchHandler(profileHandler)
+      new FhirPathPatchHandler(fhirConfigurationManager,profileHandler)
     } else
       JsonPatchHandler
   }

@@ -6,9 +6,8 @@ import akka.http.scaladsl.model.{ContentType, HttpMethod, Uri}
 import akka.http.scaladsl.model.headers.{`If-Match`, `If-Modified-Since`, `If-None-Match`, `X-Forwarded-For`, `X-Forwarded-Host`}
 import io.onfhir.api.Resource
 import io.onfhir.api._
-import io.onfhir.api.parsers.{BundleRequestParser, FHIRSearchParameterValueParser}
+import io.onfhir.api.parsers.BundleRequestParser
 import io.onfhir.util.JsonFormatter.formats
-import io.onfhir.config.FhirConfigurationManager.fhirConfig
 
 /**
   * Created by tuncay on 5/11/2017.

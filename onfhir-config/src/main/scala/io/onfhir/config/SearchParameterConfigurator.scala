@@ -1,9 +1,9 @@
 package io.onfhir.config
 
-import org.slf4j.{Logger, LoggerFactory}
 import io.onfhir.api._
-import io.onfhir.api.util.{BaseFhirProfileHandler, FHIRUtil}
 import io.onfhir.path.FhirPathEvaluator
+import io.onfhir.validation.BaseFhirProfileHandler
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.util.parsing.combinator.RegexParsers
 import scala.util.{Success, Try}
@@ -20,7 +20,7 @@ import scala.util.{Success, Try}
 class SearchParameterConfigurator(
                                    rtype:String,
                                    rtypeBaseProfile:Option[String],
-                                   fhirConfig:FhirConfig,
+                                   fhirConfig:FhirServerConfig,
                                    allSearchParameters:Set[String]
                                  ) extends BaseFhirProfileHandler(fhirConfig) {
   protected val logger:Logger = LoggerFactory.getLogger(this.getClass)
@@ -118,7 +118,7 @@ class SearchParameterConfigurator(
       extensionPaths.map(ep => {
         val parts = ep._1.split('.')
         //Find the root path parts apart e.g. recipient.extension[i].valueBoolean --> recipient
-        val mainParts = parts.takeWhile(_ != "extension[i]")
+        val mainParts = parts.takeWhile(_ != "extension[i]").toIndexedSeq
         //Find the final path of that main part with array indicators e.g. recipient --> recipient[i]
         val finalMainPart = findFinalPathWithArrayIndicators(mainParts)
         //Join again the whole path
@@ -402,7 +402,7 @@ object SearchParameterConfigurator extends RegexParsers {
    * @param extensionPath
    * @return
    */
-  def findOutTargetTypeForExtensionPath(fhirConfig:FhirConfig, extensionPath:String):String = {
+  def findOutTargetTypeForExtensionPath(fhirConfig:FhirServerConfig, extensionPath:String):String = {
     val dataType = extensionPath
       .split('.')
       .last

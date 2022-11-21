@@ -331,6 +331,20 @@ package object api {
   }
 
   /**
+   * Names of FHIR Infrastructure resources in the version of the FHIR standard
+   */
+  object FHIR_FOUNDATION_RESOURCES {
+    final val FHIR_CONFORMANCE: String = "CapabilityStatement"
+    final val FHIR_STRUCTURE_DEFINITION: String = "StructureDefinition"
+    final val FHIR_SEARCH_PARAMETER: String = "SearchParameter"
+    final val FHIR_COMPARTMENT_DEFINITION: String = "CompartmentDefinition"
+    final val FHIR_VALUE_SET: String = "ValueSet"
+    final val FHIR_CODE_SYSTEM: String = "CodeSystem"
+    final val FHIR_AUDIT_EVENT: String = "AuditEvent"
+    final val FHIR_OPERATION_DEFINITION: String = "OperationDefinition"
+  }
+
+  /**
     * Fhir search result parameter names. See Search Control Parameters in https://www.hl7.org/fhir/search.html
     */
   object FHIR_SEARCH_RESULT_PARAMETERS {

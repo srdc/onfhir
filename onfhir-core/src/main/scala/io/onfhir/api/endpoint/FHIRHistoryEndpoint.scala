@@ -7,7 +7,8 @@ import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.service.FHIRHistoryService
-import io.onfhir.authz.{AuthContext, AuthzContext, AuthzManager}
+import io.onfhir.authz.{AuthContext, AuthzContext}
+import io.onfhir.config.FhirConfigurationManager.authzManager
 import io.onfhir.config.OnfhirConfig
 
 /**
@@ -32,7 +33,7 @@ trait FHIRHistoryEndpoint {
               //Put the parameters into the FHIR Request
               fhirRequest.queryParams = searchParameters
               //Enforce authorization, add the authorization filter params to search params
-              AuthzManager.authorize(authContext._2, fhirRequest) {
+              authzManager.authorize(authContext._2, fhirRequest) {
                 complete {
                   new FHIRHistoryService().executeInteraction(fhirRequest)
                 }
@@ -50,7 +51,7 @@ trait FHIRHistoryEndpoint {
                 //Put the parameters into the FHIR Request
                 fhirRequest.queryParams = searchParameters
                 //Enforce authorization
-                AuthzManager.authorize(authContext._2, fhirRequest) {
+                authzManager.authorize(authContext._2, fhirRequest) {
                   complete {
                     new FHIRHistoryService().executeInteraction(fhirRequest)
                   }
@@ -68,7 +69,7 @@ trait FHIRHistoryEndpoint {
               Directives.parameterMultiMap { searchParameters =>
                 fhirRequest.queryParams = searchParameters
                 //Enforce authorization, add the authorization filter params to search params
-                AuthzManager.authorize(authContext._2, fhirRequest) {
+                authzManager.authorize(authContext._2, fhirRequest) {
                   complete {
                     new FHIRHistoryService().executeInteraction(fhirRequest)
                   }

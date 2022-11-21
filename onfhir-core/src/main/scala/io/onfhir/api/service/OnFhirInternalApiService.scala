@@ -7,7 +7,7 @@ import io.onfhir.api._
 import io.onfhir.api.model.{FhirSubscription, Parameter}
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.util.{FHIRUtil, SubscriptionUtil}
-import io.onfhir.config.SearchParameterConf
+import io.onfhir.config.{FhirConfigurationManager, SearchParameterConf}
 import io.onfhir.db.ResourceManager
 import org.json4s.JsonAST.{JObject, JString}
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
@@ -18,7 +18,7 @@ class OnFhirInternalApiService {
   implicit val executionContext:ExecutionContext = Onfhir.actorSystem.dispatcher
 
   val subscriptionUtil = new SubscriptionUtil(fhirConfig)
-
+  val searchParameterValueParser = new FHIRSearchParameterValueParser(fhirConfig)
   /**
    * Retrieve subscriptions
    * @param page
@@ -34,7 +34,7 @@ class OnFhirInternalApiService {
         "status",
         Seq(SubscriptionStatusCodes.requested, SubscriptionStatusCodes.active, SubscriptionStatusCodes.error).map("" -> _))
     )
-    ResourceManager
+    FhirConfigurationManager.resourceManager
       .queryResources("Subscription", queryParams, count, page, sortingFields = Seq(("_lastUpdated", 1, Seq("meta.lastUpdated" -> FHIR_DATA_TYPES.INSTANT))), needTotal = false)(None)
       .map {
         case (_, subscriptions) =>
@@ -50,7 +50,7 @@ class OnFhirInternalApiService {
    * @return
    */
   def updateSubscriptionStatus(sid:String, status:String, error:Option[String]):Future[HttpResponse] = {
-      ResourceManager
+    FhirConfigurationManager.resourceManager
         .getResource("Subscription", sid, excludeExtraFields = true)
         .flatMap {
           //No such resource, ignore it
@@ -71,7 +71,7 @@ class OnFhirInternalApiService {
 
             val previousVersion = FHIRUtil.extractVersionFromResource(subscription)
 
-            ResourceManager
+            FhirConfigurationManager.resourceManager
               .updateResource("Subscription", sid, updatedSubscription, previousVersion -> subscription, silentEvent = true)
               .map(_ => HttpResponse(StatusCodes.OK))
         }
@@ -91,7 +91,7 @@ class OnFhirInternalApiService {
 
   def parseFhirSearch(rtype:String, paramMultiMap:Map[String, List[String]]):Future[Seq[Parameter]] = {
     Future.apply {
-      FHIRSearchParameterValueParser.parseSearchParameters(rtype, paramMultiMap)
+      searchParameterValueParser.parseSearchParameters(rtype, paramMultiMap)
     }
   }
 }

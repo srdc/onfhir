@@ -1,14 +1,13 @@
 package io.onfhir.operation
 
 import java.time.Instant
-
 import akka.http.scaladsl.model.{DateTime, StatusCodes}
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIROperationRequest, FHIROperationResponse}
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.service.{FHIRCreateService, FHIROperationHandlerService, FHIRSearchService}
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.config.OnfhirConfig
+import io.onfhir.config.{FhirServerConfig, IFhirConfigurationManager, OnfhirConfig}
 import io.onfhir.db.ResourceManager
 import io.onfhir.exception.InternalServerException
 import io.onfhir.util.DateTimeUtil
@@ -20,7 +19,7 @@ import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.Future
 
-class DocumentOperationHandler extends FHIROperationHandlerService {
+class DocumentOperationHandler(fhirConfigurationManager:IFhirConfigurationManager) extends FHIROperationHandlerService(fhirConfigurationManager) {
   private val logger: Logger = LoggerFactory.getLogger("DocumentOperationHandler")
 
   final val PARAMETER_PERSIST = "persist"
@@ -42,7 +41,7 @@ class DocumentOperationHandler extends FHIROperationHandlerService {
     if(resourceId.isEmpty)
       throw new InternalServerException(s"Operation $operationName without [id] is not supported yet")
 
-    val searchParams = FHIRSearchParameterValueParser.parseSearchParameters(RESOURCE_COMPOSITION, Map(
+    val searchParams = fhirConfigurationManager.fhirSearchParameterValueParser.parseSearchParameters(RESOURCE_COMPOSITION, Map(
       SEARCHPARAM_ID -> List(resourceId.get),
       SEARCHPARAM_INCLUDE -> List("*")
     ))
@@ -80,7 +79,7 @@ class DocumentOperationHandler extends FHIROperationHandlerService {
 
       val generatedBundle = persist match {
         case Some(true) =>
-          ResourceManager.createResource((bundle \ "resourceType").extract[String], result.asInstanceOf[JObject], generatedId = (result \ "id").extractOpt[String])
+          fhirConfigurationManager.resourceManager.createResource((bundle \ "resourceType").extract[String], result.asInstanceOf[JObject], generatedId = (result \ "id").extractOpt[String])
           result.asInstanceOf[JObject]
         case _ => {
           val newVersion = 1L //new version is always 1 for create operation

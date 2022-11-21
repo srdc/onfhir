@@ -1,200 +1,46 @@
 package io.onfhir.config
 
-import akka.http.scaladsl.model.{MediaType, MediaTypes}
+import io.onfhir.api.{FOUNDATION_RESOURCES_FILE_SUFFIX, Resource}
 import io.onfhir.api.parsers.IFhirFoundationResourceParser
-import io.onfhir.api.{FHIR_MEDIA_TYPES, FHIR_SEARCH_RESULT_PARAMETERS, FHIR_SEARCH_SPECIAL_PARAMETERS, Resource}
-import io.onfhir.api.validation.{IFhirResourceValidator, IFhirTerminologyValidator, ProfileRestrictions, ValueSetRestrictions}
-import io.onfhir.audit.IFhirAuditCreator
-
-/**
- * Compact form for FHIR CapabilityStatement
- * @param fhirVersion                 FHIR numeric version supporting e.g. 4.0.1
- * @param restResourceConf        REST configurations for each supported resource
- * @param searchParamDefUrls      Common search parameter definition URLs
- * @param operationDefUrls        All operation definition URLs
- * @param systemLevelInteractions System level interactions supported (e.g. transaction, batch)
- * @param compartments            Definition url of compartments supported
- * @param formats                 Formats (mime types) supported by FHIR repository
- * @param patchFormats            Patch formats supported by FHIR repository
- */
-case class FHIRCapabilityStatement(
-                                    fhirVersion:String,
-                                    restResourceConf:Seq[ResourceConf],
-                                    searchParamDefUrls:Set[String],
-                                    operationDefUrls:Set[String],
-                                    systemLevelInteractions:Set[String],
-                                    compartments:Set[String],
-                                    formats:Set[String],
-                                    patchFormats:Set[String]
-                                  )
-
-/**
- * Compact form of a FHIR Search Parameter definition
- * @param name          Name/code of search parameter
- * @param url           URL of definition
- * @param base          Resource Types that this parameter is defined on
- * @param ptype         Search parameter type i.e. number | date | string | token | reference | composite | quantity | uri | special
- * @param expression    FHIR Expression for parameter paths
- * @param xpath         XPath expression for parameter paths
- * @param target        If type is reference, possible target Resource Types
- * @param multipleOr    If it allows multiple values per parameter (or)
- * @param multipleAnd   If it allows multiple parameters (and)
- * @param comparators   Allowed comparators used with parameter
- * @param modifiers     Allowed modifiers used with parameter
- * @param components    URL of search parameter definitions for children of composite parameters
- */
-case class FHIRSearchParameter(
-                                name:String,
-                                url:String,
-                                base:Set[String],
-                                ptype:String,
-                                expression:Option[String],
-                                xpath:Option[String],
-                                target:Set[String],
-                                multipleOr:Option[Boolean],
-                                multipleAnd:Option[Boolean],
-                                comparators:Set[String],
-                                modifiers:Set[String],
-                                components:Set[String]
-                              )
-
-/**
- * Compact form of FHIR Compartment definition
- * @param url       Canonical url
- * @param code      Code for compartment (e.g. Patient, Practitioner, etc)
- * @param relations Relations with all resource types i.e. resource type -> name of search parameters
- */
-case class FHIRCompartmentDefinition(url:String, code:String, relations:Map[String, Set[String]])
 
 trait IFhirVersionConfigurator {
   //FHIR Version
   val fhirVersion:String = "R4"
 
-  /**
-   * Names of FHIR Infrastructure resources in the version of the FHIR standard
-   */
-  final val FHIR_RESOURCE: String = "Resource"
-  final val FHIR_CONFORMANCE: String = "CapabilityStatement"
-  final val FHIR_STRUCTURE_DEFINITION: String = "StructureDefinition"
-  final val FHIR_SEARCH_PARAMETER: String = "SearchParameter"
-  final val FHIR_COMPARTMENT_DEFINITION: String = "CompartmentDefinition"
-  final val FHIR_VALUE_SET: String = "ValueSet"
-  final val FHIR_CODE_SYSTEM: String = "CodeSystem"
-  final val FHIR_AUDIT_EVENT: String = "AuditEvent"
-  final val FHIR_OPERATION_DEFINITION: String = "OperationDefinition"
-  final val FHIR_DOMAIN_RESOURCE = "DomainResource"
-  final val FHIR_TYPES_META = "Meta"
+  //Name of the files that includes the Bundle for search parameter definitions in base FHIR specification zip file
+  protected val SEARCH_PARAMETERS_BUNDLE_FILE_NAME = s"search-parameters$FOUNDATION_RESOURCES_FILE_SUFFIX"
+  //Name of the file that includes the Bundle for Structure Definitions for Resources in base FHIR specification
+  protected val PROFILES_RESOURCES_BUNDLE_FILE_NAME = s"profiles-resources$FOUNDATION_RESOURCES_FILE_SUFFIX"
+  //Name of the file that includes the Bundle for Structure Definitions for Types in base FHIR specification
+  protected val PROFILES_TYPES_BUNDLE_FILE_NAME = s"profiles-types$FOUNDATION_RESOURCES_FILE_SUFFIX"
+  //Name of the file that includes the Bundle for Structure Definitions for other FHIR profiles given in base
+  protected val PROFILES_OTHERS_BUNDLE_FILE_NAME = s"profiles-others$FOUNDATION_RESOURCES_FILE_SUFFIX"
+  //Name of the file that includes the Bundle for Structure Definitions for extensions given in base
+  protected val PROFILES_EXTENSIONS_BUNDLE_FILE_NAME = s"extension-definitions$FOUNDATION_RESOURCES_FILE_SUFFIX"
+  //Name of the files that includes the Bundle for ValueSets and CodeSystems in base FHIR specification
+  protected val VALUESET_AND_CODESYSTEM_BUNDLE_FILES: Seq[String] = Seq(s"valuesets$FOUNDATION_RESOURCES_FILE_SUFFIX", s"v3-codesystems$FOUNDATION_RESOURCES_FILE_SUFFIX", s"v2-tables$FOUNDATION_RESOURCES_FILE_SUFFIX")
+
 
   /**
-   * List of FHIR Result parameters this FHIR version support
-   */
-  val FHIR_RESULT_PARAMETERS:Seq[String] = Seq(
-    FHIR_SEARCH_RESULT_PARAMETERS.SORT,
-    FHIR_SEARCH_RESULT_PARAMETERS.COUNT,
-    FHIR_SEARCH_RESULT_PARAMETERS.SUMMARY,
-    FHIR_SEARCH_RESULT_PARAMETERS.ELEMENTS,
-    FHIR_SEARCH_RESULT_PARAMETERS.INCLUDE,
-    FHIR_SEARCH_RESULT_PARAMETERS.REVINCLUDE,
-    FHIR_SEARCH_RESULT_PARAMETERS.PAGE,
-    FHIR_SEARCH_RESULT_PARAMETERS.TOTAL,
-    FHIR_SEARCH_RESULT_PARAMETERS.CONTAINED,
-    FHIR_SEARCH_RESULT_PARAMETERS.CONTAINED_TYPE,
-    FHIR_SEARCH_RESULT_PARAMETERS.SINCE,
-    FHIR_SEARCH_RESULT_PARAMETERS.AT
-  )
-
-  /** List of FHIR Special parameters this FHIR version support */
-  var FHIR_SPECIAL_PARAMETERS:Seq[String] = Seq(
-    FHIR_SEARCH_SPECIAL_PARAMETERS.ID,
-    FHIR_SEARCH_SPECIAL_PARAMETERS.LIST,
-    FHIR_SEARCH_SPECIAL_PARAMETERS.QUERY,
-    FHIR_SEARCH_SPECIAL_PARAMETERS.FILTER,
-    FHIR_SEARCH_SPECIAL_PARAMETERS.HAS,
-    FHIR_SEARCH_SPECIAL_PARAMETERS.TEXT,
-    FHIR_SEARCH_SPECIAL_PARAMETERS.CONTENT
-  )
-
-  val FHIR_JSON_MEDIA_TYPE = FHIR_MEDIA_TYPES.FHIR_JSON_MEDIA_TYPE
-  val FHIR_XML_MEDIA_TYPE = FHIR_MEDIA_TYPES.FHIR_XML_MEDIA_TYPE
-
-  /** MediaType configurations for this FHIR version */
-  // List of Supported FHIR JSON Media Types
-  def FHIR_JSON_MEDIA_TYPES(fhirVersion:String):Seq[MediaType] = Seq(
-    MediaTypes.`application/json`,
-    FHIR_JSON_MEDIA_TYPE,
-    FHIR_JSON_MEDIA_TYPE.withParams(Map("fhirVersion" -> fhirVersion))
-  )
-  // List of Supported FHIR XML Media Types
-  def FHIR_XML_MEDIA_TYPES(fhirVersion:String):Seq[MediaType] = Seq(
-    MediaTypes.`application/xml`,
-    FHIR_XML_MEDIA_TYPE,
-    FHIR_XML_MEDIA_TYPE.withParams(Map("fhirVersion" -> fhirVersion))
-  )
-  // Patch media types supported by onFHIR
-  val FHIR_PATCH_MEDIA_TYPES:Seq[MediaType] = Seq(FHIR_MEDIA_TYPES.FHIR_JSON_PATCH_MEDIA_TYPE)
-  //Map from _format param value to actual MediaType
-  val FHIR_FORMAT_MIME_TYPE_MAP:Map[String, MediaType] = Map(
-    "html" -> MediaTypes.`text/html`,
-    "text/html" -> MediaTypes.`text/html`,
-    "application/json" -> MediaTypes.`application/json`,
-    "application/xml" -> MediaTypes.`application/xml`,
-    "application/fhir+json" -> FHIR_JSON_MEDIA_TYPE,
-    "application/fhir+xml" -> FHIR_XML_MEDIA_TYPE,
-    "json" -> FHIR_JSON_MEDIA_TYPE,
-    "xml" -> FHIR_XML_MEDIA_TYPE,
-    "text/xml" -> FHIR_XML_MEDIA_TYPE
-  )
-  //Default media type used when no match
-  val FHIR_DEFAULT_MEDIA_TYPE:MediaType = FHIR_JSON_MEDIA_TYPE
-
-  //Code system to indicate a search result is summarized
-  val FHIR_SUMMARIZATION_INDICATOR_CODE_SYSTEM = "http://terminology.hl7.org/CodeSystem/v3-ObservationValue"
-
-  /**
-   * Parse the base FHIR standard bundle and provide a configuration for the server
-   * @param fromConfig  If false, initialization is performed from the FHIR foundation resources stored in database
+   * Parse the base FHIR standard bundle and given profiles, valuesets and codesystems,
+   * and provide a configuration for the server
+   * @param configReader  Reader for configuration files
    * @return
    */
-  def initializePlatform(fromConfig:Boolean = false, fhirOperationImplms:Map[String, String]):FhirConfig
-
-  /**
-   * Setup the platform (database initialization) for the first time (or updated the configurations)
-   * @param fhirConfig
-   */
-  def setupPlatform(fhirConfig: FhirConfig):Unit
-
-  /**
-   * Get a resource validator for this FHIR version
-   * @param fhirConfig
-   * @return
-   */
-  def getResourceValidator(fhirConfig: FhirConfig):IFhirResourceValidator
-
-  /**
-   * Get a terminology validator for this FHIR version
-   * @param fhirConfig
-   * @return
-   */
-  def getTerminologyValidator(fhirConfig: FhirConfig):IFhirTerminologyValidator
-
-  /**
-   * Return a class that implements the interface to create AuditEvents conformant to the given base specification
-   * @return
-   */
-  def getAuditCreator():IFhirAuditCreator
+  def initializePlatform(configReader: IFhirConfigReader): BaseFhirConfig
 
   /**
    * Return the parser for foundation resources
-   * @param complexTypes    List of FHIR complex types defined in the standard
-   * @param primitiveTypes  List of FHIR primitive types defined in the standard
+   * @param complexTypes   List of FHIR complex types defined in the standard
+   * @param primitiveTypes List of FHIR primitive types defined in the standard
    * @return
    */
-  def getFoundationResourceParser(complexTypes:Set[String], primitiveTypes:Set[String]):IFhirFoundationResourceParser
+  def getFoundationResourceParser(complexTypes: Set[String], primitiveTypes: Set[String]): IFhirFoundationResourceParser
 
   /**
    * Get Resource type or Data type from a StructureDefinition resource if it is not abstract
-   * @param structureDefinition
+   * @param structureDefinition FHIR StructureDefinition resource
    * @return
    */
-  def getTypeFromStructureDefinition(structureDefinition:Resource):Option[String]
+  def getTypeFromStructureDefinition(structureDefinition: Resource): Option[String]
 }

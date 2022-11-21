@@ -28,9 +28,9 @@ import scala.language.postfixOps
   * ii) and store the infrastructure resources into the database
   * The class is also used to retrieve infrastructure resources from database during initialization (for other runs)
   */
-object DBInitializer {
+class MongoDBInitializer(resourceManager: ResourceManager) extends BaseDBInitializer(OnfhirConfig.mongoShardingEnabled){
   implicit val executionContext = Onfhir.actorSystem.dispatcher
-  private val logger:Logger = LoggerFactory.getLogger(DBInitializer.getClass)
+  private val logger:Logger = LoggerFactory.getLogger(this.getClass)
 
   val MONGO_SINGLE_FIELD_INDEX="single"
   val MONGO_COMPOUND_FIELD_INDEX="compound"
@@ -40,63 +40,19 @@ object DBInitializer {
     * Basic preparation for database e.g. sharding
     * @return
     */
-  def prepareDatabase():Unit = {
-    logger.info("Preparing database ...")
-    if(OnfhirConfig.mongoShardingEnabled) {
-      logger.info("Enable sharding for database...")
-      Await.result(MongoDB.enableSharding(), 60 seconds)
-    }
+  override def prepareSharding():Future[Unit] = {
+      MongoDB
+        .enableSharding()
+        .map(_ => ())
   }
 
   /**
-    * Create the Mongo collections for all supported FHIR resource
-    * Note: If already a collection exist, nothing is changed for that collection
-    * @param supportedResources  list of supported resource names (e.g. Observation, Condition, etc) -> Versioning mechanism
-    * @return
-    */
-  def createCollections(supportedResources:Map[String, String]):Unit = {
-    logger.info("Creating MongoDB collections for supported resources ...")
-    try {
-      // Get the list of collections for FHIR resource types (for storing current versions) present at the database
-      val collectionList = Await.result(MongoDB.listCollections(), 60 seconds)
-
-      // For each resource in Supported Resources not in Mongo yet
-      supportedResources.keySet.diff(collectionList.toSet)
-        .foreach(eachResource =>
-          Await.result(createCollection(eachResource), 60 seconds)
-        )
-    }
-    catch {
-      case e:Exception =>  logger.error("Failure in creating collections for supported resources: "+ e.getMessage)
-        throw new InitializationException(e.getMessage)
-    }
-
-    try {
-      // Get the list of collections for FHIR resource types (for storing current versions) present at the database
-      val historyCollectionList = Await.result(MongoDB.listCollections(history = true), 60 seconds)
-
-      // For each resource in Supported Resources not in Mongo yet
-      supportedResources
-         .filterNot(_._2 == FHIR_VERSIONING_OPTIONS.NO_VERSION) //Only create history collection if we support versioning for resource type
-         .keySet
-         .diff(historyCollectionList.toSet) //Only create if the collection is not created yet
-         .foreach(eachResource =>
-           Await.result(createHistoryCollection(eachResource), 60 seconds)
-         )
-
-    } catch {
-      case e:Exception =>  logger.error("Failure in creating history collections for supported resources: "+ e.getMessage)
-        throw new InitializationException(e.getMessage)
-    }
-
-  }
-
-  /**
-    * Create a current collection for resource type
-    * @param rtype Resource type
-    * @return
-    */
-  private def createCollection(rtype:String):Future[String] = {
+   * Create a MongoDB collection for maintaining latest version of resources for a specific FHIR Resource type
+   * Note: If already a collection exist, nothing is changed for that collection
+   *
+   * @param rtype FHIR resource type
+   */
+  override def createCollection(rtype:String):Future[String] = {
     //Create the collection and basic indexes
     MongoDB.getDatabase.createCollection(rtype).toFuture()
       .flatMap { unit =>
@@ -127,7 +83,7 @@ object DBInitializer {
     * @param rtype
     * @return
     */
-  private def createHistoryCollection(rtype:String) = {
+  override def createHistoryCollection(rtype:String):Future[String] = {
     //Create the collection and basic indexes
     MongoDB.getDatabase.createCollection(rtype+"_history").toFuture()
       .flatMap { unit =>
@@ -162,7 +118,7 @@ object DBInitializer {
     * @param resourceType FHIR Resource type (e.g. Condition, Observation)
     * @param resources The content of the infrastructure resources
     */
-  def storeInfrastructureResources(resourceType: String, resources: Seq[Resource]):Unit = {
+  override def storeInfrastructureResources(resourceType: String, resources: Seq[Resource]):Unit = {
     if (resources.nonEmpty) {
       logger.debug(s"Storing $resourceType resources ...")
 
@@ -194,7 +150,7 @@ object DBInitializer {
         }
 
       val job =
-        ResourceManager
+        resourceManager
           .getResourcesWithIds(resourceType, resourceIdsAndVersions.keySet)
           .map(resources => {
             val idsAndVersionsExist:Map[String, (Long, Resource)] = resources.map(r => FHIRUtil.extractIdFromResource(r) -> (FHIRUtil.extractVersionFromResource(r) -> r)).toMap
@@ -202,7 +158,7 @@ object DBInitializer {
             val resourcesDoesNotExist = resourceIdsAndVersions.filterNot(r => idsAndVersionsExist.keySet.contains(r._1)).map(r => r._1 -> r._2._2)
 
             //Create the non existant infrastructure resources
-            val createFuture = if(resourcesDoesNotExist.nonEmpty) ResourceManager.createResources(resourceType, resourcesDoesNotExist).map(_ => ()) else Future(())
+            val createFuture = if(resourcesDoesNotExist.nonEmpty) resourceManager.createResources(resourceType, resourcesDoesNotExist).map(_ => ()) else Future(())
 
             // Wait for the creation of the resources
             Await.result(createFuture, 10 seconds)
@@ -223,9 +179,9 @@ object DBInitializer {
                 if(r._2._1 == idsAndVersionsExist.apply(r._1)._1) {
                   var ur = FHIRUtil.populateResourceWithMeta(r._2._2, Some(r._1), r._2._1, Instant.now)
                   ur = FHIRUtil.populateResourceWithExtraFields(ur, FHIR_METHOD_NAMES.METHOD_PUT, StatusCodes.OK)
-                  ResourceManager.replaceResource(resourceType, r._1, ur)
+                  resourceManager.replaceResource(resourceType, r._1, ur)
                 } else { //Otherwise update, so we can keep the versions
-                  ResourceManager.updateResource(resourceType, r._1, r._2._2, idsAndVersionsExist.apply(r._1)._1 -> idsAndVersionsExist.apply(r._1)._2)
+                  resourceManager.updateResource(resourceType, r._1, r._2._2, idsAndVersionsExist.apply(r._1)._1 -> idsAndVersionsExist.apply(r._1)._2)
                 }
               })
               val chunkJob = Future.sequence(updatesFutureChunk)
@@ -250,62 +206,12 @@ object DBInitializer {
 
 
   /**
-    * Create Database indexes for all collections by going over the Resource Query parameter and common query parameter configurations
-    * @param supportedResources     All supported resources and versioning supported for resource type
-    * @param allParameters          All search parameters defined for resource types
-    * @param commonQueryParameters  Common query parameters
-    * @param indexConfigurations    Configurations for database indexing
-    */
-  def createIndexes(supportedResources:Map[String, String], allParameters:Map[String, Map[String, SearchParameterConf]], commonQueryParameters:Map[String, SearchParameterConf], indexConfigurations:Map[String, ResourceIndexConfiguration]):Unit = {
-    logger.info("Creating database indexes from configurations ...")
-
-    allParameters.foreach(resourceQueryParameters => {
-      val resourceType = resourceQueryParameters._1
-      logger.info(s"Creating indexes for $resourceType ...")
-
-      //All parameters supported for the resource
-      val searchParameterConfigurations: Seq[SearchParameterConf] = resourceQueryParameters._2.values.toSeq ++
-        commonQueryParameters.values //Add the common parameters
-
-      //Get the search parameters to be indexed from the configurations and filter the parameters to be indexed
-      var parameterNamesToBeIndexed = indexConfigurations.get(resourceType).map(_.indexes).getOrElse(Set.empty)
-      //If sharding is not enabled also add the shard keys to indexes
-      if(!OnfhirConfig.mongoShardingEnabled){
-        parameterNamesToBeIndexed =
-          parameterNamesToBeIndexed ++
-            indexConfigurations
-              .get(resourceType)
-              .flatMap(_.shardKey)
-              .map(_.filterNot(_.startsWith("_")))
-              .getOrElse(Set.empty)
-      }
-      val job = createIndexForResourceType(resourceType, searchParameterConfigurations, parameterNamesToBeIndexed)
-      Await.result(job, 300 seconds)
-
-      //Enable sharding for resource type
-      if(OnfhirConfig.mongoShardingEnabled && indexConfigurations.contains(resourceType)){
-        logger.info(s"Handling sharding for $resourceType ...")
-        val job = enableSharding(resourceType, indexConfigurations.apply(resourceType), searchParameterConfigurations)
-        Await.result(job, 300 seconds)
-        //Enable sharding for history collection on id field if we shard this collection and if we support versioning
-        if(indexConfigurations(resourceType).shardKey.getOrElse(Nil).nonEmpty && supportedResources.apply(resourceType) != FHIR_VERSIONING_OPTIONS.NO_VERSION){
-          val job = enableShardingForHistory(resourceType)
-          Await.result(job, 300 seconds)
-        }
-      }
-    })
-
-    if(OnfhirConfig.mongoShardingEnabled)
-      Await.result(MongoDB.refreshDBConfig(), 60 seconds)
-  }
-
-  /**
     * Create configured indexes for a resource type
     * @param resourceType                     Resource type
     * @param searchParameterConfigurations    All supported search parameters for resource type
     * @param parameterNamesToBeIndexed        Search parameters to create index for
     */
-  private def createIndexForResourceType(resourceType:String, searchParameterConfigurations:Seq[SearchParameterConf], parameterNamesToBeIndexed:Set[String]):Future[Unit] = {
+  override def createIndexForResourceType(resourceType:String, searchParameterConfigurations:Seq[SearchParameterConf], parameterNamesToBeIndexed:Set[String]):Future[Unit] = {
     // find corresponding search parameters to be indexed over
     val parametersToBeIndexed = searchParameterConfigurations.filter(sp => parameterNamesToBeIndexed.contains(sp.pname))
     //Create Indexes for all search parameters defined for the Resource (INDEX_TYPE, ELEMENT PATH, BSON FILTER FOR PATH, IsSparseIndex)
@@ -378,7 +284,7 @@ object DBInitializer {
     * @param searchParameterConfigurations  Search parameters supported
     * @return
     */
-  def enableSharding(resourceType:String, indexConfiguration:ResourceIndexConfiguration, searchParameterConfigurations:Seq[SearchParameterConf]):Future[Unit] = {
+  override def enableSharding(resourceType:String, indexConfiguration:ResourceIndexConfiguration, searchParameterConfigurations:Seq[SearchParameterConf]):Future[Unit] = {
     //TODO Currently we are supporting single shard keys, so we take the first one
     indexConfiguration.shardKey
       .flatMap(_.headOption)
@@ -419,7 +325,7 @@ object DBInitializer {
     * Enable sharding on resource type for history instances (default on id field)
     * @param resourceType Resource type
     */
-  def enableShardingForHistory(resourceType:String) = {
+  override def enableShardingForHistory(resourceType:String) = {
     MongoDB.shardCollection(resourceType+"_history", FHIR_COMMON_FIELDS.ID).map(d =>
       logger.info(s"Sharding enabled for history collection $resourceType on path ${FHIR_COMMON_FIELDS.ID} ...")
     ).recoverWith {
@@ -429,6 +335,12 @@ object DBInitializer {
         throw new InitializationException(s"Problem in sharding for $resourceType history collection !!!")
     }
   }
+
+  /**
+   *
+   *  @return
+   */
+  def refreshDbConfig():Future[Unit] = MongoDB.refreshDBConfig()
 
   /**
     * Create index for complex search paramter types (all other than string and uri)
@@ -515,34 +427,9 @@ object DBInitializer {
 */
 
   /**
-    * Read the Conformance statement from DB and return
-    * @param resourceType Name of the conformance statement (e.g. Conformance in DSTU2)
-    * @return
-    */
-  def getConformance(resourceType:String):Resource = {
-    logger.info(s"Reading $resourceType of server from database ...")
-    val job = ResourceManager.getResource(resourceType, SERVER_CONFORMANCE_STATEMENT_ID, None, excludeExtraFields = true) map {
-      //No conformance statement
-      case None =>
-        throw new InitializationException(s"$resourceType not exist in database, please check if you correctly setup the platform !!!")
-      case Some(conformance) =>
-        conformance
-    }
-    Await.result(job, 1 seconds)
-  }
-
-  /**
-    * Read the other infrastructure resources from DB
-    * @param resourceType Resource type
-    * @return
-    */
-  def getInrastructureResources(resourceType:String):Seq[Resource] = {
-    logger.info(s"Reading $resourceType definitions from database ...")
-    val job =
-      ResourceManager
-        .queryResources(resourceType, List.empty, excludeExtraFields = true)
-        .map(_._2)
-    Await.result(job, 5 seconds)
-  }
-
+   * List existing collections for persisting resource types
+   *
+   * @return
+   */
+  override def listExistingCollections(history: Boolean): Future[Seq[String]] = MongoDB.listCollections(history)
 }

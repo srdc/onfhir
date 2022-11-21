@@ -2,12 +2,14 @@ package io.onfhir.authz
 
 
 import io.onfhir.api.FHIR_INTERACTIONS
-import io.onfhir.config.OnfhirConfig
+import io.onfhir.api.parsers.FHIRSearchParameterValueParser
+import io.onfhir.config.{FhirConfigurationManager, OnfhirConfig}
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
 /**
   * Created by tuncay on 2/27/2017.
   */
 class SmartAuthorizer extends IAuthorizer {
+  val fhirSearchParameterValueParser = new FHIRSearchParameterValueParser(FhirConfigurationManager.fhirConfig)
   final val PERMISSION_TYPE_PATIENT = "patient"
   final val PERMISSION_TYPE_USER = "user"
   final val PERMISSION_TYPE_CONFIDENTIALITY = "conf"
@@ -81,7 +83,7 @@ class SmartAuthorizer extends IAuthorizer {
             else if(resourceRestrictions.forall(_._2 == "*"))
               AuthzResult.success()
             else
-              AuthzResult.filtering(resourceType.get, resourceRestrictions.filterNot(_._2 == "*"))
+              AuthzResult.filtering(resourceType.get, resourceRestrictions.filterNot(_._2 == "*"), fhirSearchParameterValueParser)
         }
       }
     }

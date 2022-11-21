@@ -4,11 +4,11 @@ import akka.http.scaladsl.model.headers.`If-Match`
 import akka.http.scaladsl.model.{StatusCodes, Uri}
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
-import io.onfhir.api.parsers.FHIRSearchParameterValueParser
+
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
-import io.onfhir.config.FhirConfigurationManager.fhirValidator
+
 import io.onfhir.db.{ResourceManager, TransactionSession}
 import io.onfhir.exception.{BadRequestException, PreconditionFailedException}
 
@@ -26,7 +26,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
        if(fhirRequest.resourceId.isDefined)
         validateUpdateInteraction(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.resourceId.get, fhirRequest.ifMatch)
        else {
-         fhirRequest.addParsedQueryParams(FHIRSearchParameterValueParser.parseSearchParameters(fhirRequest.resourceType.get, fhirRequest.queryParams, None))
+         fhirRequest.addParsedQueryParams(fhirConfigurationManager.fhirSearchParameterValueParser.parseSearchParameters(fhirRequest.resourceType.get, fhirRequest.queryParams, None))
          validateConditionalUpdateInteraction(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.getParsedQueryParams(), fhirRequest.prefer)
        }
 
@@ -66,7 +66,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
     //1.4) Check if only versioned update is supported, then ifMatch should exist
     FHIRApiValidator.validateVersionedUpdate(_type, ifmatch)
     //1.5) Validate the conformance of resource
-    fhirValidator.validateResource(resource, _type).map(_ => ())
+    fhirConfigurationManager.fhirValidator.validateResource(resource, _type).map(_ => ())
   }
 
 
@@ -85,7 +85,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
     //1.3) Check the resource type consistency
     FHIRApiValidator.validateResourceType(resource, _type)
     //1.4) Validate the conformance of resource
-    fhirValidator.validateResource(resource, _type).map(_ => ())
+    fhirConfigurationManager.fhirValidator.validateResource(resource, _type).map(_ => ())
   }
 
   /**
@@ -107,7 +107,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
     logger.debug(s"Requesting conditional 'update' for ${_type}...")
 
     //1) Search with given condition update parameters (we need only id and other extra elements
-    ResourceManager.queryResources(_type, searchParameters, count=1).flatMap {
+    fhirConfigurationManager.resourceManager.queryResources(_type, searchParameters, count=1).flatMap {
       //If there is no match
       case (0, _) =>
         //First check if there is a supplied resource id
@@ -118,7 +118,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
           //Case: No matches, id provided
           case Some(rid) =>
             //we should check if this resource is deleted already or not
-            ResourceManager.getResource(_type, rid).flatMap {
+            fhirConfigurationManager.resourceManager.getResource(_type, rid).flatMap {
               //If there is no such resource, just create the resource
               case None =>
                 performUpdate(resource, _type, Some(rid), prefer, testUpdate)
@@ -189,7 +189,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
     logger.debug(s"requesting 'update' for ${_type} with ${_id}...")
 
     //1) check if resource already exists
-    ResourceManager.getResource(_type, _id) flatMap {
+    fhirConfigurationManager.resourceManager.getResource(_type, _id) flatMap {
       case None =>
 
         //1.a) Check if user requested a version aware update
@@ -224,7 +224,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
         case None =>
           FHIRApiValidator.validateUpdateCreate(rtype)
           logger.debug("creating a new document in database as it does not exist")
-          ResourceManager.createResource(rtype, resourceIn, rid, withUpdate = true)(transactionSession).map {
+          fhirConfigurationManager.resourceManager.createResource(rtype, resourceIn, rid, withUpdate = true)(transactionSession).map {
             case (newId, newVersion, lastModified, createdResource) =>
               FHIRResponse(
                 StatusCodes.Created ,
@@ -240,7 +240,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
             FHIRApiValidator.validateUpdateCreate(rtype)
           logger.debug("updating (creating a new version) document in database as it already exists")
           //Update the resource
-          ResourceManager.updateResource(rtype, rid.get, resourceIn, ov, wasDeleted)(transactionSession).map {
+          fhirConfigurationManager.resourceManager.updateResource(rtype, rid.get, resourceIn, ov, wasDeleted)(transactionSession).map {
             case (newVersion, lastModified, updatedResource) =>
               FHIRResponse(
                 if(ov._1 > 0 && !wasDeleted) StatusCodes.OK else StatusCodes.Created,

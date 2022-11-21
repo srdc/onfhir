@@ -3,7 +3,6 @@ package io.onfhir.api.service
 import akka.http.scaladsl.model.StatusCodes
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
-import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
@@ -22,7 +21,7 @@ class FHIRHistoryService (transactionSession: Option[TransactionSession] = None)
   override def validateInteraction(fhirRequest: FHIRRequest): Future[Unit] = {
     Future.apply {
       validateHistoryInteraction(fhirRequest.resourceType, fhirRequest.resourceId)
-      fhirRequest.addParsedQueryParams(FHIRSearchParameterValueParser.parseSearchParameters(fhirRequest.resourceType.get, fhirRequest.queryParams, None))
+      fhirRequest.addParsedQueryParams(fhirConfigurationManager.fhirSearchParameterValueParser.parseSearchParameters(fhirRequest.resourceType.get, fhirRequest.queryParams, None))
     }
   }
 
@@ -66,12 +65,12 @@ class FHIRHistoryService (transactionSession: Option[TransactionSession] = None)
     */
   private def resourceHistory(_type:String, _id:Option[String], searchParameters:List[Parameter]):Future[FHIRResponse] = {
     logger.debug(s"Requesting 'history' for ${_type} with ${_id}")
-    ResourceManager.getResourceHistory(_type, _id, searchParameters)(transactionSession).flatMap {
+    fhirConfigurationManager.resourceManager.getResourceHistory(_type, _id, searchParameters)(transactionSession).flatMap {
       case (0, emptyResources) =>
         //If id is given
         if(_id.isDefined)
           //Check if the resource really exist
-          ResourceManager.getResource(_type, _id.get, None, includingOrExcludingFields = Some(true -> Set(FHIR_COMMON_FIELDS.ID))).map {
+          fhirConfigurationManager.resourceManager.getResource(_type, _id.get, None, includingOrExcludingFields = Some(true -> Set(FHIR_COMMON_FIELDS.ID))).map {
             //If not throw exception
             case None =>
               logger.debug(s"No such resource with type(${_type}) and id(${_id}), returning 404 NotFound")
@@ -96,9 +95,9 @@ class FHIRHistoryService (transactionSession: Option[TransactionSession] = None)
       case (total, foundResources) =>
 
         //2.1) handle Bundle links
-        val bundleLinks = FHIRUtil.generateBundleLinks(Seq(_type), _id, total, foundResources.length, searchParameters, isHistory = true)
+        val bundleLinks = fhirConfigurationManager.fhirServerUtil.generateBundleLinks(Seq(_type), _id, total, foundResources.length, searchParameters, isHistory = true)
         //2.2) handle bundle entries
-        val bundleEntries = foundResources.map(r => FHIRUtil.createBundleEntry(r, FHIR_BUNDLE_TYPES.HISTORY, isSummarized = false))
+        val bundleEntries = foundResources.map(r => fhirConfigurationManager.fhirServerUtil.createBundleEntry(r, FHIR_BUNDLE_TYPES.HISTORY, isSummarized = false))
         val bundle = FHIRUtil.createBundle(FHIR_BUNDLE_TYPES.HISTORY, bundleLinks, bundleEntries, total, None)
 
         logger.debug(s"returning history of $total resources...")

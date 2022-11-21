@@ -8,6 +8,7 @@ import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.service.FHIRSearchService
 import io.onfhir.authz.{AuthContext, AuthzContext, AuthzManager}
+import io.onfhir.config.FhirConfigurationManager.authzManager
 import io.onfhir.config.OnfhirConfig
 
 /**
@@ -38,7 +39,7 @@ trait FHIRCompartmentSearchEndpoint {
               //Set the Query params
               fhirRequest.queryParams = searchParameters
               //Check authorization
-              AuthzManager.authorize(authContext._2, fhirRequest) {
+              authzManager.authorize(authContext._2, fhirRequest) {
                 complete {
                   new FHIRSearchService().executeInteraction(fhirRequest)
                 }
@@ -58,7 +59,7 @@ trait FHIRCompartmentSearchEndpoint {
               //Set the Query params
               fhirRequest.queryParams = searchParameters
               //Check authorization
-              AuthzManager.authorize(authContext._2, fhirRequest) {
+              authzManager.authorize(authContext._2, fhirRequest) {
                 complete {
                   new FHIRSearchService().executeInteraction(fhirRequest)
                 }

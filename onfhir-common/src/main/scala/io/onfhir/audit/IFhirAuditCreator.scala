@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.StatusCode
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.{FHIR_INTERACTIONS, Resource}
 import io.onfhir.authz.{AuthContext, AuthzContext}
-import io.onfhir.config.{FhirConfigurationManager, OnfhirConfig}
+import io.onfhir.config.OnfhirConfig
 import org.json4s.JObject
 import org.json4s.JsonDSL._
 /**

@@ -1,7 +1,6 @@
 package io.onfhir.audit
 
 import java.util.concurrent.{ConcurrentLinkedQueue, TimeUnit}
-
 import akka.actor.{Actor, ActorSystem, Cancellable, Props}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model._
@@ -13,10 +12,7 @@ import io.onfhir.api.model.{FHIRRequest, FHIRResponse}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.audit.AuditManager.{AuditEventLog, FlushAudits}
 import io.onfhir.authz._
-import io.onfhir.config.OnfhirConfig
-import io.onfhir.config.FhirConfigurationManager.fhirConfig
-import io.onfhir.config.FhirConfigurationManager.fhirAuditCreator
-import io.onfhir.db.ResourceManager
+import io.onfhir.config.{IFhirConfigurationManager, OnfhirConfig}
 import io.onfhir.util.JsonFormatter._
 import org.json4s.JsonDSL._
 import org.slf4j.{Logger, LoggerFactory}
@@ -28,7 +24,7 @@ import scala.util.{Failure, Success}
 /**
   * Created by tuncay on 5/6/2017.
   */
-class AuditManager(customAuditHandler:Option[ICustomAuditHandler]) extends Actor {
+class AuditManager(fhirConfigurationManager: IFhirConfigurationManager, customAuditHandler:Option[ICustomAuditHandler]) extends Actor {
   //Actor system
   implicit val actorSystem:ActorSystem = Onfhir.actorSystem
   implicit val executionContext = context.dispatcher // actorSystem.dispatchers.lookup("akka.actor.onfhir-blocking-dispatcher")
@@ -189,16 +185,16 @@ class AuditManager(customAuditHandler:Option[ICustomAuditHandler]) extends Actor
                 val auditRecords =
                   fhirRequest.interaction match {
                     case FHIR_INTERACTIONS.BATCH | FHIR_INTERACTIONS.TRANSACTION =>
-                      fhirAuditCreator.createAuditResourcesForBatchTransaction(fhirRequest, authContext, authzContext, httpResponse.status)
+                      fhirConfigurationManager.fhirAuditCreator.createAuditResourcesForBatchTransaction(fhirRequest, authContext, authzContext, httpResponse.status)
                     case _ if fhirRequest.interaction != FHIR_INTERACTIONS.CREATE || !fhirRequest.resourceType.contains("AuditEvent") =>
-                      Seq(fhirAuditCreator.createAuditResource(fhirRequest, authContext, authzContext, httpResponse.status))
+                      Seq(fhirConfigurationManager.fhirAuditCreator.createAuditResource(fhirRequest, authContext, authzContext, httpResponse.status))
                     case  _ =>
                       Nil
                   }
                 //Saving the audits to local FHIR repo
                 if(OnfhirConfig.fhirAuditingRepository == "local")
                   auditRecords.map(auditRecord => {
-                    ResourceManager.createResource("AuditEvent", auditRecord)
+                    fhirConfigurationManager.resourceManager.createResource("AuditEvent", auditRecord)
                     //new FHIRCreateService().performCreate(auditRecord, fhirConfig.FHIR_AUDIT_EVENT)
                   })
                 else //Sending the audits to a remote FHIR repo
@@ -296,6 +292,6 @@ object AuditManager {
     * Props for Actor
     * @return
     */
-  def props(customAuditHandler:Option[ICustomAuditHandler] = None) = Props(new AuditManager(customAuditHandler))
+  def props(fhirConfigurationManager: IFhirConfigurationManager, customAuditHandler:Option[ICustomAuditHandler] = None) = Props(new AuditManager(fhirConfigurationManager, customAuditHandler))
 
 }

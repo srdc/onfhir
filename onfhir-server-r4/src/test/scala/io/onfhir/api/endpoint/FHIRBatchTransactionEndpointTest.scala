@@ -152,7 +152,7 @@ class FHIRBatchTransactionEndpointTest extends OnFhirTest with FHIREndpoint {
       }
     }
   }
-
+/*
   "FHIR Transaction Endpoint" should {
     "handle transaction with inter dependencies" in {
       Post("/" + OnfhirConfig.baseUri , HttpEntity(transaction1)) ~> fhirRoute ~> check {
@@ -196,6 +196,6 @@ class FHIRBatchTransactionEndpointTest extends OnFhirTest with FHIREndpoint {
         FhirPathEvaluator().satisfies("entry.resource.empty()", response)
       }
     }
-  }
+  }*/
 
 }

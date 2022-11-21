@@ -3,208 +3,20 @@ package io.onfhir.api.parsers
 import akka.http.scaladsl.server.{Directive1, Directives}
 import io.onfhir.api._
 import io.onfhir.exception._
-import io.onfhir.config.FhirConfigurationManager.fhirConfig
 import io.onfhir.api.model.Parameter
-import io.onfhir.config.OnfhirConfig
+import io.onfhir.api.parsers.FHIRSearchParameterValueParser.{IncludeExprParser, NameParser, SortExprParser, StringParser}
+import io.onfhir.config.{FhirServerConfig, OnfhirConfig}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.util.Try
 import scala.util.parsing.combinator.RegexParsers
 
 /**
- * Parsers for parsing search parameter values given in queries
+ * Parsers for parsing search parameter statements given in FHIR search
+ * @param fhirConfig  FHIR server configuration
  */
-object FHIRSearchParameterValueParser {
+class FHIRSearchParameterValueParser(fhirConfig: FhirServerConfig) {
   private val logger: Logger = LoggerFactory.getLogger("FHIRSearchParameterParser")
-
-  /* Core Parser Definitions */
-  private trait Parsers extends RegexParsers{
-    /* Core Fhir Value Definitions */
-    def endOfString:Parser[String] = """($|\$)""".r ^^ (eos => if (eos == "\\$") "$" else "")
-    def delimiter:Parser[String] = """\|""".r ^^ {_.toString}
-    def string:Parser[String] = """[\p{N}|\p{L}_\-\.|\s| ]+""".r ^^ {_.toString}
-    //def integer:Parser[String] = """[0-9]+""".r ^^ {_.toString}
-    def integer:Parser[String] = """[0]|[-+]?[1-9][0-9]*""".r ^^ {_.toString}
-    def boolean:Parser[String] = """(true|false)""".r ^^ {_.toString}
-    //def decimal:Parser[String] = """[0-9]+\.[0-9]+""".r ^^ {_.toString}
-    def decimal:Parser[String] = """-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?""".r ^^ {_.toString}
-    def code:Parser[String] = """[^\s\|,]+([\s]+[^\s\|,]+)*""".r ^^ {_.toString}
-    def dateTime:Parser[String] = """-?[1-2]{1}[0|1|8|9][0-9]{2}(-(0[1-9]|1[0-2])(-(0[0-9]|[1-2][0-9]|3[0-1])(T([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?(\.[0-9]+)?(Z|(\+|-|\s)((0[0-9]|1[0-3]):[0-5][0-9]|14:00))?)?)?)?""".r ^^ {_.toString}
-    def uri:Parser[String] = """((?<=\()[A-Za-z][A-Za-z0-9\+\.\-]*:([A-Za-z0-9\.\-_~:/\?#\[\]@!\$&'\(\)\*\+,;=]|%[A-Fa-f0-9]{2})+(?=\)))|([A-Za-z][A-Za-z0-9\+\.\-]*:([A-Za-z0-9\.\-_~:/\?#\[\]@!\$&'\(\)\*\+,;=]|%[A-Fa-f0-9]{2})+)(\|[0-9]+(\.[0-9]+)*)?""".r ^^ {_.toString}
-    def identifier:Parser[String] = """[A-Za-z0-9\-\.]{1,64}""".r ^^ {_.toString}
-
-    def refVersionPart = """(\|[0-9]+(\.[0-9]+)*)?"""
-
-    /* Token Type Parser Definitions */
-    def tokenType:Parser[String] = uri.? ~ delimiter.? ~ code.? ~ delimiter.? ~ string.? ^^ {
-      case someUri ~ someDel ~ code ~ othDel ~ value => someUri.getOrElse("") + someDel.getOrElse("") + code.getOrElse("") + othDel.getOrElse("") + value.getOrElse("")
-    }
-
-    /* Base Prefix and Suffix Definitions */
-    def suffixes:Parser[String] = (""":""".r ~ string).? ^^ {case Some(colon ~ id) => colon + id case None => ""}
-    def prefixes:Parser[String] = """(eq|ne|gt|lt|ge|le|sa|eb|ap|<|>)?""".r ^^ {_.toString}
-
-    /* Return Types */
-    def dataType:Parser[String] = endOfString
-    def parseName:Parser[(String, String)] = string ~ suffixes ~ endOfString ^^ {case id ~ suf ~ eos => (id, suf)}
-    def parseValue:Parser[(String, String)] = prefixes ~ dataType ~ (""",""".r ~ dataType).* ~ endOfString ^^ {case pref ~ num ~ someNum ~ eos =>
-      (pref, num + someNum.mkString("").replaceAll("(~|\\(|\\))", ""))
-    }
-  }
-
-  /* Type Specific Parsers */
-  private object NameParser extends Parsers
-  private object NumberParser extends Parsers {
-    /* Parser for Number Type */
-    override def dataType:Parser[String] = decimal | integer | boolean
-
-    /* Suffix Definition for Number Type */
-    override def suffixes:Parser[String] = """:missing|$""".r
-
-    /* Number Parser Definition */
-    def parseNumberName:Parser[(String, String)] = parseName
-    def parseNumberValue:Parser[(String, String)] = parseValue
-  }
-  private object StringParser extends Parsers{
-    /* String Parser Definition */
-    override def dataType:Parser[String] = string
-
-    /* Prefixes and Suffixes for String Type */
-    override def suffixes:Parser[String] = """(:(missing|exact|contains|text))|$""".r ^^ {_.toString}
-    override def prefixes:Parser[String] = """""".r
-
-    def parseStringName:Parser[(String, String)] = parseName
-    def parseStringValue:Parser[(String, String)] = parseValue
-  }
-  private object DateParser extends Parsers{
-    /* Date Format Definitions */
-    override def dataType:Parser[String] = dateTime | boolean
-
-    /* Suffix definitions for Date Format */
-    override def suffixes:Parser[String] = """:missing|$""".r ^^ {_.toString}
-
-    def parseDateName:Parser[(String, String)]  = parseName
-    def parseDateValue:Parser[(String, String)]  = parseValue
-  }
-  // TODO :above, :below values stuck at parsers if the code parser is erased, check later
-  private object URIParser extends Parsers {
-    /* Uri Parser Definition */
-    override def dataType:Parser[String]  = uri | boolean | code
-
-    /* Prefixes and Suffixes for URI type */
-    override def suffixes:Parser[String]  =   """(:(missing|below|above|not))|$""".r ^^ {_.toString}
-    override def prefixes:Parser[String]  = """""".r
-
-    def parseUriName:Parser[(String, String)] = parseName
-    def parseUriValue:Parser[(String, String)] = parseValue
-  }
-  private object TokenParser extends Parsers  {
-
-    override def dataType:Parser[String] = tokenType | boolean
-
-    /* Suffix Definitions for Token */
-    override def suffixes:Parser[String] = """(:(missing|text|in|below|above|not-in|not|of-type|sw|nsw))|$""".r ^^ {_.toString}
-    override def prefixes:Parser[String] = """""".r
-
-    def parseTokenName:Parser[(String, String)]  = parseName
-    def parseTokenValue:Parser[(String, String)]  = parseValue
-  }
-  private object QuantityParser extends Parsers {
-    /* Quantity Type Parser Definition */
-    def numericType:Parser[String] = decimal | integer
-    def quantityType:Parser[String] = numericType ~ delimiter ~ uri.? ~ delimiter ~ code.? ^^ {
-      case num ~ del1 ~ uri ~ del2 ~ code => num + del1 + uri.getOrElse("") + del2 + code.getOrElse("")
-    }
-    override def dataType:Parser[String] = quantityType | numericType | boolean
-
-    /* Suffix Definition for Quantity*/
-    override def suffixes:Parser[String] = """:missing|$""".r
-
-    def parseQuantityName:Parser[(String, String)] = parseName
-    def parseQuantityValue:Parser[(String, String)] = parseValue
-  }
-  private object ReferenceParser extends Parsers {
-    /* Reference Data Type Definitions */
-    def history:Parser[String] = """/_history/""".r ~ string ^^ {case history ~ version => history+version }
-    def logicalId:Parser[String] = string ~ """/""".r ~ identifier ~ history.? ^^ {case typ ~ slash ~ id ~ history => typ + slash + id + history.getOrElse("")}
-    override def dataType:Parser[String] = tokenType | logicalId | uri | identifier | boolean
-
-    /* Prefix Definition for Quantity*/
-    override def prefixes:Parser[String] = """""".r
-    //override def suffixes:Parser[String] = """^((?!(:(not|text|in|not-in|exact|contains))).)*$|$""".r ^^ {_.toString}
-    // These modifiers or any FHIR resource type
-    override def suffixes:Parser[String] = """(:(type|identifier|below|above|missing|not|([A-Z][A-Za-z]+)))|$""".r ^^ {_.toString}
-
-    def parseReferenceName:Parser[(String, String)] = parseName
-    def parseReferenceValue:Parser[(String, String)] = parseValue
-  }
-  private object CompositeParser extends Parsers {
-    override def dataType:Parser[String] = """[^\$]+[\$][^\$]+$""".r^^ {_.toString}
-
-    override def prefixes:Parser[String] = """""".r
-    override def suffixes:Parser[String] = """""".r
-
-    def parseCompositeName:Parser[(String, String)] = parseName
-    def parseCompositeValue:Parser[(String, String)] = parseValue
-  }
-
-  /**
-    * Parser for _sort search parameter value
-    */
-  private object SortExprParser extends Parsers {
-    override def prefixes:Parser[String] = """[\-]?""".r
-    def parse:Parser[(String, String)]  = prefixes ~ string ~ endOfString  ^^ {case prefix ~ param ~ _ => (prefix, param)}
-  }
-
-  /**
-    * Parser for include/revinclude
-    */
-  private object IncludeExprParser extends Parsers {
-    override def suffixes:Parser[String] = """:iterate|$""".r
-    def parse:Parser[(String, String)]  = """_include|_revinclude""".r ~ suffixes ~ endOfString ^^ {case inc ~ suf ~ _ => (inc, suf) }
-  }
-
-  /**
-    * Parse the name part of a search paremeter to split it to param name and suffix
-    * @param nameExpr Name part of the search expression
-    * @param paramType Identified parameter type
-    * @return
-    */
-  private def parseSimpleName(nameExpr:String, paramType:String):(String, String) ={
-    paramType match {
-      case FHIR_PARAMETER_TYPES.NUMBER => NumberParser.parse(NumberParser.parseNumberName, nameExpr).get
-      case FHIR_PARAMETER_TYPES.DATE => DateParser.parse(DateParser.parseDateName, nameExpr).get
-      case FHIR_PARAMETER_TYPES.STRING => StringParser.parse(StringParser.parseStringName, nameExpr).get
-      case FHIR_PARAMETER_TYPES.URI => URIParser.parse(URIParser.parseUriName, nameExpr).get
-      case FHIR_PARAMETER_TYPES.TOKEN => TokenParser.parse(TokenParser.parseTokenName, nameExpr).get
-      case FHIR_PARAMETER_TYPES.QUANTITY => QuantityParser.parse(QuantityParser.parseQuantityName, nameExpr).get
-      case FHIR_PARAMETER_TYPES.REFERENCE => ReferenceParser.parse(ReferenceParser.parseReferenceName, nameExpr).get
-      case FHIR_PARAMETER_TYPES.COMPOSITE => CompositeParser.parse(CompositeParser.parseCompositeName, nameExpr).get
-    }
-  }
-
-  /**
-    * Parse the value part of the given search parameter expression and return prefix and expected value(s)
-    * @param valueExpr Value part of search expression
-    * @param paramType Identified parameter type
-    * @return
-    */
-  def parseSimpleValue(valueExpr:String, paramType:String):Seq[(String, String)] = {
-    valueExpr
-      .split(',')
-      .map(eachValue =>
-        paramType match {
-          case FHIR_PARAMETER_TYPES.NUMBER => NumberParser.parse(NumberParser.parseNumberValue, eachValue).get
-          case FHIR_PARAMETER_TYPES.DATE => DateParser.parse(DateParser.parseDateValue, eachValue).get
-          case FHIR_PARAMETER_TYPES.STRING => StringParser.parse(StringParser.parseStringValue, eachValue).get
-          case FHIR_PARAMETER_TYPES.URI => URIParser.parse(URIParser.parseUriValue, eachValue).get
-          case FHIR_PARAMETER_TYPES.TOKEN => TokenParser.parse(TokenParser.parseTokenValue, eachValue).get
-          case FHIR_PARAMETER_TYPES.QUANTITY => QuantityParser.parse(QuantityParser.parseQuantityValue, eachValue).get
-          case FHIR_PARAMETER_TYPES.REFERENCE => ReferenceParser.parse(ReferenceParser.parseReferenceValue, eachValue).get
-          case FHIR_PARAMETER_TYPES.COMPOSITE => CompositeParser.parse(CompositeParser.parseCompositeValue, eachValue).get
-        }
-      ).toIndexedSeq
-  }
 
   /***
     * Parse and validate a simple category search parameter expression
@@ -221,8 +33,8 @@ object FHIRSearchParameterValueParser {
     if(searchParamConf.isEmpty)
       throw new UnsupportedParameterException(s"Search parameter $paramName is not supported for resource type $rtype! Check conformance statement.")
     //Parse nameExpr and valueExpr
-    val (_, suffix) = parseSimpleName(nameExpr, searchParamConf.get.ptype)
-    val prefixAndValues = parseSimpleValue(valueExpr, searchParamConf.get.ptype)
+    val (_, suffix) = FHIRSearchParameterValueParser.parseSimpleName(nameExpr, searchParamConf.get.ptype)
+    val prefixAndValues = FHIRSearchParameterValueParser.parseSimpleValue(valueExpr, searchParamConf.get.ptype)
     //Return the parameter
     Parameter(FHIR_PARAMETER_CATEGORIES.NORMAL, searchParamConf.get.ptype, paramName, prefixAndValues, suffix)
   }
@@ -242,11 +54,11 @@ object FHIRSearchParameterValueParser {
         if(valueExpr.startsWith("$current-"))
           Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, "", name, Nil, valueExpr)
         else //Otherwise it should be direct identifier
-          Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, "", name, parseSimpleValue(valueExpr, FHIR_PARAMETER_TYPES.TOKEN))
+          Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, "", name, FHIRSearchParameterValueParser.parseSimpleValue(valueExpr, FHIR_PARAMETER_TYPES.TOKEN))
       // _query (named queries)
       case FHIR_SEARCH_SPECIAL_PARAMETERS.QUERY => Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, "", name, Seq("" -> valueExpr))
       //ID param
-      case FHIR_SEARCH_SPECIAL_PARAMETERS.ID => Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, FHIR_PARAMETER_TYPES.TOKEN, name, parseSimpleValue(valueExpr, FHIR_PARAMETER_TYPES.TOKEN))
+      case FHIR_SEARCH_SPECIAL_PARAMETERS.ID => Parameter(FHIR_PARAMETER_CATEGORIES.SPECIAL, FHIR_PARAMETER_TYPES.TOKEN, name, FHIRSearchParameterValueParser.parseSimpleValue(valueExpr, FHIR_PARAMETER_TYPES.TOKEN))
       // _filter
       case FHIR_SEARCH_SPECIAL_PARAMETERS.FILTER =>
         throw new UnsupportedParameterException("Parameter _filter is not supported by onFhir.io yet!")
@@ -277,7 +89,7 @@ object FHIRSearchParameterValueParser {
       //Parse sort
       case sort if sort.startsWith(FHIR_SEARCH_RESULT_PARAMETERS.SORT) =>
         //Sorting was different at DSTU2
-        if(fhirConfig.isDstu2()) {
+        if(fhirConfig.isDstu2) {
           val (pname, suffix) = NameParser.parse(NameParser.parseName, nameExprs).get
 
           if(fhirConfig.findSupportedSearchParameter(rtype, valueExpr).isEmpty)
@@ -303,7 +115,7 @@ object FHIRSearchParameterValueParser {
 
       //Elements is just names of elements to include in search result
       case FHIR_SEARCH_RESULT_PARAMETERS.ELEMENTS =>
-        Parameter(FHIR_PARAMETER_CATEGORIES.RESULT, "", nameExprs, parseSimpleValue(valueExpr, FHIR_PARAMETER_TYPES.STRING))
+        Parameter(FHIR_PARAMETER_CATEGORIES.RESULT, "", nameExprs, FHIRSearchParameterValueParser.parseSimpleValue(valueExpr, FHIR_PARAMETER_TYPES.STRING))
 
       //Validate summary param
       case FHIR_SEARCH_RESULT_PARAMETERS.SUMMARY =>
@@ -521,8 +333,7 @@ object FHIRSearchParameterValueParser {
     */
   def parseSearchParameters(_type: String, parameters: Map[String, List[String]], preferHeader:Option[String] = None): List[Parameter] = {
     // Parse parameters
-    FHIRSearchParameterValueParser
-      .parseParameters(parameters - FHIR_HTTP_OPTIONS.FORMAT, _type, preferHeader)
+    parseParameters(parameters - FHIR_HTTP_OPTIONS.FORMAT, _type, preferHeader)
   }
 
   /**
@@ -532,7 +343,7 @@ object FHIRSearchParameterValueParser {
     * @return
     */
   def parseSearchParametersFromUri(_type: String, preferHeader:Option[String]):Directive1[List[Parameter]] =
-    Directives.parameterMultiMap.map(FHIRSearchParameterValueParser.parseSearchParameters(_type, _, preferHeader))
+    Directives.parameterMultiMap.map(parseSearchParameters(_type, _, preferHeader))
 
   /**
     * Directive to parse search parameters from-url-encoded entity
@@ -541,7 +352,7 @@ object FHIRSearchParameterValueParser {
     * @return
     */
   def parseSearchParametersFromEntity(_type: String, preferHeader:Option[String]):Directive1[List[Parameter]] =
-    Directives.formFieldMultiMap.map(FHIRSearchParameterValueParser.parseSearchParameters(_type, _, preferHeader))
+    Directives.formFieldMultiMap.map(parseSearchParameters(_type, _, preferHeader))
 
 
   /**
@@ -562,5 +373,271 @@ object FHIRSearchParameterValueParser {
       Seq(compartmentType -> compartmentId), //Set the expected value (ResourceType, id)
       "", //No suffix
       correspondingParameterNames.map(pname => ("", pname)).toSeq) //Set the parameterNames to check
+  }
+}
+
+object FHIRSearchParameterValueParser {
+
+  /* Core Parser Definitions */
+  private trait Parsers extends RegexParsers {
+    /* Core Fhir Value Definitions */
+    def endOfString: Parser[String] = """($|\$)""".r ^^ (eos => if (eos == "\\$") "$" else "")
+
+    def delimiter: Parser[String] = """\|""".r ^^ {
+      _.toString
+    }
+
+    def string: Parser[String] = """[\p{N}|\p{L}_\-\.|\s| ]+""".r ^^ {
+      _.toString
+    }
+
+    //def integer:Parser[String] = """[0-9]+""".r ^^ {_.toString}
+    def integer: Parser[String] = """[0]|[-+]?[1-9][0-9]*""".r ^^ {
+      _.toString
+    }
+
+    def boolean: Parser[String] = """(true|false)""".r ^^ {
+      _.toString
+    }
+
+    //def decimal:Parser[String] = """[0-9]+\.[0-9]+""".r ^^ {_.toString}
+    def decimal: Parser[String] = """-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?""".r ^^ {
+      _.toString
+    }
+
+    def code: Parser[String] = """[^\s\|,]+([\s]+[^\s\|,]+)*""".r ^^ {
+      _.toString
+    }
+
+    def dateTime: Parser[String] = """-?[1-2]{1}[0|1|8|9][0-9]{2}(-(0[1-9]|1[0-2])(-(0[0-9]|[1-2][0-9]|3[0-1])(T([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?(\.[0-9]+)?(Z|(\+|-|\s)((0[0-9]|1[0-3]):[0-5][0-9]|14:00))?)?)?)?""".r ^^ {
+      _.toString
+    }
+
+    def uri: Parser[String] = """((?<=\()[A-Za-z][A-Za-z0-9\+\.\-]*:([A-Za-z0-9\.\-_~:/\?#\[\]@!\$&'\(\)\*\+,;=]|%[A-Fa-f0-9]{2})+(?=\)))|([A-Za-z][A-Za-z0-9\+\.\-]*:([A-Za-z0-9\.\-_~:/\?#\[\]@!\$&'\(\)\*\+,;=]|%[A-Fa-f0-9]{2})+)(\|[0-9]+(\.[0-9]+)*)?""".r ^^ {
+      _.toString
+    }
+
+    def identifier: Parser[String] = """[A-Za-z0-9\-\.]{1,64}""".r ^^ {
+      _.toString
+    }
+
+    def refVersionPart = """(\|[0-9]+(\.[0-9]+)*)?"""
+
+    /* Token Type Parser Definitions */
+    def tokenType: Parser[String] = uri.? ~ delimiter.? ~ code.? ~ delimiter.? ~ string.? ^^ {
+      case someUri ~ someDel ~ code ~ othDel ~ value => someUri.getOrElse("") + someDel.getOrElse("") + code.getOrElse("") + othDel.getOrElse("") + value.getOrElse("")
+    }
+
+    /* Base Prefix and Suffix Definitions */
+    def suffixes: Parser[String] = (""":""".r ~ string).? ^^ { case Some(colon ~ id) => colon + id case None => "" }
+
+    def prefixes: Parser[String] = """(eq|ne|gt|lt|ge|le|sa|eb|ap|<|>)?""".r ^^ {
+      _.toString
+    }
+
+    /* Return Types */
+    def dataType: Parser[String] = endOfString
+
+    def parseName: Parser[(String, String)] = string ~ suffixes ~ endOfString ^^ { case id ~ suf ~ eos => (id, suf) }
+
+    def parseValue: Parser[(String, String)] = prefixes ~ dataType ~ (""",""".r ~ dataType).* ~ endOfString ^^ { case pref ~ num ~ someNum ~ eos =>
+      (pref, num + someNum.mkString("").replaceAll("(~|\\(|\\))", ""))
+    }
+  }
+
+  /* Type Specific Parsers */
+  private object NameParser extends Parsers
+
+  private object NumberParser extends Parsers {
+    /* Parser for Number Type */
+    override def dataType: Parser[String] = decimal | integer | boolean
+
+    /* Suffix Definition for Number Type */
+    override def suffixes: Parser[String] = """:missing|$""".r
+
+    /* Number Parser Definition */
+    def parseNumberName: Parser[(String, String)] = parseName
+
+    def parseNumberValue: Parser[(String, String)] = parseValue
+  }
+
+  private object StringParser extends Parsers {
+    /* String Parser Definition */
+    override def dataType: Parser[String] = string
+
+    /* Prefixes and Suffixes for String Type */
+    override def suffixes: Parser[String] = """(:(missing|exact|contains|text))|$""".r ^^ {
+      _.toString
+    }
+
+    override def prefixes: Parser[String] = """""".r
+
+    def parseStringName: Parser[(String, String)] = parseName
+
+    def parseStringValue: Parser[(String, String)] = parseValue
+  }
+
+  private object DateParser extends Parsers {
+    /* Date Format Definitions */
+    override def dataType: Parser[String] = dateTime | boolean
+
+    /* Suffix definitions for Date Format */
+    override def suffixes: Parser[String] = """:missing|$""".r ^^ {
+      _.toString
+    }
+
+    def parseDateName: Parser[(String, String)] = parseName
+
+    def parseDateValue: Parser[(String, String)] = parseValue
+  }
+
+  // TODO :above, :below values stuck at parsers if the code parser is erased, check later
+  private object URIParser extends Parsers {
+    /* Uri Parser Definition */
+    override def dataType: Parser[String] = uri | boolean | code
+
+    /* Prefixes and Suffixes for URI type */
+    override def suffixes: Parser[String] =
+      """(:(missing|below|above|not))|$""".r ^^ {
+        _.toString
+      }
+
+    override def prefixes: Parser[String] = """""".r
+
+    def parseUriName: Parser[(String, String)] = parseName
+
+    def parseUriValue: Parser[(String, String)] = parseValue
+  }
+
+  private object TokenParser extends Parsers {
+
+    override def dataType: Parser[String] = tokenType | boolean
+
+    /* Suffix Definitions for Token */
+    override def suffixes: Parser[String] = """(:(missing|text|in|below|above|not-in|not|of-type|sw|nsw))|$""".r ^^ {
+      _.toString
+    }
+
+    override def prefixes: Parser[String] = """""".r
+
+    def parseTokenName: Parser[(String, String)] = parseName
+
+    def parseTokenValue: Parser[(String, String)] = parseValue
+  }
+
+  private object QuantityParser extends Parsers {
+    /* Quantity Type Parser Definition */
+    def numericType: Parser[String] = decimal | integer
+
+    def quantityType: Parser[String] = numericType ~ delimiter ~ uri.? ~ delimiter ~ code.? ^^ {
+      case num ~ del1 ~ uri ~ del2 ~ code => num + del1 + uri.getOrElse("") + del2 + code.getOrElse("")
+    }
+
+    override def dataType: Parser[String] = quantityType | numericType | boolean
+
+    /* Suffix Definition for Quantity*/
+    override def suffixes: Parser[String] = """:missing|$""".r
+
+    def parseQuantityName: Parser[(String, String)] = parseName
+
+    def parseQuantityValue: Parser[(String, String)] = parseValue
+  }
+
+  private object ReferenceParser extends Parsers {
+    /* Reference Data Type Definitions */
+    def history: Parser[String] = """/_history/""".r ~ string ^^ { case history ~ version => history + version }
+
+    def logicalId: Parser[String] = string ~ """/""".r ~ identifier ~ history.? ^^ { case typ ~ slash ~ id ~ history => typ + slash + id + history.getOrElse("") }
+
+    override def dataType: Parser[String] = tokenType | logicalId | uri | identifier | boolean
+
+    /* Prefix Definition for Quantity*/
+    override def prefixes: Parser[String] = """""".r
+
+    //override def suffixes:Parser[String] = """^((?!(:(not|text|in|not-in|exact|contains))).)*$|$""".r ^^ {_.toString}
+    // These modifiers or any FHIR resource type
+    override def suffixes: Parser[String] = """(:(type|identifier|below|above|missing|not|([A-Z][A-Za-z]+)))|$""".r ^^ {
+      _.toString
+    }
+
+    def parseReferenceName: Parser[(String, String)] = parseName
+
+    def parseReferenceValue: Parser[(String, String)] = parseValue
+  }
+
+  private object CompositeParser extends Parsers {
+    override def dataType: Parser[String] = """[^\$]+[\$][^\$]+$""".r ^^ {
+      _.toString
+    }
+
+    override def prefixes: Parser[String] = """""".r
+
+    override def suffixes: Parser[String] = """""".r
+
+    def parseCompositeName: Parser[(String, String)] = parseName
+
+    def parseCompositeValue: Parser[(String, String)] = parseValue
+  }
+
+  /**
+   * Parser for _sort search parameter value
+   */
+  private object SortExprParser extends Parsers {
+    override def prefixes: Parser[String] = """[\-]?""".r
+
+    def parse: Parser[(String, String)] = prefixes ~ string ~ endOfString ^^ { case prefix ~ param ~ _ => (prefix, param) }
+  }
+
+  /**
+   * Parser for include/revinclude
+   */
+  private object IncludeExprParser extends Parsers {
+    override def suffixes: Parser[String] = """:iterate|$""".r
+
+    def parse: Parser[(String, String)] = """_include|_revinclude""".r ~ suffixes ~ endOfString ^^ { case inc ~ suf ~ _ => (inc, suf) }
+  }
+
+  /**
+   * Parse the name part of a search paremeter to split it to param name and suffix
+   *
+   * @param nameExpr  Name part of the search expression
+   * @param paramType Identified parameter type
+   * @return
+   */
+  private def parseSimpleName(nameExpr: String, paramType: String): (String, String) = {
+    paramType match {
+      case FHIR_PARAMETER_TYPES.NUMBER => NumberParser.parse(NumberParser.parseNumberName, nameExpr).get
+      case FHIR_PARAMETER_TYPES.DATE => DateParser.parse(DateParser.parseDateName, nameExpr).get
+      case FHIR_PARAMETER_TYPES.STRING => StringParser.parse(StringParser.parseStringName, nameExpr).get
+      case FHIR_PARAMETER_TYPES.URI => URIParser.parse(URIParser.parseUriName, nameExpr).get
+      case FHIR_PARAMETER_TYPES.TOKEN => TokenParser.parse(TokenParser.parseTokenName, nameExpr).get
+      case FHIR_PARAMETER_TYPES.QUANTITY => QuantityParser.parse(QuantityParser.parseQuantityName, nameExpr).get
+      case FHIR_PARAMETER_TYPES.REFERENCE => ReferenceParser.parse(ReferenceParser.parseReferenceName, nameExpr).get
+      case FHIR_PARAMETER_TYPES.COMPOSITE => CompositeParser.parse(CompositeParser.parseCompositeName, nameExpr).get
+    }
+  }
+
+  /**
+   * Parse the value part of the given search parameter expression and return prefix and expected value(s)
+   *
+   * @param valueExpr Value part of search expression
+   * @param paramType Identified parameter type
+   * @return
+   */
+  def parseSimpleValue(valueExpr: String, paramType: String): Seq[(String, String)] = {
+    valueExpr
+      .split(',')
+      .map(eachValue =>
+        paramType match {
+          case FHIR_PARAMETER_TYPES.NUMBER => NumberParser.parse(NumberParser.parseNumberValue, eachValue).get
+          case FHIR_PARAMETER_TYPES.DATE => DateParser.parse(DateParser.parseDateValue, eachValue).get
+          case FHIR_PARAMETER_TYPES.STRING => StringParser.parse(StringParser.parseStringValue, eachValue).get
+          case FHIR_PARAMETER_TYPES.URI => URIParser.parse(URIParser.parseUriValue, eachValue).get
+          case FHIR_PARAMETER_TYPES.TOKEN => TokenParser.parse(TokenParser.parseTokenValue, eachValue).get
+          case FHIR_PARAMETER_TYPES.QUANTITY => QuantityParser.parse(QuantityParser.parseQuantityValue, eachValue).get
+          case FHIR_PARAMETER_TYPES.REFERENCE => ReferenceParser.parse(ReferenceParser.parseReferenceValue, eachValue).get
+          case FHIR_PARAMETER_TYPES.COMPOSITE => CompositeParser.parse(CompositeParser.parseCompositeValue, eachValue).get
+        }
+      ).toIndexedSeq
   }
 }

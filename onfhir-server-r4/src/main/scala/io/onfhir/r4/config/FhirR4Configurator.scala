@@ -11,7 +11,7 @@ import io.onfhir.r4.parsers.R4Parser
 /**
  * Configurator for FHIR R4 standard (parsing R4 foundation resources, etc)
  */
-class FhirR4Configurator extends BaseFhirConfigurator {
+class FhirR4Configurator extends BaseFhirServerConfigurator {
   /**
    * Return the Audit creator for R4
    *  @return

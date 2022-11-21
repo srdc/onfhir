@@ -2,6 +2,8 @@ package io.onfhir.api.service
 
 import io.onfhir.Onfhir
 import io.onfhir.api.model.{FHIROperationRequest, FHIROperationResponse}
+import io.onfhir.api.parsers.FHIRSearchParameterValueParser
+import io.onfhir.config.{FhirServerConfig, IFhirConfigurationManager}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -9,8 +11,9 @@ import scala.concurrent.{ExecutionContext, Future}
   * Created by tuncay on 10/4/2017.
   * Interface for Operation implementations in onFhir
   */
-trait FHIROperationHandlerService {
+abstract class FHIROperationHandlerService(val fhirConfigurationManager: IFhirConfigurationManager) {
   implicit val executionContext:ExecutionContext = Onfhir.actorSystem.dispatcher
+
   /**
     * Execute the operation and prepare the output parameters for the operation
     * @param operationName Operation name as defined after '$' symbol e.g. meta-add

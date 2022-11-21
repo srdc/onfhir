@@ -4,13 +4,14 @@ import akka.http.scaladsl.model.Uri.Query
 import io.onfhir.api.model._
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.{FHIR_PARAMETER_CATEGORIES, Resource}
-import io.onfhir.config.{FhirConfig, OnfhirConfig}
+import io.onfhir.config.{FhirServerConfig, OnfhirConfig}
 import io.onfhir.exception.BadRequestException
 import org.json4s.JsonAST.JObject
 
 import scala.util.{Failure, Success, Try}
 
-class SubscriptionUtil(fhirConfig: FhirConfig) {
+class SubscriptionUtil(fhirConfig: FhirServerConfig) {
+  val searchParameterValueParser = new FHIRSearchParameterValueParser(fhirConfig)
   /**
    * Parse a FHIR subscription content into our internal model
    * @param subscription
@@ -90,7 +91,7 @@ class SubscriptionUtil(fhirConfig: FhirConfig) {
         parts.drop(1).headOption
           .map(queryStr => {
             val parsedRawParams = Query.apply(queryStr).toMultiMap
-            FHIRSearchParameterValueParser.parseSearchParameters(rtype, parsedRawParams)
+            searchParameterValueParser.parseSearchParameters(rtype, parsedRawParams)
           })
           .getOrElse(Nil)
       ) match {

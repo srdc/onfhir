@@ -1,24 +1,22 @@
 package io.onfhir.api.service
 
-import java.time.Instant
-import java.util.concurrent.TimeUnit
 import akka.http.scaladsl.model.{HttpMethod, HttpMethods, StatusCodes}
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
-import io.onfhir.api.{FHIR_BUNDLE_FIELDS, _}
+import io.onfhir.api._
 import io.onfhir.authz.AuthzContext
 import io.onfhir.config.OnfhirConfig
-import io.onfhir.db.{ResourceManager, TransactionSession}
+import io.onfhir.db.TransactionSession
 import io.onfhir.exception.{BadRequestException, InternalServerException, NotFoundException}
 import io.onfhir.server.ErrorHandler
 import io.onfhir.util.DateTimeUtil
 import io.onfhir.util.JsonFormatter._
-import org.json4s.JsonDSL._
 import org.json4s.JsonAST.{JObject, JString}
+import org.json4s.JsonDSL._
 
-import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.{Await, Future}
+import java.time.Instant
+import scala.concurrent.Future
 
 /**
   * Created by ozan on 21.02.2017.
@@ -489,7 +487,7 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
     * @return
     */
   private def getResourceIdForConditionalUpdate(fhirRequest: FHIRRequest): Future[Option[String]] = {
-    ResourceManager
+    fhirConfigurationManager.resourceManager
       .queryResources(fhirRequest.resourceType.get, fhirRequest.getParsedQueryParams(), count = 1, elementsIncludedOrExcluded = Some(true, Set.empty), excludeExtraFields = true)
       .map {
         case (1, Seq(foundResource)) => Some(FHIRUtil.extractIdFromResource(foundResource))

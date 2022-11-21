@@ -3,10 +3,10 @@ package io.onfhir.api.validation
 import io.onfhir.api.Resource
 import io.onfhir.api.model.{FhirCanonicalReference, FhirInternalReference, FhirLiteralReference, FhirLogicalReference, FhirReference, FhirUUIDReference}
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.config.{FhirConfig, OnfhirConfig}
+import io.onfhir.config.BaseFhirConfig
 import org.json4s.JsonAST.{JArray, JObject}
 
-import scala.concurrent.{ ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future}
 import io.onfhir.util.JsonFormatter._
 
 /**
@@ -16,11 +16,16 @@ import io.onfhir.util.JsonFormatter._
  *    - a reference to a contained resource,
  *    - a reference to a resource in the bundle that contain the resource,
  *    - a reference to a remote resource located in another repository
+ *
  * @param resource    Resource itself that FHIR reference is in
  * @param bundle      If resource is a part of a FHIR Bundle, the entry fullUrl of the resource and bundle content itself
- * @param fhirConfig  FHIR configuration for the platform
+ * @param fhirConfig  Base FHIR configuration for the platform
+ * @param fhirRootUrl Root url for the FHIR server (Used reference resolving within bundles)
  */
-abstract class AbstractReferenceResolver(val resource: Resource, val bundle:Option[(Option[String], Resource)] = None, fhirConfig:Option[FhirConfig] = None)(implicit ec:ExecutionContext)
+abstract class AbstractReferenceResolver(val resource: Resource,
+                                         val bundle:Option[(Option[String], Resource)] = None,
+                                         fhirConfig:Option[BaseFhirConfig] = None,
+                                         fhirRootUrl:String = "http://onfhir.io/fhir")(implicit ec:ExecutionContext)
   extends IReferenceResolver {
 
   // Resource's root url given in fullUrl in the Bundle.entry
@@ -47,7 +52,7 @@ abstract class AbstractReferenceResolver(val resource: Resource, val bundle:Opti
                   .orElse(
                     (e \ "resource" \ "id")
                       .extractOpt[String]
-                      .map(rid => s"${OnfhirConfig.fhirRootUrl}/${(e \ "resource" \ "resourceType").extract[String]}/$rid")
+                      .map(rid => s"${fhirRootUrl}/${(e \ "resource" \ "resourceType").extract[String]}/$rid")
                   ) -> //Extract fullUrl from Bundle
                     (e \ "resource").asInstanceOf[JObject])
             )
@@ -134,7 +139,7 @@ abstract class AbstractReferenceResolver(val resource: Resource, val bundle:Opti
         Future.apply(getContainedResource(resource, ref))
 
       //If it is a logical reference and if rtype is supported, try to resolve it with identifier
-      case FhirLogicalReference(Some(rtype), system, identifier) if fhirConfig.exists(_.resourceConfigurations.contains(rtype)) =>
+      case FhirLogicalReference(Some(rtype), system, identifier) if fhirConfig.exists(_.FHIR_RESOURCE_TYPES.contains(rtype)) =>
         getResourceByIdentifier(rtype, system, identifier)
 
       //If it is a uuid reference within bundle
@@ -164,7 +169,7 @@ abstract class AbstractReferenceResolver(val resource: Resource, val bundle:Opti
                     case (iurl, irtype, irid, iversion) =>
                       irtype == rtype &&
                         irid == rid &&
-                        iurl.getOrElse(OnfhirConfig.fhirRootUrl) == url.orElse(resourceRootUrl).getOrElse(OnfhirConfig.fhirRootUrl) &&
+                        iurl.getOrElse(fhirRootUrl) == url.orElse(resourceRootUrl).getOrElse(fhirRootUrl) &&
                           (version == iversion || version.forall(v => FHIRUtil.extractVersionFromResource(bitem._2).toString == v))
                 }
               )

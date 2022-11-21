@@ -3,12 +3,12 @@ package io.onfhir.authz
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.directives.FutureDirectives.onComplete
 import akka.http.scaladsl.server.directives.{BasicDirectives, RouteDirectives}
-import akka.http.scaladsl.server.{Directive0, Rejection}
+import akka.http.scaladsl.server.Directive0
 import io.onfhir.Onfhir
 import io.onfhir.api.{FHIR_INTERACTIONS, FHIR_OPERATIONS, FHIR_PARAMETER_CATEGORIES}
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, Parameter}
-import io.onfhir.api.util.{FHIRUtil, ResourceChecker}
-import io.onfhir.config.{FhirConfigurationManager, OnfhirConfig}
+import io.onfhir.api.util.ResourceChecker
+import io.onfhir.config.{IFhirConfigurationManager, OnfhirConfig}
 import io.onfhir.db.ResourceManager
 import io.onfhir.exception.{AuthorizationFailedException, AuthorizationFailedRejection}
 import org.slf4j.{Logger, LoggerFactory}
@@ -20,13 +20,14 @@ import scala.util.Success
   * Created by tuncay on 19/12/2018.
   * Authorization Manager that authorizes the FHIR interactions
   */
-object AuthzManager {
+class AuthzManager(fhirConfigurationManager: IFhirConfigurationManager) {
   //Execution context
   implicit val executionContext = Onfhir.actorSystem.dispatcher
   //Logger
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
-
-
+  val resourceChecker = new ResourceChecker(fhirConfigurationManager.fhirConfig)
+  val fhirServerUtil = fhirConfigurationManager.fhirServerUtil
+  val resourceManager = fhirConfigurationManager.resourceManager
   /**
     * Our authorization directive
     * @param authzContext Authorization context if any resolved
@@ -162,7 +163,7 @@ object AuthzManager {
       fhirRequest.interaction match {
         //If we have the resource content for the interaction, we check it if it is OK with resource restrictions
         case FHIR_INTERACTIONS.CREATE | FHIR_INTERACTIONS.UPDATE =>
-          ResourceChecker.checkIfResourceSatisfies(fhirRequest.resourceType.get, resourceRestrictions, fhirRequest.resource.get)
+          resourceChecker.checkIfResourceSatisfies(fhirRequest.resourceType.get, resourceRestrictions, fhirRequest.resource.get)
         //TODO Check patch items if the given values satisfies resource restrictions
         case  FHIR_INTERACTIONS.PATCH => true
         //For all other resources including the operations we don't care (For operations, detailed authorization should be done on content within the implementations)
@@ -190,12 +191,12 @@ object AuthzManager {
       //Only include the required parameter paths to minimize parsing, etc
       val includedElements =
         resourceRestrictions
-          .map(p=> FHIRUtil.extractElementPaths(fhirRequest.resourceType.get, p))
+          .map(p=> fhirServerUtil.extractElementPaths(fhirRequest.resourceType.get, p))
           .reduce((s1,s2) => s1 ++ s2)
       //Retrieve the mentioned document
-      ResourceManager
+      resourceManager
         .getResource(fhirRequest.resourceType.get, fhirRequest.resourceId.get, fhirRequest.versionId, includingOrExcludingFields = Some(true -> includedElements), excludeExtraFields = true)
-        .map(_.forall(r => ResourceChecker.checkIfResourceSatisfies(fhirRequest.resourceType.get, resourceRestrictions, r)))
+        .map(_.forall(r => resourceChecker.checkIfResourceSatisfies(fhirRequest.resourceType.get, resourceRestrictions, r)))
 
     }
     else if(fhirRequest.resourceType.isDefined){

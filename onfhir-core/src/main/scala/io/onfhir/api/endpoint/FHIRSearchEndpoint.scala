@@ -8,6 +8,7 @@ import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.service.FHIRSearchService
 import io.onfhir.authz.{AuthContext, AuthzContext, AuthzManager}
+import io.onfhir.config.FhirConfigurationManager.authzManager
 import io.onfhir.config.OnfhirConfig
 
 /**
@@ -35,7 +36,7 @@ trait FHIRSearchEndpoint {
                 //Put the parameters and content into the FHIR Request
                 fhirRequest.queryParams = searchParameters
                 //Enforce authorization, add the authorization filter params to search params
-                AuthzManager.authorize(authContext._2, fhirRequest) {
+                authzManager.authorize(authContext._2, fhirRequest) {
                   complete {
                       new FHIRSearchService().executeInteraction(fhirRequest)
                   }
@@ -56,7 +57,7 @@ trait FHIRSearchEndpoint {
                   //Put the parameters and content into the FHIR Request
                   fhirRequest.queryParams = urlParameters ++ entityParameters
                   //Enforce authorization, add the authorization filter params to search params
-                  AuthzManager.authorize(authContext._2, fhirRequest) {
+                  authzManager.authorize(authContext._2, fhirRequest) {
                     complete {
                       new FHIRSearchService().executeInteraction(fhirRequest)
                     }
@@ -77,7 +78,7 @@ trait FHIRSearchEndpoint {
                 //Put the parameters and content into the FHIR Request
                 fhirRequest.queryParams = searchParameters
                 //Enforce authorization, add the authorization filter params to search params
-                AuthzManager.authorize(authContext._2, fhirRequest) {
+                authzManager.authorize(authContext._2, fhirRequest) {
                   complete {
                     new FHIRSearchService().executeInteraction(fhirRequest)
                   }

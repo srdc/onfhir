@@ -5,7 +5,7 @@ import io.onfhir.api._
 import io.onfhir.Onfhir
 import io.onfhir.api.model.{FHIRResponse, OutcomeIssue}
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.config.{FhirConfig, OnfhirConfig}
+import io.onfhir.config.{FhirServerConfig, IFhirConfigurationManager, OnfhirConfig}
 import io.onfhir.exception.BadRequestException
 import io.onfhir.validation.FhirContentValidator
 import org.slf4j.{Logger, LoggerFactory}
@@ -17,7 +17,7 @@ import scala.concurrent.Future
 /**
   * FHIR content validator
   */
-class FHIRResourceValidator(fhirConfig:FhirConfig) extends IFhirResourceValidator {
+class FHIRResourceValidator(fhirConfigurationManager: IFhirConfigurationManager) extends IFhirResourceValidator {
   //private val logger:Logger = LoggerFactory.getLogger(this.getClass)
   //Validations can block so we are using the blocking dispatcher
   implicit val executionContext: MessageDispatcher = Onfhir.actorSystem.dispatchers.lookup("akka.actor.onfhir-blocking-dispatcher")
@@ -31,7 +31,7 @@ class FHIRResourceValidator(fhirConfig:FhirConfig) extends IFhirResourceValidato
    * @return
    */
   def validateResource(resource: Resource, rtype:String, parentPath:Option[String] =None, bundle:Option[(Option[String],Resource)] = None, silent:Boolean = false): Future[Seq[OutcomeIssue]] = {
-    validateResourceAgainstProfile(resource, rtype, fhirConfig.resourceConfigurations.get(rtype).flatMap(_.profile), parentPath, bundle, silent)
+    validateResourceAgainstProfile(resource, rtype, fhirConfigurationManager.fhirConfig.resourceConfigurations.get(rtype).flatMap(_.profile), parentPath, bundle, silent)
   }
   /**
    * Validates resource based on the related FHIR profiles (StructureDefinition)
@@ -53,13 +53,13 @@ class FHIRResourceValidator(fhirConfig:FhirConfig) extends IFhirResourceValidato
           //profiles listed in Resource.meta.profile
           val profilesClaimedToConform = FHIRUtil.extractProfilesFromBson(resource)
           //Supported profiles for resource type in CapabilityStatement.rest.resource.supportedProfiles
-          val supportedProfiles = fhirConfig.resourceConfigurations.get(rtype).map(_.supportedProfiles).getOrElse(Set.empty[String])
+          val supportedProfiles = fhirConfigurationManager.fhirConfig.resourceConfigurations.get(rtype).map(_.supportedProfiles).getOrElse(Set.empty[String])
           //Unknow profiles among them
           val unknownProfiles = profilesClaimedToConform.diff(supportedProfiles ++ Set(baseProfile))
           //Known profiles among them
           val knownProfiles = profilesClaimedToConform.intersect(supportedProfiles)
           //We only validate against the base profile and known profiles
-          val profileChains = (Set(baseProfile) ++ knownProfiles).map(p => p -> fhirConfig.findProfileChain(p))
+          val profileChains = (Set(baseProfile) ++ knownProfiles).map(p => p -> fhirConfigurationManager.fhirConfig.findProfileChain(p))
           //Find inner profile urls in all profile chain
           val allInnerProfiles = profileChains.flatMap(_._2.drop(1).map(_.url))
           //Only validate against the one that does not exist in inner profiles (because this chain already includes others)
@@ -69,7 +69,7 @@ class FHIRResourceValidator(fhirConfig:FhirConfig) extends IFhirResourceValidato
             .sequence(
               profileChainsToValidate
                 .map(pc => {
-                  val contentValidator = FhirContentValidator.apply(fhirConfig, pc.head.url, new ReferenceResolver(fhirConfig, resource, bundle), this)
+                  val contentValidator = FhirContentValidator.apply(fhirConfigurationManager.fhirConfig, pc.head.url, new ReferenceResolver(fhirConfigurationManager, resource, bundle), this)
                   contentValidator
                     .validateComplexContentAgainstProfile(pc, resource, parentPath)
                     .map(

@@ -3,12 +3,12 @@ package io.onfhir.api.endpoint
 import akka.http.scaladsl.model.headers.{`If-Modified-Since`, `If-None-Match`}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-
 import io.onfhir.api.{FHIR_HTTP_OPTIONS, FHIR_SEARCH_RESULT_PARAMETERS}
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.api.service.FHIRReadService
 import io.onfhir.authz.{AuthContext, AuthzContext, AuthzManager}
+import io.onfhir.config.FhirConfigurationManager.authzManager
 import io.onfhir.config.OnfhirConfig
 
 /**
@@ -42,7 +42,7 @@ trait FHIRReadEndpoint {
                     //Create the FHIR request object
                     fhirRequest.initializeReadRequest(_type, _id, ifModifiedSince, ifNoneMatch, summary, elements)
                     //Enforce authorization
-                    AuthzManager.authorize(authContext._2, fhirRequest) {
+                    authzManager.authorize(authContext._2, fhirRequest) {
                       complete {
                         new FHIRReadService().executeInteraction(fhirRequest)
                       }
@@ -60,7 +60,7 @@ trait FHIRReadEndpoint {
             //Create the FHIR request object
             fhirRequest.initializeVReadRequest(_type, _id, _vid)
             //Enforce authorization
-            AuthzManager.authorize(authContext._2, fhirRequest) {
+            authzManager.authorize(authContext._2, fhirRequest) {
               complete {
                 new FHIRReadService().executeInteraction(fhirRequest)
               }

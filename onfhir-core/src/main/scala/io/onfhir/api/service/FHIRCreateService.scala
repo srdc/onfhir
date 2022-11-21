@@ -3,11 +3,9 @@ package io.onfhir.api.service
 import akka.http.scaladsl.model.{StatusCodes, Uri}
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue}
-import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
-import io.onfhir.config.FhirConfigurationManager.fhirValidator
 import io.onfhir.db.{ResourceManager, TransactionSession}
 import io.onfhir.exception.PreconditionFailedException
 
@@ -29,7 +27,7 @@ class FHIRCreateService(transactionSession: Option[TransactionSession] = None) e
     //1.2) Check if resource type in the content match with the given type in URL
     FHIRApiValidator.validateResourceType(fhirRequest.resource.get, fhirRequest.resourceType.get)
     //1.3) Validate the conformance of resource
-    fhirValidator.validateResource(fhirRequest.resource.get, fhirRequest.resourceType.get)
+    fhirConfigurationManager.fhirValidator.validateResource(fhirRequest.resource.get, fhirRequest.resourceType.get)
       .map(_ =>
         //1.4) Extra business rules if exist
         FHIRApiValidator.validateExtraRules(fhirRequest)
@@ -62,9 +60,9 @@ class FHIRCreateService(transactionSession: Option[TransactionSession] = None) e
     if(ifNoneExist.isDefined){
       val parameters = Uri.Query(ifNoneExist.get).toMultiMap
       //Parse the parameters
-      val parsedParameters = FHIRSearchParameterValueParser.parseSearchParameters( _type, parameters, prefer)
+      val parsedParameters = fhirConfigurationManager.fhirSearchParameterValueParser.parseSearchParameters( _type, parameters, prefer)
       // Search the resources; only we need mandatory elements e.g. id, meta
-      ResourceManager
+      fhirConfigurationManager.resourceManager
         .queryResources(_type, parsedParameters, count = 2, elementsIncludedOrExcluded = Some(true -> Set.empty), excludeExtraFields = true).flatMap(matchedResources =>
         matchedResources._1 match {
           //No matches: The server processes the create as normal
@@ -122,7 +120,7 @@ class FHIRCreateService(transactionSession: Option[TransactionSession] = None) e
     */
   private def performCreate(resource:Resource, _type:String, prefer:Option[String] = None, generatedId:Option[String] = None, testCreate:Boolean = false): Future[FHIRResponse] = {
     if(!testCreate)
-      ResourceManager.createResource(_type, resource, generatedId)(transactionSession) flatMap { case (newId, newVersion, lastModified, createdResource) =>
+      fhirConfigurationManager.resourceManager.createResource(_type, resource, generatedId)(transactionSession) flatMap { case (newId, newVersion, lastModified, createdResource) =>
         Future.apply(FHIRResponse (
           StatusCodes.Created, //Http Status code
           FHIRUtil.getResourceContentByPreference(createdResource, prefer), //HTTP body

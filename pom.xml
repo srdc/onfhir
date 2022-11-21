@@ -75,6 +75,7 @@
         <module>onfhir-client</module>
         <module>onfhir-expression</module>
         <module>onfhir-r4</module>
+        <module>onfhir-config</module>
     </modules>
 
     <repositories>
@@ -339,6 +340,11 @@
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-common_${scala.binary.version}</artifactId>
+                <version>3.2-SNAPSHOT</version>
+            </dependency>
+            <dependency>
+                <groupId>io.onfhir</groupId>
+                <artifactId>onfhir-config_${scala.binary.version}</artifactId>
                 <version>3.2-SNAPSHOT</version>
             </dependency>
             <dependency>

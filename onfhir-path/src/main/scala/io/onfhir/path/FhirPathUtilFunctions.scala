@@ -410,6 +410,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
           .trim()
           .split(splitChar)
           .map(FhirPathString)
+          .toIndexedSeq
       case _ =>
         throw new FhirPathException(s"Invalid function call 'split' on non string value or sequence of values!")
     }
@@ -675,6 +676,8 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
         } else {
           throw FhirPathException(s"Invalid function call 'toFhirDateTime'. Datetime format of the expression is not recognized. Valid formats are: ${patternsToTry.mkString(",")} !")
         }
+      case _ =>
+        throw FhirPathException(s"Invalid function call 'toFhirDateTime'. Datetime format of the expression is not recognized. Valid formats are: ${patternsToTry.mkString(",")} !")
     }
   }
 

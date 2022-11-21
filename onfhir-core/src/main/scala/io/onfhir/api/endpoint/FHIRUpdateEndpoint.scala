@@ -9,6 +9,7 @@ import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.service.FHIRUpdateService
 import io.onfhir.authz.{AuthContext, AuthzContext, AuthzManager}
+import io.onfhir.config.FhirConfigurationManager.authzManager
 import io.onfhir.config.OnfhirConfig
 
 
@@ -33,7 +34,7 @@ trait FHIRUpdateEndpoint {
                 //Put the content into the FHIR Request
                 fhirRequest.resource = Some(resource)
                 //Check authorization
-                AuthzManager.authorize(authContext._2, fhirRequest) {
+                authzManager.authorize(authContext._2, fhirRequest) {
                   //Complete the request
                   complete {
                       new FHIRUpdateService().executeInteraction(fhirRequest)
@@ -56,7 +57,7 @@ trait FHIRUpdateEndpoint {
                     fhirRequest.resource = Some(resource)
 
                     //Complete the operation, internal authorization !!!
-                    AuthzManager.authorize(authContext._2, fhirRequest) {
+                    authzManager.authorize(authContext._2, fhirRequest) {
                       complete {
                         new FHIRUpdateService().executeInteraction(fhirRequest)
                       }

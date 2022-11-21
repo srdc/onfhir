@@ -4,16 +4,17 @@ import akka.http.scaladsl.model.StatusCodes
 import io.onfhir.api.{FHIR_BUNDLE_TYPES, FHIR_SEARCH_RESULT_PARAMETERS, FHIR_SUMMARY_OPTIONS}
 import io.onfhir.api.model.{FHIROperationRequest, FHIROperationResponse, FHIRResponse, OutcomeIssue}
 import io.onfhir.api.service.FHIROperationHandlerService
-import io.onfhir.api.util.FHIRUtil
-import io.onfhir.config.OnfhirConfig
+import io.onfhir.api.util.{FHIRServerUtil, FHIRUtil}
+import io.onfhir.config.{FhirServerConfig, IFhirConfigurationManager, OnfhirConfig}
 import io.onfhir.db.ResourceManager
 import io.onfhir.exception.BadRequestException
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.Future
 
-class LastNObservationOperationHandler extends FHIROperationHandlerService {
+class LastNObservationOperationHandler(fhirConfigurationManager:IFhirConfigurationManager)  extends FHIROperationHandlerService(fhirConfigurationManager) {
   private val logger: Logger = LoggerFactory.getLogger("DocumentOperationHandler")
+
   val paramsOnCode = Set("code", "code-value-concept", "code-value-date", "code-value-quantity", "code-value-string")
   /**
    * Execute the operation and prepare the output parameters for the operation
@@ -49,7 +50,7 @@ class LastNObservationOperationHandler extends FHIROperationHandlerService {
           Nil
         )))
 
-    ResourceManager
+    fhirConfigurationManager.resourceManager
       .searchLastOrFirstNResources("Observation", operationRequest.queryParams, List("date"), List("code"), lastOrFirstN, true)
       .map(results => {
         val matchedResources = results._1.flatMap(_._2)
@@ -61,8 +62,8 @@ class LastNObservationOperationHandler extends FHIROperationHandlerService {
 
         //Create FHIR bundle entries
         val bundleEntries =
-          matchedResources.map(matchedResource => FHIRUtil.createBundleEntry(matchedResource, FHIR_BUNDLE_TYPES.SEARCH_SET, isSummarized)) ++
-            includedResources.map(includedResource => FHIRUtil.createBundleEntry(includedResource, FHIR_BUNDLE_TYPES.SEARCH_SET, isSummarized, isMatched = false))
+          matchedResources.map(matchedResource => fhirConfigurationManager.fhirServerUtil.createBundleEntry(matchedResource, FHIR_BUNDLE_TYPES.SEARCH_SET, isSummarized)) ++
+            includedResources.map(includedResource => fhirConfigurationManager.fhirServerUtil.createBundleEntry(includedResource, FHIR_BUNDLE_TYPES.SEARCH_SET, isSummarized, isMatched = false))
 
         logger.debug(s"Returning ${matchedResources.length} resources and ${includedResources.length} documents are marked as include...")
         //Create and return bundle

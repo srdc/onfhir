@@ -1,11 +1,12 @@
 package io.onfhir.api.service
 
-import io.onfhir.api.util.BaseFhirProfileHandler
+import io.onfhir.config.FhirConfigurationManager
 import io.onfhir.exception.BadRequestException
 import io.onfhir.path.FhirPathEvaluator
 import org.slf4j.{Logger, LoggerFactory}
 import org.specs2.mutable.Specification
 import io.onfhir.util.JsonFormatter._
+import io.onfhir.validation.BaseFhirProfileHandler
 import org.json4s.Diff
 import org.json4s.JsonAST.{JArray, JNothing, JObject, JString}
 import org.junit.runner.RunWith
@@ -28,7 +29,7 @@ class FhirPathPatchHandlerTest extends Specification {
     }
   }
 
-  val fhirPatchHandler = new FhirPathPatchHandler(profileHandler)
+  val fhirPatchHandler = new FhirPathPatchHandler(FhirConfigurationManager, profileHandler)
 
   val observation =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/patch/observation.json")).mkString.parseJson
 

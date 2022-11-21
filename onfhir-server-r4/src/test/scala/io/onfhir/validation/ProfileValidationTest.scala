@@ -4,7 +4,7 @@ import io.onfhir.api.{DEFAULT_IMPLEMENTED_FHIR_OPERATIONS, DEFAULT_RESOURCE_PATH
 import io.onfhir.api.model.{FhirLiteralReference, FhirReference}
 import io.onfhir.api.util.IOUtil
 import io.onfhir.api.validation.IReferenceResolver
-import io.onfhir.config.{FhirConfig, FhirConfigurationManager, OnfhirConfig, ResourceConf}
+import io.onfhir.config.{FhirServerConfig, FhirConfigurationManager, OnfhirConfig, ResourceConf}
 import io.onfhir.r4.config.FhirR4Configurator
 import io.onfhir.r4.parsers.StructureDefinitionParser
 import org.json4s.JsonAST.JObject
@@ -25,7 +25,7 @@ class ProfileValidationTest extends Specification {
 
   var r4Configurator = new FhirR4Configurator()
 
-  var fhirConfig = new FhirConfig("R4")
+  var fhirConfig = new FhirServerConfig("R4")
   fhirConfig.FHIR_RESOURCE_TYPES = resourceProfileResources.flatMap(r4Configurator.getTypeFromStructureDefinition).toSet
   val allDataTypes = dataTypeProfileResources.flatMap(r4Configurator.getTypeFromStructureDefinition)
   fhirConfig.FHIR_COMPLEX_TYPES = allDataTypes.filter(_.head.isUpper).toSet

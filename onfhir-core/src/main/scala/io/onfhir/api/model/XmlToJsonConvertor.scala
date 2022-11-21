@@ -3,10 +3,11 @@ package io.onfhir.api.model
 import java.io.Reader
 
 import io.onfhir.api.{FHIR_COMMON_FIELDS, FHIR_DATA_TYPES, Resource}
-import io.onfhir.api.util.{BaseFhirProfileHandler, FHIRUtil}
+import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.ProfileRestrictions
-import io.onfhir.config.FhirConfig
+import io.onfhir.config.FhirServerConfig
 import io.onfhir.exception.UnprocessableEntityException
+import io.onfhir.validation.BaseFhirProfileHandler
 import org.json4s.JsonAST.{JArray, JBool, JDecimal, JDouble, JField, JInt, JNothing, JNull, JObject, JString, JValue}
 import org.json4s.JsonDSL._
 import org.slf4j.{Logger, LoggerFactory}
@@ -19,7 +20,7 @@ import scala.xml.{Elem, Node}
  * Class that handles conversion of FHIR XML representation to FHIR JSON and back
  * @param fhirConfig
  */
-class XmlToJsonConvertor(fhirConfig: FhirConfig) extends BaseFhirProfileHandler(fhirConfig) {
+class XmlToJsonConvertor(fhirConfig: FhirServerConfig) extends BaseFhirProfileHandler(fhirConfig) {
   val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
 

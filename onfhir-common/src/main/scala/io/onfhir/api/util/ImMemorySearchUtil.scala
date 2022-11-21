@@ -1,11 +1,10 @@
 package io.onfhir.api.util
 
 import java.time.Instant
-
 import io.onfhir.api._
 import io.onfhir.api.model.Parameter
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
-import io.onfhir.config.{OnfhirConfig, SearchParameterConf}
+import io.onfhir.config.{FhirServerConfig, OnfhirConfig, SearchParameterConf}
 import io.onfhir.exception.{InternalServerException, InvalidParameterException}
 import io.onfhir.util.DateTimeUtil
 import org.json4s.JsonAST.{JObject, JValue}
@@ -15,19 +14,9 @@ import scala.collection.immutable.HashMap
 import scala.util.Try
 
 /**
-  * Implementation of FHIR search in memory over a resource
+  * Implementation of FHIR search statement in memory over a resource
   */
 object ImMemorySearchUtil {
-  //Function map based on search parameter type (provides a function that gets search parameter conf and whole resource to evaluate)
-  /*val typeHandlerFunction = HashMap[String, (String, String, SearchParameterConf, JValue) => Boolean] (
-    FHIR_PARAMETER_TYPES.NUMBER -> numberQuery,
-    FHIR_PARAMETER_TYPES.DATE -> dateQuery,
-    FHIR_PARAMETER_TYPES.STRING -> stringQuery,
-    FHIR_PARAMETER_TYPES.URI -> uriQuery,
-    FHIR_PARAMETER_TYPES.TOKEN -> tokenQuery,
-    FHIR_PARAMETER_TYPES.QUANTITY -> quantityQuery,
-    FHIR_PARAMETER_TYPES.REFERENCE -> referenceQuery
-  )*/
 
   //Function map based on serach parameter type (provides a function that gets element values and target types to evaluate)
   val typeHandlerFunctionOnValues =  HashMap[String, (String, String, Seq[(Seq[JValue], String)], Seq[String]) => Boolean] (
@@ -41,10 +30,10 @@ object ImMemorySearchUtil {
   )
 
   /**
-   * Handle simple parameter
-   * @param parameter
-   * @param sp
-   * @param values
+   * Handle simple search parameter, check if search statement on parameter is satisfied or not
+   * @param parameter   Search statement on parameter
+   * @param sp          Search Parameter configuration
+   * @param values      Values to be evaluated
    * @return
    */
   def handleSimpleParameter(parameter:Parameter, sp:SearchParameterConf, values:Seq[(Seq[JValue], String)]): Boolean ={
@@ -58,11 +47,11 @@ object ImMemorySearchUtil {
   }
 
   /**
-   * Handle composite search parameter
-   * @param parameter
-   * @param sp
-   * @param values
-   * @param validSearchParamConfs
+   * Handle composite search parameter, check if search statement on parameter is satisfied or not
+   * @param parameter               Search statement on parameter
+   * @param sp                      Search Parameter configuration
+   * @param values                  Values to be evaluated
+   * @param validSearchParamConfs   All search parameter configurations
    * @return
    */
   def handleCompositeParameter(parameter:Parameter, sp:SearchParameterConf, values:Seq[(Seq[JValue], String)], validSearchParamConfs:Map[String, SearchParameterConf]):Boolean = {
@@ -89,7 +78,7 @@ object ImMemorySearchUtil {
             }
 
         childParamsConstructed.forall(p =>
-          ImMemorySearchUtil.handleSimpleParameter(p._2, p._1, values)
+          handleSimpleParameter(p._2, p._1, values)
         )
     }
     result
@@ -97,9 +86,10 @@ object ImMemorySearchUtil {
 
 
   /**
-   * Handle a search on a parameter
-   * @param parameter
-   * @param values
+   * Handle a search on a parameter - check if search statement on parameter is satisfied or not
+   * @param parameter   Search statement on parameter
+   * @param sp          Search Parameter configuration
+   * @param values      Values to be evaluated
    * @return
    */
   private def handleParameter(parameter:Parameter,  sp:SearchParameterConf, values:Seq[(Seq[JValue], String)]):Boolean = {
@@ -113,8 +103,7 @@ object ImMemorySearchUtil {
           case _ => ""//Not Possible
         }
 
-        ImMemorySearchUtil
-          .typeHandlerFunctionOnValues(parameter.paramType)(value, prefixModifier, values, sp.targets)
+        typeHandlerFunctionOnValues(parameter.paramType)(value, prefixModifier, values, sp.targets)
     }
   }
 
@@ -204,20 +193,6 @@ object ImMemorySearchUtil {
     )
   }
 
-  /*
-  /**
-    * Handle FHIR number queries
-    * @param number Compared number
-    * @param prefix
-    * @param queryConfig Defined Search parameter
-    * @param resource resource that query will be executed on
-    * @return
-    */
-  private def numberQuery(number:String, prefix:String, queryConfig:SearchParameterConf, resource:JValue):Boolean = {
-    val valuesAndTargetTypes = extractValuesAndTargetTypes(queryConfig, resource)
-    numberQueryOnValues(number,prefix, valuesAndTargetTypes)
-  }*/
-
   /**
    *
    * @param value
@@ -240,32 +215,6 @@ object ImMemorySearchUtil {
       })
   }
 
-
-  /*
-  /**
-    * Handle FHIR string queries
-    * @param value
-    * @param modifier
-    * @param queryConfig
-    * @param resource
-    * @return
-    */
-  private def stringQuery(value:String, modifier:String, queryConfig:SearchParameterConf, resource: JValue):Boolean = {
-    //Get the JSON paths and target types for the query parameter
-    val pathsAndTargetTypes = queryConfig.extractElementPathsAndTargetTypes()
-
-    pathsAndTargetTypes
-      .flatMap(valueAndType => //Find extra subpath if it is a
-        STRING_TYPE_SEARCH_SUBPATHS
-          .getOrElse(valueAndType._2, Seq(""))
-          .map(subpath => FHIRUtil.mergeElementPath(valueAndType._1, subpath))
-      )
-      .flatMap(p => FHIRUtil.applySearchParameterPath(p, resource))
-      .exists (actualValue => {
-        InMemoryPrefixModifierHandler.stringQueryHandler(actualValue, modifier, value)
-      })
-  }*/
-
   /**
    *  Handles FHIR URI query
    * @param uri
@@ -279,21 +228,6 @@ object ImMemorySearchUtil {
       .flatMap(_._1)
       .exists(actualValue => InMemoryPrefixModifierHandler.uriQueryHandler(actualValue, modifier, uri))
   }
-
-  /*
-  /**
-    * Handles FHIR URI query
-    * @param uri
-    * @param modifier
-    * @param queryConfig
-    * @param resource
-    * @return
-    */
-  private def uriQuery(uri:String, modifier:String, queryConfig:SearchParameterConf, resource: JValue):Boolean = {
-    val valuesAndTargetTypes = extractValuesAndTargetTypes(queryConfig, resource)
-    uriQueryOnValues(uri, modifier, valuesAndTargetTypes)
-  }
-  */
 
   /**
    *
@@ -340,33 +274,6 @@ object ImMemorySearchUtil {
         }
       )
   }
-
-  /*
-  /**
-    * Handle FHIR date queries
-    * @param date
-    * @param prefix
-    * @param queryConfig
-    * @param resource
-    * @return
-    */
-  private def dateQuery(date:String, prefix:String, queryConfig:SearchParameterConf, resource: JValue):Boolean = {
-    val valuesAndTargetTypes = extractValuesAndTargetTypes(queryConfig, resource)
-    dateQueryOnValues(date, prefix, valuesAndTargetTypes)
-  }*/
-
-  /*/**
-    * Handle token query with a search parameter
-    * @param token
-    * @param modifier
-    * @param queryConfig
-    * @param resource
-    * @return
-    */
-  private def tokenQuery(token:String, modifier:String, queryConfig:SearchParameterConf, resource:JValue): Boolean = {
-    val valuesAndTargetTypes = extractValuesAndTargetTypes(queryConfig, resource)
-    tokenQueryOnValues(token, modifier, valuesAndTargetTypes)
-  }*/
 
   /**
    * Handle token query
@@ -433,54 +340,6 @@ object ImMemorySearchUtil {
       case _ => result
     }
   }
-
-
-  /*private def tokenQuery(token:String, modifier:String, path:String, targetType:String, resource:JValue):Boolean = {
-    targetType match {
-      case FHIR_DATA_TYPES.STRING | FHIR_DATA_TYPES.ID |  FHIR_DATA_TYPES.URI | FHIR_DATA_TYPES.CODE =>
-        FHIRUtil.applySearchParameterPath(path, resource) //Get the value of the path
-          .exists(_.extractOpt[String].contains(token)) //Check if it is equal the given value
-
-      case FHIR_DATA_TYPES.BOOLEAN =>
-        FHIRUtil.applySearchParameterPath(path, resource)//Get the value of the path
-          .exists(_.extractOpt[Boolean].contains(token.toBoolean))//Check if it is equal the given value
-
-      case FHIR_DATA_TYPES.IDENTIFIER if modifier == FHIR_PREFIXES_MODIFIERS.OF_TYPE =>
-        val (typeSystem, typeCode, value) = FHIRUtil.parseTokenOfTypeValue(token)
-        FHIRUtil.applySearchParameterPath(path, resource) //Get the identifier element
-          .map(_.asInstanceOf[JObject])
-          .exists(idenfierElement =>
-            FHIRUtil.applySearchParameterPath(FHIR_COMMON_FIELDS.VALUE, idenfierElement) //Get the value part
-              .exists(_.extractOpt[String].contains(value)) && //Check if it is equal to given velue
-            FHIRUtil
-              .applySearchParameterPath(s"${FHIR_COMMON_FIELDS.TYPE}.${FHIR_COMMON_FIELDS.CODING}", idenfierElement) //get all codings
-              .map(_.asInstanceOf[JObject]) //Check if one of them is ok with the system and code
-              .exists(codingElement => //one should match with the given code
-                InMemoryPrefixModifierHandler.tokenModifierHandler(FHIR_COMMON_FIELDS.SYSTEM, FHIR_COMMON_FIELDS.CODE, Some(typeSystem), Some(typeCode), "", codingElement)
-              )
-          )
-      case _ =>
-        modifier match {
-          case FHIR_PREFIXES_MODIFIERS.TEXT =>
-            InMemoryPrefixModifierHandler.handleTokenTextModifier(path, token, targetType, resource)
-          case _ =>
-            var complextElementPath = path
-            //2 level complex type, so add path for the the last complex type
-            if(targetType == FHIR_DATA_TYPES.CODEABLE_CONCEPT)
-              complextElementPath = FHIRUtil.mergeElementPath(complextElementPath, FHIR_COMMON_FIELDS.CODING)
-            //Get the field paths
-            val (systemField, codeField) = TOKEN_TYPE_SEARCH_SUBPATHS(targetType)
-
-            val (system, code) = FHIRUtil.parseTokenValue(token)
-              FHIRUtil
-                .applySearchParameterPath(complextElementPath, resource)
-                .map(_.asInstanceOf[JObject])
-                .exists(parentElement =>
-                  InMemoryPrefixModifierHandler.tokenModifierHandler(systemField, codeField, system, code, modifier, parentElement)
-                )
-        }
-    }
-  }*/
 
   /**
    * Handle query on references
@@ -565,22 +424,7 @@ object ImMemorySearchUtil {
           throw new InvalidParameterException(s"Reference search is not supported on $other data type!")
       }
     )
-
   }
-
-  /*
-  /**
-    * Handle FHIR reference query on resource
-    * @param reference Compared reference
-    * @param modifier search modifier
-    * @param queryConfig search parameter config
-    * @param resource Resource itself
-    * @return
-    */
-  private def referenceQuery(reference:String, modifier:String, queryConfig:SearchParameterConf, resource:JValue):Boolean = {
-    val valuesAndTargetTypes = extractValuesAndTargetTypes(queryConfig, resource)
-    referenceQueryOnValues(reference, modifier, valuesAndTargetTypes, queryConfig.targets)
-  }*/
 
   /**
     * Check if URL for reference values matches
@@ -640,19 +484,4 @@ object ImMemorySearchUtil {
             }
       ))
   }
-
-  /*
-  /**
-    * Handle FHIR Quantity queries
-    * @param quantity query string
-    * @param prefix prefix used
-    * @param queryConfig search parameter config
-    * @param resource
-    * @return
-    */
-  private def quantityQuery(quantity:String, prefix:String, queryConfig:SearchParameterConf, resource:JValue):Boolean = {
-    val valuesAndTargetTypes = extractValuesAndTargetTypes(queryConfig, resource)
-    quantityQueryOnValues(quantity, prefix, valuesAndTargetTypes)
-  }*/
-
 }
