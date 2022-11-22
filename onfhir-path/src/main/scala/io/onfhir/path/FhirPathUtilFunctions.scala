@@ -30,7 +30,9 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
 
   /**
    * Trim the strings in the current set
+   *
    * - If the string is all white spaces then it is eliminated (return Nil)
+   * @example ' ali  '.trim() --> 'ali'
    * @return
    */
   def trim():Seq[FhirPathResult] = {
