@@ -82,7 +82,7 @@ trait IFhirServerConfigurator extends IFhirVersionConfigurator {
    * @param fhirOperationImplms FHIR Operation implementations (URL for OperationDefinition -> Classpath of the implementation)
    * @return
    */
-  def initializePlatform(configReader: IFhirConfigReader, fhirOperationImplms: Map[String, String]): FhirServerConfig
+  def initializeServerPlatform(configReader: IFhirConfigReader, fhirOperationImplms: Map[String, String]): FhirServerConfig
 
 
   /**

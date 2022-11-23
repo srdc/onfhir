@@ -52,7 +52,7 @@ object FhirConfigurationManager extends IFhirConfigurationManager {
       compartmentDefinitionsPath = OnfhirConfig.compartmentDefinitionsPath
     )
     //Initialize platform, and save the configuration
-    fhirConfig = fhirConfigurator.initializePlatform(fsConfigReader, DEFAULT_IMPLEMENTED_FHIR_OPERATIONS ++ fhirOperationImplms)
+    fhirConfig = fhirConfigurator.initializeServerPlatform(fsConfigReader, DEFAULT_IMPLEMENTED_FHIR_OPERATIONS ++ fhirOperationImplms)
 
     authzManager = new AuthzManager(this)
     eventManager = new FhirEventBus(fhirConfig)

@@ -33,7 +33,7 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
    * @param fhirOperationImplms   FHIR Operation implementations (URL -> Classpath)
    * @return
    */
-  override def initializePlatform(configReader: IFhirConfigReader, fhirOperationImplms:Map[String, String]):FhirServerConfig = {
+  override def initializeServerPlatform(configReader: IFhirConfigReader, fhirOperationImplms:Map[String, String]):FhirServerConfig = {
     logger.info("Reading base FHIR foundation resources (base standard) to start configuration of onFhir server ...")
     //Read base resource profiles defined in the standard
     val baseResourceProfileResources = configReader.readStandardBundleFile(PROFILES_RESOURCES_BUNDLE_FILE_NAME, Set(FHIR_STRUCTURE_DEFINITION))
