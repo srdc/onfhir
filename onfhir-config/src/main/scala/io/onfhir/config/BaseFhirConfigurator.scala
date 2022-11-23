@@ -3,7 +3,7 @@ package io.onfhir.config
 import io.onfhir.api.FHIR_FOUNDATION_RESOURCES.{FHIR_CODE_SYSTEM, FHIR_STRUCTURE_DEFINITION, FHIR_VALUE_SET}
 import io.onfhir.api.model.OutcomeIssue
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.api.validation.{ConstraintKeys, ProfileRestrictions}
+import io.onfhir.api.validation.{AbstractReferenceResolver, ConstraintKeys, IReferenceResolver, ProfileRestrictions, SimpleReferenceResolver}
 import io.onfhir.api.{FHIR_ROOT_URL_FOR_DEFINITIONS, Resource}
 import io.onfhir.exception.InitializationException
 import io.onfhir.util.JsonFormatter.formats
@@ -199,7 +199,8 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
         case None =>
           throw new InitializationException(s"All foundation resources used for onFhir configuration should have a 'url'!")
         case Some(url) =>
-          val fhirContentValidator = FhirContentValidator.apply(baseFhirConfig, s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/$rtype")
+          val referenceResolver:IReferenceResolver = new SimpleReferenceResolver(resource)
+          val fhirContentValidator = FhirContentValidator.apply(baseFhirConfig, s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/$rtype", referenceResolver)
           url -> Await.result(fhirContentValidator.validateComplexContent(resource), 1 minutes)
     }
   }

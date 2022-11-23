@@ -756,7 +756,8 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   def startsWith(prefixExpr : ExpressionContext):Seq[FhirPathResult] = {
     checkSingleString()
     current.headOption.map(c => {
-      new FhirPathExpressionEvaluator(context, current).visit(prefixExpr) match {
+      val prefix = new FhirPathExpressionEvaluator(context, current).visit(prefixExpr)
+      prefix match {
         case Seq(FhirPathString(ss)) =>
           Seq(FhirPathBoolean( ss == "" || c.asInstanceOf[FhirPathString].s.startsWith(ss) ))
         case oth =>
