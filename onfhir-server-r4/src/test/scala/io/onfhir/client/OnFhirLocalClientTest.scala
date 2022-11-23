@@ -1,7 +1,6 @@
 package io.onfhir.client
 
 import java.time.Instant
-
 import akka.http.javadsl.model.StatusCodes
 import akka.http.scaladsl.model.StatusCode
 import io.onfhir.OnFhirTest
@@ -10,20 +9,30 @@ import io.onfhir.api.client.{FHIRHistoryBundle, FHIRSearchSetBundle, FHIRTransac
 import io.onfhir.api.model.FHIRResponse
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.exception.BadRequestException
+import io.onfhir.path.FhirPathEvaluator
 import io.onfhir.util.JsonFormatter._
 import org.json4s.JsonAST.{JObject, JString}
+import org.json4s.jackson.JsonMethods
+import org.junit.runner.RunWith
 
 import scala.io.Source
 import org.specs2.concurrent.ExecutionEnv
+import org.specs2.runner.JUnitRunner
 
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Future}
+import scala.language.postfixOps
 
+@RunWith(classOf[JUnitRunner])
 class OnFhirLocalClientTest extends OnFhirTest {
   val patient =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient.json")).mkString.parseJson
   val patientWithoutId =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-without-id.json")).mkString.parseJson
   val obsGlucose = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Observation/observation-glucose.json")).mkString.parseJson
   val obsHemoglobin = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Observation/observation-hemoglobin.json")).mkString.parseJson
+  val obsBP = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Observation/observation-bp.json")).mkString.parseJson
+
+  val jsonPatch = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-json-patch-multi1.json")).mkString
+  val fhirPathPatch = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-path-patch-multi1.json")).mkString
 
   sequential
 
@@ -275,6 +284,7 @@ class OnFhirLocalClientTest extends OnFhirTest {
 
       FHIRUtil.extractValue[String](resource, "status") mustEqual("final")
     }
+
     "should help retrieving history of a resource" in {
       val bundle:FHIRHistoryBundle =  Await.result(
         OnFhirLocalClient
@@ -366,6 +376,34 @@ class OnFhirLocalClientTest extends OnFhirTest {
 
       opResponse.httpStatus mustEqual(StatusCodes.OK)
       opResponse.getOutputParam("return") must not beEmpty
+    }
+
+    "should help patching a resource with directly supplying patch content" in {
+      Await.result(OnFhirLocalClient.update(obsBP).execute(), 5 seconds)
+      var result: Resource =
+        Await.result(
+          OnFhirLocalClient
+            .patch("Observation", "obsbp")
+            .patchContent(JsonMethods.parse(jsonPatch))
+          , 5 seconds)
+
+      FhirPathEvaluator().evaluateString("component[0].code.coding[0].code", result) mustEqual Seq("test")
+      FhirPathEvaluator().evaluateString("component[0].code.coding[1].code", result) mustEqual Seq("test2")
+      FhirPathEvaluator().evaluateString("component[0].code.coding[2].code", result) mustEqual Seq("test3")
+      FhirPathEvaluator().evaluateString("component[0].code.coding[3].code", result) mustEqual Seq("8480-6")
+
+      Await.result(OnFhirLocalClient.update(obsBP).execute(), 5 seconds)
+      result =
+      Await.result(
+        OnFhirLocalClient
+          .patch("Observation", "obsbp")
+          .patchContent(JsonMethods.parse(fhirPathPatch))
+        , 5 seconds)
+
+      FhirPathEvaluator().evaluateString("component[0].code.coding[0].code", result) mustEqual Seq("test")
+      FhirPathEvaluator().evaluateString("component[0].code.coding[1].code", result) mustEqual Seq("test2")
+      FhirPathEvaluator().evaluateString("component[0].code.coding[2].code", result) mustEqual Seq("test3")
+      FhirPathEvaluator().evaluateString("component[0].code.coding[3].code", result) mustEqual Seq("bp-s")
     }
   }
 }

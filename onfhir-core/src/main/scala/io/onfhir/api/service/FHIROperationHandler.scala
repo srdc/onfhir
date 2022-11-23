@@ -4,11 +4,10 @@ import org.json4s.JsonAST._
 import org.json4s.JsonDSL._
 import io.onfhir.api._
 import io.onfhir.api.model._
-
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
-import io.onfhir.config.{FhirConfigurationManager, OperationConf, OperationParamDef}
+import io.onfhir.config.{FhirConfigurationManager, IFhirConfigurationManager, OperationConf, OperationParamDef}
 import io.onfhir.db.{ResourceManager, TransactionSession}
 import io.onfhir.exception.{BadRequestException, InternalServerException, NotFoundException}
 import io.onfhir.util.JsonFormatter._
@@ -563,7 +562,7 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
   private def getOperationServiceImpl(operationConf: OperationConf): FHIROperationHandlerService = {
     val serviceImpl =
       FHIRUtil.loadFhirOperationClass(operationConf.classPath)
-        .map(opClass => opClass.getConstructor().newInstance(FhirConfigurationManager).asInstanceOf[FHIROperationHandlerService])
+        .map(opClass => opClass.getConstructor(classOf[IFhirConfigurationManager]).newInstance(FhirConfigurationManager).asInstanceOf[FHIROperationHandlerService])
 
     if (serviceImpl.isDefined)
       serviceImpl.get

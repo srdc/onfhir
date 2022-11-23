@@ -201,6 +201,8 @@ object OnFhirNetworkClientTest extends Specification {
       resource.map(r =>FHIRUtil.extractValue[String](r, "status")) must be_==("final").await
     }
 
+
+
     "should help retrieving history of a resource" in {
       val bundle:FHIRHistoryBundle =  Await.result(
         onFhirClient

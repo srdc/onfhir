@@ -5,6 +5,8 @@ import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.util.FHIRUtil
 import org.json4s.{JArray, JObject, JValue}
 
+import java.security.InvalidParameterException
+
 /**
  *  Request builder for FHIR Patch interaction
  * @param onFhirClient
@@ -39,6 +41,7 @@ class FhirPatchRequestBuilder(onFhirClient: IOnFhirClient, rtype:String, rid:Opt
       case arr:JArray =>
         request.contentType = Some(FHIR_CONTENT_TYPES.FHIR_JSON_PATCH_CONTENT_TYPE)
         request.resource = Some(JObject("patches" -> arr))
+      case _ => throw new InvalidParameterException("Either you need to supply a JSON object or array representing FHIR JSON Patch content or FHIR Path Patch content")
     }
     this
   }
