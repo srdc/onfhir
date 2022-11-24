@@ -19,6 +19,9 @@ class FhirPatchRequestBuilder(onFhirClient: IOnFhirClient, rtype:String, rid:Opt
   ) {
   type This = FhirPatchRequestBuilder
 
+  protected override def compile(): Unit ={
+    super.compile()
+  }
   /**
    * Directly provide the patch content
    * @param patch Patch content

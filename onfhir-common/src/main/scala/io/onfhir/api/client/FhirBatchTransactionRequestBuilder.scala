@@ -11,14 +11,15 @@ class FhirBatchTransactionRequestBuilder(onFhirClient:IOnFhirClient, isBatch:Boo
   ){
 
   def entry(rbFunction:IOnFhirClient => FhirRequestBuilder):FhirBatchTransactionRequestBuilder = {
-    request.childRequests = request.childRequests :+ rbFunction(onFhirClient).request
+    request.childRequests = request.childRequests :+ rbFunction(onFhirClient).compileRequest()
     this
   }
 
   def entry(fullUrlUuid:String, rbFunction:IOnFhirClient => FhirRequestBuilder):FhirBatchTransactionRequestBuilder = {
     if(!fullUrlUuid.startsWith("urn:uuid:"))
       throw new FhirClientException(s"Given fullUrl $fullUrlUuid  is not in urn:uuid format!")
-    request.childRequests = request.childRequests :+ rbFunction(onFhirClient).request.setId(Some(fullUrlUuid))
+
+    request.childRequests = request.childRequests :+ rbFunction(onFhirClient).compileRequest().setId(Some(fullUrlUuid))
     this
   }
 

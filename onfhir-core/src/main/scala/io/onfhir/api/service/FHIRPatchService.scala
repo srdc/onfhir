@@ -136,14 +136,15 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
 
     fhirConfigurationManager.resourceManager.queryResources(_type, searchParameters, count =1).flatMap {
       //No matching
-      case (0, _) => throw new NotFoundException(Seq(
-        OutcomeIssue(
-          FHIRResponse.SEVERITY_CODES.ERROR,
-          FHIRResponse.OUTCOME_CODES.INVALID,
-          None,
-          Some(s"No matching resource for given query!"),
-          Nil
-        )
+      case (0, _) =>
+        throw new NotFoundException(Seq(
+          OutcomeIssue(
+            FHIRResponse.SEVERITY_CODES.ERROR,
+            FHIRResponse.OUTCOME_CODES.INVALID,
+            None,
+            Some(s"No matching resource for given query!"),
+            Nil
+          )
       ))
       //Only one match
       case (1, Seq(foundResource)) =>
