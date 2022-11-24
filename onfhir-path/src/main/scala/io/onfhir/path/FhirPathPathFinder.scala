@@ -16,7 +16,7 @@ import io.onfhir.path.util.FhirPathUtil
  */
 class FhirPathPathFinder(context:FhirPathEnvironment, current:Seq[FhirPathResult],  targetType:Option[String] = None) extends FhirPathExpressionEvaluator(context, current, targetType) {
   //Filtering and subsetting functions
-  val allowedFunctionsInPathIndicatingStatements = Set("where", "single", "first", "last", "tail", "skip", "skip", "take", "intersect", "exclude", "ofType", "as")
+  val allowedFunctionsInPathIndicatingStatements = Set("where", "single", "first", "last", "tail", "skip", "skip", "take", "intersect", "exclude", "ofType", "as", "extension")
 
   /**
    * Return the found paths
