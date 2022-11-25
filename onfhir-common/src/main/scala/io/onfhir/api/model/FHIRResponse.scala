@@ -29,6 +29,14 @@ case class FHIRResponse(
                          xIntermediary:Option[String] = None
                        ) {
   def isError:Boolean = httpStatus.isFailure()
+
+  def isNonTransientError:Boolean = httpStatus.isFailure() && httpStatus.intValue() != 409
+
+  /**
+   * Whether the error is transient according to FHIR API
+   * @return
+   */
+  def isTransientError:Boolean = httpStatus.intValue() == 409
 }
 
 /**

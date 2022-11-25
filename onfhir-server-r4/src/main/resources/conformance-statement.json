@@ -25,6 +25,10 @@
   },
   "fhirVersion" : "4.0.1",
   "format" : ["xml","json"],
+  "patchFormat": [
+    "application/json-patch+json",
+    "application/fhir+json"
+  ],
   "rest" : [{
     "mode" : "server",
     "documentation" : "All the functionality defined in FHIR",
@@ -12323,6 +12327,10 @@
         "code" : "create",
         "documentation" : "Implemented per the specification (or Insert other doco here)"
       },
+        {
+          "code" : "patch",
+          "documentation" : "Implemented per the specification (or Insert other doco here)"
+        },
       {
         "code" : "search-type",
         "documentation" : "Implemented per the specification (or Insert other doco here)"

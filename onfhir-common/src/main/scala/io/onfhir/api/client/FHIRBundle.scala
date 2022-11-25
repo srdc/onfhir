@@ -182,9 +182,20 @@ class FHIRTransactionBatchBundle(val bundle:Resource) extends FHIRBundle(bundle)
         parseEntryAsResponse(e)
     )
 
+  /**
+   * Check if there is any error for the responses
+   * @return
+   */
   def hasAnyError():Boolean = {
     responses.exists(_._2.isError)
   }
+
+  def hasAnyNonTransientError():Boolean = {
+    responses.exists(_._2.isNonTransientError)
+  }
+
+  def getUUIDsOfTransientErrors():Seq[String] =
+    responses.filter(_._2.isTransientError).flatMap(_._1)
 
   /**
    * Get the response of an child request of batch/transaction with given fullUrl
