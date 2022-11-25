@@ -383,7 +383,9 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
   private def handleDuration(durationInMin: Long): (Double, String) = {
     if (durationInMin < 60 * 24)
       durationInMin * 1.0 -> "min"
-    else if (durationInMin < 60 * 24 * 6)
+    else if (durationInMin < 60 * 24 * 3)
+      (durationInMin / 60.0) -> "h"
+    else if (durationInMin < 60 * 24 * 60)
       (durationInMin / (60.0 * 24.0)) -> "d"
     else
       (durationInMin / (60.0 * 24.0 * 30)) -> "mo"
