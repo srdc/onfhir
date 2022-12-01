@@ -122,7 +122,12 @@ class SearchParameterConfigurator(
         //Find the final path of that main part with array indicators e.g. recipient --> recipient[i]
         val finalMainPart = findFinalPathWithArrayIndicators(mainParts)
         //Join again the whole path
-        val finalPath = finalMainPart + "." + parts.dropWhile(_ != "extension[i]").mkString(".")
+        val finalPath =
+          finalMainPart match {
+            case "" => parts.dropWhile(_ != "extension[i]").mkString(".")
+            case oth =>  oth + "." + parts.dropWhile(_ != "extension[i]").mkString(".")
+          }
+
         finalPath -> ep._2
       })
 
