@@ -106,7 +106,7 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
     current
       .filter(_.isInstanceOf[FhirPathComplex]) //Only get the complex objects
       .flatMap(r => {
-        FhirPathValueTransformer.transform(r.asInstanceOf[FhirPathComplex].json \ pathName) match { //Execute JSON path for each element
+        FhirPathValueTransformer.transform(r.asInstanceOf[FhirPathComplex].json \ pathName, context.isContentFhir) match { //Execute JSON path for each element
           //The field can be a multi valued so we should check if there is a field starting with the path
           case Nil if targetType.isEmpty =>
             r.asInstanceOf[FhirPathComplex].json.obj
@@ -115,7 +115,7 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
                   !f._1.startsWith(pathName+"Value") && //Not include the exception case in elementDefinition e.g. maxValueQuantity
                   f._1.length > pathName.length &&  //If element has longer name
                   f._1.drop(pathName.length).head.isUpper)  //and if element is actually multi type FHIR element e.g. valueQuantity, valueCodeableConcept
-              .map(f => FhirPathValueTransformer.transform(f._2))
+              .map(f => FhirPathValueTransformer.transform(f._2, context.isContentFhir))
               .getOrElse(Nil) //If not found still return nil
           //Oth
           case oth => oth

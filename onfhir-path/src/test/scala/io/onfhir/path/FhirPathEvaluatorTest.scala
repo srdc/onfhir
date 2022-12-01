@@ -5,7 +5,7 @@ import io.onfhir.api.Resource
 import io.onfhir.api.model.{FhirCanonicalReference, FhirLiteralReference, FhirReference}
 import io.onfhir.api.validation.IReferenceResolver
 import io.onfhir.util.JsonFormatter._
-import org.json4s.JsonAST.{JArray, JNull, JObject, JString}
+import org.json4s.JsonAST.{JArray, JInt, JNull, JObject, JString}
 import org.junit.runner.RunWith
 import org.specs2.mutable.Specification
 import org.specs2.runner.JUnitRunner
@@ -877,6 +877,20 @@ class FhirPathEvaluatorTest extends Specification {
       FhirPathLiteralEvaluator.parseFhirQuantity("3 days") must beSome(FhirPathQuantity(FhirPathNumber(3), "d"))
     }
 
+    "check with non-fhir-content" in {
+      val fhirPath = "iif(icd_code.length()=3 or (icd_code.startsWith('E') and icd_version=9 and icd_code.length()=4), icd_code, iif(icd_code.startsWith('E') and icd_version=9, icd_code.substring(0,4)&'.'&icd_code.substring(4), icd_code.substring(0,3) & '.' & icd_code.substring(3)))"
+      new FhirPathEvaluator(isContentFhir = false).evaluateString(fhirPath, JObject("icd_code" -> JString("0010"), "icd_version"-> JInt(9))).headOption must beSome("001.0")
+      new FhirPathEvaluator(isContentFhir = false).evaluateString(fhirPath, JObject("icd_code" -> JString("00329"), "icd_version"-> JInt(9))).headOption must beSome("003.29")
+      new FhirPathEvaluator(isContentFhir = false).evaluateString(fhirPath, JObject("icd_code" -> JString("037"), "icd_version" -> JInt(9))).headOption must beSome("037")
+      new FhirPathEvaluator(isContentFhir = false).evaluateString(fhirPath, JObject("icd_code" -> JString("C505"), "icd_version" -> JInt(10))).headOption must beSome("C50.5")
+      new FhirPathEvaluator(isContentFhir = false).evaluateString(fhirPath, JObject("icd_code" -> JString("C5051"), "icd_version" -> JInt(10))).headOption must beSome("C50.51")
+      new FhirPathEvaluator(isContentFhir = false).evaluateString(fhirPath, JObject("icd_code" -> JString("C50511"), "icd_version" -> JInt(10))).headOption must beSome("C50.511")
+      new FhirPathEvaluator(isContentFhir = false).evaluateString(fhirPath, JObject("icd_code" -> JString("C51"), "icd_version" -> JInt(10))).headOption must beSome("C51")
+      new FhirPathEvaluator(isContentFhir = false).evaluateString(fhirPath, JObject("icd_code" -> JString("E8582"), "icd_version" -> JInt(9))).headOption must beSome("E858.2")
+      new FhirPathEvaluator(isContentFhir = false).evaluateString(fhirPath, JObject("icd_code" -> JString("E8582"), "icd_version" -> JInt(10))).headOption must beSome("E85.82")
+      new FhirPathEvaluator(isContentFhir = false).evaluateString(fhirPath, JObject("icd_code" -> JString("V9081"), "icd_version" -> JInt(9))).headOption must beSome("V90.81")
+      new FhirPathEvaluator(isContentFhir = false).evaluateString(fhirPath, JObject("icd_code" -> JString("V9081"), "icd_version" -> JInt(10))).headOption must beSome("V90.81")
+    }
     /**
     * This a integration test and needs a terminology service
     "evaluate terminology service functions" in {

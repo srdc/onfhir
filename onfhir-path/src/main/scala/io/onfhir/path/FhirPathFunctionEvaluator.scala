@@ -846,7 +846,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     current
       .filter(_.isInstanceOf[FhirPathComplex])
       .map(_.asInstanceOf[FhirPathComplex])
-      .flatMap(pc => pc.json.obj.map(_._2).flatMap(FhirPathValueTransformer.transform))
+      .flatMap(pc => pc.json.obj.map(_._2).flatMap(i => FhirPathValueTransformer.transform(i, context.isContentFhir)))
   }
 
   def descendants():Seq[FhirPathResult] = {

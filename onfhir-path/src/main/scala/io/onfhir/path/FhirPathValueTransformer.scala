@@ -13,15 +13,15 @@ object FhirPathValueTransformer {
     * @param v
     * @return
     */
-  def transform(v:JValue):Seq[FhirPathResult] = {
+  def transform(v:JValue, isContentFhir:Boolean = true):Seq[FhirPathResult] = {
     v match {
-      case JArray(arr) => arr.flatMap(transform)
+      case JArray(arr) => arr.flatMap(i => transform(i, isContentFhir))
       case jobj:JObject => Seq(FhirPathComplex(jobj))
       case JInt(i) => Seq(FhirPathNumber(BigDecimal(i)))
       case JDouble(num) => Seq(FhirPathNumber(num))
       case JDecimal(num) => Seq(FhirPathNumber(num.toDouble))
       case JLong(num) => Seq(FhirPathNumber(num.toDouble))
-      case JString(s) if s.headOption.exists(_.isDigit)  => Seq(resolveFromString(s))
+      case JString(s) if isContentFhir && s.headOption.exists(_.isDigit)  => Seq(resolveFromString(s))
       case JString(s) => Seq(FhirPathString(s))
       case JBool(b) => Seq(FhirPathBoolean(b))
       case _ => Nil

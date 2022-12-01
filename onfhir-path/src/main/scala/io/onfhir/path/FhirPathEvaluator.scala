@@ -93,12 +93,12 @@ case class FhirPathEvaluator (
    */
   private def evaluate(expr:FhirPathExprParser.ExpressionContext, on:JValue):Seq[FhirPathResult] = {
     logger.debug(s"Evaluating FHIR path expression '${expr.getText}' ...")
-    val resource = FhirPathValueTransformer.transform(on)
+    val resource = FhirPathValueTransformer.transform(on, isContentFhir)
     val environment =
       FhirPathEnvironment(
         resource,
         referenceResolver,
-        environmentVariables.map(e => e._1 -> FhirPathValueTransformer.transform(e._2)),
+        environmentVariables.map(e => e._1 -> FhirPathValueTransformer.transform(e._2, isContentFhir)),
         functionLibraries,
         terminologyService,
         identityService,
