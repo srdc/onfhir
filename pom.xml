@@ -124,7 +124,7 @@
         <nimbus-oidc.version>9.27</nimbus-oidc.version>
         <apache-commons-lang.version>3.12.0</apache-commons-lang.version>
         <apache-commons-io.version>2.11.0</apache-commons-io.version>
-        <apache-commons-text.version>1.9</apache-commons-text.version>
+        <apache-commons-text.version>1.10.0</apache-commons-text.version>
 
         <!-- release plugin versions -->
         <version.plugin.source>3.2.1</version.plugin.source>

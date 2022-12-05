@@ -15,7 +15,7 @@ import io.onfhir.api.{DEFAULT_RESOURCE_PATHS, FHIR_FOUNDATION_RESOURCES, Resourc
  * @param compartmentDefinitionsPath  Path to the zip file or folder that supported FHIR CompartmentDefinition definitions are given
  */
 class FSConfigReader(
-                      fhirStandardZipFilePath:Option[String],
+                      fhirStandardZipFilePath:Option[String] = None,
                       profilesPath:Option[String] = None,
                       valueSetsPath:Option[String] = None,
                       codeSystemsPath:Option[String] = None,
