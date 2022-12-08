@@ -29,6 +29,17 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
   }
 
   /**
+   * Check whether the given string or character starts with or is a letter
+   * @return
+   */
+  def isLetter():Seq[FhirPathResult] = {
+    current match {
+      case  Seq(FhirPathString(l)) => Seq(FhirPathBoolean(l.head.isLetter))
+      case _ => Nil
+    }
+  }
+
+  /**
    * Trim the strings in the current set
    *
    * - If the string is all white spaces then it is eliminated (return Nil)
@@ -282,6 +293,21 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
         }
       case Seq(oth) => Seq(FhirPathBoolean(false))
       case _ => throw new FhirPathException(s"Invalid function call 'toDecimal' on multiple values!!!")
+    }
+  }
+
+  /**
+   * Parse a FHIR quantity expression e.g. >50.5, 42
+   *
+   * If the given value is empty or not an quantity expression, return Nil
+   * @param valueExpr FHIR Quantity expression with optional comparator
+   * @return          Seq of results where first element is the numeric value and second if exists is the comparator
+   */
+  def parseFhirQuantityExpression(valueExpr:ExpressionContext):Seq[FhirPathResult] = {
+    handleFhirQuantityValue(valueExpr) match {
+      case None => Nil
+      case Some(q -> None)=> FhirPathValueTransformer.transform(q)
+      case Some(q -> Some(c)) => FhirPathValueTransformer.transform(q) :+ FhirPathString(c)
     }
   }
 
@@ -594,15 +620,18 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    */
   def toFhirDate(sourcePattern: ExpressionContext):Seq[FhirPathResult] = {
     val pattern = new FhirPathExpressionEvaluator(context, current).visit(sourcePattern)
-    if (pattern.length != 1 || !pattern.head.isInstanceOf[FhirPathString]) {
+    if (pattern.isEmpty || !pattern.forall(_.isInstanceOf[FhirPathString])) {
       throw FhirPathException("Invalid function call to 'toFhirDate'. The sourcePattern expression (the function parameter) should evaluate to a single string value.")
     }
     current.map {
       case FhirPathString(st) =>
-        val formatToTry:DateTimeFormatter = DateTimeFormatter.ofPattern(pattern.head.asInstanceOf[FhirPathString].s)
-        Try(formatToTry.parseBest(st, LocalDate.from(_), YearMonth.from(_), Year.from(_)).asInstanceOf[Temporal])
-          .toOption match {
-            case None => throw FhirPathException(s"Invalid function call 'toFhirDate'. Given date is not recognized according to the format ${formatToTry.toString} !")
+        val formatsToTry =
+          pattern.map(p => DateTimeFormatter.ofPattern(p.asInstanceOf[FhirPathString].s))
+
+        formatsToTry
+          .flatMap(formatToTry => Try(formatToTry.parseBest(st, LocalDate.from(_), YearMonth.from(_), Year.from(_)).asInstanceOf[Temporal]).toOption)
+          .headOption match {
+            case None => throw FhirPathException(s"Invalid function call 'toFhirDate'. Given date is not recognized according to the formats ${formatsToTry.mkString(", ")} !")
             case Some(temporal) => FhirPathDateTime(temporal)
           }
       case dt:FhirPathDateTime => dt
@@ -631,10 +660,10 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    */
   def toFhirDateTime(sourcePattern: ExpressionContext): Seq[FhirPathResult] = {
     val pattern = new FhirPathExpressionEvaluator(context, current).visit(sourcePattern)
-    if (pattern.length != 1 || !pattern.head.isInstanceOf[FhirPathString]) {
+    if (pattern.isEmpty || !pattern.forall(_.isInstanceOf[FhirPathString])) {
       throw FhirPathException("Invalid function call to 'toFhirDateTime'. The sourcePattern expression (the function parameter) should evaluate to a single string value.")
     }
-    _toFhirDateTime(Seq(pattern.head.asInstanceOf[FhirPathString].s))
+    _toFhirDateTime(pattern.map(_.asInstanceOf[FhirPathString].s))
   }
 
   /**
@@ -647,17 +676,18 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    */
   def toFhirDateTime(sourcePattern:ExpressionContext, zoneId:ExpressionContext):Seq[FhirPathResult] = {
     val pattern = new FhirPathExpressionEvaluator(context, current).visit(sourcePattern)
-    if (pattern.length != 1 || !pattern.head.isInstanceOf[FhirPathString]) {
+    if (pattern.isEmpty || !pattern.forall(_.isInstanceOf[FhirPathString])) {
       throw FhirPathException("Invalid function call to 'toFhirDateTime'. The sourcePattern expression (the function parameter) should evaluate to a single string value.")
     }
     val zoneIdStr =  new FhirPathExpressionEvaluator(context, current).visit(zoneId)
 
-    if (pattern.length != 1 || !pattern.head.isInstanceOf[FhirPathString]) {
+    if (zoneIdStr.length != 1 || !zoneIdStr.head.isInstanceOf[FhirPathString]) {
       throw FhirPathException("Invalid function call to 'toFhirDateTime'. The zoneId expression (the function parameter) should evaluate to a single string value.")
     }
     Try(ZoneId.of(zoneIdStr.head.asInstanceOf[FhirPathString].s)).toOption match {
       case None => throw FhirPathException("Invalid function call to 'toFhirDateTime'. The zoneId expression (the function parameter) should evaluate to a valid Java ZoneId string!")
-      case Some(zid) => _toFhirDateTime(Seq(pattern.head.asInstanceOf[FhirPathString].s), zid)
+      case Some(zid) =>
+        _toFhirDateTime(pattern.map(_.asInstanceOf[FhirPathString].s), zid)
     }
   }
 
@@ -672,14 +702,12 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
       case dt: FhirPathDateTime => dt
       case FhirPathString(st) =>
         val formatsToTry = patternsToTry.map(DateTimeFormatter.ofPattern(_).withZone(zoneId))
-        val dateTime = formatsToTry.collectFirst {
-          case format if Try(ZonedDateTime.parse(st, format)).isSuccess => ZonedDateTime.parse(st, format)
-        }
-        if (dateTime.isDefined) {
-          FhirPathDateTime(dateTime.get)
-        } else {
-          throw FhirPathException(s"Invalid function call 'toFhirDateTime'. Datetime format of the expression is not recognized. Valid formats are: ${patternsToTry.mkString(",")} !")
-        }
+        formatsToTry
+          .flatMap(formatToTry => Try(formatToTry.parseBest(st, ZonedDateTime.from(_), LocalDate.from(_), YearMonth.from(_), Year.from(_)).asInstanceOf[Temporal]).toOption)
+          .headOption match {
+              case None => throw FhirPathException(s"Invalid function call 'toFhirDateTime'. Datetime format of the expression is not recognized. Valid formats are: ${patternsToTry.mkString(", ")} !")
+              case Some(temporal) => FhirPathDateTime(temporal)
+          }
       case _ =>
         throw FhirPathException(s"Invalid function call 'toFhirDateTime'. Datetime format of the expression is not recognized. Valid formats are: ${patternsToTry.mkString(",")} !")
     }

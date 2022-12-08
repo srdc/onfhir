@@ -108,7 +108,7 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
       .flatMap(r => {
         FhirPathValueTransformer.transform(r.asInstanceOf[FhirPathComplex].json \ pathName, context.isContentFhir) match { //Execute JSON path for each element
           //The field can be a multi valued so we should check if there is a field starting with the path
-          case Nil if targetType.isEmpty =>
+          case Nil if targetType.isEmpty && context.isContentFhir =>
             r.asInstanceOf[FhirPathComplex].json.obj
               .find(f =>
                   f._1.startsWith(pathName) && //If element name starts with path

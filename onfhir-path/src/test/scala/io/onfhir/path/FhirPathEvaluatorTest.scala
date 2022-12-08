@@ -778,11 +778,14 @@ class FhirPathEvaluatorTest extends Specification {
       dt.getDayOfMonth mustEqual 13
       dt.getMinute mustEqual 10
 
-      val fhirDateTimeParam = evaluator.evaluateDateTime("'20120113.22:10:45'.utl:toFhirDateTime('yyyyMMdd.HH:mm:ss')", JNull)
+      val fhirDateTimeParam = evaluator.evaluateDateTime("'20120113.22:10:45'.utl:toFhirDateTime('yyyy-MM-ddHH:mm:ss' | 'yyyyMMdd.HH:mm:ss')", JNull)
       val dtParam = LocalDateTime.from(fhirDateTimeParam.head)
       dtParam.getYear mustEqual 2012
       dtParam.getDayOfMonth mustEqual 13
       dtParam.getMinute mustEqual 10
+
+      val fhirDate = evaluator.evaluateDateTime("'20120113'.utl:toFhirDateTime('yyyyMMdd' | 'yyyyMMdd.HH:mm:ss')", JNull)
+      fhirDate.head mustEqual LocalDate.of(2012,1, 13)
     }
 
     "evaluate fixed bugs" in {
