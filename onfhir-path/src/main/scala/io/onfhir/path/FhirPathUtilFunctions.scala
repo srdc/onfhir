@@ -705,8 +705,10 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
         formatsToTry
           .flatMap(formatToTry => Try(formatToTry.parseBest(st, ZonedDateTime.from(_), LocalDate.from(_), YearMonth.from(_), Year.from(_)).asInstanceOf[Temporal]).toOption)
           .headOption match {
-              case None => throw FhirPathException(s"Invalid function call 'toFhirDateTime'. Datetime format of the expression is not recognized. Valid formats are: ${patternsToTry.mkString(", ")} !")
-              case Some(temporal) => FhirPathDateTime(temporal)
+              case None =>
+                throw FhirPathException(s"Invalid function call 'toFhirDateTime'. Datetime format of the expression is not recognized for the given value '$st'. Valid formats are: ${patternsToTry.mkString(", ")} !")
+              case Some(temporal) =>
+                FhirPathDateTime(temporal)
           }
       case _ =>
         throw FhirPathException(s"Invalid function call 'toFhirDateTime'. Datetime format of the expression is not recognized. Valid formats are: ${patternsToTry.mkString(",")} !")

@@ -559,6 +559,8 @@ class FhirPathEvaluatorTest extends Specification {
       FhirPathEvaluator().evaluateString("Observation.performer.display.replace('Lang', 'Lan')", observation).head mustEqual "A. Laneveld"
       FhirPathEvaluator().evaluateString("Observation.performer.display.replace('A. ', '')", observation).head mustEqual "Langeveld"
       FhirPathEvaluator().evaluateString("Observation.performer.display.replace('', 'x')", observation).head mustEqual "xAx.x xLxaxnxgxexvxexlxdx"
+      FhirPathEvaluator().evaluateNumerical("'7,48'.replace(',', '.').toDecimal()", observation).head.toDouble mustEqual 7.48
+      FhirPathEvaluator().evaluateNumerical("'7.48'.replace(',', '.').toDecimal()", observation).head.toDouble mustEqual 7.48
       //matches
       FhirPathEvaluator().satisfies("Observation.performer.display.matches('.*Lan.*')", observation) mustEqual true
       FhirPathEvaluator().satisfies("'M31.2'.matches('M31\\.[0-3]')", observation) mustEqual true
