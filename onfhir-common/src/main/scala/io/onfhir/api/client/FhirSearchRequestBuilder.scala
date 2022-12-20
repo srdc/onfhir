@@ -117,7 +117,13 @@ class SearchSetIterator(rb:FhirSearchRequestBuilder)(implicit executionContext: 
           case Failure(exception) =>
         }
         temp
-      case Some(b) => rb.onFhirClient.next(b)
+      case Some(b) =>
+        val temp = rb.onFhirClient.next(b)
+        temp onComplete {
+          case Success(v) => latestBundle = Some(v)
+          case Failure(exception) =>
+        }
+        temp
     }
   }
 }
