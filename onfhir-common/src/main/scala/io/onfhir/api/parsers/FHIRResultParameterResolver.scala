@@ -61,11 +61,11 @@ class FHIRResultParameterResolver(fhirConfig:FhirServerConfig) {
   }
 
   /**
-    * Resolve FHIR _page and _count parameter
+    * Resolve FHIR _count and pagination parameters; either _page or _searchafter or _searchbefore
     * @param resultParameters Given result parameters
     * @return page -> count
     */
-  def resolveCountPageParameters(resultParameters:List[Parameter]):(Int, Int) = {
+  def resolveCountPageParameters(resultParameters:List[Parameter]):(Int, Either[Int, (Seq[String], Boolean)]) = {
     val count =
       resultParameters
         .find(_.name == FHIR_SEARCH_RESULT_PARAMETERS.COUNT)
@@ -77,7 +77,15 @@ class FHIRResultParameterResolver(fhirConfig:FhirServerConfig) {
       .map(_.valuePrefixList.head._2.toInt)
       .getOrElse(1)
 
-    page -> count
+    val offset =
+      resultParameters
+        .find(r => r.name == FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_AFTER || r.name == FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_BEFORE)
+        .map(p => p.valuePrefixList.map(_._2) -> (p.name == FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_AFTER))
+
+    offset match {
+      case Some(o) => count -> Right(o)
+      case None => count -> Left(page)
+    }
   }
 
   /**

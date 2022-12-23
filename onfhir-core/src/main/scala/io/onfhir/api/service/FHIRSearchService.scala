@@ -2,7 +2,7 @@ package io.onfhir.api.service
 
 import akka.http.scaladsl.model.StatusCodes
 import io.onfhir.api._
-import io.onfhir.api.model.{FHIRRequest, FHIRResponse, Parameter}
+import io.onfhir.api.model.{FHIRRequest, FHIRResponse, FHIRSearchResult, Parameter}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
@@ -130,7 +130,7 @@ class FHIRSearchService(transactionSession: Option[TransactionSession] = None) e
     fhirConfigurationManager.resourceManager
       .searchResourcesFromMultipleResourceTypes(parameters)(transactionSession)
       .map(searchResult =>
-        constructBundle(searchResult._1, searchResult._2, Nil, rtypes, parameters.headOption.map(_._2).getOrElse(List.empty[Parameter]))
+        constructBundle(FHIRSearchResult(searchResult._1, searchResult._2), rtypes, parameters.headOption.map(_._2).getOrElse(List.empty[Parameter]))
       )
   }
   /**
@@ -143,7 +143,7 @@ class FHIRSearchService(transactionSession: Option[TransactionSession] = None) e
     fhirConfigurationManager.resourceManager
       .searchResources(rtype, parameters)(transactionSession)
       .map(searchResult =>
-        constructBundle(searchResult._1, searchResult._2, searchResult._3, Seq(rtype), parameters)
+        constructBundle(searchResult, Seq(rtype), parameters)
       )
   }
 
@@ -157,13 +157,16 @@ class FHIRSearchService(transactionSession: Option[TransactionSession] = None) e
    * @return
    */
   private def constructBundle(
-                               totalNumOfMatched:Long,
-                               matchedResources:Seq[Resource],
-                               includedResources:Seq[Resource],
+                               searchResult:FHIRSearchResult,
                                rtype:Seq[String],
                                parameters:List[Parameter]):Resource = {
     //Construct paging links
-    val pagingLinks = fhirConfigurationManager.fhirServerUtil.generateBundleLinks(rtype, None, totalNumOfMatched, matchedResources.length, parameters, isHistory = false)
+    val pagingLinks =
+      if(parameters.exists(p => p.name == FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_AFTER || p.name == FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_BEFORE))
+        fhirConfigurationManager.fhirServerUtil.generateBundleLinksForOffsetBasedPagination(rtype, searchResult, parameters)
+      else
+        fhirConfigurationManager.fhirServerUtil.generateBundleLinks(rtype, None, searchResult.total, searchResult.matches.length, parameters, isHistory = false)
+
 
     //Whether search results are summarized or not
     val summaryParamValue = parameters.find(p => p.name == FHIR_SEARCH_RESULT_PARAMETERS.SUMMARY).map(_.valuePrefixList.head._2)
@@ -172,11 +175,11 @@ class FHIRSearchService(transactionSession: Option[TransactionSession] = None) e
 
     //Create FHIR bundle entries
     val bundleEntries =
-      matchedResources.map(matchedResource => fhirConfigurationManager.fhirServerUtil.createBundleEntry(matchedResource, FHIR_BUNDLE_TYPES.SEARCH_SET, isSummarized)) ++
-        includedResources.map(includedResource => fhirConfigurationManager.fhirServerUtil.createBundleEntry(includedResource, FHIR_BUNDLE_TYPES.SEARCH_SET, isSummarized, isMatched = false))
+      searchResult.matches.map(matchedResource => fhirConfigurationManager.fhirServerUtil.createBundleEntry(matchedResource, FHIR_BUNDLE_TYPES.SEARCH_SET, isSummarized)) ++
+        searchResult.includes.map(includedResource => fhirConfigurationManager.fhirServerUtil.createBundleEntry(includedResource, FHIR_BUNDLE_TYPES.SEARCH_SET, isSummarized, isMatched = false))
 
-    logger.debug(s"Returning ${matchedResources.length} resources from $totalNumOfMatched and ${includedResources.length} documents are marked as include...")
+    logger.debug(s"Returning ${searchResult.matches.length} resources from ${searchResult.total} and ${searchResult.includes.length} documents are marked as include...")
     //Create and return bundle
-    FHIRUtil.createBundle(FHIR_BUNDLE_TYPES.SEARCH_SET, pagingLinks, bundleEntries, totalNumOfMatched, summaryParamValue)
+    FHIRUtil.createBundle(FHIR_BUNDLE_TYPES.SEARCH_SET, pagingLinks, bundleEntries, searchResult.total, summaryParamValue)
   }
 }

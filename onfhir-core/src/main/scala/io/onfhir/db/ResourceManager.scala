@@ -4,7 +4,7 @@ import java.time.Instant
 import akka.http.scaladsl.model.{DateTime, StatusCode, StatusCodes}
 import io.onfhir.Onfhir
 import io.onfhir.api._
-import io.onfhir.api.model.{FhirCanonicalReference, FhirLiteralReference, FhirReference, Parameter}
+import io.onfhir.api.model.{FHIRSearchResult, FhirCanonicalReference, FhirLiteralReference, FhirReference, Parameter}
 import io.onfhir.api.parsers.FHIRResultParameterResolver
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.{FhirServerConfig, OnfhirConfig}
@@ -36,11 +36,11 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
     * @param excludeExtraParams If true, the extra params set by Onfhir are excluded from the returned resources
     * @return Num of Total Matched Resources, Matched Resources (with Paging) and Included Resources (based on matched ones)
     */
-  def searchResources(rtype:String, parameters:List[Parameter] = List.empty, excludeExtraParams:Boolean = false)(implicit transactionSession: Option[TransactionSession] = None):Future[(Long, Seq[Resource], Seq[Resource])] = {
+  def searchResources(rtype:String, parameters:List[Parameter] = List.empty, excludeExtraParams:Boolean = false)(implicit transactionSession: Option[TransactionSession] = None):Future[FHIRSearchResult] = {
     //Extract FHIR result parameters
     val resultParameters = parameters.filter(_.paramCategory == FHIR_PARAMETER_CATEGORIES.RESULT)
     //Check _page and _count
-    val (page, count) = fhirResultParameterResolver.resolveCountPageParameters(resultParameters)
+    val (count, pageOrOffset) = fhirResultParameterResolver.resolveCountPageParameters(resultParameters)
     //Check _summary param to identify what to include or exclude
     val summaryIncludesOrExcludes = fhirResultParameterResolver.resolveSummaryParameter(rtype, resultParameters)
     //Check _elements param to include further
@@ -62,29 +62,39 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
     //If _summary parameter is count, just count the documents
     if(summaryIncludesOrExcludes.exists(s => s._1 && s._2.isEmpty)){
       countResources(rtype, queryParams)
-        .map(total => (total, Seq.empty, Seq.empty))
+        .map(total => FHIRSearchResult(total))
     } else { //Otherwise normal search
       //Execute the actual query to find matched resources
-      queryResources(rtype, queryParams, count, page, sortingFields, finalIncludesOrExcludes, excludeExtraParams, needTotal)
+      val queryResultsFuture =
+        pageOrOffset match {
+          case Left(page) =>
+            queryResources(rtype, queryParams, count, page, sortingFields, finalIncludesOrExcludes, excludeExtraParams, needTotal)
+              .map {
+                case (total, results) => (total, results, Nil, Nil)
+              }
+          case Right(offset) =>
+            queryResourcesWithOffsetPagination(rtype, queryParams, count, offset, sortingFields, finalIncludesOrExcludes, excludeExtraParams, needTotal)
+        }
+      queryResultsFuture
         .flatMap(totalAndMatchedResources =>
           //Handle _include and _revinclude params
           (includeParams, revIncludeParams) match {
             //No _include or _revinclude
-            case (Nil, Nil) => Future.apply((totalAndMatchedResources._1, totalAndMatchedResources._2, Seq.empty))
+            case (Nil, Nil) => Future.apply(FHIRSearchResult(totalAndMatchedResources._1, totalAndMatchedResources._2, Seq.empty, totalAndMatchedResources._3, totalAndMatchedResources._4))
             //Only _revinclude
             case (Nil, _) =>
               handleRevIncludes(rtype, totalAndMatchedResources._2, revIncludeParams)
-                .map(revIncludedResources => (totalAndMatchedResources._1, totalAndMatchedResources._2, revIncludedResources))
+                .map(revIncludedResources => FHIRSearchResult(totalAndMatchedResources._1, totalAndMatchedResources._2, revIncludedResources, totalAndMatchedResources._3, totalAndMatchedResources._4))
             //Only _include
             case (_, Nil) =>
               handleIncludes(rtype, totalAndMatchedResources._2, includeParams)
-                .map(includedResources => (totalAndMatchedResources._1, totalAndMatchedResources._2, includedResources))
+                .map(includedResources => FHIRSearchResult(totalAndMatchedResources._1, totalAndMatchedResources._2, includedResources, totalAndMatchedResources._3, totalAndMatchedResources._4))
             //Both
             case (_, _) =>
               for {
                 includedResources <- handleIncludes(rtype, totalAndMatchedResources._2, includeParams)
                 revIncludedResources <- handleRevIncludes(rtype, totalAndMatchedResources._2, revIncludeParams)
-              } yield (totalAndMatchedResources._1, totalAndMatchedResources._2, includedResources ++ revIncludedResources)
+              } yield FHIRSearchResult(totalAndMatchedResources._1, totalAndMatchedResources._2, includedResources ++ revIncludedResources, totalAndMatchedResources._3, totalAndMatchedResources._4)
           }
         )
     }
@@ -108,7 +118,12 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
         .getOrElse(List.empty[Parameter])
 
     //Check _page and _count
-    val (page, count) = fhirResultParameterResolver.resolveCountPageParameters(commonResultParameters)
+    val (count, pageOrOffset) = fhirResultParameterResolver.resolveCountPageParameters(commonResultParameters)
+    val page = pageOrOffset match {
+      case Left(p) => p
+      case Right(_) => throw new NotImplementedError("Offset based pagination is not supported for searching multiple resource types!")
+    }
+
     //_total parameter, if total number of matched resource is needed or not
     val needTotal = commonResultParameters.find(_.name == FHIR_SEARCH_RESULT_PARAMETERS.TOTAL).forall(_.valuePrefixList.head._2 != "none")
     //For each resource type find out summary and sorting fields
@@ -175,6 +190,42 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
   }
 
   /**
+   *
+   * Search FHIR resources of a specific Resource Type with given query
+   *
+   * @param rtype                      Resource type
+   * @param queryParams                Parsed FHIR parameters
+   * @param count                      FHIR _count
+   * @param offset                     Pagination offsets and true if search after or false if search before
+   * @param sortingFields              Sorting params their sort direction and field paths and target types e.g. date, 1, Seq((effectiveDateTime, DateTime), (effectiveInstant, Instant))
+   * @param elementsIncludedOrExcluded Element paths to specifically include or exclude within the resource; first element true -> include, false -> exclude
+   * @param excludeExtraFields         If true extra onFhir elements are excluded from the resource
+   * @param needTotal                  If false, the total number of matched resources is not returned, instead -1 is returned
+   * @return Number of Total resources and the resulting resources (due to paging only a subset can be returned)
+   * @return
+   */
+  def queryResourcesWithOffsetPagination(rtype: String,
+                                         queryParams: List[Parameter] = List.empty,
+                                         count: Int = -1,
+                                         offset:(Seq[String],Boolean),
+                                         sortingFields: Seq[(String, Int, Seq[(String, String)])] = Seq.empty,
+                                         elementsIncludedOrExcluded: Option[(Boolean, Set[String])] = None,
+                                         excludeExtraFields: Boolean = false,
+                                         needTotal: Boolean = true
+                                        )(implicit transactionSession: Option[TransactionSession] = None): Future[(Long, Seq[Resource], Seq[String], Seq[String])] = {
+    //Run the search
+    constructQuery(rtype, queryParams).flatMap {
+      //If there is no query, although there are parameters
+      case None if queryParams.nonEmpty => Future.apply((0L, Nil, Nil, Nil))
+      //Otherwise run it
+      case finalQuery =>
+        val offsetOpt = if(!offset._1.exists(_ != "")) None else Some(offset)
+        queryResourcesDirectlyWithOffsetPagination(rtype, finalQuery, count, offsetOpt, sortingFields, elementsIncludedOrExcluded, excludeExtraFields, needTotal)
+    }
+
+  }
+
+  /**
     * Search FHIR resources of a specific Resource Type with given query
     * @param rtype                        Resource type
     * @param query                        Mongo query
@@ -188,7 +239,8 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
     */
   def queryResourcesDirectly(rtype:String,
                      query:Option[Bson] = None,
-                     count:Int = -1, page:Int = 1,
+                     count:Int = -1,
+                     page:Int=1,
                      sortingFields:Seq[(String, Int, Seq[(String, String)])] = Seq.empty,
                      elementsIncludedOrExcluded:Option[(Boolean, Set[String])] = None,
                      excludeExtraFields:Boolean = false,
@@ -201,9 +253,42 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
       resultResources <-
         DocumentManager
           .searchDocuments(rtype, query, count, page, sortingPaths, elementsIncludedOrExcluded, excludeExtraFields)
-          //.searchDocumentsByAggregation(rtype, query, count, page, sortingPaths, elementsIncludedOrExcluded, excludeExtraFields)
           .map(_.map(_.fromBson))
     } yield total -> resultResources
+  }
+
+  /**
+   *
+   * @param rtype                      Resource type
+   * @param query                      Mongo query
+   * @param count                      Number of resources to return
+   * @param offset                     Pagination offsets and true if search after or false if search before
+   * @param sortingFields              Sorting fields (param name, sorting direction, path and target resource type
+   * @param elementsIncludedOrExcluded Elements to include or exclude
+   * @param excludeExtraFields         If true, extra fields are cleared
+   * @param needTotal                  If total number of results is needed at the response
+   * @return
+   */
+  def queryResourcesDirectlyWithOffsetPagination(rtype: String,
+                             query: Option[Bson] = None,
+                             count: Int = -1,
+                             offset:Option[(Seq[String],Boolean)],
+                             sortingFields: Seq[(String, Int, Seq[(String, String)])] = Seq.empty,
+                             elementsIncludedOrExcluded: Option[(Boolean, Set[String])] = None,
+                             excludeExtraFields: Boolean = false,
+                             needTotal: Boolean = true)(implicit transactionSession: Option[TransactionSession] = None): Future[(Long, Seq[Resource], Seq[String], Seq[String])] = {
+
+    val sortingPaths = constructFinalSortingPaths(sortingFields)
+
+    for {
+      total <- if (needTotal) DocumentManager.countDocuments(rtype, query) else Future.apply(-1L) //If they don't need total number, just return -1 for it
+      resultResources <-
+        DocumentManager
+          .searchDocumentsWithOffset(rtype, query, count, offset, sortingPaths, elementsIncludedOrExcluded, excludeExtraFields)
+          .map {
+            case (previousOffset, nextOffset, docs) => (previousOffset, nextOffset, docs.map(_.fromBson))
+          }
+    } yield (total, resultResources._3, resultResources._1, resultResources._2)
   }
 
   /**
@@ -1034,7 +1119,11 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
     val since = searchParameters.find(_.name == FHIR_SEARCH_RESULT_PARAMETERS.SINCE).map(_.valuePrefixList.head._2)
     val at = searchParameters.find(_.name == FHIR_SEARCH_RESULT_PARAMETERS.AT).map(_.valuePrefixList.head._2)
 
-    val (page, count) = fhirResultParameterResolver.resolveCountPageParameters(searchParameters)
+    val (count, pageOrOffset) = fhirResultParameterResolver.resolveCountPageParameters(searchParameters)
+    val page = pageOrOffset match {
+      case Left(p) => p
+      case Right(_) => throw new NotImplementedError("Offset based pagination is not supported for searching history!")
+    }
 
     val listQueryFuture = searchParameters.find(_.name == FHIR_SEARCH_SPECIAL_PARAMETERS.LIST) match {
       case None => Future.apply(None)

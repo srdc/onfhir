@@ -3,7 +3,7 @@ package io.onfhir.api.util
 import akka.http.scaladsl.model.{MediaRange, MediaTypes}
 import akka.http.scaladsl.model.headers.{EntityTag, `Content-Type`}
 import io.onfhir.api.{FHIR_BUNDLE_ENTRY_TYPES, FHIR_BUNDLE_FIELDS, FHIR_BUNDLE_TYPES, FHIR_COMMON_FIELDS, FHIR_EXTRA_FIELDS, FHIR_HTTP_OPTIONS, FHIR_METHOD_NAMES, FHIR_PARAMETER_CATEGORIES, FHIR_SEARCH_RESULT_PARAMETERS, Resource}
-import io.onfhir.api.model.Parameter
+import io.onfhir.api.model.{FHIRSearchResult, Parameter}
 import io.onfhir.api.parsers.FHIRResultParameterResolver
 import io.onfhir.api.util.FHIRUtil.resourceLocation
 import io.onfhir.config.{FhirServerConfig, OnfhirConfig}
@@ -41,7 +41,11 @@ class FHIRServerUtil(fhirConfig:FhirServerConfig) {
                            parameters: List[Parameter],
                            isHistory: Boolean): List[(String, String)] = {
 
-    val (page, count) = resultParameterResolver.resolveCountPageParameters(parameters)
+    val (count, pageOrOffset) = resultParameterResolver.resolveCountPageParameters(parameters)
+    val page = pageOrOffset match {
+      case Left(p) => p
+    }
+
     //Extract compartment type and id if exist
     val compartmentTypeAndId = parameters.find(_.paramCategory == FHIR_PARAMETER_CATEGORIES.COMPARTMENT).map(p => p.valuePrefixList.head)
 
@@ -93,6 +97,56 @@ class FHIRServerUtil(fhirConfig:FhirServerConfig) {
           Some(FHIR_BUNDLE_FIELDS.LAST_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.PAGE}=$lastPage") //Set the last page
         ).filter(_.isDefined).map(_.get)
       }
+    links
+  }
+
+  /**
+   * Generates and returns the bundle links for search responses for offset based pagination
+   * @param rtype           type of the resource to search
+   * @param searchResult    search result
+   * @param parameters      search parameters
+   * @return
+   */
+  def generateBundleLinksForOffsetBasedPagination(rtype: Seq[String],
+                                                  searchResult:FHIRSearchResult,
+                                                  parameters: List[Parameter]
+                                                 ):List[(String, String)] = {
+    val (count, pageOrOffset) = resultParameterResolver.resolveCountPageParameters(parameters)
+    val offsetParam = pageOrOffset match {
+      case Right( offsets -> true) => s"${FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_AFTER}=${offsets.mkString(",")}"
+      case Right( offsets -> false) => s"${FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_BEFORE}=${offsets.mkString(",")}"
+    }
+
+    //Extract compartment type and id if exist
+    val compartmentTypeAndId = parameters.find(_.paramCategory == FHIR_PARAMETER_CATEGORIES.COMPARTMENT).map(p => p.valuePrefixList.head)
+
+    val otherParametersExceptOffset = parameters.filterNot(p => p.name == FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_AFTER || p.name == FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_BEFORE)
+
+    // Prepare the Location builder function
+    val locationFunc =
+        compartmentTypeAndId
+          .map(c => constructCompartmentSearchLocation(c._1, c._2, rtype, _: List[Parameter]))
+          .getOrElse(
+            rtype match {
+              case Seq(s) => constructSearchLocation(Some(s), _: List[Parameter]) //Normal search
+              case oth => constructSearchLocation(None, _: List[Parameter], Some(oth)) //System level search with multiple types
+            }
+          )
+    //Get the location (path + query) ready to append _page parameter
+    val location = locationFunc(otherParametersExceptOffset)
+
+    //If we don't calculate the total count in search, then does not return last link
+    val links =
+      List(
+        Some(FHIR_BUNDLE_FIELDS.SELF_LINK -> s"$location${offsetParam}"),
+        if (searchResult.offsetAfter.nonEmpty && count == searchResult.matches.length)
+          Some(FHIR_BUNDLE_FIELDS.NEXT_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_AFTER}=${searchResult.offsetAfter.mkString(",")}")
+        else None,
+        if (searchResult.offsetBefore.nonEmpty)
+          Some(FHIR_BUNDLE_FIELDS.PREVIOUS_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_BEFORE}=${searchResult.offsetAfter.mkString(",")}")
+        else None
+      ).flatten
+
     links
   }
 

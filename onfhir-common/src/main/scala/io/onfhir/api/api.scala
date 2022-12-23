@@ -213,7 +213,7 @@ package object api {
   /**
     * Extra fields used in onFhir within the documents for management of documents
     */
-  val ONFHIR_EXTRA_FIELDS = Set(FHIR_COMMON_FIELDS.MONGO_ID, /*FHIR_EXTRA_FIELDS.CURRENT,*/ FHIR_EXTRA_FIELDS.METHOD, FHIR_EXTRA_FIELDS.STATUS_CODE)
+  val ONFHIR_EXTRA_FIELDS = Set(FHIR_COMMON_FIELDS.MONGO_ID, FHIR_EXTRA_FIELDS.METHOD, FHIR_EXTRA_FIELDS.STATUS_CODE)
 
   /**
     * Mandatory fields for all resources to exist inside a returned result
@@ -352,7 +352,6 @@ package object api {
     val SUMMARY = "_summary"
     val COUNT = "_count"
     val TOTAL = "_total"
-    val PAGE = "_page"
     val SORT = "_sort"
     val INCLUDE = "_include"
     val REVINCLUDE = "_revinclude"
@@ -361,6 +360,10 @@ package object api {
     //Only for history
     val SINCE = "_since"
     val AT = "_at"
+    //Pagination parameters
+    val PAGE = "_page"
+    val SEARCH_AFTER = "_searchafter"
+    val SEARCH_BEFORE= "_searchbefore"
   }
 
   /**

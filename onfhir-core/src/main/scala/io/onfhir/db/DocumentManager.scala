@@ -2,7 +2,7 @@ package io.onfhir.db
 
 import com.mongodb.MongoClientSettings
 import com.mongodb.bulk.BulkWriteUpsert
-import org.mongodb.scala.model.{Field, InsertOneModel}
+import org.mongodb.scala.model.{Field, Filters, InsertOneModel}
 import org.mongodb.scala.result.InsertOneResult
 
 import java.time.Instant
@@ -196,6 +196,76 @@ object DocumentManager {
 
       //Execute the query
       query.toFuture()
+    }
+  }
+
+  /**
+   * Search and paginate documents via offset based pagination
+   *
+   * @param rtype                      Type of the FHIR resource
+   * @param filter                     query filter for desired resource
+   * @param count                      limit for # of resources to be returned
+   * @param offset                     Supplied offset (multiple if sorted on multiple fields) and whether to search after this offset (true) or before (false)
+   * @param sortingPaths               Sorting parameters and sorting direction (negative: descending, positive: ascending)
+   * @param includingOrExcludingFields List of to be specifically included or excluded fields in the resulting document, if not given; all document included (true-> include, false -> exclude)
+   * @param excludeExtraFields         If true exclude extra fields related with version control from the document
+   * @param excludeDeleted             If deleted resources are not taken into accouunt in search or not
+   * @return                           Offset for search before, Offset for search after, and the result set
+   */
+  def searchDocumentsWithOffset(rtype: String,
+                                filter: Option[Bson],
+                                count: Int = -1,
+                                offset:Option[(Seq[String],Boolean)],
+                                sortingPaths: Seq[(String, Int, Seq[String])] = Seq.empty,
+                                includingOrExcludingFields: Option[(Boolean, Set[String])] = None,
+                                excludeExtraFields: Boolean = false,
+                                excludeDeleted: Boolean = true)(implicit transactionSession: Option[TransactionSession] = None):Future[(Seq[String],Seq[String], Seq[Document])] =  {
+
+    var finalFilter: Option[Bson] = filter match {
+      case None => if (excludeDeleted) Some(isActiveQuery) else None
+      case Some(sfilter) => if (excludeDeleted) Some(and(isActiveQuery, sfilter)) else Some(sfilter)
+    }
+
+    //Append the offset filter
+    val offsetFilter = offset.map {
+      case (Seq(mongoIdOffset), true) =>
+        Filters.gt(FHIR_COMMON_FIELDS.MONGO_ID, BsonObjectId(mongoIdOffset))
+      case (Seq(mongoIdOffset), false) =>
+        Filters.lt(FHIR_COMMON_FIELDS.MONGO_ID, BsonObjectId(mongoIdOffset))
+      case _ => throw new NotImplementedError("Pagination with offset is only implemented over MongoDB id of resource!")
+    }
+
+    offsetFilter.foreach(of =>
+      finalFilter = finalFilter.map(f => and(f,of)).orElse(Some(of))
+    )
+
+    //If we have alternative paths for a search parameter, use search by aggregation
+    if (sortingPaths.nonEmpty) {
+      throw new NotImplementedError("Sorting is not implemented for pagination with offset!")
+    } else {
+      //Construct query
+      var query = transactionSession match {
+        case None => if (finalFilter.isDefined) MongoDB.getCollection(rtype).find(finalFilter.get) else MongoDB.getCollection(rtype).find()
+        case Some(ts) => if (finalFilter.isDefined) MongoDB.getCollection(rtype).find(ts.dbSession, finalFilter.get) else MongoDB.getCollection(rtype).find(ts.dbSession)
+      }
+      //Sort on id
+      query =
+        query
+          .sort(ascending(FHIR_COMMON_FIELDS.MONGO_ID))
+          .limit(count)
+
+      //Handle projection
+      query = handleProjection(query, includingOrExcludingFields, excludeExtraFields, exceptMongoId = true)
+
+      //Execute the query
+      query
+        .toFuture()
+        .map(docs => {
+          val offsetBefore = docs.headOption.map(d => d.getObjectId(FHIR_COMMON_FIELDS.MONGO_ID).toString).toSeq
+          val offsetAfter = docs.lastOption.map(d => d.getObjectId(FHIR_COMMON_FIELDS.MONGO_ID).toString).toSeq
+          val finalDocs = if(excludeExtraFields) docs.map(d => d.filter(_._1 == FHIR_COMMON_FIELDS.MONGO_ID)) else docs
+          (offsetBefore, offsetAfter, finalDocs)
+        })
     }
   }
 
@@ -437,26 +507,31 @@ object DocumentManager {
     * @param query Current query
     * @param includingOrExcludingFields Fields to be included or excluded
     * @param excludeExtraFields If true exclude extra fields related with version control from the document
+    * @param exceptMongoId      If true, even if excludeExtraFields is true we include the MongoDB _id field
     * @return Updated query
     */
-  private def handleProjection(query:FindObservable[Document], includingOrExcludingFields:Option[(Boolean, Set[String])], excludeExtraFields:Boolean):FindObservable[Document] = {
+  private def handleProjection(query:FindObservable[Document],
+                               includingOrExcludingFields:Option[(Boolean, Set[String])],
+                               excludeExtraFields:Boolean,
+                               exceptMongoId:Boolean = false):FindObservable[Document] = {
+    val extraFields = if(exceptMongoId) ONFHIR_EXTRA_FIELDS - FHIR_COMMON_FIELDS.MONGO_ID else ONFHIR_EXTRA_FIELDS
     includingOrExcludingFields match {
       //Nothing given, so we include all normal FHIR elements
       case None =>
         //If we exclude the extra fields, exclude them
         if(excludeExtraFields)
-          query.projection(exclude(ONFHIR_EXTRA_FIELDS.toSeq:_*))
+          query.projection(exclude(extraFields.toSeq:_*))
         else
           query
       //Specific inclusion
       case Some((true, fields)) =>
         //If we don't exclude the extra fields, include them to final inclusion set
-        val finalIncludes = if(excludeExtraFields) fields ++ FHIR_MANDATORY_ELEMENTS else fields ++ FHIR_MANDATORY_ELEMENTS ++ ONFHIR_EXTRA_FIELDS
+        val finalIncludes = if(excludeExtraFields) fields ++ FHIR_MANDATORY_ELEMENTS else fields ++ FHIR_MANDATORY_ELEMENTS ++ extraFields
         query.projection(include(finalIncludes.toSeq :_*))
 
       //Specific exclusion
       case Some((false, fields)) =>
-        val finalExcludes = if(excludeExtraFields) fields ++ ONFHIR_EXTRA_FIELDS else fields
+        val finalExcludes = if(excludeExtraFields) fields ++ extraFields else fields
         query.projection(exclude(finalExcludes.toSeq :_*))
     }
   }

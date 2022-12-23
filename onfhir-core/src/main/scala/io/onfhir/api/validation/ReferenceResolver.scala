@@ -58,7 +58,7 @@ class ReferenceResolver(fhirConfigurationManager: IFhirConfigurationManager,
 
     resourceManager
       .searchResources(rtype, parameters)
-      .map(_._2.headOption)
+      .map(_.matches.headOption)
   }
 
   /**
@@ -78,7 +78,7 @@ class ReferenceResolver(fhirConfigurationManager: IFhirConfigurationManager,
     val parameters = fhirConfigurationManager.fhirSearchParameterValueParser.parseSearchParameters(rtype, query)
     resourceManager
       .searchResources(rtype, parameters)
-      .map(_._2.headOption)
+      .map(_.matches.headOption)
   }
 
   /**

@@ -80,6 +80,10 @@ class FHIRSearchParameterValueParser(fhirConfig: FhirServerConfig) {
     */
   private def parseResultCategory(nameExprs:String, valueExpr:String, rtype:String):Parameter ={
     nameExprs match {
+      //Search with offset based pagination
+      case FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_AFTER | FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_BEFORE =>
+        val offsets = valueExpr.split(',').toSeq
+        Parameter(FHIR_PARAMETER_CATEGORIES.RESULT, "", nameExprs, offsets.map(o => "" -> o))
       //For these values should be number
       case FHIR_SEARCH_RESULT_PARAMETERS.COUNT | FHIR_SEARCH_RESULT_PARAMETERS.PAGE =>
         if(Try(valueExpr.toLong).toOption.isEmpty)
