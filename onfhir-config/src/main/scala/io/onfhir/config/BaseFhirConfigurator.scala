@@ -3,7 +3,7 @@ package io.onfhir.config
 import io.onfhir.api.FHIR_FOUNDATION_RESOURCES.{FHIR_CODE_SYSTEM, FHIR_STRUCTURE_DEFINITION, FHIR_VALUE_SET}
 import io.onfhir.api.model.OutcomeIssue
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.api.validation.{AbstractReferenceResolver, ConstraintKeys, IReferenceResolver, ProfileRestrictions, SimpleReferenceResolver}
+import io.onfhir.api.validation.{ConstraintKeys, IReferenceResolver, ProfileRestrictions, SimpleReferenceResolver}
 import io.onfhir.api.{FHIR_ROOT_URL_FOR_DEFINITIONS, Resource}
 import io.onfhir.exception.InitializationException
 import io.onfhir.util.JsonFormatter.formats
@@ -21,7 +21,7 @@ import scala.language.postfixOps
  * supported for the underlying application
  */
 abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
-  protected val logger:Logger = LoggerFactory.getLogger(this.getClass)
+  protected val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   /**
    * Parse the base FHIR standard bundle and given profiles, value sets and code systems,
@@ -51,7 +51,7 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
     fhirConfig.FHIR_PRIMITIVE_TYPES = allTypes.filter(_.head.isLower).toSet
     fhirConfig.FHIR_RESOURCE_TYPES = baseResourceProfileResources.flatMap(getTypeFromStructureDefinition).toSet
     //Get the parser for parsing FHIR foundation resources
-    val foundationResourceParser = getFoundationResourceParser( fhirConfig.FHIR_COMPLEX_TYPES, fhirConfig.FHIR_PRIMITIVE_TYPES )
+    val foundationResourceParser = getFoundationResourceParser(fhirConfig.FHIR_COMPLEX_TYPES, fhirConfig.FHIR_PRIMITIVE_TYPES)
 
     logger.info("Reading FHIR foundation resources to start configuration of onFhir server ...")
     //Read the StructureDefinitions for all supported profiles
@@ -126,7 +126,8 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
   }
 
   /**
-   * Find URLs of mentioned profiles in this set
+   * Find URLs of mentioned profiles in this set (except the profiles of simple types coming from the FHIR ROOT URL (http://hl7.org/fhir)
+   *
    * @param profiles All profile restrictions
    * @return
    */
@@ -145,6 +146,10 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
             }).toSet) ++
             e.restrictions.get(ConstraintKeys.REFERENCE_TARGET).toSeq.map(_.asInstanceOf[ReferenceRestrictions]).flatMap(_.targetProfiles).toSet) ++
         p.baseUrl.toSeq
+    }).filterNot(p => {
+      val ns = s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/"
+      val arr = p.split(ns)
+      arr.length == 2 && Character.isLowerCase(arr(1).head)
     }).toSet
   }
 
@@ -166,15 +171,15 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
   /**
    * Validate the given infrastructure resources and throw exception if any invalid
    *
-   * @param baseFhirConfig  Base FHIR configurations
-   * @param rtype           FHIR Resource type
-   * @param resources       Resources to validate
-   * @throws InitializationException  If there is a problem in given profile or value set definitions
+   * @param baseFhirConfig Base FHIR configurations
+   * @param rtype          FHIR Resource type
+   * @param resources      Resources to validate
+   * @throws InitializationException If there is a problem in given profile or value set definitions
    */
   protected def validateGivenInfrastructureResources(baseFhirConfig: BaseFhirConfig, rtype: String, resources: Seq[Resource]): Unit = {
     val issuesForEachResource =
       resources
-        .map(resource => validatedGivenInfrastructureResource(baseFhirConfig, rtype,resource))
+        .map(resource => validatedGivenInfrastructureResource(baseFhirConfig, rtype, resource))
     val resourcesWithProblems =
       issuesForEachResource
         .filter(rIssues => rIssues._2.exists(i => i.isError))
@@ -193,15 +198,15 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
    * @param resource       Resoruce to validate
    * @return
    */
-  protected def validatedGivenInfrastructureResource(baseFhirConfig: BaseFhirConfig, rtype: String, resource: Resource):(String, Seq[OutcomeIssue]) = {
+  protected def validatedGivenInfrastructureResource(baseFhirConfig: BaseFhirConfig, rtype: String, resource: Resource): (String, Seq[OutcomeIssue]) = {
     (resource \ "url")
       .extractOpt[String] match {
-        case None =>
-          throw new InitializationException(s"All foundation resources used for onFhir configuration should have a 'url'!")
-        case Some(url) =>
-          val referenceResolver:IReferenceResolver = new SimpleReferenceResolver(resource)
-          val fhirContentValidator = FhirContentValidator.apply(baseFhirConfig, s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/$rtype", referenceResolver)
-          url -> Await.result(fhirContentValidator.validateComplexContent(resource), 1 minutes)
+      case None =>
+        throw new InitializationException(s"All foundation resources used for onFhir configuration should have a 'url'!")
+      case Some(url) =>
+        val referenceResolver: IReferenceResolver = new SimpleReferenceResolver(resource)
+        val fhirContentValidator = FhirContentValidator.apply(baseFhirConfig, s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/$rtype", referenceResolver)
+        url -> Await.result(fhirContentValidator.validateComplexContent(resource), 1 minutes)
     }
   }
 }

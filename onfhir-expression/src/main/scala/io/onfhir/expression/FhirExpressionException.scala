@@ -10,4 +10,4 @@ case class FhirExpressionException(
                                     msg:String,
                                     expression:Option[String] = None,
                                     t:Option[Throwable] = None
-                                  ) extends Exception(msg)
+                                  ) extends Exception(msg, t.orNull)
