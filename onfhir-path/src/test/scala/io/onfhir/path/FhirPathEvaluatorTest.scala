@@ -35,6 +35,8 @@ class FhirPathEvaluatorTest extends Specification {
 
   val emptyBundle = Source.fromInputStream(getClass.getResourceAsStream("/emptybundle.json")).mkString.parseJson
 
+  val medicationAdministration =  Source.fromInputStream(getClass.getResourceAsStream("/med-adm.json")).mkString.parseJson
+
   sequential
 
   "FHIR Path Evaluator" should {
@@ -933,6 +935,11 @@ class FhirPathEvaluatorTest extends Specification {
 
       evaluator.evaluateOptionalString("idxs:resolveIdentifier('Patient', '12345', 'urn:oid:1.2.36.146.595.217.0.1')", observation) shouldEqual Some("580daafe-bed7-43db-a74b-e8d74a62eeb0")
     }*/
+
+    "evaluate further" in {
+      val result = new FhirPathEvaluator(isContentFhir = true).evaluateOptionalString("MedicationAdministration.medicationCodeableConcept.coding.where(system='http://www.whocc.no/atc').first().code.select(iif($this.exists($this.startsWith('D') or $this.startsWith('S') or $this.startsWith('V') or $this.startsWith('G') or $this.startsWith('A')), $this.substring(0,1), $this.substring(0,3)))", medicationAdministration)
+      result must beSome("C02")
+    }
 
   }
 }

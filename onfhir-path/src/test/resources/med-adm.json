@@ -1,0 +1,47 @@
+{
+  "resourceType": "MedicationAdministration",
+  "id": "6eb14ed084241c1622f2aff504e059a1",
+  "meta": {
+    "profile": [
+      "https://aiccelerate.eu/fhir/StructureDefinition/AIC-MedicationAdministration"
+    ],
+    "source": "https://aiccelerate.eu/hsjd",
+    "versionId": "3",
+    "lastUpdated": "2022-12-26T13:19:43.496+03:00"
+  },
+  "status": "completed",
+  "category": {
+    "coding": [
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/medication-admin-category",
+        "code": "inpatient",
+        "display": "Inpatient"
+      }
+    ]
+  },
+  "medicationCodeableConcept": {
+    "coding": [
+      {
+        "system": "http://www.whocc.no/atc",
+        "code": "C02AC01",
+        "display": "Clonidine"
+      }
+    ],
+    "text": "CLONIDINA 10 MCG/ML SUSP ORAL 50 ML"
+  },
+  "subject": {
+    "reference": "Patient/83fc83c3fa1cdcba487e3b8f35079ea9"
+  },
+  "context": {
+    "reference": "EpisodeOfCare/0b200dadee5e2e187a45803e38386b0e"
+  },
+  "effectiveDateTime": "2021-11-08T01:00:00+01:00",
+  "dosage": {
+    "dose": {
+      "value": 4,
+      "unit": "mg",
+      "system": "http://unitsofmeasure.org",
+      "code": "mg"
+    }
+  }
+}

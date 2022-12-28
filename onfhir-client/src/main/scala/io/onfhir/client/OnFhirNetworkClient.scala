@@ -74,8 +74,8 @@ case class OnFhirNetworkClient(serverBaseUrl:String, interceptors:Seq[IHttpReque
       .flatMap(httpResponse => FHIRResponseUnmarshaller.unmarshallResponse(httpResponse))
       .recover {
         case t:Throwable =>
-          logger.error("Problem while executing FHIR request!", t)
-          throw FhirClientException("Problem while executing FHIR request!" + t.getMessage)
+          logger.error(s"Problem while executing FHIR request '${bundle.getNext()}'!", t)
+          throw FhirClientException(s"Problem while executing FHIR request '${bundle.getNext()}'!" + t.getMessage)
       }
       .map(fhirResponse =>
         bundle.request
