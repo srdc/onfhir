@@ -1,134 +1,524 @@
 {
-  "createIndexForCompartments": true,
   "resources": [
     {
-      "resource": "Patient",
-      "shardKey": ["_id"],
-      "indexes": [
-      ]
-    },
-    {
-      "resource": "Practitioner",
-      "indexes": [
-      ]
-    },
-    {
-      "resource": "Device",
-      "indexes": [
-      ]
-    },
-    {
-      "resource": "Organization",
-      "indexes": [
-      ]
-    },
-    {
-      "resource": "Composition",
+      "resource": "Account",
       "shardKey": ["subject"],
-      "indexes": [
-        "type",
-        "class"
-      ]
+      "indexes": []
     },
     {
-      "resource": "Observation",
+      "resource": "ActivityDefinition",
+      "indexes": []
+    },
+    {
+      "resource": "AdverseEvent",
       "shardKey": ["subject"],
-      "indexes": [
-         "code",
-         "date"
-      ]
+      "indexes": []
     },
     {
-      "resource": "Condition",
+      "resource": "AllergyIntolerance",
       "shardKey": ["patient"],
-      "indexes": [
-        "clinicalstatus",
-        "code"
-      ]
-    },
-    {
-      "resource": "Goal",
-      "shardKey": ["subject"],
-      "indexes": [
-        "status",
-        "targetMeasure"
-      ]
-    },
-    {
-      "resource": "ProcedureRequest",
-      "shardKey": ["subject"],
-      "indexes": [
-        "status"
-      ]
-    },
-    {
-      "resource": "MedicationOrder",
-      "shardKey": ["patient"],
-      "indexes": [
-        "status",
-        "code"
-      ]
+      "indexes": []
     },
     {
       "resource": "Appointment",
       "shardKey": ["patient"],
       "indexes": [
-        "date",
-        "practitioner"
+        {"parameters": ["date"]}
+      ]
+    },
+    {
+      "resource": "AppointmentResponse",
+      "shardKey": ["patient"],
+      "indexes": [
+        {"parameters": ["appointment"]}
+      ]
+    },
+    {
+      "resource": "AuditEvent",
+      "shardKey": ["patient"],
+      "indexes": [
+        {"parameters": ["date"]}
+      ]
+    },
+    {
+      "resource": "Basic",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "Binary",
+      "shardKey": ["_id"],
+      "indexes": []
+    },
+    {
+      "resource": "BiologicallyDerivedProduct",
+      "indexes": []
+    },
+    {
+      "resource": "BodyStructure",
+      "shardKey": ["patient"],
+      "indexes": []
+    },
+    {
+      "resource": "Bundle",
+      "shardKey": ["_id"],
+      "indexes": []
+    },
+    {
+      "resource": "CapabilityStatement",
+      "indexes": []
+    },
+    {
+      "resource": "CarePlan",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "CareTeam",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "CatalogEntry",
+      "indexes": []
+    },
+    {
+      "resource": "ChargeItem",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "ChargeItemDefinition",
+      "indexes": []
+    },
+    {
+      "resource": "Claim",
+      "shardKey": ["patient"],
+      "indexes": []
+    },
+    {
+      "resource": "ClaimResponse",
+      "shardKey": ["patient"],
+      "indexes": []
+    },
+    {
+      "resource": "ClinicalImpression",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "CodeSystem",
+      "shardKey": ["_id"],
+      "indexes": [
+        {"parameters": ["url"]}
+      ]
+    },
+    {
+      "resource": "Communication",
+      "shardKey": ["subject"],
+      "indexes": [
+        {"parameters": ["recipient","status","sent"]}
+      ]
+    },
+    {
+      "resource": "CommunicationRequest",
+      "shardKey": ["subject"],
+      "indexes": [
+        {"parameters": ["recipient"]},
+        {"parameters": ["requester"]}
+      ]
+    },
+    {
+      "resource": "CompartmentDefinition",
+      "indexes": []
+    },
+    {
+      "resource": "Composition",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "ConceptMap",
+      "shardKey": ["_id"],
+      "indexes": [
+        {"parameters": ["url"]},
+        {"parameters": ["source"]},
+        {"parameters": ["target"]}
+      ]
+    },
+    {
+      "resource": "Condition",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "Consent",
+      "shardKey": ["patient"],
+      "indexes": []
+    },
+    {
+      "resource": "Contract",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "Coverage",
+      "shardKey": ["patient"],
+      "indexes": []
+    },
+    {
+      "resource": "CoverageEligibilityRequest",
+      "shardKey": ["patient"],
+      "indexes": []
+    },
+    {
+      "resource": "CoverageEligibilityResponse",
+      "shardKey": ["patient"],
+      "indexes": []
+    },
+    {
+      "resource": "DetectedIssue",
+      "shardKey": ["patient"],
+      "indexes": []
+    },
+    {
+      "resource": "Device",
+      "shardKey": ["_id"],
+      "indexes": [
+        {"parameters": ["patient"]},
+        {"parameters": ["organization"]},
+        {"parameters": ["type"]}
+      ]
+    },
+    {
+      "resource": "DeviceDefinition",
+      "indexes": []
+    },
+    {
+      "resource": "DeviceMetric",
+      "indexes": []
+    },
+    {
+      "resource": "DeviceRequest",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "DeviceUseStatement",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "DiagnosticReport",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "DocumentManifest",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "DocumentReference",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "EffectEvidenceSynthesis",
+      "shardKey": ["_id"],
+      "indexes": [
+        {"parameters": ["url"]}
       ]
     },
     {
       "resource": "Encounter",
-      "shardKey": ["patient"],
+      "shardKey": ["subject"],
       "indexes": [
-        "date",
-        "practitioner"
+        {"parameters": ["service-provider","date"]},
+        {"parameters": ["participant","date"]}
       ]
+    },
+    {
+      "resource": "Endpoint",
+      "indexes": []
+    },
+    {
+      "resource": "EnrollmentRequest",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "EnrollmentResponse",
+      "indexes": [
+        {"parameters": ["request"]}
+      ]
+    },
+    {
+      "resource": "EpisodeOfCare",
+      "shardKey": ["patient"],
+      "indexes": []
+    },
+    {
+      "resource": "EventDefinition",
+      "indexes": []
+    },
+    {
+      "resource": "Evidence",
+      "indexes": []
+    },
+    {
+      "resource": "EvidenceVariable",
+      "indexes": []
+    },
+    {
+      "resource": "ExampleScenario",
+      "indexes": []
+    },
+    {
+      "resource": "ExplanationOfBenefit",
+      "indexes": []
+    },
+    {
+      "resource": "FamilyMemberHistory",
+      "shardKey": ["patient"],
+      "indexes": []
+    },
+    {
+      "resource": "Flag",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "Goal",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "GraphDefinition",
+      "indexes": []
+    },
+    {
+      "resource": "Group",
+      "shardKey": ["_id"],
+      "indexes": [
+        {"parameters": ["member"]},
+        {"parameters": ["managing-entity","member"]}
+      ]
+    },
+    {
+      "resource": "GuidanceResponse",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "HealthcareService",
+      "shardKey": ["organization"],
+      "indexes": []
+    },
+    {
+      "resource": "ImagingStudy",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "Immunization",
+      "shardKey": ["patient"],
+      "indexes": []
+    },
+    {
+      "resource": "ImmunizationEvaluation",
+      "shardKey": ["patient"],
+      "indexes": []
+    },
+    {
+      "resource": "ImmunizationRecommendation",
+      "shardKey": ["patient"],
+      "indexes": []
+    },
+    {
+      "resource": "ImplementationGuide",
+      "indexes": []
+    },
+    {
+      "resource": "InsurancePlan",
+      "indexes": []
+    },
+    {
+      "resource": "Invoice",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "Library",
+      "shardKey": ["_id"],
+      "indexes": [
+        {"parameters": ["url"]}
+      ]
+    },
+    {
+      "resource": "Linkage",
+      "indexes": [
+        {"parameters": ["source"]},
+        {"parameters": ["item"]}
+      ]
+    },
+    {
+      "resource": "List",
+      "shardKey": ["subject"],
+      "indexes": [
+        {"parameters": ["item"]}
+      ]
+    },
+    {
+      "resource": "Location",
+      "indexes": []
+    },
+    {
+      "resource": "Measure",
+      "indexes": []
+    },
+    {
+      "resource": "MeasureReport",
+      "indexes": []
+    },
+    {
+      "resource": "Media",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "Medication",
+      "indexes": []
+    },
+    {
+      "resource": "MedicationAdministration",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "MedicationDispense",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "MedicationKnowledge",
+      "indexes": []
+    },
+    {
+      "resource": "MedicationRequest",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "MedicationStatement",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "NutritionOrder",
+      "shardKey": ["patient"],
+      "indexes": []
+    },
+    {
+      "resource": "Observation",
+      "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "Organization",
+      "indexes": []
+    },
+    {
+      "resource": "Patient",
+      "shardKey": ["_id"],
+      "indexes": []
+    },
+    {
+      "resource": "Person",
+      "shardKey": ["_id"],
+      "indexes": []
+    },
+    {
+      "resource": "Practitioner",
+      "indexes": []
     },
     {
       "resource": "Procedure",
       "shardKey": ["subject"],
-      "indexes": [
-        "date",
-        "code"
-      ]
+      "indexes": []
     },
     {
-      "resource": "RiskAssessment",
-      "shardKey": ["subject"],
+      "resource": "Provenance",
+      "shardKey": ["_id"],
       "indexes": [
-        "method"
+        {"parameters": ["when"]},
+        {"parameters": ["patient"]},
+        {"parameters": ["agent"]},
+        {"parameters": ["target"]}
       ]
     },
     {
       "resource": "QuestionnaireResponse",
       "shardKey": ["subject"],
-      "indexes": [
-        "questionnaire"
-      ]
+      "indexes": []
     },
     {
-      "resource": "MedicationAdministration",
-      "shardKey": ["patient"],
-      "indexes": [
-        "effectivetime",
-        "code",
-        "prescription"
-      ]
+      "resource": "RelatedPerson",
+      "indexes": []
     },
     {
-      "resource": "Order",
+      "resource": "RiskAssessment",
       "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "Schedule",
+      "shardKey": ["actor"],
       "indexes": [
-        "date"
+        {"parameters": ["service-type","date"]}
       ]
     },
     {
-      "resource": "OrderResponse",
+      "resource": "ServiceRequest",
       "shardKey": ["subject"],
+      "indexes": []
+    },
+    {
+      "resource": "Slot",
+      "shardKey": ["_id"],
       "indexes": [
-        "date",
-        "request"
+        {"parameters": ["service-type","start"]}
+      ]
+    },
+    {
+      "resource": "Subscription",
+      "indexes": []
+    },
+    {
+      "resource": "SupplyDelivery",
+      "shardKey": ["_id"],
+      "indexes": [
+        {"parameters": ["receiver"]},
+        {"parameters": ["supplier"]}
+      ]
+    },
+    {
+      "resource": "SupplyRequest",
+      "shardKey": ["_id"],
+      "indexes": [
+        {"parameters": ["requester"]},
+        {"parameters": ["supplier"]}
+      ]
+    },
+    {
+      "resource": "Task",
+      "shardKey": ["subject"],
+      "indexes": [{"parameters": ["period"]}]
+    },
+    {
+      "resource": "ValueSet",
+      "indexes": [
+        {"parameters": ["url","code"]}
       ]
     }
   ]

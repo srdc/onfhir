@@ -5,14 +5,11 @@ import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.IndexOptions
 
 import java.time.Instant
-//import com.mongodb.client.model.IndexOptions
 import io.onfhir.Onfhir
 import io.onfhir.api._
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.config.IndexConfigurator.ResourceIndexConfiguration
-import io.onfhir.config.{OnfhirConfig, SearchParameterConf}
+import io.onfhir.config.{OnfhirConfig, OnfhirIndex, ResourceIndexConfiguration, SearchParameterConf}
 import io.onfhir.exception.InitializationException
-//import org.bson.conversions.Bson
 import org.mongodb.scala.model.{IndexModel, Indexes}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -54,16 +51,19 @@ class MongoDBInitializer(resourceManager: ResourceManager) extends BaseDBInitial
    */
   override def createCollection(rtype:String):Future[String] = {
     //Create the collection and basic indexes
-    MongoDB.getDatabase.createCollection(rtype).toFuture()
+    MongoDB.getDatabase
+      .createCollection(rtype)
+      .toFuture()
       .flatMap { unit =>
         Future.sequence(
           Seq(
-            //Create a unique compound index on resource id and version
-            IndexModel(
-                Indexes.ascending(FHIR_COMMON_FIELDS.ID),
-                new IndexOptions().name("onfhir_rid")),
             //Index on Mongo id
             IndexModel(Indexes.ascending(FHIR_COMMON_FIELDS.MONGO_ID)),
+            //Create a index on resource id
+            IndexModel(
+                Indexes.ascending(FHIR_COMMON_FIELDS.ID),
+                new IndexOptions().name("onfhir_rid")
+            ),
             //Index on Last Updated
             IndexModel(
               Indexes.descending(s"${FHIR_COMMON_FIELDS.META}.${FHIR_COMMON_FIELDS.LAST_UPDATED}.${FHIR_EXTRA_FIELDS.TIME_TIMESTAMP}"),
@@ -72,10 +72,11 @@ class MongoDBInitializer(resourceManager: ResourceManager) extends BaseDBInitial
             MongoDB.getCollection(rtype).createIndexes(Seq(indModel)).toFuture()
           )
         )
-      }.flatMap { unit =>
-      logger.debug(s"MongoDB collection created for '$rtype' ...")
-      Future.successful(rtype)
-    }
+      }
+      .flatMap { unit =>
+        logger.debug(s"MongoDB collection created for '$rtype' ...")
+        Future.successful(rtype)
+      }
   }
 
   /**
@@ -204,56 +205,114 @@ class MongoDBInitializer(resourceManager: ResourceManager) extends BaseDBInitial
         logger.info(s"No resources for $resourceType, skipping storage...")
   }
 
+  /**
+   * Construct the MongoDB index models for single parameter index definitions
+   * @param resourceType                      FHIR resource type
+   * @param searchParameterConfigurations     Search parameter configurations
+   * @param indexDefs                         All index definitions for resource type
+   * @return
+   */
+  def constructSingleParameterIndexesForResourceType(resourceType:String, searchParameterConfigurations:Seq[SearchParameterConf], indexDefs:Seq[OnfhirIndex]):Seq[IndexModel] = {
+    val indexes: Seq[(String,String,Seq[Bson], Boolean)]  =
+      indexDefs
+      .filter(_.parameters.length == 1) //Filter the index definitions on single search parameter
+      .flatMap(indexDef =>
+        searchParameterConfigurations
+          .find(_.pname == indexDef.parameters.head)
+          .map(paramConf => constructIndexForParam(resourceType, paramConf)) match {
+            case None => throw new InitializationException(s"Search parameter ${indexDef.parameters.head} set for index configuration for $resourceType is not defined!")
+            case Some(ind) => ind
+          }
+      )
+
+    //Eliminate the indexes with the same path (Some search parameters ara just aliases)
+    val uniqueIndexes: Seq[(String, Seq[Bson], Boolean)] = indexes.groupBy(_._2).values.map(ind => (ind.head._1, ind.head._3, ind.head._4)).toSeq
+
+    // Convert the indexes into IndexModel objects by merging test indexes into one compound index
+    // As MongoDB allows only one text index
+    // Set language_override="_language" to change the default value from "language", as this can appear in any FHIR resource
+    val mongoTextIndexes = uniqueIndexes.filter(ind => ind._1.equals(MONGO_TEXT_INDEX)).flatMap(_._2)
+    val indexModels =
+      if (mongoTextIndexes.isEmpty)
+        uniqueIndexes
+          .filterNot(_._1 == MONGO_TEXT_INDEX)
+          .map(ind =>
+            IndexModel(ind._2 match {
+              case Seq(i) => i
+              case oth => Indexes.compoundIndex(oth:_*)
+            },
+              new IndexOptions().sparse(ind._3)
+            )
+          )
+      else
+        uniqueIndexes
+          .filterNot(_._1 == MONGO_TEXT_INDEX)
+          .map(ind => IndexModel(
+            ind._2 match {
+              case Seq(i) => i
+              case oth => Indexes.compoundIndex(oth: _*)
+            },
+            new IndexOptions().sparse(ind._3))
+          ) :+
+          IndexModel(
+            Indexes.compoundIndex(mongoTextIndexes: _*),
+            new IndexOptions().name(resourceType + "_all_text").languageOverride(INDEX_LANGUAGE_OVERRIDE)
+          )
+    indexModels
+  }
+
+  /**
+   * Construct all multi parameter indexes on the given resource type
+   * @param resourceType                    FHIR resource type
+   * @param searchParameterConfigurations   All search parameter configurations for resource type
+   * @param indexDefs                       All index definitions
+   * @return
+   */
+  def constructMultiParameterIndexesForResourceType(resourceType:String, searchParameterConfigurations:Seq[SearchParameterConf], indexDefs:Seq[OnfhirIndex]):Seq[IndexModel] = {
+    if(resourceType == "Observation")
+      ""
+    indexDefs
+      .filter(_.parameters.length > 1) //Filter the index definitions on single search parameter
+      .flatMap(indexDef => {
+        val searchParamConfs =
+          indexDef.parameters.map {
+            //MongoDb _id parameter
+            case "__id" => Some(SearchParameterConf("__id", FHIR_PARAMETER_TYPES.TOKEN, Seq("_id"), targetTypes = Seq("id")))
+            //FHIR search parameter
+            case p =>  searchParameterConfigurations.find(_.pname == p)
+          }
+        if (searchParamConfs.forall(_.isDefined)) {
+          val indexesForEachParam =
+            searchParamConfs
+              .flatten
+              .map(paramConf => constructIndexForParam(resourceType, paramConf))
+
+          if(indexesForEachParam.flatten.exists(_._1 == MONGO_TEXT_INDEX))
+            throw new InitializationException(s"Compound indexes cannot be defined on the search parameters (string, url) needing text search!")
+          //Cartesian product of all indexes
+          indexesForEachParam.tail
+            .foldLeft(indexesForEachParam.head.map(Seq(_)))((i1, i2) => i1.flatMap(i => i2.map(j => i ++ Seq(j))))
+            .map(combinedIndexes =>
+              IndexModel(
+                Indexes.compoundIndex(combinedIndexes.flatMap(_._3): _*),
+                new IndexOptions().sparse(combinedIndexes.exists(_._4))
+              )
+            )
+        } else
+          throw new InitializationException(s"Search parameter(s) ${indexDef.parameters.apply(searchParamConfs.indexWhere(_.isEmpty))} set for index configuration for $resourceType is not defined!")
+      })
+  }
 
   /**
     * Create configured indexes for a resource type
     * @param resourceType                     Resource type
     * @param searchParameterConfigurations    All supported search parameters for resource type
-    * @param parameterNamesToBeIndexed        Search parameters to create index for
+    * @param indexDefs                        Index definitions
     */
-  override def createIndexForResourceType(resourceType:String, searchParameterConfigurations:Seq[SearchParameterConf], parameterNamesToBeIndexed:Set[String]):Future[Unit] = {
-    // find corresponding search parameters to be indexed over
-    val parametersToBeIndexed = searchParameterConfigurations.filter(sp => parameterNamesToBeIndexed.contains(sp.pname))
-    //Create Indexes for all search parameters defined for the Resource (INDEX_TYPE, ELEMENT PATH, BSON FILTER FOR PATH, IsSparseIndex)
-    val indexes: Seq[(String,String,Bson, Boolean)] = parametersToBeIndexed.flatMap(searchParameterConf => {
-      searchParameterConf.ptype match {
-        case FHIR_PARAMETER_TYPES.COMPOSITE => Nil //Indexes are created for child paths, so nothing to do
-        //For string and URIs use text index
-        case FHIR_PARAMETER_TYPES.STRING | FHIR_PARAMETER_TYPES.URI =>
-          searchParameterConf.extractElementPaths().map(path => (MONGO_TEXT_INDEX, path, Indexes.text(path), false))
-        case FHIR_PARAMETER_TYPES.TOKEN |
-             FHIR_PARAMETER_TYPES.DATE |
-             FHIR_PARAMETER_TYPES.REFERENCE |
-             FHIR_PARAMETER_TYPES.QUANTITY |
-             FHIR_PARAMETER_TYPES.NUMBER =>
-          createIndexesForComplexType(resourceType, searchParameterConf)
-
-        case _ => Seq.empty[(String, String, Bson, Boolean)]
-      }
-    })
-
-    //Eliminate the indexes with the same path (Some search parameters ara just aliases)
-    val uniqueIndexes:Seq[(String, Bson, Boolean)] = indexes.groupBy(_._2).values.map(ind => (ind.head._1, ind.head._3, ind.head._4)).toSeq
-
-    // Convert the indexes into IndexModel objects by merging test indexes into one compound index
-    // As MongoDB allows only one text index
-    // Set language_override="_language" to change the default value from "language", as this can appear in any FHIR resource
-    val mongoTextIndexes = uniqueIndexes.filter(ind => ind._1.equals(MONGO_TEXT_INDEX)).map(_._2)
+  override def createIndexForResourceType(resourceType:String, searchParameterConfigurations:Seq[SearchParameterConf], indexDefs:Seq[OnfhirIndex]):Future[Unit] = {
     val indexModels =
-      if(mongoTextIndexes.isEmpty)
-        uniqueIndexes
-          .filterNot(_._1 == MONGO_TEXT_INDEX)
-          .map(ind =>
-            IndexModel(ind._2, new IndexOptions().sparse(ind._3))
-          )
-      else
-        uniqueIndexes
-          .filterNot(_._1 == MONGO_TEXT_INDEX)
-          .map(ind => IndexModel(ind._2, new IndexOptions().sparse(ind._3))) :+
-          IndexModel(
-            Indexes.compoundIndex(mongoTextIndexes:_*),
-            new IndexOptions().name(resourceType+"_all_text").languageOverride(INDEX_LANGUAGE_OVERRIDE)
-          )
+      constructSingleParameterIndexesForResourceType(resourceType,searchParameterConfigurations, indexDefs) ++ //Indexes defined on single parameters
+        constructMultiParameterIndexesForResourceType(resourceType, searchParameterConfigurations, indexDefs) //Indexes defined on multiple search parameter
 
     // Get the collection for the resource type
     val collection = MongoDB.getCollection(resourceType)
@@ -275,6 +334,35 @@ class MongoDBInitializer(resourceManager: ResourceManager) extends BaseDBInitial
           logger.error(e.getMessage)
           throw new InitializationException(s"Problem in index creation for $resourceType !!!")
       }
+  }
+
+
+
+  /**
+   * Construct the suitable MongoDB index for parameter
+   * @param resourceType          FHIR resource type
+   * @param searchParameterConf   Search parameter configuration
+   * @return                      Mongo Index type, path, index element(s), isSparse
+   */
+  private def constructIndexForParam(resourceType:String,searchParameterConf:SearchParameterConf):Seq[(String, String, Seq[Bson], Boolean)] = {
+    searchParameterConf.ptype match {
+      case FHIR_PARAMETER_TYPES.COMPOSITE => Nil //Indexes are created for child paths, so nothing to do
+      //For string and URIs use text index
+      case FHIR_PARAMETER_TYPES.STRING  =>
+        searchParameterConf
+          .extractElementPaths()
+          .map(path => (MONGO_TEXT_INDEX, path, Seq(Indexes.text(path)), false))
+      case
+           FHIR_PARAMETER_TYPES.URI |
+           FHIR_PARAMETER_TYPES.TOKEN |
+           FHIR_PARAMETER_TYPES.DATE |
+           FHIR_PARAMETER_TYPES.REFERENCE |
+           FHIR_PARAMETER_TYPES.QUANTITY |
+           FHIR_PARAMETER_TYPES.NUMBER =>
+        constructIndexesForComplexType(resourceType, searchParameterConf).toSeq
+      case _ =>
+       Nil
+    }
   }
 
   /**
@@ -346,9 +434,9 @@ class MongoDBInitializer(resourceManager: ResourceManager) extends BaseDBInitial
     * Create index for complex search paramter types (all other than string and uri)
     * @param rtype Resource type
     * @param searchParameterConf Search parameter configuration
-    * @return IndexType, Path for the index, Index  object, IsSparse
+    * @return IndexType, Path for the index, Index or compound index elements, IsSparse
     */
-  private def createIndexesForComplexType(rtype:String, searchParameterConf: SearchParameterConf):Set[(String, String, Bson, Boolean)] = {
+  private def constructIndexesForComplexType(rtype:String, searchParameterConf: SearchParameterConf):Set[(String, String, Seq[Bson], Boolean)] = {
     val pathsAndTargetTypes = searchParameterConf.extractElementPathsAndTargetTypes()
     //if there are alternative paths, index should be sparse
     var isSparse = searchParameterConf.paths.size > 1
@@ -368,19 +456,19 @@ class MongoDBInitializer(resourceManager: ResourceManager) extends BaseDBInitial
           (
             MONGO_SINGLE_FIELD_INDEX,
             simplePath,
-            if(isDescending) Indexes.descending(path + simplePath) else Indexes.ascending(path + simplePath),
-            isSparse
+            if(isDescending) Seq(Indexes.descending(path + simplePath)) else Seq(Indexes.ascending(path + simplePath)),
+            false//isSparse
           )
 
         case compoundPath:(String, String) @unchecked =>
           (
             MONGO_COMPOUND_FIELD_INDEX,
             path + compoundPath._1 + compoundPath._2,
-            Indexes.compoundIndex(
+            Seq(
               if(isDescending) Indexes.descending(path + compoundPath._1) else Indexes.ascending(path + compoundPath._1),
               if(isDescending) Indexes.descending(path + compoundPath._2) else Indexes.ascending(path + compoundPath._2)
             ),
-            isSparse
+            false//isSparse
           )
       }
     }.toSet

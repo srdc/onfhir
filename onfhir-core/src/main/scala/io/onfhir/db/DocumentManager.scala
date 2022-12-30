@@ -7,6 +7,9 @@ import org.mongodb.scala.result.InsertOneResult
 
 import java.time.Instant
 import java.util.UUID
+import scala.concurrent.Await
+import scala.concurrent.duration.DurationInt
+import scala.language.postfixOps
 
 //import com.mongodb.client.model.{BsonField, Field, InsertOneModel}
 import io.onfhir.Onfhir

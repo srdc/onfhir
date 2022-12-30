@@ -1,8 +1,7 @@
 package io.onfhir.db
 
 import io.onfhir.api.Resource
-import io.onfhir.config.IndexConfigurator.ResourceIndexConfiguration
-import io.onfhir.config.SearchParameterConf
+import io.onfhir.config.{OnfhirIndex, ResourceIndexConfiguration, SearchParameterConf}
 
 import scala.concurrent.Future
 
@@ -39,7 +38,7 @@ trait IDBInitializer {
    * @param searchParameterConfigurations All supported search parameters for resource type
    * @param parameterNamesToBeIndexed     Search parameters to create index for
    */
-  def createIndexForResourceType(resourceType:String, searchParameterConfigurations:Seq[SearchParameterConf], parameterNamesToBeIndexed:Set[String]):Future[Unit]
+  def createIndexForResourceType(resourceType:String, searchParameterConfigurations:Seq[SearchParameterConf], indexes:Seq[OnfhirIndex]):Future[Unit]
 
   /**
    * Enable sharding for resource type based on configuration

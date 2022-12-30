@@ -1,8 +1,7 @@
 package io.onfhir.db
 
 import io.onfhir.api.FHIR_VERSIONING_OPTIONS
-import io.onfhir.config.IndexConfigurator.ResourceIndexConfiguration
-import io.onfhir.config.SearchParameterConf
+import io.onfhir.config.{OnfhirIndex, ResourceIndexConfiguration, SearchParameterConf}
 import io.onfhir.exception.InitializationException
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -89,18 +88,19 @@ abstract class BaseDBInitializer(shardingEnabled:Boolean) extends IDBInitializer
         commonQueryParameters.values //Add the common parameters
 
       //Get the search parameters to be indexed from the configurations and filter the parameters to be indexed
-      var parameterNamesToBeIndexed = indexConfigurations.get(resourceType).map(_.indexes).getOrElse(Set.empty)
+      var indexDefs = indexConfigurations.get(resourceType).map(_.indexes).getOrElse(Nil)
       //If sharding is not enabled also add the shard keys to indexes
       if (!shardingEnabled) {
-        parameterNamesToBeIndexed =
-          parameterNamesToBeIndexed ++
+        indexDefs =
+          indexDefs ++
             indexConfigurations
               .get(resourceType)
               .flatMap(_.shardKey)
-              .map(_.filterNot(_.startsWith("_")))
-              .getOrElse(Set.empty)
+              .filterNot(sk=> sk == Seq("_id")) //Index on Resource.id is already created
+              .filterNot(sk => indexDefs.map(_.parameters).exists(prms => prms.mkString(":").startsWith(sk.mkString(":")))) //If there is an index starting with shard key we don't need another one
+              .map(OnfhirIndex(_))
       }
-      val job = createIndexForResourceType(resourceType, searchParameterConfigurations, parameterNamesToBeIndexed)
+      val job = createIndexForResourceType(resourceType, searchParameterConfigurations, indexDefs)
       Await.result(job, 300 seconds)
 
       //Enable sharding for resource type

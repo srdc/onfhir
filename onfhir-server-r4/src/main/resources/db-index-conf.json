@@ -1,5 +1,4 @@
 {
-  "createIndexForCompartments": true,
   "resources": [
     {
       "resource": "Account",
@@ -12,40 +11,39 @@
     },
     {
       "resource": "AdverseEvent",
-      "indexes": ["subject"]
+      "shardKey": ["subject"],
+      "indexes": []
     },
     {
       "resource": "AllergyIntolerance",
-      "indexes": ["patient"]
-    },
-    {
-      "resource": "AllergyIntolerance",
-      "indexes": ["patient"]
+      "shardKey": ["patient"],
+      "indexes": []
     },
     {
       "resource": "Appointment",
       "shardKey": ["patient"],
       "indexes": [
-        "date",
-        "practitioner"
+        {"parameters": ["date"]}
       ]
     },
     {
       "resource": "AppointmentResponse",
       "shardKey": ["patient"],
       "indexes": [
-        "appointment"
+        {"parameters": ["appointment"]}
       ]
     },
     {
       "resource": "AuditEvent",
       "shardKey": ["patient"],
-      "indexes": ["date"]
+      "indexes": [
+        {"parameters": ["date"]}
+      ]
     },
     {
       "resource": "Basic",
       "shardKey": ["subject"],
-      "indexes": ["code"]
+      "indexes": []
     },
     {
       "resource": "Binary",
@@ -63,6 +61,7 @@
     },
     {
       "resource": "Bundle",
+      "shardKey": ["_id"],
       "indexes": []
     },
     {
@@ -95,7 +94,7 @@
     {
       "resource": "Claim",
       "shardKey": ["patient"],
-      "indexes": ["encounter"]
+      "indexes": []
     },
     {
       "resource": "ClaimResponse",
@@ -110,17 +109,24 @@
     {
       "resource": "CodeSystem",
       "shardKey": ["_id"],
-      "indexes": ["url","code"]
+      "indexes": [
+        {"parameters": ["url"]}
+      ]
     },
     {
       "resource": "Communication",
       "shardKey": ["subject"],
-      "indexes": ["received"]
+      "indexes": [
+        {"parameters": ["recipient","status","sent"]}
+      ]
     },
     {
       "resource": "CommunicationRequest",
       "shardKey": ["subject"],
-      "indexes": []
+      "indexes": [
+        {"parameters": ["recipient"]},
+        {"parameters": ["requester"]}
+      ]
     },
     {
       "resource": "CompartmentDefinition",
@@ -134,12 +140,16 @@
     {
       "resource": "ConceptMap",
       "shardKey": ["_id"],
-      "indexes": ["url","source", "source-code", "source-system"]
+      "indexes": [
+        {"parameters": ["url"]},
+        {"parameters": ["source"]},
+        {"parameters": ["target"]}
+      ]
     },
     {
       "resource": "Condition",
       "shardKey": ["subject"],
-      "indexes": ["code"]
+      "indexes": []
     },
     {
       "resource": "Consent",
@@ -169,12 +179,16 @@
     {
       "resource": "DetectedIssue",
       "shardKey": ["patient"],
-      "indexes": ["code"]
+      "indexes": []
     },
     {
       "resource": "Device",
       "shardKey": ["_id"],
-      "indexes": ["patient", "organization", "type"]
+      "indexes": [
+        {"parameters": ["patient"]},
+        {"parameters": ["organization"]},
+        {"parameters": ["type"]}
+      ]
     },
     {
       "resource": "DeviceDefinition",
@@ -197,7 +211,7 @@
     {
       "resource": "DiagnosticReport",
       "shardKey": ["subject"],
-      "indexes": ["date", "code", "result"]
+      "indexes": []
     },
     {
       "resource": "DocumentManifest",
@@ -207,17 +221,22 @@
     {
       "resource": "DocumentReference",
       "shardKey": ["subject"],
-      "indexes": ["date"]
+      "indexes": []
     },
     {
       "resource": "EffectEvidenceSynthesis",
       "shardKey": ["_id"],
-      "indexes": ["url","date"]
+      "indexes": [
+        {"parameters": ["url"]}
+      ]
     },
     {
       "resource": "Encounter",
       "shardKey": ["subject"],
-      "indexes": ["participant", "date"]
+      "indexes": [
+        {"parameters": ["service-provider","date"]},
+        {"parameters": ["participant","date"]}
+      ]
     },
     {
       "resource": "Endpoint",
@@ -230,7 +249,9 @@
     },
     {
       "resource": "EnrollmentResponse",
-      "indexes": ["request"]
+      "indexes": [
+        {"parameters": ["request"]}
+      ]
     },
     {
       "resource": "EpisodeOfCare",
@@ -260,7 +281,7 @@
     {
       "resource": "FamilyMemberHistory",
       "shardKey": ["patient"],
-      "indexes": ["code"]
+      "indexes": []
     },
     {
       "resource": "Flag",
@@ -279,7 +300,10 @@
     {
       "resource": "Group",
       "shardKey": ["_id"],
-      "indexes": ["member", "managing-entity"]
+      "indexes": [
+        {"parameters": ["member"]},
+        {"parameters": ["managing-entity","member"]}
+      ]
     },
     {
       "resource": "GuidanceResponse",
@@ -322,21 +346,28 @@
     {
       "resource": "Invoice",
       "shardKey": ["subject"],
-      "indexes": ["date"]
+      "indexes": []
     },
     {
       "resource": "Library",
       "shardKey": ["_id"],
-      "indexes": ["url","topic"]
+      "indexes": [
+        {"parameters": ["url"]}
+      ]
     },
     {
       "resource": "Linkage",
-      "indexes": ["source", "item"]
+      "indexes": [
+        {"parameters": ["source"]},
+        {"parameters": ["item"]}
+      ]
     },
     {
       "resource": "List",
       "shardKey": ["subject"],
-      "indexes": ["item"]
+      "indexes": [
+        {"parameters": ["item"]}
+      ]
     },
     {
       "resource": "Location",
@@ -376,7 +407,7 @@
     {
       "resource": "MedicationRequest",
       "shardKey": ["subject"],
-      "indexes": ["date"]
+      "indexes": []
     },
     {
       "resource": "MedicationStatement",
@@ -391,7 +422,7 @@
     {
       "resource": "Observation",
       "shardKey": ["subject"],
-      "indexes": [ "code", "date"]
+      "indexes": []
     },
     {
       "resource": "Organization",
@@ -414,15 +445,17 @@
     {
       "resource": "Procedure",
       "shardKey": ["subject"],
-      "indexes": [
-        "date",
-        "code"
-      ]
+      "indexes": []
     },
     {
       "resource": "Provenance",
       "shardKey": ["_id"],
-      "indexes": ["when","agent", "patient", "target"]
+      "indexes": [
+        {"parameters": ["when"]},
+        {"parameters": ["patient"]},
+        {"parameters": ["agent"]},
+        {"parameters": ["target"]}
+      ]
     },
     {
       "resource": "QuestionnaireResponse",
@@ -441,17 +474,21 @@
     {
       "resource": "Schedule",
       "shardKey": ["actor"],
-      "indexes": ["date", "service-type"]
+      "indexes": [
+        {"parameters": ["service-type","date"]}
+      ]
     },
     {
       "resource": "ServiceRequest",
       "shardKey": ["subject"],
-      "indexes": ["code"]
+      "indexes": []
     },
     {
       "resource": "Slot",
       "shardKey": ["_id"],
-      "indexes": ["start", "end", "specialty", "service-type"]
+      "indexes": [
+        {"parameters": ["service-type","start"]}
+      ]
     },
     {
       "resource": "Subscription",
@@ -460,21 +497,29 @@
     {
       "resource": "SupplyDelivery",
       "shardKey": ["_id"],
-      "indexes": ["requester", "supplier"]
+      "indexes": [
+        {"parameters": ["receiver"]},
+        {"parameters": ["supplier"]}
+      ]
     },
     {
       "resource": "SupplyRequest",
       "shardKey": ["_id"],
-      "indexes": ["requester", "supplier"]
+      "indexes": [
+        {"parameters": ["requester"]},
+        {"parameters": ["supplier"]}
+      ]
     },
     {
       "resource": "Task",
       "shardKey": ["subject"],
-      "indexes": ["period"]
+      "indexes": [{"parameters": ["period"]}]
     },
     {
       "resource": "ValueSet",
-      "indexes": ["url","code"]
+      "indexes": [
+        {"parameters": ["url","code"]}
+      ]
     }
   ]
 }

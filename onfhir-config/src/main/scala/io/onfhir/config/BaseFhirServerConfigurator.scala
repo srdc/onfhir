@@ -22,7 +22,7 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
   var compartmentDefResources:Seq[Resource] = _
   var valueSetResources:Seq[Resource] = _
   var codeSystemResources:Seq[Resource] = _
-  var indexConfigurations:Map[String, IndexConfigurator.ResourceIndexConfiguration] = _
+  var indexConfigurations:Map[String, ResourceIndexConfiguration] = _
 
   var FHIR_COMPLEX_TYPES:Set[String] = _
   var FHIR_PRIMITIVE_TYPES:Set[String] = _
