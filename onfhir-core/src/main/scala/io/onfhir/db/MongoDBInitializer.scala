@@ -269,8 +269,6 @@ class MongoDBInitializer(resourceManager: ResourceManager) extends BaseDBInitial
    * @return
    */
   def constructMultiParameterIndexesForResourceType(resourceType:String, searchParameterConfigurations:Seq[SearchParameterConf], indexDefs:Seq[OnfhirIndex]):Seq[IndexModel] = {
-    if(resourceType == "Observation")
-      ""
     indexDefs
       .filter(_.parameters.length > 1) //Filter the index definitions on single search parameter
       .flatMap(indexDef => {
