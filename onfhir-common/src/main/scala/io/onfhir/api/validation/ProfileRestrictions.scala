@@ -30,18 +30,21 @@ case class ConstraintFailure(errorOrWarningMessage: String, isWarning: Boolean =
  *
  * @param url                 URL of the profile
  * @param baseUrl             Base profile that this extends if exist
+ * @param resourceType        Resource type for the StructureDefinition
+ * @param resourceName Given name of the StructureDefinition resource
  * @param elementRestrictions Defined restrictions on elements with path as key e.g. component.value[x] -> ...
  * @param summaryElements     Paths of the elements that are defined as summary element
  * @param constraints         Root constraints defined for the content
  * @param isAbstract          If this is a abstract definition
  */
-case class ProfileRestrictions(
-                                url: String,
-                                baseUrl: Option[String],
-                                elementRestrictions: Seq[(String, ElementRestrictions)],
-                                summaryElements: Set[String],
-                                constraints: Option[FhirRestriction] = None,
-                                isAbstract: Boolean = false) extends InternalEntity
+case class ProfileRestrictions(url: String,
+                               baseUrl: Option[String],
+                               resourceType: String,
+                               resourceName: Option[String],
+                               elementRestrictions: Seq[(String, ElementRestrictions)],
+                               summaryElements: Set[String],
+                               constraints: Option[FhirRestriction] = None,
+                               isAbstract: Boolean = false) extends InternalEntity
 
 /**
  * Restrictions defined on a element

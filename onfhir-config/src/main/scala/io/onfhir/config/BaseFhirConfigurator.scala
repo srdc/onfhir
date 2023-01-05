@@ -75,8 +75,8 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
     val baseProfiles =
       baseResourceProfiles ++
         baseDataTypeProfiles.filter(_._1.split('/').last.head.isUpper) ++
-        baseOtherProfileResources.map(foundationResourceParser.parseStructureDefinition).map(p => p.url -> p).toMap ++
-        baseExtensionProfileResources.map(foundationResourceParser.parseStructureDefinition).map(p => p.url -> p).toMap
+        baseOtherProfileResources.map(foundationResourceParser.parseStructureDefinition(_, includeElementMetadata = true)).map(p => p.url -> p).toMap ++
+        baseExtensionProfileResources.map(foundationResourceParser.parseStructureDefinition(_, includeElementMetadata = true)).map(p => p.url -> p).toMap
 
     //Initialize fhir config with base profiles and value sets to prepare for validation
     fhirConfig.profileRestrictions = baseProfiles
@@ -87,7 +87,7 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
     validateGivenInfrastructureResources(fhirConfig, FHIR_CODE_SYSTEM, codeSystemResources)
     logger.info("Parsing given FHIR foundation resources ...")
     //Parsing the profiles and value sets into our compact form
-    val profiles = profileResources.map(foundationResourceParser.parseStructureDefinition).map(p => p.url -> p).toMap
+    val profiles = profileResources.map(foundationResourceParser.parseStructureDefinition(_, includeElementMetadata = true)).map(p => p.url -> p).toMap
     //Parse all as bundle
     val valueSets = foundationResourceParser.parseValueSetAndCodeSystems(valueSetResources ++ codeSystemResources ++ baseValueSetsAndCodeSystems)
 
@@ -176,7 +176,7 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
    * @param resources      Resources to validate
    * @throws InitializationException If there is a problem in given profile or value set definitions
    */
-  protected def validateGivenInfrastructureResources(baseFhirConfig: BaseFhirConfig, rtype: String, resources: Seq[Resource]): Unit = {
+  override def validateGivenInfrastructureResources(baseFhirConfig: BaseFhirConfig, rtype: String, resources: Seq[Resource]): Unit = {
     val issuesForEachResource =
       resources
         .map(resource => validatedGivenInfrastructureResource(baseFhirConfig, rtype, resource))
