@@ -27,6 +27,8 @@ class StructureDefinitionParser(fhirComplexTypes: Set[String], fhirPrimitiveType
       ProfileRestrictions(
         url = FHIRUtil.extractValueOption[String](structureDef, "url").get,
         baseUrl = None,
+        resourceType = rtype,
+        resourceName = FHIRUtil.extractValueOption[String](structureDef, "name"),
         elementRestrictions = Nil,
         summaryElements = Set.empty[String],
         constraints = None,
@@ -58,6 +60,8 @@ class StructureDefinitionParser(fhirComplexTypes: Set[String], fhirPrimitiveType
       ProfileRestrictions(
         url = FHIRUtil.extractValueOption[String](structureDef, "url").get,
         baseUrl = FHIRUtil.extractValueOption[String](structureDef, "baseDefinition"),
+        resourceType = rtype,
+        resourceName = FHIRUtil.extractValueOption[String](structureDef, "name"),
         elementRestrictions = elemDefs.map(e => e._1.path -> e._1),
         summaryElements = getSummaryElements(elemDefs), //elemDefs.filter(_._2).map(e => e._1.path).toSet,
         constraints =

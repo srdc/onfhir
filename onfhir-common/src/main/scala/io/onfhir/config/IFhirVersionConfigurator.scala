@@ -5,7 +5,7 @@ import io.onfhir.api.parsers.IFhirFoundationResourceParser
 
 trait IFhirVersionConfigurator {
   //FHIR Version
-  val fhirVersion:String = "R4"
+  val fhirVersion: String = "R4"
 
   //Name of the files that includes the Bundle for search parameter definitions in base FHIR specification zip file
   protected val SEARCH_PARAMETERS_BUNDLE_FILE_NAME = s"search-parameters$FOUNDATION_RESOURCES_FILE_SUFFIX"
@@ -24,13 +24,15 @@ trait IFhirVersionConfigurator {
   /**
    * Parse the base FHIR standard bundle and given profiles, valuesets and codesystems,
    * and provide a configuration for the server
-   * @param configReader  Reader for configuration files
+   *
+   * @param configReader Reader for configuration files
    * @return
    */
   def initializePlatform(configReader: IFhirConfigReader): BaseFhirConfig
 
   /**
    * Return the parser for foundation resources
+   *
    * @param complexTypes   List of FHIR complex types defined in the standard
    * @param primitiveTypes List of FHIR primitive types defined in the standard
    * @return
@@ -39,8 +41,19 @@ trait IFhirVersionConfigurator {
 
   /**
    * Get Resource type or Data type from a StructureDefinition resource if it is not abstract
+   *
    * @param structureDefinition FHIR StructureDefinition resource
    * @return
    */
   def getTypeFromStructureDefinition(structureDefinition: Resource): Option[String]
+
+  /**
+   * Validate the given infrastructure resources and throw exception if any invalid
+   *
+   * @param baseFhirConfig Base FHIR configurations
+   * @param rtype          FHIR Resource type
+   * @param resources      Resources to validate
+   * @throws InitializationException If there is a problem in given profile or value set definitions
+   */
+  def validateGivenInfrastructureResources(baseFhirConfig: BaseFhirConfig, rtype: String, resources: Seq[Resource]): Unit
 }

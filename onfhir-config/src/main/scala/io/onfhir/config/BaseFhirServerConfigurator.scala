@@ -85,8 +85,8 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
 
     logger.info("Parsing base FHIR foundation resources (base standard) ...")
     //Parsing base definitions
-    val baseResourceProfiles = baseResourceProfileResources.map(foundationResourceParser.parseStructureDefinition(_, includeElementMetadata = true)).map(p => p.url -> p).toMap
-    val baseDataTypeProfiles = baseDataTypeProfileResources.map(foundationResourceParser.parseStructureDefinition(_, includeElementMetadata = true)).map(p => p.url -> p).toMap
+    val baseResourceProfiles = baseResourceProfileResources.map(foundationResourceParser.parseStructureDefinition).map(p => p.url -> p).toMap
+    val baseDataTypeProfiles = baseDataTypeProfileResources.map(foundationResourceParser.parseStructureDefinition).map(p => p.url -> p).toMap
     val baseProfiles =
       baseResourceProfiles ++
         baseDataTypeProfiles.filter(_._1.split('/').last.head.isUpper) ++
