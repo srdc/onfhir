@@ -11,7 +11,9 @@ import org.json4s.JsonAST.{JArray, JObject, JString, JValue}
  * @param version       Business Version of ValueSet where codes are expected
  * @param isRequired    If binding strength is required
  */
-case class CodeBindingRestriction(valueSetUrl:String, version:Option[String], isRequired:Boolean = true) extends  FhirRestriction {
+case class CodeBindingRestriction(valueSetUrl:String, version:Option[String], strength:String) extends  FhirRestriction {
+
+  val isRequired = strength == "required"
 
   /**
    * Evaluate if the fiven FHIR element has the code defined in the value set

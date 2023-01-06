@@ -1125,11 +1125,26 @@ class FhirContentValidator(
    * @return
    */
   private def evaluateBindingConstraint(dataType: String, value: JValue, elementRestrictions: Seq[ElementRestrictions]): Seq[ConstraintFailure] = {
-    if (Set(FHIR_DATA_TYPES.CODEABLE_CONCEPT, FHIR_DATA_TYPES.CODING, FHIR_DATA_TYPES.CODE, FHIR_DATA_TYPES.QUANTITY, FHIR_DATA_TYPES.STRING, FHIR_DATA_TYPES.URL).contains(dataType))
-      findFirstFhirRestriction(ConstraintKeys.BINDING, elementRestrictions)
-        .map(_.evaluate(value, this))
+    if (Set(FHIR_DATA_TYPES.CODEABLE_CONCEPT, FHIR_DATA_TYPES.CODING, FHIR_DATA_TYPES.CODE, FHIR_DATA_TYPES.QUANTITY, FHIR_DATA_TYPES.STRING, FHIR_DATA_TYPES.URL).contains(dataType)) {
+      val bindingRestrictions = getAllRestrictions(ConstraintKeys.BINDING, elementRestrictions).map(_.asInstanceOf[CodeBindingRestriction])
+      bindingRestrictions
+        .headOption
+        .filterNot(_.strength == "example") // Do not evaluate example restrictions
+        .map(br =>
+          br.valueSetUrl match {
+            //If the newest profile just change the binding strength, find the value set defined in hieararchy
+            case "$parent" =>
+              bindingRestrictions
+                .find(_.valueSetUrl!="$parent")
+                .map(baseBr => br.copy(valueSetUrl = baseBr.valueSetUrl, version = baseBr.version))
+                .map(_.evaluate(value, this))
+                .getOrElse(Nil)
+            case vs =>
+              br.evaluate(value, this)
+          }
+        )
         .getOrElse(Nil)
-    else
+    } else
       Nil
   }
 

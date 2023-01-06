@@ -83,11 +83,13 @@ abstract class AbstractStructureDefinitionParser(fhirComplexTypes: Set[String], 
    */
   protected def createBindingRestriction(bindingDef: JObject): Option[FhirRestriction] = {
     val bindingStrength = FHIRUtil.extractValueOption[String](bindingDef, "strength").get
-    if (bindingStrength == "required" || bindingStrength == "extensible" || bindingStrength == "preferred") {
-      FHIRUtil.extractValueOption[String](bindingDef, "valueSet")
-        .map(v => FHIRUtil.parseCanonicalValue(v))
-        .map { case (vsUrl, version) => CodeBindingRestriction(vsUrl, version, bindingStrength == "required") }
-    } else None
+    FHIRUtil.extractValueOption[String](bindingDef, "valueSet") match {
+        case None => Some(CodeBindingRestriction("$parent", None, bindingStrength))
+        case Some(v) =>
+          FHIRUtil.parseCanonicalValue(v) match {
+            case (vsUrl, version) => Some(CodeBindingRestriction(vsUrl, version, bindingStrength))
+          }
+    }
   }
 
   /**
