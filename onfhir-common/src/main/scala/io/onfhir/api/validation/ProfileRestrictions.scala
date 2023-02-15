@@ -29,15 +29,17 @@ case class ConstraintFailure(errorOrWarningMessage: String, isWarning: Boolean =
  * A FHIR StructureDefinition (Profile or base definition for resource types or data types)
  *
  * @param url                 URL of the profile
+ * @param id                  Resource id of the profile
  * @param baseUrl             Base profile that this extends if exist
  * @param resourceType        Resource type for the StructureDefinition
- * @param resourceName Given name of the StructureDefinition resource
+ * @param resourceName        Given name of the StructureDefinition resource
  * @param elementRestrictions Defined restrictions on elements with path as key e.g. component.value[x] -> ...
  * @param summaryElements     Paths of the elements that are defined as summary element
  * @param constraints         Root constraints defined for the content
  * @param isAbstract          If this is a abstract definition
  */
 case class ProfileRestrictions(url: String,
+                               id: Option[String],
                                baseUrl: Option[String],
                                resourceType: String,
                                resourceName: Option[String],
