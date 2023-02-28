@@ -3,11 +3,11 @@ package io.onfhir.authz
 import akka.Done
 import akka.http.caching.LfuCache
 import akka.http.caching.scaladsl.{Cache, CachingSettings}
-import akka.http.scaladsl.model.headers.{Authorization, OAuth2BearerToken}
+import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, OAuth2BearerToken}
 import akka.http.scaladsl.server.Directive1
 import akka.http.scaladsl.server.directives.{BasicDirectives, Credentials, HeaderDirectives, MiscDirectives}
 import io.onfhir.Onfhir
-import io.onfhir.api.AUTHZ_METHOD_NONE
+import io.onfhir.api.{AUTHZ_METHOD_BASIC, AUTHZ_METHOD_FHIR_ON_SMART, AUTHZ_METHOD_NONE}
 import io.onfhir.config.OnfhirConfig
 import io.onfhir.config.OnfhirConfig.authzConfig
 import org.slf4j.{Logger, LoggerFactory}
@@ -67,15 +67,26 @@ object AuthManager {
   def authenticate():Directive1[(AuthContext, Option[AuthzContext])] = {
     HeaderDirectives.optionalHeaderValueByType(Authorization).flatMap(authorizationHeader => {
       clientIP.flatMap(networkAddress => {
-        val accessToken = getToken(authorizationHeader)
-
-        if(authzConfig.authorizationMethod == AUTHZ_METHOD_NONE)
-          BasicDirectives.provide[(AuthContext, Option[AuthzContext])](AuthContext(accessToken, networkAddress), None)
-        else {
-          logger.debug("Authenticating the request ...")
-          //Resolve Authorization Context from access token
-          val authzContext = accessToken.map(ac => resolveToken(ac, AuthzConfigurationManager.authorizationHandler.furtherParamsInAuthzContext))
-          BasicDirectives.provide[(AuthContext, Option[AuthzContext])](AuthContext(accessToken, networkAddress), authzContext)
+        authzConfig.authorizationMethod match {
+          //No authentication
+          case AUTHZ_METHOD_NONE =>
+            BasicDirectives.provide[(AuthContext, Option[AuthzContext])](AuthContext(None, networkAddress), None)
+          //Basic HTTP authentication
+          case AUTHZ_METHOD_BASIC =>
+            val credentials = getCredentials(authorizationHeader)
+            val authzContext =
+              credentials
+                .filter(c => OnfhirConfig.authzConfig.authorizationBasicCredentials.get(c._1).contains(c._2))
+                .map(u => AuthzContext(true, username = Some(u._1)))
+                .getOrElse(AuthzContext(false, reasonNotActive = Some("Missing or invalid credentials!")))
+            BasicDirectives.provide[(AuthContext, Option[AuthzContext])](AuthContext(None, networkAddress), Some(authzContext))
+          //Any token based authorization
+          case _ =>
+            val accessToken = getToken(authorizationHeader)
+            logger.debug("Authenticating the request ...")
+            //Resolve Authorization Context from access token
+            val authzContext = accessToken.map(ac => resolveToken(ac, AuthzConfigurationManager.authorizationHandler.furtherParamsInAuthzContext))
+            BasicDirectives.provide[(AuthContext, Option[AuthzContext])](AuthContext(accessToken, networkAddress), authzContext)
         }
       })
     })
@@ -134,6 +145,18 @@ object AuthManager {
   private def getToken(authorizationHeader:Option[Authorization]):Option[String] = {
     authorizationHeader.flatMap(header => header.credentials match {
       case bt: OAuth2BearerToken => Some(bt.token)
+      case _ => None
+    })
+  }
+
+  /**
+   * Get basic authentication credentials
+   * @param authorizationHeader
+   * @return
+   */
+  private def getCredentials(authorizationHeader:Option[Authorization]): Option[(String,String)] = {
+    authorizationHeader.flatMap(header => header.credentials match {
+      case BasicHttpCredentials(username, password) => Some(username -> password)
       case _ => None
     })
   }

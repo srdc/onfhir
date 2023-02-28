@@ -72,25 +72,29 @@ object AuthzConfigurationManager {
   def initialize(customAuthorizer:Option[IAuthorizer], customtTokenResolver:Option[ITokenResolver]):Unit = {
     if(authzConfig.isSecure()){
       //Order is important!!
-      //First read the authorization server's configurations
-      configureForAuthorizationServer()
-      //Then our own configuration for a protected resource server
-      configureProtectedResourceServer()
+      if(authzConfig.authorizationMethod != AUTHZ_METHOD_BASIC){
+        //First read the authorization server's configurations
+        configureForAuthorizationServer()
+        //Then our own configuration for a protected resource server
+        configureProtectedResourceServer()
+      }
       //Set authorization handler
       this.authorizationHandler = customAuthorizer.getOrElse(
         authzConfig.authorizationMethod match {
           case AUTHZ_METHOD_FHIR_ON_SMART => new SmartAuthorizer()
+          case AUTHZ_METHOD_BASIC => new BasicAuthorizer()
           case _ => throw new InitializationException(s"Unknown default authorization method ${authzConfig.authorizationMethod}!")
         }
       )
-      //Set token resolver
-      this.tokenResolver = customtTokenResolver.getOrElse(
-        authzConfig.tokenResolutionMethod match {
-          case TOKEN_RESOLUTION_JWT => new JWTResolver(authzConfig)
-          case TOKEN_RESOLUTION_INTROSPECTION => new ResolverWithTokenIntrospection(authzConfig)
-          case _ =>   throw new InitializationException(s"Unknown default access token resolution method ${authzConfig.tokenResolutionMethod}!")
-        }
-      )
+      if(authzConfig.authorizationMethod != AUTHZ_METHOD_BASIC)
+        //Set token resolver
+        this.tokenResolver = customtTokenResolver.getOrElse(
+          authzConfig.tokenResolutionMethod match {
+            case TOKEN_RESOLUTION_JWT => new JWTResolver(authzConfig)
+            case TOKEN_RESOLUTION_INTROSPECTION => new ResolverWithTokenIntrospection(authzConfig)
+            case _ =>   throw new InitializationException(s"Unknown default access token resolution method ${authzConfig.tokenResolutionMethod}!")
+          }
+        )
     }
   }
 

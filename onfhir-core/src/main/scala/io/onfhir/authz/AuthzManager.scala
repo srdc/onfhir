@@ -265,6 +265,8 @@ class AuthzManager(fhirConfigurationManager: IFhirConfigurationManager) {
         case Some(ac) if ac.isActive => //if token is active check if the operation is allowed
           AuthzConfigurationManager.authorizationHandler
             .authorize(ac, fhirRequest.interaction, fhirRequest.resourceType, fhirRequest.resourceId)
+        case Some(ac) if !ac.isActive =>
+          AuthzResult.failureInvalidToken(ac.reasonNotActive.getOrElse("Invalid access token or we cannot resolve it..."))
         //If token is invalid return false
         case _ => AuthzResult.failureInvalidToken("Invalid access token or we cannot resolve it...")
      }

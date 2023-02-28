@@ -701,6 +701,7 @@ package object api {
     *  ?
     */
   final val AUTHZ_METHOD_FHIR_ON_SMART = "smart-on-fhir"
+  final val AUTHZ_METHOD_BASIC = "basic"
   final val AUTHZ_METHOD_NONE = "none"
 
   /**

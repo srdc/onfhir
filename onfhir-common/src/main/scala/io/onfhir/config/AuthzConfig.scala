@@ -1,7 +1,6 @@
 package io.onfhir.config
 
 import java.util.concurrent.TimeUnit
-
 import akka.http.scaladsl.model.{HttpCharsets, MediaType}
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.jwk.JWKSet
@@ -13,6 +12,8 @@ import scala.util.Try
 import io.onfhir.api.{AUTHZ_DISCOVERY_NONE, AUTHZ_METHOD_NONE, TOKEN_RESOLUTION_JWT}
 import io.onfhir.authz.AuthorizationServerMetadata
 import io.onfhir.exception.InitializationException
+
+import scala.jdk.CollectionConverters.SetHasAsScala
 /**
   * Created by tuncay on 2/28/2017.
   * All configurations related with the authorization of FHIR server
@@ -90,6 +91,14 @@ class AuthzConfig(authzConfig:Config) {
    lazy val tokenCachingTTL: FiniteDuration = Try(Duration(authzConfig.getLong("token-caching-time-to-live"), TimeUnit.MINUTES)).toOption.getOrElse(Duration(30, TimeUnit.MINUTES))
    lazy val tokenCachingIdle: FiniteDuration = Try(Duration(authzConfig.getLong("token-caching-time-to-idle"), TimeUnit.MINUTES)).toOption.getOrElse(Duration(10, TimeUnit.MINUTES))
 
+  //If authorization method is basic, username and password for authorized users
+  lazy val authorizationBasicCredentials: Map[String, String] =
+    authzConfig
+      .getConfig("credentials")
+      .entrySet()
+      .asScala
+      .map(e => e.getKey -> e.getValue.unwrapped().toString)
+      .toMap
   /**
     * Resulting Runtime configurations
     */
