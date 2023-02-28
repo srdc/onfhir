@@ -1,5 +1,8 @@
 FROM openjdk:11-jre-slim
 
+# We need curl for healthcheck
+RUN apt -y update; apt -y install curl
+
 ENV ONFHIR_HOME /usr/local/onfhir
 RUN mkdir -p "$ONFHIR_HOME"
 WORKDIR $ONFHIR_HOME
