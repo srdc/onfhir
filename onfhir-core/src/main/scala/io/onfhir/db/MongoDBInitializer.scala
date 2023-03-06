@@ -162,7 +162,7 @@ class MongoDBInitializer(resourceManager: ResourceManager) extends BaseDBInitial
             val createFuture = if(resourcesDoesNotExist.nonEmpty) resourceManager.createResources(resourceType, resourcesDoesNotExist).map(_ => ()) else Future(())
 
             // Wait for the creation of the resources
-            Await.result(createFuture, 10 seconds)
+            Await.result(createFuture, 30 seconds)
 
             //Filter resources that exist
             val resourcesExist =
