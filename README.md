@@ -12,6 +12,9 @@ It is implemented with Scala, based on Akka and MongoDB.
 
 Stable versions are released in [Maven Central](https://search.maven.org/search?q=io.onfhir) and snapshot versions in [Sonatype Snapshot Repository](https://oss.sonatype.org/content/repositories/snapshots/io/onfhir/).
 
+## TEMPORARY WARNING
+**On March 6, 2023, we forcefully rearranged the existing onfhir_2.13 branch as master. The old master has been branched has onfhir_2.12.**
+
 ## Basic Configuration
 You can copy and update **onfhir-core/src/main/resources/application.conf** file, which is the entrypoint configuration to configure onFHIR repository based on your needs.
 
