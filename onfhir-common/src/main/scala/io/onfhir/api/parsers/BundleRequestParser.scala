@@ -10,7 +10,7 @@ import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.OnfhirConfig
 import io.onfhir.util.DateTimeUtil
 import io.onfhir.util.JsonFormatter._
-import org.json4s.JsonAST.{JArray, JObject}
+import org.json4s.JsonAST.{JArray, JObject, JValue}
 
 import scala.util.Try
 
@@ -21,15 +21,18 @@ import scala.util.Try
 object BundleRequestParser {
   /**
     * Parse the Bundle for batch or transaction and convert them to child FHIRRequest
-    * @param bundle
+    * @param bundle                     FHIR Transaction or Batch bundle
+    * @param prefer                     General Prefer header
+    * @param skipEntriesWithoutRequest  If true, entries without a request are skipped
     * @return
     */
-  def parseBundleRequest(bundle:Resource, prefer:Option[String] = None):Seq[FHIRRequest] = {
+  def parseBundleRequest(bundle:Resource, prefer:Option[String] = None, skipEntriesWithoutRequest:Boolean = false):Seq[FHIRRequest] = {
     try {
       //Get the entries
       (bundle \ FHIR_BUNDLE_FIELDS.ENTRY)
         .extractOpt[JArray]
-        .map(_.arr.toSeq).getOrElse(Nil)
+        .map(_.arr.toSeq).getOrElse(List.empty)
+        .filter(entry => !skipEntriesWithoutRequest || entry.asInstanceOf[JObject].obj.exists(_._1 == FHIR_BUNDLE_FIELDS.REQUEST))
         .map(entry => {
           Try(
             parseBundleRequestEntry(entry.asInstanceOf[JObject])
@@ -66,7 +69,7 @@ object BundleRequestParser {
     //Get the entries
     (bundle \ FHIR_BUNDLE_FIELDS.ENTRY)
       .extractOpt[JArray]
-      .map(_.arr.toSeq).getOrElse(Nil)
+      .map(_.arr.toSeq).getOrElse(List.empty)
       .map(entry => {
         parseBundleDocumentRequestEntry(entry.asInstanceOf[JObject], prefer)
       })
@@ -77,7 +80,7 @@ object BundleRequestParser {
    * @param entry
    * @return
    */
-  private def parseBundleDocumentRequestEntry(entry:Resource, prefer:Option[String]):FHIRRequest = {
+  def parseBundleDocumentRequestEntry(entry:Resource, prefer:Option[String]):FHIRRequest = {
     //Parse the entry
     val fullUrl = (entry \  FHIR_BUNDLE_FIELDS.FULL_URL).extractOpt[String].filter(_.startsWith("urn:uuid:"))
     //Get the resource
@@ -106,7 +109,7 @@ object BundleRequestParser {
     * @param entry
     * @return
     */
-  private def parseBundleRequestEntry(entry:Resource):FHIRRequest = {
+  def parseBundleRequestEntry(entry:Resource):FHIRRequest = {
     //Parse the entry
     val fullUrl = (entry \  FHIR_BUNDLE_FIELDS.FULL_URL).extractOpt[String].filter(_.startsWith("urn:uuid:"))
 
