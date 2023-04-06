@@ -37,15 +37,22 @@ abstract class BaseFhirProfileHandler(val fhirConfig: FhirServerConfig) {
         case None => checkPathsMatch(path, p._1)
         //If it is a content reference than
         case Some(cr) if path.startsWith(p._1) =>
+          true
           //if common prefix is not empty
-          cr.zip(path).takeWhile(c => c._1 == c._2).map(_._1).mkString != ""
+          //cr.zip(path).takeWhile(c => c._1 == c._2).map(_._1).mkString != ""
         //Otherwise false
         case _ => false
       }) match {
       //Searched path is on a referenced content
       case Some(er) if path != er._1 &&  path.startsWith(er._1) =>
         val rootPrefix =  er._2.contentReference.get.zip(path).takeWhile(c => c._1 == c._2).map(_._1).mkString
-        val pathOnReferencedContent = er._2.contentReference.get + "." + path.replace(rootPrefix, "").split('.').tail.mkString(".")
+        val pathOnReferencedContent =
+          //If there is no common prefix
+          if(rootPrefix == "")
+            er._2.contentReference.get + "." + path.replace(er._1, "").split('.').tail.mkString(".")
+          else
+            er._2.contentReference.get + "." + path.replace(rootPrefix, "").split('.').tail.mkString(".")
+
         findElementRestrictionForPath(pathOnReferencedContent, elementRestrictions)
       case oth => oth
     }

@@ -31,9 +31,16 @@ class FhirPathExtractor(latestPath:Seq[(String, Seq[(String, String)])] = Nil) e
       throw new FhirPathException("Invalid FHIR Path path expression!")
     val path = new FhirPathExtractor(latestPath).visit(ctx.expression())
 
-    val dataType = ctx.typeSpecifier().qualifiedIdentifier().getText
     val lp = path.last
-    path.dropRight(1) :+ (lp._1 + dataType.capitalize -> lp._2)
+    // If as is used for converting a FHIR resource to a specific resource type, return path
+    // e.g. Bundle.entry[0].resource as Composition
+    if(lp._1 == "resource" && path.dropRight(1).lastOption.exists(_._1.startsWith("entry")))
+      path
+    else {
+      //Otherwise add the data type to the last path item e.g. Condition.abatement.as(Age) --> Condition, abatementAge
+      val dataType = ctx.typeSpecifier().qualifiedIdentifier().getText
+      path.dropRight(1) :+ (lp._1 + dataType.capitalize -> lp._2)
+    }
   }
   /**
    * Handle invocation expressions

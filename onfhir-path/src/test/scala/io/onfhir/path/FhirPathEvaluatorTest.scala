@@ -877,6 +877,9 @@ class FhirPathEvaluatorTest extends Specification {
       //Special case "contains" is a keyword in FHIR path grammar
       result = FhirPathEvaluator().getPathItemsWithRestrictions("ValueSet.expansion.contains.code")
       result.length mustEqual 4
+
+      result = FhirPathEvaluator().getPathItemsWithRestrictions("Bundle.entry[0].resource as Composition")
+      result mustEqual Seq("Bundle" -> Nil, "entry[0]" -> Nil, "resource" -> Nil)
     }
 
     "parse literal values" in {

@@ -142,8 +142,8 @@
       "shardKey": ["_id"],
       "indexes": [
         {"parameters": ["url"]},
-        {"parameters": ["source"]},
-        {"parameters": ["target"]}
+        {"parameters": ["source-scope"]},
+        {"parameters": ["target-scope"]}
       ]
     },
     {
@@ -185,7 +185,6 @@
       "resource": "Device",
       "shardKey": ["_id"],
       "indexes": [
-        {"parameters": ["patient"]},
         {"parameters": ["organization"]},
         {"parameters": ["type"]}
       ]

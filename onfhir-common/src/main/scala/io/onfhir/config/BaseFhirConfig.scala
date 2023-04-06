@@ -33,7 +33,11 @@ class BaseFhirConfig(version:String) {
    * @return
    */
   def getBaseProfile(rtype: String): ProfileRestrictions = {
-    findProfile(s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/$rtype").get
+    findProfile(s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/$rtype") match {
+      case Some(p) => p
+      case None =>
+        null
+    }
   }
 
   /**

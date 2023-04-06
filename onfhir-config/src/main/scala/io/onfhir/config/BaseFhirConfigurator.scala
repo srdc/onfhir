@@ -133,12 +133,13 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
    */
   protected def findMentionedProfiles(fhirConfig: BaseFhirConfig, profiles: Seq[ProfileRestrictions]): Set[String] = {
     profiles.flatMap(p => {
+      val isBaseProfile = p.url.startsWith(FHIR_ROOT_URL_FOR_DEFINITIONS)
       p.elementRestrictions.map(_._2)
         .flatMap(e =>
           e.restrictions.get(ConstraintKeys.DATATYPE).toSeq.map(_.asInstanceOf[TypeRestriction])
             .flatMap(_.dataTypesAndProfiles.flatMap(dtp => dtp._2 match {
               case Nil =>
-                if (fhirConfig.FHIR_COMPLEX_TYPES.contains(dtp._1))
+                if (isBaseProfile || fhirConfig.FHIR_COMPLEX_TYPES.contains(dtp._1))
                   Seq(s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/${dtp._1}")
                 else
                   Nil

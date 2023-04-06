@@ -370,7 +370,7 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
                 .map(spc => spc.pname -> spc).toMap
               )
         })
-    val spConfigurator = new SearchParameterConfigurator("DomainResource", None, fhirConfig, Set.empty[String])
+
     fhirConfig.commonQueryParameters =
       conformance.searchParamDefUrls
         .flatMap(spUrl => {
