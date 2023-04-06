@@ -4,19 +4,34 @@ volumes:
     driver: local
 services:
   mongo:
-    image: library/mongo:4.2
+    image: mongo:4.4
+    container_name: mongo
+    restart: always
+    healthcheck:
+      test: echo 'db.stats().ok' | mongo localhost:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
     volumes:
       - onfhirdata:/data/db
-    restart: always
   onfhir:
-    build: .
+    image: srdc/onfhir:r4
+    container_name: onfhir
+    restart: always
+    healthcheck:
+      test: curl -f localhost:8080/fhir/metadata
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    depends_on:
+      mongo:
+        condition: service_healthy
     environment:
-      - APP_CONF_FILE=/fhir/conf/application-docker.conf
-      - LOGBACK_CONF_FILE=/fhir/conf/logback.xml
+      - APP_CONF_FILE=/usr/local/onfhir/conf/application-docker.conf
       - FHIR_ROOT_URL=http://127.0.0.1:8080/fhir
+      - DB_EMBEDDED=false
       - DB_HOST=mongo:27017
-      - LOG_LEVEL=INFO
     ports:
       - "8080:8080"
     volumes:
-      - ./sample-setup:/fhir
+      - ./sample-setup/conf:/usr/local/onfhir/conf
