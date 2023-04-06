@@ -11,6 +11,14 @@ import scala.concurrent.ExecutionContext
 abstract class BaseFhirClient extends IOnFhirClient {
 
   /**
+   * Initalize FHIR Capabilities request builder
+   *  @return
+   */
+  def capabilities():FhirMetadataRequestBuilder = {
+    new FhirMetadataRequestBuilder(this)
+  }
+
+  /**
    * Initiate FHIR Create request builder
    * @param resource
    * @return

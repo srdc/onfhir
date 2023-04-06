@@ -28,6 +28,12 @@ trait IOnFhirClient {
   def next[T<:FHIRPaginatedBundle](bundle: T):Future[T]
 
   /**
+   * Return builder for FHIR Capabilities interaction
+   * @return
+   */
+  def capabilities():FhirMetadataRequestBuilder
+
+  /**
    * Return builder for FHIR create interaction
    * @param resource  Resource to create
    * @return
