@@ -804,12 +804,18 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   }
 
   def matches(regexExpr : ExpressionContext):Seq[FhirPathResult] = {
-    checkSingleString()
     current.headOption.map(c => {
       new FhirPathExpressionEvaluator(context, current).visit(regexExpr) match {
         case Seq(FhirPathString(ss)) =>
           val unexcapedScript = StringEscapeUtils.unescapeEcmaScript(ss)
-          val isMatch = c.asInstanceOf[FhirPathString].s.matches(unexcapedScript)
+          // convert the evaluated FhirPath result to string if possible
+          val value:String = c match {
+            case FhirPathString(s) => s
+            case FhirPathDateTime(d) => d.toString
+            case FhirPathNumber(n) => n.toString
+            case _ => throw new FhirPathException(s"Invalid function call 'matches', the value ${c.toJson} is not a string or can not be cast into a string!")
+          }
+          val isMatch = value.matches(unexcapedScript)
           Seq(FhirPathBoolean(isMatch))
         case _ =>
           throw new FhirPathException(s"Invalid function call 'matches', the regular expression ${regexExpr.getText} does not return string!")
