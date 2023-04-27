@@ -21,6 +21,7 @@ class FhirPathEvaluatorTest extends Specification {
 
   val observation = Source.fromInputStream(getClass.getResourceAsStream("/observation.json")).mkString.parseJson
   val observation2 = Source.fromInputStream(getClass.getResourceAsStream("/observation2.json")).mkString.parseJson
+  val loop = Source.fromInputStream(getClass.getResourceAsStream("/loop.json")).mkString.parseJson
   val questionnaire = Source.fromInputStream(getClass.getResourceAsStream("/questionnaire.json")).mkString.parseJson
   val questionnaire2 = Source.fromInputStream(getClass.getResourceAsStream("/questionnaire2.json")).mkString.parseJson
   val bundle = Source.fromInputStream(getClass.getResourceAsStream("/bundle.json")).mkString.parseJson
@@ -787,6 +788,9 @@ class FhirPathEvaluatorTest extends Specification {
       dtParam.getYear mustEqual 2012
       dtParam.getDayOfMonth mustEqual 13
       dtParam.getMinute mustEqual 10
+
+      val sct = evaluator.evaluateAndReturnJson("utl:nonEmptyLoopedFields('sct_8116006_',1,5)", loop).head
+      sct mustEqual JArray(List(JString("sct_8116006_1"), JString("sct_8116006_2")))
 
       val fhirDate = evaluator.evaluateDateTime("'20120113'.utl:toFhirDateTime('yyyyMMdd' | 'yyyyMMdd.HH:mm:ss')", JNull)
       fhirDate.head mustEqual LocalDate.of(2012,1, 13)
