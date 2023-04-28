@@ -102,7 +102,7 @@ class ExpandOperationHandler(fhirConfigurationManager:IFhirConfigurationManager)
           StatusCodes.OK, //HTTP Status code
           Some(Uri(FHIRUtil.resourceLocationWithVersion(RESOURCE_VALUESET, rid, currentVersion))),
           Some(lastModified), //HTTP Last-Modified header
-          Some(currentVersion)) //HTTP Etag header
+          Some(""+currentVersion)) //HTTP Etag header
 
         fhirResponse.setResponse(resultingResource)
         fhirResponse

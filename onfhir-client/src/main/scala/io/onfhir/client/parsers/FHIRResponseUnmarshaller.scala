@@ -78,11 +78,11 @@ object FHIRResponseUnmarshaller {
       .map(_.date)
   }
 
-  private def getNewVersion(httpResponse: HttpResponse): Option[Long] = {
+  private def getNewVersion(httpResponse: HttpResponse): Option[String] = {
     httpResponse.headers
       .find(_.isInstanceOf[ETag])
       .map(_.asInstanceOf[ETag])
-      .map(_.etag.tag.toLong)
+      .map(_.etag.tag)
   }
 
   private def parseOperationOutcome(operationOutcome: JObject): Seq[OutcomeIssue] = {

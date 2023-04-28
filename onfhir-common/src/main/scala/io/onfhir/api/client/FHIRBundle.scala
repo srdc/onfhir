@@ -223,7 +223,7 @@ class FHIRTransactionBatchBundle(val bundle:Resource) extends FHIRBundle(bundle)
       responseBody = resource,
       location = FHIRUtil.extractValueOption[String](rsp, "location").map(Uri.apply),
       lastModified = FHIRUtil.extractValueOption[String](rsp, "lastModified").map(l=> DateTimeUtil.instantToDateTime(DateTimeUtil.parseFhirDateTimeOrInstant(l))),
-      newVersion = FHIRUtil.extractValueOption[String](rsp, "etag").map(e => e.drop(3).dropRight(1).toLong),
+      newVersion = FHIRUtil.extractValueOption[String](rsp, "etag").map(e => e.drop(3).dropRight(1)),
       outcomeIssues = outcomeIssues
     )
   }

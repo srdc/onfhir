@@ -139,7 +139,7 @@ class FHIRReadService(transactionSession: Option[TransactionSession] = None) ext
             Some(resource), //HTTP body
             Some(Uri(FHIRUtil.resourceLocationWithVersion(_type, _id, currentVersion))),
             Some(lastModified), //HTTP Last-Modified header
-            Some(currentVersion)) //HTTP Etag header
+            Some(""+currentVersion)) //HTTP Etag header
         }
     }
   }

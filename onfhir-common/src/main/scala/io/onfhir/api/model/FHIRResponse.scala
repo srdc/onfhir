@@ -22,7 +22,7 @@ case class FHIRResponse(
                          var responseBody:Option[Resource] = None,
                          location:Option[Uri] = None,
                          lastModified:Option[DateTime] = None,
-                         newVersion:Option[Long]=None,
+                         newVersion:Option[String]=None,
                          outcomeIssues:Seq[OutcomeIssue] = Seq.empty,
                          authenticateHeader:Option[WWWAuthenticate] = None,
                          var xCorrelationId:Option[String] = None,
@@ -76,7 +76,7 @@ object FHIRResponse {
     * @return
     */
   def errorResponse(code:StatusCode, issues:Seq[OutcomeIssue], newVersion:Option[Long]=None):FHIRResponse = {
-    FHIRResponse(httpStatus = code, newVersion= newVersion, outcomeIssues = issues)
+    FHIRResponse(httpStatus = code, newVersion= newVersion.map(_ + ""), outcomeIssues = issues)
   }
 
   /**

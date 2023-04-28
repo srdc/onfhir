@@ -231,7 +231,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
                 FHIRUtil.getResourceContentByPreference(createdResource, prefer), //HTTP Body
                 Some(Uri(FHIRUtil.resourceLocationWithVersion(rtype, newId, newVersion))), //HTTP Location header
                 Some(lastModified), //HTTP Last-Modified header
-                Some(newVersion) //HTTP ETag header
+                Some(""+newVersion) //HTTP ETag header
               )
           }
         case Some(ov) =>
@@ -247,7 +247,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
                 FHIRUtil.getResourceContentByPreference(updatedResource, prefer), //HTTP Body
                 Some(Uri(FHIRUtil.resourceLocationWithVersion(rtype, rid.get, newVersion))), //HTTP Location header
                 Some(lastModified), //HTTP Last-Modified header
-                Some(newVersion) //HTTP ETag header
+                Some(""+newVersion) //HTTP ETag header
               )
           }
       }

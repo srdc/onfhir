@@ -105,7 +105,7 @@ class FHIRCreateService(transactionSession: Option[TransactionSession] = None) e
         None,
         Some(location), //HTTP Location header
         Some(lastModified), //HTTP Last-Modified header
-        Some(version) // HTTP ETag header)
+        Some(""+version) // HTTP ETag header)
       )
     }
   }
@@ -126,7 +126,7 @@ class FHIRCreateService(transactionSession: Option[TransactionSession] = None) e
           FHIRUtil.getResourceContentByPreference(createdResource, prefer), //HTTP body
           Some(Uri(FHIRUtil.resourceLocationWithVersion(_type, newId, newVersion))), //HTTP Location header
           Some(lastModified), //HTTP Last-Modified header
-          Some(newVersion) // HTTP ETag header
+          Some(""+newVersion) // HTTP ETag header
         ))
       }
     else

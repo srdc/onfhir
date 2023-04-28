@@ -14,7 +14,7 @@ import scala.collection.mutable
   * Created by tuncay on 10/3/2017.
   * FHIR Operation response
   */
-class FHIROperationResponse(httpStatus:StatusCode, location:Option[Uri] = None, lastModified:Option[DateTime] = None, newVersion:Option[Long] = None)
+class FHIROperationResponse(httpStatus:StatusCode, location:Option[Uri] = None, lastModified:Option[DateTime] = None, newVersion:Option[String] = None)
   extends FHIRResponse(httpStatus, location = location, lastModified = lastModified, newVersion = newVersion) {
 
   //Return parameters for Operation

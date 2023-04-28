@@ -81,7 +81,7 @@ class FHIRDeleteService(transactionSession: Option[TransactionSession] = None) e
       case (1, Seq(foundResource)) =>
         logger.debug("insert a new and empty document indicating that current document is deleted...")
         performDelete(foundResource, None, _type, StatusCodes.NoContent, testDelete)
-            .map(newVersion => FHIRResponse(StatusCodes.NoContent, None, None, None, Some(newVersion)))
+            .map(newVersion => FHIRResponse(StatusCodes.NoContent, None, None, None, Some(""+newVersion)))
 
       //1.c. If more than one match
       case (_, foundResources) =>
@@ -143,12 +143,12 @@ class FHIRDeleteService(transactionSession: Option[TransactionSession] = None) e
             None,
             Some(Uri(FHIRUtil.resourceLocationWithVersion(_type, _id, currentVersion))), //HTTP Location header
             Some(lastModified), //HTTP Last-Modified header
-            Some(currentVersion) // HTTP ETag header)
+            Some(""+currentVersion) // HTTP ETag header)
           ))
         } else {
           logger.debug("insert a new and empty document indicating that current document is deleted...")
           performDelete(foundResource, Some(_id), _type, StatusCodes.NoContent, testDelete) flatMap {newVersion =>
-            Future(FHIRResponse(StatusCodes.NoContent, None, None, None, Some(newVersion)))
+            Future(FHIRResponse(StatusCodes.NoContent, None, None, None, Some(""+newVersion)))
           }
         }
     }

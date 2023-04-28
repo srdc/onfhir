@@ -193,7 +193,7 @@ object FHIRMarshallers {
     //Construct Http Headers
     val headers = Seq(
       fResponse.lastModified.map(lm => `Last-Modified`(lm)), // Last-Modified header
-      fResponse.newVersion.map(nw => ETag(EntityTag(nw.toString, weak = true))), // ETag header
+      fResponse.newVersion.map(nw => ETag(EntityTag(nw, weak = true))), // ETag header
       fResponse.location.map(l => Location(l)),  // Location Header
       fResponse.authenticateHeader //WWW-Authenticate header if any
     ).filter(_.isDefined).map(_.get).toList

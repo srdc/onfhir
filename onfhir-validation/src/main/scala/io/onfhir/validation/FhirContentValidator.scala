@@ -815,19 +815,19 @@ class FhirContentValidator(
       val (defPath,actualPath) = findDefinitionAndActualPath(discPathItems, sliceSubElements)
       defPath match {
         case "$this" =>
-          Left(Seq(Seq(defPath -> sliceRestriction)))
+          Left(Seq(Seq(defPath -> sliceRestriction)) ++ sliceSubElements)
         case "url" if sliceRestriction.path.contains("extension") =>  Left(Nil)
         case _ =>
           Left(
             findSubElementRestrictions(defPath, sliceSubElements, discriminatorType== "value" || discriminatorType == "pattern")
               .map(ers => ers
                 .map(er =>  {
-                //if the target element has the restriction, then the path is discriminator path itself
-                if(er._1.count(_ == '.') == defPath.count(_ == '.'))
-                  actualPath -> er._2
-                //If the children of the target element has the restrictions, then merge the after paths with discriminator path
-                else
-                  actualPath + "." + er._1.replace(defPath +".", "") -> er._2
+                  //if the target element has the restriction, then the path is discriminator path itself
+                  if(er._1.count(_ == '.') == defPath.count(_ == '.'))
+                    actualPath -> er._2
+                  //If the children of the target element has the restrictions, then merge the after paths with discriminator path
+                  else
+                    actualPath + "." + er._1.replace(defPath +".", "") -> er._2
               }))
           )
       }

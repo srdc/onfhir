@@ -1,9 +1,8 @@
 package io.onfhir.api.util
 
-import java.io.{File, FileInputStream, InputStream, InputStreamReader, Reader}
+import java.io.{File, FileInputStream, InputStream, InputStreamReader, Reader, StringReader}
 import java.util.zip.{ZipEntry, ZipInputStream}
-
-import io.onfhir.api.{Resource}
+import io.onfhir.api.Resource
 import io.onfhir.exception.InitializationException
 import io.onfhir.util.OnFhirZipInputStream
 import org.apache.commons.io.input.BOMInputStream
@@ -12,6 +11,7 @@ import org.json4s.jackson.JsonMethods
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.mutable
+import scala.io.Source
 
 /**
  * Utility functions to read FHIR resources (in JSON format) from file system
@@ -19,6 +19,13 @@ import scala.collection.mutable
 object IOUtil {
   protected val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
+  /**
+   * Read a FHIR resource from given path or default path (within project resources)
+   * @param resourcePath    Given file path
+   * @param defaultPath     Default resource path (within project resources)
+   * @param rtype           Resource type
+   * @return
+   */
   def readResource(resourcePath: Option[String], defaultPath: String, rtype: String): Resource = {
     try {
       resourcePath match {
@@ -35,14 +42,29 @@ object IOUtil {
     }
   }
 
+  /**
+   * Read a FHIR resource from given File path
+   * @param filePath  File path
+   * @return
+   */
   def readResource(filePath: String): Resource = {
     parseResource(new InputStreamReader(new BOMInputStream(new FileInputStream(new File(filePath)))), filePath)
   }
 
+  /**
+   * Read a FHIR resource from project resources with a path
+   * @param resourcePath  Resource path
+   * @return
+   */
   def readInnerResource(resourcePath: String): Resource = {
     parseResource(new InputStreamReader(new BOMInputStream(getClass.getClassLoader.getResourceAsStream(resourcePath))), resourcePath)
   }
 
+  /**
+   *
+   * @param resourcePath
+   * @return
+   */
   def readModuleResource(resourcePath: String): Resource = {
     parseResource(new InputStreamReader(new BOMInputStream(getClass.getResourceAsStream(resourcePath))), resourcePath)
   }
@@ -217,6 +239,12 @@ object IOUtil {
     resources.toSeq
   }
 
+  /**
+   * Parse a JSON resource
+   * @param reader  Reader
+   * @param path  File path it is read from
+   * @return
+   */
   private def parseResource(reader: Reader, path: String): Resource = {
     if (path.endsWith(".json"))
       try {
