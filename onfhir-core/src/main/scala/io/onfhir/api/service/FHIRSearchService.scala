@@ -6,6 +6,7 @@ import io.onfhir.api.model.{FHIRRequest, FHIRResponse, FHIRSearchResult, Paramet
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
+import io.onfhir.config.OnfhirConfig
 import io.onfhir.db.{ResourceManager, TransactionSession}
 import io.onfhir.exception.{InvalidParameterException, UnsupportedParameterException}
 
@@ -162,7 +163,7 @@ class FHIRSearchService(transactionSession: Option[TransactionSession] = None) e
                                parameters:List[Parameter]):Resource = {
     //Construct paging links
     val pagingLinks =
-      if(parameters.exists(p => p.name == FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_AFTER || p.name == FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_BEFORE))
+      if(OnfhirConfig.fhirDefaultPagination == "offset" || parameters.exists(p => p.name == FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_AFTER || p.name == FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_BEFORE))
         fhirConfigurationManager.fhirServerUtil.generateBundleLinksForOffsetBasedPagination(rtype, searchResult, parameters)
       else
         fhirConfigurationManager.fhirServerUtil.generateBundleLinks(rtype, None, searchResult.total, searchResult.matches.length, parameters, isHistory = false)
