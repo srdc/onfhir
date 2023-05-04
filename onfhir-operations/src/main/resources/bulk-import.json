@@ -1,0 +1,85 @@
+{
+  "resourceType": "OperationDefinition",
+  "id": "import",
+  "url": "http://onfhir.io/fhir/OperationDefinition/import",
+  "version": "2.0.0",
+  "name": "BulkDataImport",
+  "title": "FHIR Bulk Data System Level Import",
+  "status": "active",
+  "kind": "operation",
+  "date": "2021-07-29",
+  "publisher": "SRDC OnFhir.io group",
+  "description": "FHIR Operation to import bulk data from a source.",
+  "code": "import",
+  "system": true,
+  "type": false,
+  "instance": false,
+  "parameter": [
+    {
+      "name": "inputFormat",
+      "use": "in",
+      "min": 1,
+      "max": "1",
+      "documentation": "Format of the input. The server SHALL accept the full content type of `application/fhir+ndjson` as well as the abbreviated representations `application/ndjson` and `ndjson`.",
+      "type": "string"
+    },
+    {
+      "name": "inputSource",
+      "use": "in",
+      "min": 1,
+      "max": "1",
+      "documentation": "Root source URI for the bulk sources",
+      "type": "Uri"
+    },
+    {
+      "name": "storageDetail",
+      "use": "in",
+      "min": 1,
+      "max": "1",
+      "documentation": "Details about the access to the storage",
+      "part": [
+        {
+          "name": "type",
+          "use": "in",
+          "min": 1,
+          "max": "1",
+          "documentation": "Type for the access to the files e.g. https, file",
+          "type": "Code"
+        },
+        {
+          "name": "httpBasicCredentials",
+          "use": "in",
+          "min": 0,
+          "max": "1",
+          "documentation": "HTTP Basic credentials like username:password",
+          "type": "String"
+        }
+      ]
+    },
+    {
+      "name": "input",
+      "use": "in",
+      "min": 1,
+      "max": "*",
+      "documentation": "Source inputs",
+      "part": [
+        {
+          "name": "type",
+          "use": "in",
+          "min": 1,
+          "max": "1",
+          "documentation": "FHIR Resource type",
+          "type": "Code"
+        },
+        {
+          "name": "url",
+          "use": "in",
+          "min": 1,
+          "max": "1",
+          "documentation": "URI to access the source",
+          "type": "Uri"
+        }
+      ]
+    }
+  ]
+}
