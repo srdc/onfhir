@@ -360,7 +360,9 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
     fhirConfig.resourceQueryParameters =
       fhirConfig.resourceConfigurations
         .map(r => {
-          val spConfigurator = new SearchParameterConfigurator(r._1, r._2.profile, fhirConfig, r._2.searchParams)
+          //Construct search parameter configurator by giving required information
+          val searchParamsMap = r._2.searchParams.map(url => url -> searchParameters.getOrElse(url, baseSearchParameters(url)).name).toMap
+          val spConfigurator = new SearchParameterConfigurator(r._1, r._2.profile, fhirConfig, searchParamsMap)
           r._1 ->
             (
               r._2.searchParams.map(sp => {
@@ -377,9 +379,9 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
           baseSearchParameters.get(spUrl).map(searchParamDef => {
               val spConfigurator =
                 if(spUrl.split('/').last.startsWith("DomainResource"))
-                  new SearchParameterConfigurator("DomainResource", None, fhirConfig, Set.empty[String])
+                  new SearchParameterConfigurator("DomainResource", None, fhirConfig, Map.empty)
                 else
-                  new SearchParameterConfigurator("Resource", None, fhirConfig, Set.empty[String])
+                  new SearchParameterConfigurator("Resource", None, fhirConfig, Map.empty)
 
               spConfigurator.createSearchParameterConf(searchParamDef)
           })
