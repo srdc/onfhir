@@ -51,7 +51,8 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
     //Find sorting details
     val sortingFields = fhirResultParameterResolver.resolveSortingParameters(rtype, resultParameters)
     //_total parameter, if total number of matched resource is needed or not
-    val needTotal = resultParameters.find(_.name == FHIR_SEARCH_RESULT_PARAMETERS.TOTAL).forall(_.valuePrefixList.head._2 != "none")
+    val needTotal = fhirResultParameterResolver.resolveTotalParameter(resultParameters)
+    //resultParameters.find(_.name == FHIR_SEARCH_RESULT_PARAMETERS.TOTAL).forall(_.valuePrefixList.head._2 != "none")
     //Find out include and revinclude params
     val includeParams = resultParameters.filter(_.name == FHIR_SEARCH_RESULT_PARAMETERS.INCLUDE)
     val revIncludeParams = resultParameters.filter(_.name == FHIR_SEARCH_RESULT_PARAMETERS.REVINCLUDE)
@@ -125,7 +126,8 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
     }
 
     //_total parameter, if total number of matched resource is needed or not
-    val needTotal = commonResultParameters.find(_.name == FHIR_SEARCH_RESULT_PARAMETERS.TOTAL).forall(_.valuePrefixList.head._2 != "none")
+    val needTotal = fhirResultParameterResolver.resolveTotalParameter(commonResultParameters)
+
     //For each resource type find out summary and sorting fields
     val summaryFields  =
       resultParameters
