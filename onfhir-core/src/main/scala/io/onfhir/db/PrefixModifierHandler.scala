@@ -493,7 +493,7 @@ object PrefixModifierHandler {
     } else {
       //If it is year, year-month, or date query
       //Query over the sub date field
-      or(dateTimeQueryBuilder(FHIRUtil.mergeElementPath(path,FHIR_EXTRA_FIELDS.TIME_DATE), prefix, implicitRanges), periodQueryBuilder(rangePaths, prefix, implicitRanges))
+      or(dateQueryBuilder(FHIRUtil.mergeElementPath(path,FHIR_EXTRA_FIELDS.TIME_DATE), prefix, implicitRanges), periodQueryBuilder(rangePaths, prefix, implicitRanges))
     }
   }
 
@@ -640,7 +640,7 @@ object PrefixModifierHandler {
   }
 
   /**
-    * Query builders for date type searches
+    * Query builders for dateTime type searches e.g. ge2012-10-15T10:00:00Z
     *
     * @param path path to the target value
     * @param prefix prefix of the date
@@ -672,4 +672,39 @@ object PrefixModifierHandler {
         }
     }
   }
+
+  /**
+   * Query builders for date type searches e.g. ge2012-10-15  or eq2012-05
+   *
+   * @param path       path to the target value
+   * @param prefix     prefix of the date
+   * @param valueRange value of lower and upper boundaries
+   * @return BsonDocument for the target query
+   */
+  private def dateQueryBuilder(path: String, prefix: String, valueRange: (String, String)): Bson = {
+    // Convert implicit range to dateTime objects(inputted values have already been converted to dataTime format)
+    var (floor, ceil) = (OnFhirBsonTransformer.dateToISODate(valueRange._1), OnFhirBsonTransformer.dateToISODate(valueRange._2))
+    prefix match {
+      case FHIR_PREFIXES_MODIFIERS.BLANK_EQUAL | FHIR_PREFIXES_MODIFIERS.EQUAL => or(and(gte(path, floor), lt(path, ceil)), equal(path, floor))
+      case FHIR_PREFIXES_MODIFIERS.GREATER_THAN | FHIR_PREFIXES_MODIFIERS.GREATER_THAN_M => gt(path, ceil)
+      case FHIR_PREFIXES_MODIFIERS.LESS_THAN | FHIR_PREFIXES_MODIFIERS.LESS_THAN_M => lt(path, floor)
+      case FHIR_PREFIXES_MODIFIERS.GREATER_THAN_EQUAL => gte(path, floor)
+      case FHIR_PREFIXES_MODIFIERS.LESS_THAN_EQUAL => lte(path, ceil)
+      case FHIR_PREFIXES_MODIFIERS.NOT_EQUAL => or(lt(path, floor), gt(path, ceil))
+      case FHIR_PREFIXES_MODIFIERS.STARTS_AFTER => gt(path, ceil)
+      //or(dateTimeQueryBuilder(path, FHIR_PREFIXES_MODIFIERS.NOT_EQUAL, valueRange), dateTimeQueryBuilder(path, FHIR_PREFIXES_MODIFIERS.LESS_THAN, valueRange))
+      case FHIR_PREFIXES_MODIFIERS.ENDS_BEFORE => lt(path, floor)
+      //or(dateTimeQueryBuilder(path, FHIR_PREFIXES_MODIFIERS.NOT_EQUAL, valueRange), dateTimeQueryBuilder(path, FHIR_PREFIXES_MODIFIERS.GREATER_THAN, valueRange))
+      case FHIR_PREFIXES_MODIFIERS.APPROXIMATE =>
+        if (ceil == floor)
+          or(and(gte(path, floor), lt(path, ceil)), equal(path, floor))
+        else {
+          val delta: Long = ((ceil.asInstanceOf[BsonDateTime].getValue - floor.asInstanceOf[BsonDateTime].getValue) * 0.1).toLong
+          ceil = BsonDateTime.apply(ceil.asInstanceOf[BsonDateTime].getValue + delta)
+          floor = BsonDateTime.apply(floor.asInstanceOf[BsonDateTime].getValue - delta)
+          or(and(gte(path, floor), lt(path, ceil)), equal(path, floor))
+        }
+    }
+  }
+
 }
