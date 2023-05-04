@@ -30,7 +30,7 @@ abstract class BaseFhirProfileHandler(val fhirConfig: FhirServerConfig) {
    * @param elementRestrictions
    * @return
    */
-  private def findElementRestrictionForPath(path:String, elementRestrictions: Seq[(String,ElementRestrictions)]):Option[(String, ElementRestrictions)] = {
+  private def findElementRestrictionForPath(path:String, elementRestrictions: Seq[(String,ElementRestrictions)], resolveContentReference:Boolean = false):Option[(String, ElementRestrictions)] = {
     elementRestrictions
       .find(p => p._2.contentReference match {
         //If it is not a content reference, check if path matches
@@ -43,15 +43,22 @@ abstract class BaseFhirProfileHandler(val fhirConfig: FhirServerConfig) {
         //Otherwise false
         case _ => false
       }) match {
+      //We are trying to resolve the path to a referenced content
+      case Some(er) if er._2.contentReference.isDefined && path == er._1 && resolveContentReference =>
+        findElementRestrictionForPath(er._2.contentReference.get, elementRestrictions)
       //Searched path is on a referenced content
-      case Some(er) if path != er._1 &&  path.startsWith(er._1) =>
+      case Some(er) if path != er._1  &&  path.startsWith(er._1) =>
         val rootPrefix =  er._2.contentReference.get.zip(path).takeWhile(c => c._1 == c._2).map(_._1).mkString
         val pathOnReferencedContent =
           //If there is no common prefix
           if(rootPrefix == "")
             er._2.contentReference.get + "." + path.replace(er._1, "").split('.').tail.mkString(".")
-          else
-            er._2.contentReference.get + "." + path.replace(rootPrefix, "").split('.').tail.mkString(".")
+          else {
+            er._2.contentReference.get + "." +
+              path  //Get the sub path after the the element refering to other element
+                .replaceFirst(rootPrefix+".", "") //Remove the root prefix
+                .split('.').tail.mkString(".") //Also remove the path to the element
+          }
 
         findElementRestrictionForPath(pathOnReferencedContent, elementRestrictions)
       case oth => oth
@@ -73,9 +80,8 @@ abstract class BaseFhirProfileHandler(val fhirConfig: FhirServerConfig) {
       //Search in the profile chain starting from the lower
       for(i <- profileChain.indices)
       {
-        findElementRestrictionForPath(path, profileChain.apply(i).elementRestrictions) match {
+        findElementRestrictionForPath(path, profileChain.apply(i).elementRestrictions, resolveContentReference = true) match {
           case Some(er) =>
-
             //Try to find data type restriction (type definition)
             er._2.restrictions.get(ConstraintKeys.DATATYPE) match {
               case Some(dtr) =>
