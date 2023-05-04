@@ -21,7 +21,7 @@ trait FHIRCreateEndpoint {
     */
   def createRoute(fhirRequest: FHIRRequest, authContext: (AuthContext, Option[AuthzContext])): Route = {
     post {
-      pathPrefix(Segment) { _type =>
+      pathPrefix("""[A-Z][A-Za-z]*""".r) { _type =>
         pathEndOrSingleSlash {
           optionalHeaderValueByName(FHIR_HTTP_OPTIONS.IF_NONE_EXIST) { ifNoneExist => //for version-aware updates
             optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { prefer =>
