@@ -82,9 +82,15 @@ class FHIRResultParameterResolver(fhirConfig:FhirServerConfig) {
         .find(r => r.name == FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_AFTER || r.name == FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_BEFORE)
         .map(p => p.valuePrefixList.map(_._2) -> (p.name == FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_AFTER))
 
-    offset match {
-      case Some(o) => count -> Right(o)
-      case None => count -> Left(page)
+
+    OnfhirConfig.fhirDefaultPagination match {
+      case "page" =>
+        offset match {
+          case Some(o) => count -> Right(o)
+          case None => count -> Left(page)
+        }
+      case "offset" =>
+        count -> Right(offset.getOrElse(Seq("") -> true))
     }
   }
 
@@ -96,7 +102,8 @@ class FHIRResultParameterResolver(fhirConfig:FhirServerConfig) {
   def resolveTotalParameter(resultParameters:List[Parameter]):Boolean = {
     resultParameters
       .find(_.name == FHIR_SEARCH_RESULT_PARAMETERS.TOTAL)
-      .forall(_.valuePrefixList.head._2 != "none")
+      .map(_.valuePrefixList.head._2)
+      .getOrElse(OnfhirConfig.fhirDefaultSearchTotalHandling) != "none"
   }
 
   /**

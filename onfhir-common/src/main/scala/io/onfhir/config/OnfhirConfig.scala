@@ -46,6 +46,18 @@ object OnfhirConfig {
   /** Default value for [CapabilityStatement|Conformance].rest.resource.versioning when not present */
   lazy val fhirDefaultVersioning:String = Try(config.getString("fhir.default.versioning")).getOrElse("versioned")
 
+  /**
+   * Default mechanism for SearchParameter _total handling
+   */
+  lazy val fhirDefaultSearchTotalHandling:String = Try(config.getString("fhir.default.search-total")).getOrElse("accurate")
+
+  /**
+   * Default pagination mechanism for search
+   * page --> Page based pagination e.g. _count=50&_page=4
+   * offset --> Offset based pagination e.g. _count=500&_searchafter=65156168498
+   */
+  lazy val fhirDefaultPagination:String = Try(config.getString("fhir.default.pagination")).getOrElse("page")
+
   /** Default value for [CapabilityStatement|Conformance].rest.resource.readHistory when not present */
   lazy val fhirDefaultReadHistory:Boolean = Try(config.getBoolean("fhir.default.read-history")).getOrElse(false)
 
