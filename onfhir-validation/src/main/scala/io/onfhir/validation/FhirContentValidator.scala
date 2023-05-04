@@ -1325,11 +1325,16 @@ class FhirContentValidator(
         //if this refers another element, get the restrictions and sub restrictions from that element
         if(er.exists(_.contentReference.isDefined)){
           val (refEr, refErSubElements) = findWithinRootChain(er.get.contentReference.get)
-          //combine the ca
-          Some(refEr.head
-            .copy(
+          //combine the restrictions
+          Some(
+            refEr.head
+              .copy(
               path = er.head.path,
-              restrictions = refEr.head.restrictions ++ er.head.restrictions)) ->
+              restrictions =
+                refEr.head.restrictions.filter(_._1 > 2) ++ //Get all the other restrictions apart from cardinality from referred element
+                  er.head.restrictions //and append element restrictions
+              )
+          ) -> // Get the sub element definitions
             refErSubElements.map(e => e._1.replace(refEr.head.path, field) -> e._2.copy(path = e._2.path.replace(refEr.head.path, er.head.path)))
         } else
           er -> rr.filter(p => p._1.startsWith(field + ".") || p._1.startsWith(field + ":")) //find child definitions in each set of element defs coming from a profile
