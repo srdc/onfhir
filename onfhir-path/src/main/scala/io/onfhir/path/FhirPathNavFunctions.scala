@@ -1,5 +1,6 @@
 package io.onfhir.path
 
+import io.onfhir.path.annotation.FhirPathFunction
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
 
 /**
@@ -14,6 +15,8 @@ class FhirPathNavFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @param elseExpr
    * @return
    */
+  @FhirPathFunction(documentation = "If the current expression returns Nil, then evaluates the else expression from start, otherwise return current. Ex: startTime.nav:orElse(plannedTime)",
+    insertText = "nav:orElse(<expression>)",detail = "nav", label = "nav:orElse")
   def orElse(elseExpr:ExpressionContext):Seq[FhirPathResult] = {
     current match {
       case Nil =>
