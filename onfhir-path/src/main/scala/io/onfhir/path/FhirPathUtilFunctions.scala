@@ -549,6 +549,9 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param toExpr   End index (inclusive)
    * @return the field names which have values i.e. the non-empty ones
    */
+  @FhirPathFunction(documentation = "It populates field names by concatenating indices (from..to) to the prefix and" +
+    " returns the ones which have a value. Ex: utl:nonEmptyLoopedFields('child_',1,5)",
+    insertText = "utl:nonEmptyLoopedFields(<prefixExpr>, <fromExpr>, <toExpr>)",detail = "utl", label = "utl:nonEmptyLoopedFields")
   def nonEmptyLoopedFields(prefixExpr: ExpressionContext, fromExpr: ExpressionContext, toExpr: ExpressionContext): Seq[FhirPathResult] = {
     val prefix = new FhirPathExpressionEvaluator(context, current).visit(prefixExpr)
     if (prefix.length != 1 || !prefix.forall(_.isInstanceOf[FhirPathString]))
