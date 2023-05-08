@@ -32,6 +32,18 @@
                 <artifactId>scala-maven-plugin</artifactId>
                 <configuration>
                     <compileOrder>JavaThenScala</compileOrder>
+                    <launchers>
+                        <!-- Run io.onfhir.path.validation.ValidateFhirPathFunctionLibraries to validate that each
+                         FhirPath function is annotated with io.onfhir.path.annotation.FhirPathFunction -->
+                        <launcher>
+                            <id>validateFhirPathFunctionLibraries</id>
+                            <mainClass>io.onfhir.path.validation.ValidateFhirPathFunctionLibraries</mainClass>
+                            <!-- List of packages which include the FhirPath function libraries -->
+                            <args>
+                                <arg>io.onfhir.path</arg>
+                            </args>
+                        </launcher>
+                    </launchers>
                 </configuration>
                 <executions>
                     <execution>
@@ -52,6 +64,15 @@
                         <phase>process-resources</phase>
                         <goals>
                             <goal>compile</goal>
+                        </goals>
+                    </execution>
+                    <!-- In 'install' phase, execute 'run' goal which runs io.onfhir.path.validation.ValidateFhirPathFunctionLibraries
+                     to validate FhirPath libraries -->
+                    <execution>
+                        <id>run</id>
+                        <phase>install</phase>
+                        <goals>
+                            <goal>run</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -112,6 +133,11 @@
             <groupId>org.specs2</groupId>
             <artifactId>specs2-junit_${scala.binary.version}</artifactId>
             <scope>provided</scope>
+        </dependency>
+        <!-- Reflections -->
+        <dependency>
+            <groupId>org.reflections</groupId>
+            <artifactId>reflections</artifactId>
         </dependency>
     </dependencies>
 </project>

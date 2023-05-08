@@ -1,6 +1,7 @@
 package io.onfhir.path
 
 import io.onfhir.api.service.IFhirIdentityService
+import io.onfhir.path.annotation.FhirPathFunction
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
 
 import scala.concurrent.Await
@@ -20,6 +21,8 @@ class FhirPathIdentityServiceFunctions(context: FhirPathEnvironment) extends Abs
    * @param identifierSystemExpr Business identifier system (Identifier.system)
    * @return Identifier for the resource e.g. Patient/455435464698
    */
+  @FhirPathFunction(documentation = "Resolves the given business identifier and return the FHIR Resource identifier (together with the resource type) by using the supplied identity service. Ex: idxs:resolveIdentifier('Patient', '12345', 'urn:oid:1.2.36.146.595.217.0.1')",
+    insertText = "idxs:resolveIdentifier(<resourceTypeExpr>,<identifierValueExpr>,<identifierSystemExpr>)",detail = "idxs", label = "idxs:resolveIdentifier")
   def resolveIdentifier(resourceTypeExpr: ExpressionContext, identifierValueExpr: ExpressionContext, identifierSystemExpr: Option[ExpressionContext]): Seq[FhirPathResult] = {
     val identityService = checkIdentityService()
 
