@@ -10,5 +10,8 @@ import scala.annotation.StaticAnnotation
  * @param insertText    A string or snippet that should be inserted in a document when selecting this completion.
  * @param detail        The library prefix to which FhirPath function belongs.
  * @param label         The label (i.e. name) of function.
+ * @param kind          The type of function. It can be one of the followings:
+ *                        - Method: FhirPath functions that operate on a collection of values (i.e. input collection) such as name.exists()
+ *                        - Function: FhirPath functions that do not need an input collection such as today()
  */
-class FhirPathFunction(val documentation: String, val insertText: String, val detail: String, val label: String) extends StaticAnnotation
+class FhirPathFunction(val documentation: String, val insertText: String, val detail: String, val label: String, val kind: String) extends StaticAnnotation

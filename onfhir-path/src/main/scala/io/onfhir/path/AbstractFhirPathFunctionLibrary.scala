@@ -38,7 +38,11 @@ abstract class AbstractFhirPathFunctionLibrary {
           .tree.children.tail
           .collect({ case Literal(Constant(s: String)) => s })
         // create an instance of FhirPathFunction
-        new FhirPathFunction(annotationFields.headOption.get,annotationFields.lift(1).get,annotationFields.lift(2).get,annotationFields.lift(3).get)
+        new FhirPathFunction(documentation = annotationFields.headOption.get,
+          insertText = annotationFields.lift(1).get,
+          detail = annotationFields.lift(2).get,
+          label = annotationFields.lift(3).get,
+          kind = annotationFields.lift(4).get)
       }).toSeq
 
   /**

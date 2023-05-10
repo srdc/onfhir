@@ -16,7 +16,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @return
    */
   @FhirPathFunction(documentation = "Returns sum of the input numeric values, 0 if input list is empty. Ex: valueQuantity.value.sum()",
-    insertText = "agg:sum()",detail = "agg", label = "agg:sum")
+    insertText = "agg:sum()",detail = "agg", label = "agg:sum", kind = "Method")
   def sum():Seq[FhirPathResult] = {
     if(current.exists(!_.isInstanceOf[FhirPathNumber]))
       throw new FhirPathException(s"Invalid function call 'sum', one of the input values is not a numeric value!")
@@ -38,7 +38,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @return
    */
   @FhirPathFunction(documentation = "Returns the sum of the values after executing the expression on given input values. Ex: sum(valueQuantity.value)",
-    insertText = "agg:sum(<expr>)",detail = "agg", label = "agg:sum")
+    insertText = "agg:sum(<expr>)",detail = "agg", label = "agg:sum", kind = "Function")
   def sum(expr:ExpressionContext):Seq[FhirPathResult] = {
     val results = current.map(c => {
       val result = new FhirPathExpressionEvaluator(context, Seq(c)).visit(expr)
@@ -59,7 +59,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @return
    */
   @FhirPathFunction(documentation = "Returns the average of given expression that returns a numeric value. Ex: avg($this.valueQuantity.value)",
-    insertText = "agg:avg(<expr>)",detail = "agg", label = "agg:avg")
+    insertText = "agg:avg(<expr>)",detail = "agg", label = "agg:avg", kind = "Function")
   def avg(expr:ExpressionContext):Seq[FhirPathResult] = {
     if(current.isEmpty)
       Nil
@@ -72,7 +72,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @return
    */
   @FhirPathFunction(documentation = "Returns the average of the input numeric values. Ex: valueQuantity.value.avg()",
-    insertText = "agg:avg()",detail = "agg", label = "agg:avg")
+    insertText = "agg:avg()",detail = "agg", label = "agg:avg", kind = "Method")
   def avg():Seq[FhirPathResult] = {
     if(current.exists(!_.isInstanceOf[FhirPathNumber]))
       throw new FhirPathException(s"Invalid function call 'avg' on non numeric content!")
@@ -89,7 +89,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @return
    */
   @FhirPathFunction(documentation = "Returns the minimum of the input comparable values. Ex: min($this.valueQuantity.value)",
-    insertText = "agg:min()",detail = "agg", label = "agg:min")
+    insertText = "agg:min()",detail = "agg", label = "agg:min", kind = "Method")
   def min():Seq[FhirPathResult] = {
     if(current.exists(c => c.isInstanceOf[FhirPathComplex] || c.isInstanceOf[FhirPathBoolean]))
       throw new FhirPathException(s"Invalid function call 'min' on non comparable values!")
@@ -111,7 +111,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @return
    */
   @FhirPathFunction(documentation = "Returns the minimum of given expression that returns a comparable value. Ex: min($this.valueQuantity.value)",
-    insertText = "agg:min(<expr>)",detail = "agg", label = "agg:min")
+    insertText = "agg:min(<expr>)",detail = "agg", label = "agg:min", kind = "Function")
   def min(expr:ExpressionContext):Seq[FhirPathResult] = {
     val results =
       current
@@ -136,7 +136,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @return
    */
   @FhirPathFunction(documentation = "Returns the maximum of given expression that returns a comparable value. Ex: max($this.valueQuantity.value)",
-    insertText = "agg:max(<expr>)",detail = "agg", label = "agg:max")
+    insertText = "agg:max(<expr>)",detail = "agg", label = "agg:max", kind = "Function")
   def max(expr:ExpressionContext):Seq[FhirPathResult] = {
     val results = current
       .flatMap(c => {
@@ -159,7 +159,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @return
    */
   @FhirPathFunction(documentation = "Returns the maximum of given input values. Ex: valueQuantity.value.max()",
-    insertText = "agg:max()",detail = "agg", label = "agg:max")
+    insertText = "agg:max()",detail = "agg", label = "agg:max", kind = "Method")
   def max():Seq[FhirPathResult] = {
     if(current.exists(c => c.isInstanceOf[FhirPathComplex] || c.isInstanceOf[FhirPathBoolean]))
       throw new FhirPathException(s"Invalid function call 'max' on non comparable values!")
@@ -181,7 +181,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @return                A list of special JSON Objects with field 'bucket' indicating the key for the bucket and 'agg' indicating the resulting aggregated value
    */
   @FhirPathFunction(documentation = "Groups the values based on some expression returning a key and apply the aggregation to each group. Ex: groupBy(Condition.subject.reference.substring(8),count())",
-    insertText = "agg:groupBy(<groupByExpr>,<aggregateExpr>)",detail = "agg", label = "agg:groupBy")
+    insertText = "agg:groupBy(<groupByExpr>,<aggregateExpr>)",detail = "agg", label = "agg:groupBy", kind = "Function")
   def groupBy(groupByExpr:ExpressionContext, aggregateExpr:ExpressionContext):Seq[FhirPathResult] = {
     if(!current.forall(_.isInstanceOf[FhirPathComplex]))
       throw new FhirPathException("Invalid function call 'groupBy' on current value! The data type for current value should be complex object!")
