@@ -36,13 +36,24 @@ abstract class AbstractFhirPathFunctionLibrary {
         val annotationFields = method.annotations
           .find(_.tree.tpe =:= typeOf[FhirPathFunction]).head
           .tree.children.tail
-          .collect({ case Literal(Constant(s: String)) => s })
+          .collect({
+            // matches 'String' fields
+            case Literal(Constant(s: String)) => s
+            // matches 'Seq[String]' fields
+            case Apply(_: Tree, args: List[Tree]) =>
+              args.collect({
+                // matches 'String's in the sequence
+                case Literal(Constant(s: String)) => s
+              })
+          })
         // create an instance of FhirPathFunction
-        new FhirPathFunction(documentation = annotationFields.headOption.get,
-          insertText = annotationFields.lift(1).get,
-          detail = annotationFields.lift(2).get,
-          label = annotationFields.lift(3).get,
-          kind = annotationFields.lift(4).get)
+        new FhirPathFunction(documentation = annotationFields.headOption.get.toString,
+          insertText = annotationFields.lift(1).get.toString,
+          detail = annotationFields.lift(2).get.toString,
+          label = annotationFields.lift(3).get.toString,
+          kind = annotationFields.lift(4).get.toString,
+          returnType = annotationFields.lift(5).get.asInstanceOf[Seq[String]],
+          inputType = annotationFields.lift(6).get.asInstanceOf[Seq[String]])
       }).toSeq
 
   /**

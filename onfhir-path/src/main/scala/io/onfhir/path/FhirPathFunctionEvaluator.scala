@@ -28,7 +28,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     * @return
     */
   @FhirPathFunction(documentation = "Calls the specified function with parameters",
-    insertText = "callFunction(<library-prefix>,<function-name>,<params>)", detail = "", label = "callFunction", kind = "Function")
+    insertText = "callFunction(<library-prefix>,<function-name>,<params>)", detail = "", label = "callFunction", kind = "Function", returnType = Seq(), inputType = Seq())
   def callFunction(fprefix:Option[String], fname:String, params:Seq[ExpressionContext]):Seq[FhirPathResult] = {
     fprefix match {
       //It is an original FHIR Path function or calling it without specificying a prefix
@@ -69,7 +69,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Resolves a reference",
-    insertText = "resolve()", detail = "", label = "resolve", kind = "Method")
+    insertText = "resolve()", detail = "", label = "resolve", kind = "Method", returnType = Seq(), inputType = Seq())
   def resolve():Seq[FhirPathResult] = {
     val fhirReferences = current.map {
       case FhirPathString(uri) => FHIRUtil.parseCanonicalReference(uri)
@@ -88,7 +88,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Returns a specific extension",
-    insertText = "extension(<urlExp>)", detail = "", label = "extension", kind = "Method")
+    insertText = "extension(<urlExp>)", detail = "", label = "extension", kind = "Method", returnType = Seq(), inputType = Seq())
   def extension(urlExp:ExpressionContext):Seq[FhirPathResult] = {
     val url = new FhirPathExpressionEvaluator(context, current).visit(urlExp)
     if(url.length != 1 || !url.head.isInstanceOf[FhirPathString])
@@ -105,13 +105,13 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     * Type functions, for these basic casting or type checking are done before calling the function on the left expression
     */
   @FhirPathFunction(documentation = "Returns a collection that contains all items in the input collection that are of the given type or a subclass thereof.",
-    insertText = "ofType(<expr>)", detail = "", label = "ofType", kind = "Method")
+    insertText = "ofType(<expr>)", detail = "", label = "ofType", kind = "Method", returnType = Seq(), inputType = Seq())
   def ofType(typ:ExpressionContext):Seq[FhirPathResult] = current
   @FhirPathFunction(documentation = "If the left operand is a collection with a single item and the second operand is an identifier, this operator returns the value of the left operand if it is of the type specified in the second operand, or a subclass thereof. ",
-    insertText = "as(<expr>)", detail = "", label = "as", kind = "Method")
+    insertText = "as(<expr>)", detail = "", label = "as", kind = "Method", returnType = Seq(), inputType = Seq())
   def as(typ:ExpressionContext):Seq[FhirPathResult] = current
   @FhirPathFunction(documentation = "If the left operand is a collection with a single item and the second operand is a type identifier, this operator returns true if the type of the left operand is the type specified in the second operand, or a subclass thereof. ",
-    insertText = "is(<expr>)", detail = "", label = "is", kind = "Method")
+    insertText = "is(<expr>)", detail = "", label = "is", kind = "Method", returnType = Seq("boolean"), inputType = Seq())
   def is(typ:ExpressionContext):Seq[FhirPathResult] = {
     current.length match {
       case 0 => Seq(FhirPathBoolean(false))
@@ -126,11 +126,11 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     * @return
     */
   @FhirPathFunction(documentation = "Returns true if the input collection is empty ({ }) and false otherwise.",
-    insertText = "empty()", detail = "", label = "empty", kind = "Method")
+    insertText = "empty()", detail = "", label = "empty", kind = "Method", returnType = Seq("boolean"), inputType = Seq())
   def empty():Seq[FhirPathResult] = Seq(FhirPathBoolean(current.isEmpty))
 
   @FhirPathFunction(documentation = "Returns true if the input collection evaluates to false, and false if it evaluates to true.",
-    insertText = "not()", detail = "", label = "not", kind = "Method")
+    insertText = "not()", detail = "", label = "not", kind = "Method", returnType = Seq("boolean"), inputType = Seq("boolean"))
   def not():Seq[FhirPathResult] = current match {
     case Nil => Nil
     case Seq(FhirPathBoolean(b)) => Seq(FhirPathBoolean(!b))
@@ -153,13 +153,13 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     Seq(FhirPathBoolean(result))
   }
   @FhirPathFunction(documentation = "Returns true if the collection has any elements satisfying the criteria, and false otherwise.",
-    insertText = "exists(<expr>)", detail = "", label = "exists", kind = "Method")
+    insertText = "exists(<expr>)", detail = "", label = "exists", kind = "Method", returnType = Seq("boolean"), inputType = Seq())
   def exists(expr:ExpressionContext):Seq[FhirPathResult] = exists(Some(expr))
   @FhirPathFunction(documentation = "Returns true if the collection has any elements, and false otherwise.",
-    insertText = "exists()", detail = "", label = "exists", kind = "Method")
+    insertText = "exists()", detail = "", label = "exists", kind = "Method", returnType = Seq("boolean"), inputType = Seq())
   def exists():Seq[FhirPathResult] = exists(None)
   @FhirPathFunction(documentation = "Returns true if for every element in the input collection, criteria evaluates to true.",
-    insertText = "all(<criteria>)", detail = "", label = "all", kind = "Method")
+    insertText = "all(<criteria>)", detail = "", label = "all", kind = "Method", returnType = Seq("boolean"), inputType = Seq())
   def all(criteria:ExpressionContext):Seq[FhirPathResult] = {
     val result =
       current
@@ -173,7 +173,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     Seq(FhirPathBoolean(result))
   }
   @FhirPathFunction(documentation = "Takes a collection of Boolean values and returns true if all the items are true.",
-    insertText = "allTrue()", detail = "", label = "allTrue", kind = "Method")
+    insertText = "allTrue()", detail = "", label = "allTrue", kind = "Method", returnType = Seq("boolean"), inputType = Seq("boolean"))
   def allTrue():Seq[FhirPathResult] = {
     if(current.exists(!_.isInstanceOf[FhirPathBoolean]))
       throw new FhirPathException("Function 'allTrue' should run on collection of FHIR Path boolean values!!!")
@@ -181,7 +181,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     Seq(FhirPathBoolean(result))
   }
   @FhirPathFunction(documentation = "Takes a collection of Boolean values and returns true if any of the items are true.",
-    insertText = "anyTrue()", detail = "", label = "anyTrue", kind = "Method")
+    insertText = "anyTrue()", detail = "", label = "anyTrue", kind = "Method", returnType = Seq("boolean"), inputType = Seq("boolean"))
   def anyTrue():Seq[FhirPathResult] = {
     if(current.exists(!_.isInstanceOf[FhirPathBoolean]))
       throw new FhirPathException("Function 'anyTrue' should run on collection of FHIR Path boolean values!!!")
@@ -189,7 +189,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     Seq(FhirPathBoolean(result))
   }
   @FhirPathFunction(documentation = "Takes a collection of Boolean values and returns true if all the items are false.",
-    insertText = "allFalse()", detail = "", label = "allFalse", kind = "Method")
+    insertText = "allFalse()", detail = "", label = "allFalse", kind = "Method", returnType = Seq("boolean"), inputType = Seq("boolean"))
   def allFalse():Seq[FhirPathResult] = {
     if(current.exists(!_.isInstanceOf[FhirPathBoolean]))
       throw new FhirPathException("Function 'allFalse' should run on collection of FHIR Path boolean values!!!")
@@ -197,7 +197,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     Seq(FhirPathBoolean(result))
   }
   @FhirPathFunction(documentation = "Takes a collection of Boolean values and returns true if any of the items are false",
-    insertText = "anyFalse()", detail = "", label = "anyFalse", kind = "Method")
+    insertText = "anyFalse()", detail = "", label = "anyFalse", kind = "Method", returnType = Seq("boolean"), inputType = Seq("boolean"))
   def anyFalse():Seq[FhirPathResult] = {
     if(current.exists(!_.isInstanceOf[FhirPathBoolean]))
       throw new FhirPathException("Function 'anyFalse' should run on collection of FHIR Path boolean values!!!")
@@ -205,14 +205,14 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     Seq(FhirPathBoolean(result))
   }
   @FhirPathFunction(documentation = "Returns true if all items in the input collection are members of the collection passed as the other argument.",
-    insertText = "subsetOf(<other>)", detail = "", label = "subsetOf", kind = "Method")
+    insertText = "subsetOf(<other>)", detail = "", label = "subsetOf", kind = "Method", returnType = Seq("boolean"), inputType = Seq())
   def subsetOf(other:ExpressionContext):Seq[FhirPathResult] = {
     val otherCollection = new FhirPathExpressionEvaluator(context, current).visit(other)
     val result = current.forall(c => otherCollection.exists(o => c.isEqual(o).getOrElse(false)))
     Seq(FhirPathBoolean(result))
   }
   @FhirPathFunction(documentation = "Returns true if all items in the collection passed as the other argument are members of the input collection.",
-    insertText = "supersetOf(<other>)", detail = "", label = "supersetOf", kind = "Method")
+    insertText = "supersetOf(<other>)", detail = "", label = "supersetOf", kind = "Method", returnType = Seq("boolean"), inputType = Seq())
   def supersetOf(other:ExpressionContext):Seq[FhirPathResult] = {
     val otherCollection = new FhirPathExpressionEvaluator(context, current).visit(other)
     val result =
@@ -223,17 +223,17 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     Seq(FhirPathBoolean(result))
   }
   @FhirPathFunction(documentation = "Returns true if all the items in the input collection are distinct.",
-    insertText = "isDistinct()", detail = "", label = "isDistinct", kind = "Method")
+    insertText = "isDistinct()", detail = "", label = "isDistinct", kind = "Method", returnType = Seq("boolean"), inputType = Seq())
   def isDistinct():Seq[FhirPathResult] = {
     Seq(FhirPathBoolean(current.distinct.length == current.length))
   }
   @FhirPathFunction(documentation = "Returns a collection containing only the unique items in the input collection. ",
-    insertText = "distinct()", detail = "", label = "distinct", kind = "Method")
+    insertText = "distinct()", detail = "", label = "distinct", kind = "Method", returnType = Seq("boolean"), inputType = Seq())
   def distinct():Seq[FhirPathResult] = {
     current.distinct
   }
   @FhirPathFunction(documentation = "Returns the integer count of the number of items in the input collection.",
-    insertText = "count()", detail = "", label = "count", kind = "Method")
+    insertText = "count()", detail = "", label = "count", kind = "Method", returnType = Seq("integer"), inputType = Seq())
   def count():Seq[FhirPathResult] = {
     Seq(FhirPathNumber(current.length))
   }
@@ -242,7 +242,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     * Filtering and projection http://hl7.org/fhirpath/#filtering-and-projection
     */
   @FhirPathFunction(documentation = "Returns a collection containing only those elements in the input collection for which the stated criteria expression evaluates to true.",
-    insertText = "where(<criteria>)", detail = "", label = "where", kind = "Method")
+    insertText = "where(<criteria>)", detail = "", label = "where", kind = "Method", returnType = Seq(), inputType = Seq())
   def where(criteria : ExpressionContext):Seq[FhirPathResult] = {
     current
       .zipWithIndex
@@ -258,7 +258,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   }
 
   @FhirPathFunction(documentation = "Evaluates the projection expression for each item in the input collection.",
-    insertText = "select(<projection>)", detail = "", label = "select", kind = "Method")
+    insertText = "select(<projection>)", detail = "", label = "select", kind = "Method", returnType = Seq(), inputType = Seq())
   def select(projection: ExpressionContext):Seq[FhirPathResult] = {
     current
       .zipWithIndex
@@ -268,7 +268,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
       })
   }
   @FhirPathFunction(documentation = "A version of select that will repeat the projection and add it to the output collection",
-    insertText = "repeat(<projection>)", detail = "", label = "repeat", kind = "Method")
+    insertText = "repeat(<projection>)", detail = "", label = "repeat", kind = "Method", returnType = Seq(), inputType = Seq())
   def repeat(projection: ExpressionContext):Seq[FhirPathResult] = {
     val firstResults = select(projection)
     if(firstResults.nonEmpty)
@@ -281,7 +281,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     * Subsetting http://hl7.org/fhirpath/#subsetting
     */
   @FhirPathFunction(documentation = "Returns the single item in the input if there is just one item.",
-    insertText = "single()", detail = "", label = "single", kind = "Method")
+    insertText = "single()", detail = "", label = "single", kind = "Method", returnType = Seq(), inputType = Seq())
   def single():Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
@@ -290,16 +290,16 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     }
   }
   @FhirPathFunction(documentation = "Returns a collection containing only the first item in the input collection.",
-    insertText = "first()", detail = "", label = "first", kind = "Method")
+    insertText = "first()", detail = "", label = "first", kind = "Method", returnType = Seq(), inputType = Seq())
   def first():Seq[FhirPathResult] = current.headOption.toSeq
   @FhirPathFunction(documentation = "Returns a collection containing only the last item in the input collection. Will return an empty collection if the input collection has no items.",
-    insertText = "last()", detail = "", label = "last", kind = "Method")
+    insertText = "last()", detail = "", label = "last", kind = "Method", returnType = Seq(), inputType = Seq())
   def last():Seq[FhirPathResult] = current.lastOption.toSeq
   @FhirPathFunction(documentation = "Returns a collection containing all but the first item in the input collection.",
-    insertText = "tail()", detail = "", label = "tail", kind = "Method")
+    insertText = "tail()", detail = "", label = "tail", kind = "Method", returnType = Seq(), inputType = Seq())
   def tail():Seq[FhirPathResult] = if(current.isEmpty) Nil else current.tail
   @FhirPathFunction(documentation = "Returns a collection containing all but the first num items in the input collection. ",
-    insertText = "skip(<numExpr>)", detail = "", label = "skip", kind = "Method")
+    insertText = "skip(<numExpr>)", detail = "", label = "skip", kind = "Method", returnType = Seq(), inputType = Seq())
   def skip(numExpr:ExpressionContext):Seq[FhirPathResult] = {
     val numValue = new FhirPathExpressionEvaluator(context, current).visit(numExpr)
     if(numValue.length != 1 || !numValue.head.isInstanceOf[FhirPathNumber])
@@ -317,7 +317,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
       current.drop(i)
   }
   @FhirPathFunction(documentation = "Returns a collection containing the first num items in the input collection, or less if there are less than num items. ",
-    insertText = "take(<numExpr>)", detail = "", label = "take", kind = "Method")
+    insertText = "take(<numExpr>)", detail = "", label = "take", kind = "Method", returnType = Seq(), inputType = Seq())
   def take(numExpr:ExpressionContext):Seq[FhirPathResult] = {
     val numValue = new FhirPathExpressionEvaluator(context, current).visit(numExpr)
     if(numValue.length != 1 || !numValue.head.isInstanceOf[FhirPathNumber])
@@ -331,13 +331,13 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
       current.take(i)
   }
   @FhirPathFunction(documentation = "Returns the set of elements that are in both collections. ",
-    insertText = "intersect(<otherCollExpr>)", detail = "", label = "intersect", kind = "Method")
+    insertText = "intersect(<otherCollExpr>)", detail = "", label = "intersect", kind = "Method", returnType = Seq(), inputType = Seq())
   def intersect(otherCollExpr:ExpressionContext):Seq[FhirPathResult] = {
     val otherSet = new FhirPathExpressionEvaluator(context, current).visit(otherCollExpr)
     current.filter(c => otherSet.exists(o => c.isEqual(o).getOrElse(false))).distinct
   }
   @FhirPathFunction(documentation = "Returns the set of elements that are not in the other collection. ",
-    insertText = "exclude(<otherCollExpr>)", detail = "", label = "exclude", kind = "Method")
+    insertText = "exclude(<otherCollExpr>)", detail = "", label = "exclude", kind = "Method", returnType = Seq(), inputType = Seq())
   def exclude(otherCollExpr:ExpressionContext):Seq[FhirPathResult] = {
     val otherSet = new FhirPathExpressionEvaluator(context, current).visit(otherCollExpr)
     current.filterNot(c => otherSet.exists(o => c.isEqual(o).getOrElse(false))).distinct
@@ -350,7 +350,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Returns the absolute value of the input.",
-    insertText = "abs()", detail = "", label = "abs", kind = "Method")
+    insertText = "abs()", detail = "", label = "abs", kind = "Method", returnType = Seq("number","quantity"), inputType = Seq("number","quantity"))
   def abs():Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
@@ -367,7 +367,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Returns the first integer greater than or equal to the input.",
-    insertText = "ceiling()", detail = "", label = "ceiling", kind = "Method")
+    insertText = "ceiling()", detail = "", label = "ceiling", kind = "Method", returnType = Seq("number","quantity"), inputType = Seq("number","quantity"))
   def ceiling():Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
@@ -385,7 +385,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Returns e raised to the power of the input.",
-    insertText = "exp()", detail = "", label = "exp", kind = "Method")
+    insertText = "exp()", detail = "", label = "exp", kind = "Method", returnType = Seq("number","quantity"), inputType = Seq("number","quantity"))
   def exp():Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
@@ -402,7 +402,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Returns the first integer less than or equal to the input.",
-    insertText = "floor()", detail = "", label = "floor", kind = "Method")
+    insertText = "floor()", detail = "", label = "floor", kind = "Method", returnType = Seq("number","quantity"), inputType = Seq("number","quantity"))
   def floor():Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
@@ -420,7 +420,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Returns the natural logarithm of the input (i.e. the logarithm base e).",
-    insertText = "ln()", detail = "", label = "ln", kind = "Method")
+    insertText = "ln()", detail = "", label = "ln", kind = "Method", returnType = Seq("number","quantity"), inputType = Seq("number","quantity"))
   def ln():Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
@@ -440,7 +440,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Returns the logarithm base base of the input number.",
-    insertText = "log(<baseExp>)", detail = "", label = "log", kind = "Method")
+    insertText = "log(<baseExp>)", detail = "", label = "log", kind = "Method", returnType = Seq("number","quantity"), inputType = Seq("number","quantity"))
   def log(baseExp:ExpressionContext):Seq[FhirPathResult] = {
     val baseResult = new FhirPathExpressionEvaluator(context, current).visit(baseExp)
     if(baseResult.length != 1 || !baseResult.head.isInstanceOf[FhirPathNumber])
@@ -463,7 +463,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Raises a number to the exponent power.",
-    insertText = "power(<exponentExpr>)", detail = "", label = "power", kind = "Method")
+    insertText = "power(<exponentExpr>)", detail = "", label = "power", kind = "Method", returnType = Seq("number","quantity"), inputType = Seq("number","quantity"))
   def power(exponentExpr:ExpressionContext):Seq[FhirPathResult] = {
     val exponentResult = new FhirPathExpressionEvaluator(context, current).visit(exponentExpr)
     if(exponentResult.length != 1 || !exponentResult.head.isInstanceOf[FhirPathNumber])
@@ -484,7 +484,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Rounds the decimal to the nearest whole number using a traditional round.",
-    insertText = "round()", detail = "", label = "round", kind = "Method")
+    insertText = "round()", detail = "", label = "round", kind = "Method", returnType = Seq("number","quantity"), inputType = Seq("number","quantity"))
   def round():Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
@@ -503,7 +503,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Rounds the decimal to the nearest whole number using a traditional round.",
-    insertText = "round(<precisionExpr>)", detail = "", label = "round", kind = "Method")
+    insertText = "round(<precisionExpr>)", detail = "", label = "round", kind = "Method", returnType = Seq("number","quantity"), inputType = Seq("number","quantity"))
   def round(precisionExpr:ExpressionContext):Seq[FhirPathResult] = {
     val precisionResult = new FhirPathExpressionEvaluator(context, current).visit(precisionExpr)
     precisionResult match {
@@ -528,7 +528,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Returns the square root of the input number as a Decimal.",
-    insertText = "sqrt()", detail = "", label = "sqrt", kind = "Method")
+    insertText = "sqrt()", detail = "", label = "sqrt", kind = "Method", returnType = Seq("number","quantity"), inputType = Seq("number","quantity"))
   def sqrt():Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
@@ -555,7 +555,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Returns the integer portion of the input.",
-    insertText = "truncate()", detail = "", label = "truncate", kind = "Method")
+    insertText = "truncate()", detail = "", label = "truncate", kind = "Method", returnType = Seq("number","quantity"), inputType = Seq("number","quantity"))
   def truncate():Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
@@ -572,7 +572,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     * @return
     */
   @FhirPathFunction(documentation = "Merges the input and other collections into a single collection without eliminating duplicate values.",
-    insertText = "combine(<other>)", detail = "", label = "combine", kind = "Method")
+    insertText = "combine(<other>)", detail = "", label = "combine", kind = "Method", returnType = Seq(), inputType = Seq())
   def combine(other : ExpressionContext):Seq[FhirPathResult] = {
     val otherCollection = new FhirPathExpressionEvaluator(context, current).visit(other)
     current ++ otherCollection
@@ -582,7 +582,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     * Conversion functions http://hl7.org/fhirpath/#conversion
     */
   @FhirPathFunction(documentation = "If criterion is true, the function returns the value of the true-result argument. Otherwise, it returns otherwise-result",
-    insertText = "iif(<criterium>,<trueResult>,<otherwiseResult>)", detail = "", label = "iif", kind = "Function")
+    insertText = "iif(<criterium>,<trueResult>,<otherwiseResult>)", detail = "", label = "iif", kind = "Function", returnType = Seq(), inputType = Seq())
   def iif(criterium: ExpressionContext, trueResult:ExpressionContext, otherwiseResult: Option[ExpressionContext]):Seq[FhirPathResult] = {
     val criteriaResult = new FhirPathExpressionEvaluator(context, current).visit(criterium)
     val conditionResult = criteriaResult match {
@@ -596,10 +596,10 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
       otherwiseResult.map(ore =>  new FhirPathExpressionEvaluator(context, current).visit(ore)).getOrElse(Nil)
   }
   @FhirPathFunction(documentation = "If criterion is true, the function returns the value of the true-result argument. Otherwise, it returns otherwise-result",
-    insertText = "iif(<criterium>,<trueResult>,<otherwiseResult>)", detail = "", label = "iif", kind = "Function")
+    insertText = "iif(<criterium>,<trueResult>,<otherwiseResult>)", detail = "", label = "iif", kind = "Function", returnType = Seq(), inputType = Seq())
   def iif(criterium: ExpressionContext, trueResult:ExpressionContext, otherwiseResult: ExpressionContext) :Seq[FhirPathResult]= iif(criterium, trueResult, Some(otherwiseResult))
   @FhirPathFunction(documentation = "If criterion is true, the function returns the value of the true-result argument.",
-    insertText = "iif(<criterium>,<trueResult>)", detail = "", label = "iif", kind = "Function")
+    insertText = "iif(<criterium>,<trueResult>)", detail = "", label = "iif", kind = "Function", returnType = Seq(), inputType = Seq())
   def iif(criterium: ExpressionContext, trueResult:ExpressionContext):Seq[FhirPathResult] = iif(criterium, trueResult, None)
 
 
@@ -608,7 +608,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Converts it to an integer.",
-    insertText = "toInteger()", detail = "", label = "toInteger", kind = "Method")
+    insertText = "toInteger()", detail = "", label = "toInteger", kind = "Method", returnType = Seq("integer"), inputType = Seq("integer","string","boolean"))
   def toInteger():Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
@@ -629,7 +629,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Converts it to a decimal.",
-    insertText = "toDecimal()", detail = "", label = "toDecimal", kind = "Method")
+    insertText = "toDecimal()", detail = "", label = "toDecimal", kind = "Method", returnType = Seq("decimal"), inputType = Seq("dateTime","number","string","boolean"))
   def toDecimal():Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
@@ -651,7 +651,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Checks if the current item can be converted to decimal",
-    insertText = "convertsToDecimal()", detail = "", label = "convertsToDecimal", kind = "Method")
+    insertText = "convertsToDecimal()", detail = "", label = "convertsToDecimal", kind = "Method", returnType = Seq("boolean"), inputType = Seq("dateTime","number","boolean","string"))
   def convertsToDecimal():Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
@@ -673,7 +673,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Converts it to a boolean.",
-    insertText = "toBoolean()", detail = "", label = "toBoolean", kind = "Method")
+    insertText = "toBoolean()", detail = "", label = "toBoolean", kind = "Method", returnType = Seq("boolean"), inputType = Seq("number","string","boolean"))
   def toBoolean():Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
@@ -704,7 +704,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Converts it to a date.",
-    insertText = "toDate()", detail = "", label = "toDate", kind = "Method")
+    insertText = "toDate()", detail = "", label = "toDate", kind = "Method", returnType = Seq("dateTime"), inputType = Seq("dateTime","string"))
   def toDate():Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
@@ -725,7 +725,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Converts it to a datetime.",
-    insertText = "toDateTime()", detail = "", label = "toDateTime", kind = "Method")
+    insertText = "toDateTime()", detail = "", label = "toDateTime", kind = "Method", returnType = Seq("dateTime"), inputType = Seq("dateTime","string"))
   def toDateTime():Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
@@ -742,7 +742,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     }
   }
   @FhirPathFunction(documentation = "Converts it to a quantity.",
-    insertText = "toQuantity()", detail = "", label = "toQuantity", kind = "Method")
+    insertText = "toQuantity()", detail = "", label = "toQuantity", kind = "Method", returnType = Seq("quantity"), inputType = Seq("number","quantity","string","boolean"))
   def toQuantity():Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
@@ -756,7 +756,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     }
   }
   @FhirPathFunction(documentation = "Converts it to a quantity.",
-    insertText = "toQuantity(<unitExpr>)", detail = "", label = "toQuantity", kind = "Method")
+    insertText = "toQuantity(<unitExpr>)", detail = "", label = "toQuantity", kind = "Method", returnType = Seq("quantity"), inputType = Seq("number","quantity","string","boolean"))
   def toQuantity(unitExpr:ExpressionContext):Seq[FhirPathResult] = {
     val unitValue = new FhirPathExpressionEvaluator(context, current).visit(unitExpr)
     if(!unitValue.forall(_.isInstanceOf[FhirPathString]))
@@ -779,7 +779,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Converts it to a string",
-    insertText = "toString()", detail = "", label = "toString", kind = "Method")
+    insertText = "toString()", detail = "", label = "toString", kind = "Method", returnType = Seq("string"), inputType = Seq("number","string","dateTime","time","quantity","boolean"))
   def _toString():Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
@@ -795,7 +795,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     }
   }
   @FhirPathFunction(documentation = "Converts a quantity to a FHIR Path Object type (JSON).",
-    insertText = "toComplex()", detail = "", label = "toComplex", kind = "Method")
+    insertText = "toComplex()", detail = "", label = "toComplex", kind = "Method", returnType = Seq(), inputType = Seq("quantity"))
   def toComplex():Seq[FhirPathResult] = {
     current match {
       case Seq(q:FhirPathQuantity) => Seq(FhirPathComplex(q.toJson.asInstanceOf[JObject]))
@@ -812,7 +812,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     if(current.length > 1 || current.headOption.exists(!_.isInstanceOf[FhirPathString]))
       throw new FhirPathException("Invalid function call on multi item collection or non-string value!")
   @FhirPathFunction(documentation = "Returns the 0-based index of the first position substring is found in the input string, or -1 if it is not found. Ex: 'abcdefg'.indexOf('bc')",
-    insertText = "indexOf(<substringExpr>)", detail = "", label = "indexOf", kind = "Method")
+    insertText = "indexOf(<substringExpr>)", detail = "", label = "indexOf", kind = "Method", returnType = Seq("integer"), inputType = Seq("string"))
   def indexOf(substringExpr : ExpressionContext):Seq[FhirPathResult] = {
     checkSingleString()
     current.headOption.map(c => {
@@ -823,7 +823,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     }).getOrElse(Nil)
   }
   @FhirPathFunction(documentation = "Returns the part of the string starting at position start (zero-based). Ex: 'abcdefg'.substring(3,1)",
-    insertText = "substring(<startExpr>,<lengthExpr>)", detail = "", label = "substring", kind = "Method")
+    insertText = "substring(<startExpr>,<lengthExpr>)", detail = "", label = "substring", kind = "Method", returnType = Seq("string"), inputType = Seq("string"))
   def substring(startExpr : ExpressionContext, lengthExpr:Option[ExpressionContext]):Seq[FhirPathResult] = {
     checkSingleString()
     current.headOption.map(c => {
@@ -849,13 +849,13 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     }).getOrElse(Nil)
   }
   @FhirPathFunction(documentation = "Returns the part of the string starting at position start (zero-based). Ex: 'abcdefg'.substring(3)",
-    insertText = "substring(<startExpr>)", detail = "", label = "substring", kind = "Method")
+    insertText = "substring(<startExpr>)", detail = "", label = "substring", kind = "Method", returnType = Seq("string"), inputType = Seq("string"))
   def substring(startExpr:ExpressionContext):Seq[FhirPathResult] = substring(startExpr, None)
   @FhirPathFunction(documentation = "Returns the part of the string starting at position start (zero-based). Ex: 'abcdefg'.substring(3,2)",
-    insertText = "substring(<startExpr>,<lengthExpr>)", detail = "", label = "substring", kind = "Method")
+    insertText = "substring(<startExpr>,<lengthExpr>)", detail = "", label = "substring", kind = "Method", returnType = Seq("string"), inputType = Seq("string"))
   def substring(startExpr:ExpressionContext, lengthExpr:ExpressionContext):Seq[FhirPathResult] = substring(startExpr, Some(lengthExpr))
   @FhirPathFunction(documentation = "Returns true when the input string starts with the given prefix. Ex: 'abcdefg'.startsWith('abc')",
-    insertText = "startsWith(<prefixExpr>)", detail = "", label = "startsWith", kind = "Method")
+    insertText = "startsWith(<prefixExpr>)", detail = "", label = "startsWith", kind = "Method", returnType = Seq("boolean"), inputType = Seq("string"))
   def startsWith(prefixExpr : ExpressionContext):Seq[FhirPathResult] = {
     checkSingleString()
     current.headOption.map(c => {
@@ -869,7 +869,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     }).getOrElse(Nil)
   }
   @FhirPathFunction(documentation = "Returns true when the input string ends with the given suffix. Ex: 'abcdefg'.endsWith('efg')",
-    insertText = "endsWith(<suffixExpr>)", detail = "", label = "endsWith", kind = "Method")
+    insertText = "endsWith(<suffixExpr>)", detail = "", label = "endsWith", kind = "Method", returnType = Seq("boolean"), inputType = Seq("string"))
   def endsWith(suffixExpr : ExpressionContext):Seq[FhirPathResult] = {
     checkSingleString()
     current.headOption.map(c => {
@@ -880,7 +880,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     }).getOrElse(Nil)
   }
   @FhirPathFunction(documentation = "Returns true when the given substring is a substring of the input string. Ex: 'abc'.contains('b')",
-    insertText = "contains(<substringExpr>)", detail = "", label = "contains", kind = "Method")
+    insertText = "contains(<substringExpr>)", detail = "", label = "contains", kind = "Method", returnType = Seq("boolean"), inputType = Seq("string"))
   def _contains(substringExpr : ExpressionContext):Seq[FhirPathResult] = {
     checkSingleString()
     current.headOption.map(c => {
@@ -891,7 +891,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     }).getOrElse(Nil)
   }
   @FhirPathFunction(documentation = "Returns the input string with all instances of pattern replaced with substitution. Ex: 'abcdefg'.replace('cde', '123')",
-    insertText = "replace(<patternExpr>,<substitutionExpr>)", detail = "", label = "replace", kind = "Method")
+    insertText = "replace(<patternExpr>,<substitutionExpr>)", detail = "", label = "replace", kind = "Method", returnType = Seq("string"), inputType = Seq("string"))
   def replace(patternExpr : ExpressionContext, substitutionExpr : ExpressionContext):Seq[FhirPathResult] = {
     checkSingleString()
     current.headOption.map(c => {
@@ -909,7 +909,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     }).getOrElse(Nil)
   }
   @FhirPathFunction(documentation = "Returns true when the value matches the given regular expression.",
-    insertText = "matches(<regexExpr>)", detail = "", label = "matches", kind = "Method")
+    insertText = "matches(<regexExpr>)", detail = "", label = "matches", kind = "Method", returnType = Seq("boolean"), inputType = Seq("string","dateTime","number"))
   def matches(regexExpr : ExpressionContext):Seq[FhirPathResult] = {
     current.headOption.map(c => {
       new FhirPathExpressionEvaluator(context, current).visit(regexExpr) match {
@@ -930,7 +930,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     }).getOrElse(Nil)
   }
   @FhirPathFunction(documentation = "Matches the input using the regular expression in regex and replaces each match with the substitution string.",
-    insertText = "replaceMatches(<regexExpr>,<substitutionExpr>)", detail = "", label = "replaceMatches", kind = "Method")
+    insertText = "replaceMatches(<regexExpr>,<substitutionExpr>)", detail = "", label = "replaceMatches", kind = "Method", returnType = Seq("string"), inputType = Seq("string"))
   def replaceMatches(regexExpr : ExpressionContext, substitutionExpr : ExpressionContext):Seq[FhirPathResult] = {
     checkSingleString()
     current.headOption.map(c => {
@@ -948,7 +948,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     }).getOrElse(Nil)
   }
   @FhirPathFunction(documentation = "Returns the length of the input string.",
-    insertText = "length()", detail = "", label = "length", kind = "Method")
+    insertText = "length()", detail = "", label = "length", kind = "Method", returnType = Seq("integer"), inputType = Seq("string"))
   def length():Seq[FhirPathResult] = {
     checkSingleString()
     current.headOption.map(c => Seq(FhirPathNumber(c.asInstanceOf[FhirPathString].s.length))).getOrElse(Nil)
@@ -958,7 +958,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     * Tree navigation function http://hl7.org/fhirpath/#tree-navigation
     */
   @FhirPathFunction(documentation = "Returns a collection with all immediate child nodes of all items in the input collection. Ex: Questionnaire.children().select(item)",
-    insertText = "children()", detail = "", label = "children", kind = "Method")
+    insertText = "children()", detail = "", label = "children", kind = "Method", returnType = Seq(), inputType = Seq())
   def children():Seq[FhirPathResult] = {
     current
       .filter(_.isInstanceOf[FhirPathComplex])
@@ -966,7 +966,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
       .flatMap(pc => pc.json.obj.map(_._2).flatMap(i => FhirPathValueTransformer.transform(i, context.isContentFhir)))
   }
   @FhirPathFunction(documentation = "Returns a collection with all descendant nodes of all items in the input collection. Ex: Questionnaire.descendants().select(item)",
-    insertText = "descendants()", detail = "", label = "descendants", kind = "Method")
+    insertText = "descendants()", detail = "", label = "descendants", kind = "Method", returnType = Seq(), inputType = Seq())
   def descendants():Seq[FhirPathResult] = {
     val results = children()
     if(results.nonEmpty)
@@ -976,7 +976,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   }
 
   @FhirPathFunction(documentation = "Returns true if the input collection contains values",
-    insertText = "hasValue()", detail = "", label = "hasValue", kind = "Method")
+    insertText = "hasValue()", detail = "", label = "hasValue", kind = "Method", returnType = Seq("boolean"), inputType = Seq())
   def hasValue():Seq[FhirPathResult] = {
     Seq(FhirPathBoolean(current.nonEmpty))
   }
@@ -988,7 +988,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Performs general-purpose aggregation by evaluating the aggregator expression for each element of the input collection. Ex: value.aggregate($this + $total, 0)",
-    insertText = "aggregate(<aggExpr>,<initValueExpr>)", detail = "", label = "aggregate", kind = "Method")
+    insertText = "aggregate(<aggExpr>,<initValueExpr>)", detail = "", label = "aggregate", kind = "Method", returnType = Seq(), inputType = Seq())
   def aggregate(aggExpr:ExpressionContext, initValueExpr:ExpressionContext):Seq[FhirPathResult] = {
     val initValue = new FhirPathExpressionEvaluator(context, current).visit(initValueExpr)
     if(initValue.length > 1)
@@ -1022,7 +1022,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
    * @return
    */
   @FhirPathFunction(documentation = "Performs general-purpose aggregation by evaluating the aggregator expression for each element of the input collection. Ex: value.aggregate($this + $total)",
-    insertText = "aggregate(<aggExpr>)", detail = "", label = "aggregate", kind = "Method")
+    insertText = "aggregate(<aggExpr>)", detail = "", label = "aggregate", kind = "Method", returnType = Seq(), inputType = Seq())
   def aggregate(aggExpr:ExpressionContext):Seq[FhirPathResult] = {
       handleAggregate(context, aggExpr)
   }
@@ -1031,19 +1031,19 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
     * Utility functions http://hl7.org/fhirpath/#utility-functions
     */
   @FhirPathFunction(documentation = "Returns the current date.",
-    insertText = "today()", detail = "", label = "today", kind = "Function")
+    insertText = "today()", detail = "", label = "today", kind = "Function", returnType = Seq("dateTime"), inputType = Seq())
   def today():Seq[FhirPathResult] = Seq(FhirPathDateTime(LocalDate.now()))
   @FhirPathFunction(documentation = "Returns the current date and time, including timezone offset.",
-    insertText = "now()", detail = "", label = "now", kind = "Function")
+    insertText = "now()", detail = "", label = "now", kind = "Function", returnType = Seq("dateTime"), inputType = Seq())
   def now():Seq[FhirPathResult] = Seq(FhirPathDateTime(ZonedDateTime.now()))
   @FhirPathFunction(documentation = "Adds a String representation of the input collection to the diagnostic log, using the name argument as the name in the log. Ex: contained.where(criteria).trace('unmatched').empty()",
-    insertText = "trace(<nameExpr>)", detail = "", label = "trace", kind = "Method")
+    insertText = "trace(<nameExpr>)", detail = "", label = "trace", kind = "Method", returnType = Seq(), inputType = Seq())
   def trace(nameExpr : ExpressionContext):Seq[FhirPathResult] = {
     //TODO log the current value with the given name
     current
   }
   @FhirPathFunction(documentation = "Adds a String representation of the input collection to the diagnostic log, using the name argument as the name in the log. Ex: contained.where(criteria).trace('unmatched', id).empty()",
-    insertText = "trace(<nameExpr>,<othExpr>)", detail = "", label = "trace", kind = "Method")
+    insertText = "trace(<nameExpr>,<othExpr>)", detail = "", label = "trace", kind = "Method", returnType = Seq(), inputType = Seq())
   def trace(nameExpr : ExpressionContext, othExpr:ExpressionContext):Seq[FhirPathResult] = {
     current
   }
