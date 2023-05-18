@@ -26,7 +26,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Generates an UUID",
-    insertText = "utl:uuid()",detail = "utl", label = "utl:uuid")
+    insertText = "utl:uuid()",detail = "utl", label = "utl:uuid", kind = "Function", returnType = Seq("string"), inputType = Seq())
   def uuid(): Seq[FhirPathResult] = {
     Seq(FhirPathString(UUID.randomUUID().toString))
   }
@@ -37,7 +37,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Checks whether the given string or character starts with or is a letter.",
-    insertText = "utl:isLetter()",detail = "utl", label = "utl:isLetter")
+    insertText = "utl:isLetter()",detail = "utl", label = "utl:isLetter", kind = "Method", returnType = Seq("boolean"), inputType = Seq("string"))
   def isLetter(): Seq[FhirPathResult] = {
     current match {
       case Seq(FhirPathString(l)) => Seq(FhirPathBoolean(l.head.isLetter))
@@ -54,7 +54,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Trims the strings in the current set. Ex: ' ali  '.trim()",
-    insertText = "utl:trim()",detail = "utl", label = "utl:trim")
+    insertText = "utl:trim()",detail = "utl", label = "utl:trim", kind = "Method", returnType = Seq("string"), inputType = Seq("string"))
   def trim(): Seq[FhirPathResult] = {
     current.flatMap {
       case FhirPathString(s) =>
@@ -76,7 +76,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Creates FHIR Reference object(s) with given resource type and id(s). Ex: utl:createFhirReference('Observation', id)",
-    insertText = "utl:createFhirReference(<resourceTypeExp>, <ridExp>)",detail = "utl", label = "utl:createFhirReference")
+    insertText = "utl:createFhirReference(<resourceTypeExp>, <ridExp>)",detail = "utl", label = "utl:createFhirReference", kind = "Function", returnType = Seq(), inputType = Seq())
   def createFhirReference(resourceTypeExp: ExpressionContext, ridExp: ExpressionContext): Seq[FhirPathResult] = {
     val rids = new FhirPathExpressionEvaluator(context, current).visit(ridExp)
     if (!rids.forall(_.isInstanceOf[FhirPathString]))
@@ -104,7 +104,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Creates a FHIR Coding content with given system code and optional display. Ex: utl:createFhirCoding('http://snomed.info/sct', '246103008', 'Certainty')",
-    insertText = "utl:createFhirCoding(<system>, <code>, <display>)",detail = "utl", label = "utl:createFhirCoding")
+    insertText = "utl:createFhirCoding(<system>, <code>, <display>)",detail = "utl", label = "utl:createFhirCoding", kind = "Function", returnType = Seq(), inputType = Seq())
   def createFhirCoding(systemExp: ExpressionContext, codeExpr: ExpressionContext, displayExpr: ExpressionContext): Seq[FhirPathResult] = {
     val system = new FhirPathExpressionEvaluator(context, current).visit(systemExp)
     if (system.length > 1 || !system.forall(_.isInstanceOf[FhirPathString]))
@@ -142,7 +142,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Creates FHIR codeable concept. Ex: utl:createFhirCodeableConcept('http://snomed.info/sct', '246103008', 'Certainty')",
-    insertText = "utl:createFhirCodeableConcept(<system>, <code>, <display>)",detail = "utl", label = "utl:createFhirCodeableConcept")
+    insertText = "utl:createFhirCodeableConcept(<system>, <code>, <display>)",detail = "utl", label = "utl:createFhirCodeableConcept", kind = "Function", returnType = Seq(), inputType = Seq())
   def createFhirCodeableConcept(systemExp: ExpressionContext, codeExpr: ExpressionContext, displayExpr: ExpressionContext): Seq[FhirPathResult] = {
     val system = new FhirPathExpressionEvaluator(context, current).visit(systemExp)
     if (system.length > 1 || !system.forall(_.isInstanceOf[FhirPathString]))
@@ -187,7 +187,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Creates FHIR quantity. Ex: utl:createFhirQuantity(1, 'mg')",
-    insertText = "utl:createFhirQuantity(<value>, <unit>)",detail = "utl", label = "utl:createFhirQuantity")
+    insertText = "utl:createFhirQuantity(<value>, <unit>)",detail = "utl", label = "utl:createFhirQuantity", kind = "Function", returnType = Seq(), inputType = Seq())
   def createFhirQuantity(valueExpr: ExpressionContext, unitExpr: ExpressionContext): Seq[FhirPathResult] = {
     val value = handleFhirQuantityValue(valueExpr)
     val unit = new FhirPathExpressionEvaluator(context, current).visit(unitExpr)
@@ -210,7 +210,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Creates FHIR Quantity json object with given value, system and unit. Ex: utl:createFhirQuantity(15.2, %ucum, 'mg')",
-    insertText = "utl:createFhirQuantity(<valueExpr>, <systemExpr>, <codeExpr>)",detail = "utl", label = "utl:createFhirQuantity")
+    insertText = "utl:createFhirQuantity(<valueExpr>, <systemExpr>, <codeExpr>)",detail = "utl", label = "utl:createFhirQuantity", kind = "Function", returnType = Seq(), inputType = Seq())
   def createFhirQuantity(valueExpr: ExpressionContext, systemExpr: ExpressionContext, codeExpr: ExpressionContext): Seq[FhirPathResult] = {
     val value = handleFhirQuantityValue(valueExpr)
 
@@ -239,7 +239,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Creates FHIR Quantity json object with given value unit and optional system and code. Ex: utl:createFhirQuantity(15.2, %ucum, 'mg')",
-    insertText = "utl:createFhirQuantity(<valueExpr>, <unitExpr>, <systemExpr>, <codeExpr>)",detail = "utl", label = "utl:createFhirQuantity")
+    insertText = "utl:createFhirQuantity(<valueExpr>, <unitExpr>, <systemExpr>, <codeExpr>)",detail = "utl", label = "utl:createFhirQuantity", kind = "Function", returnType = Seq(), inputType = Seq())
   def createFhirQuantity(valueExpr: ExpressionContext,
                          unitExpr: ExpressionContext,
                          systemExpr: ExpressionContext,
@@ -295,7 +295,8 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Checks if the given value is a FHIR Quantity expression e.g. 5.2, >7.1, etc.",
-    insertText = "utl:isFhirQuantityExpression()",detail = "utl", label = "utl:isFhirQuantityExpression")
+    insertText = "utl:isFhirQuantityExpression()",detail = "utl", label = "utl:isFhirQuantityExpression", kind = "Method", returnType = Seq("boolean")
+    , inputType = Seq("dateTime","number","string"))
   def isFhirQuantityExpression(): Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
@@ -330,7 +331,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return Seq of results where first element is the numeric value and second if exists is the comparator
    */
   @FhirPathFunction(documentation = "Parses a FHIR quantity expression.",
-    insertText = "utl:parseFhirQuantityExpression(<valueExpr>)",detail = "utl", label = "utl:parseFhirQuantityExpression")
+    insertText = "utl:parseFhirQuantityExpression(<valueExpr>)",detail = "utl", label = "utl:parseFhirQuantityExpression", kind = "Function", returnType = Seq(), inputType = Seq())
   def parseFhirQuantityExpression(valueExpr: ExpressionContext): Seq[FhirPathResult] = {
     handleFhirQuantityValue(valueExpr) match {
       case None => Nil
@@ -382,7 +383,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Retrieves the duration between given FHIR dateTimes as FHIR Duration with a suitable duration unit (either minute, day, or month). Ex: utl:getDurationAsQuantityObject(startTime, endTime)",
-    insertText = "utl:getDurationAsQuantityObject(<startTime>, <endTime>)",detail = "utl", label = "utl:getDurationAsQuantityObject")
+    insertText = "utl:getDurationAsQuantityObject(<startTime>, <endTime>)",detail = "utl", label = "utl:getDurationAsQuantityObject", kind = "Function", returnType = Seq(), inputType = Seq())
   def getDurationAsQuantityObject(fromDate: ExpressionContext, toDate: ExpressionContext): Seq[FhirPathResult] = {
     val fdate: Option[Temporal] = new FhirPathExpressionEvaluator(context, current).visit(fromDate) match {
       case Seq(FhirPathDateTime(dt)) => Some(dt)
@@ -468,7 +469,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Splits the current string value by given split character or string. Ex: code.coding.first().code.utl:split('-')",
-    insertText = "utl:split(<splitCharExpr>)",detail = "utl", label = "utl:split")
+    insertText = "utl:split(<splitCharExpr>)",detail = "utl", label = "utl:split", kind = "Method", returnType = Seq("string"), inputType = Seq("string"))
   def split(splitCharExpr: ExpressionContext): Seq[FhirPathResult] = {
 
     val splitChar =
@@ -501,7 +502,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Takes the prefix of a string until one of the given stop character. Ex: 'VERY LOW.'.utl:takeUntil('.' | '*')",
-    insertText = "utl:takeUntil(<stopCharExpr>)",detail = "utl", label = "utl:takeUntil")
+    insertText = "utl:takeUntil(<stopCharExpr>)",detail = "utl", label = "utl:takeUntil", kind = "Method", returnType = Seq("string"), inputType = Seq("string"))
   def takeUntil(stopCharExpr: ExpressionContext): Seq[FhirPathResult] = {
     val stopChars: Set[Char] =
       (new FhirPathExpressionEvaluator(context, current)
@@ -525,7 +526,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Creates a list of numbers. Ex: utl:indices(1, 10)",
-    insertText = "utl:indices(<startnumber>, <endnumber>)",detail = "utl", label = "utl:indices")
+    insertText = "utl:indices(<startnumber>, <endnumber>)",detail = "utl", label = "utl:indices", kind = "Function", returnType = Seq("integer"), inputType = Seq())
   def indices(fromExpr: ExpressionContext, toExpr: ExpressionContext): Seq[FhirPathResult] = {
     val from = new FhirPathExpressionEvaluator(context, current).visit(fromExpr)
     if (from.length != 1 || !from.forall(_.isInstanceOf[FhirPathNumber]))
@@ -546,7 +547,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Returns the indices (starting from 1) in the current sequence of results where given expression returns true. Ex: Observation.code.coding.utl:indicesWhere($this.system='http://snomed.info/sct')",
-    insertText = "utl:indicesWhere(<condExpr>)",detail = "utl", label = "utl:indicesWhere")
+    insertText = "utl:indicesWhere(<condExpr>)",detail = "utl", label = "utl:indicesWhere", kind = "Method", returnType = Seq("integer"), inputType = Seq())
   def indicesWhere(condExpr: ExpressionContext): Seq[FhirPathResult] = {
     current
       .zipWithIndex
@@ -566,7 +567,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Combines current string results with the given separator and return a string. Ex: code.mkString(' | ')",
-    insertText = "utl:mkString(<separatorExp>)",detail = "utl", label = "utl:mkString")
+    insertText = "utl:mkString(<separatorExp>)",detail = "utl", label = "utl:mkString", kind = "Method", returnType = Seq("string"), inputType = Seq("string"))
   def mkString(separatorExp: ExpressionContext): Seq[FhirPathResult] = {
     if (!current.forall(_.isInstanceOf[FhirPathString]))
       throw new FhirPathException(s"Invalid function call 'mkString' on non string value(s)!")
@@ -592,7 +593,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Evaluates expression. Ex: utl:evaluateExpression('1 + 1')",
-    insertText = "utl:evaluateExpression(<expression>)",detail = "utl", label = "utl:evaluateExpression")
+    insertText = "utl:evaluateExpression(<expression>)",detail = "utl", label = "utl:evaluateExpression", kind = "Function", returnType = Seq(), inputType = Seq())
   def evaluateExpression(fhirPathExpression: ExpressionContext): Seq[FhirPathResult] = {
     val fhirPath = new FhirPathExpressionEvaluator(context, current).visit(fhirPathExpression)
     if (fhirPath.length != 1 || !fhirPath.forall(_.isInstanceOf[FhirPathString]))
@@ -615,7 +616,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Throws a FHIR Path exception with the given msg.",
-    insertText = "utl:throwException(<msgExpr>)",detail = "utl", label = "utl:throwException")
+    insertText = "utl:throwException(<msgExpr>)",detail = "utl", label = "utl:throwException", kind = "Function", returnType = Seq(), inputType = Seq())
   def throwException(msgExpr: ExpressionContext): Seq[FhirPathResult] = {
     val excMsg = new FhirPathExpressionEvaluator(context, current).visit(msgExpr)
     if (excMsg.length != 1 || !excMsg.head.isInstanceOf[FhirPathString])
@@ -632,7 +633,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Returns a period between the FHIR date time given in current and  FHIR date time given in first expression. Ex: effectivePeriod.utl:getPeriod(start, @2020-09-07T10:00:00Z, 'years')",
-    insertText = "utl:getPeriod(<fromDate>, <toDate>, <period>)",detail = "utl", label = "utl:getPeriod")
+    insertText = "utl:getPeriod(<fromDate>, <toDate>, <period>)",detail = "utl", label = "utl:getPeriod", kind = "Method", returnType = Seq("number"), inputType = Seq("dateTime"))
   def getPeriod(fromDate: ExpressionContext, toDate: ExpressionContext, period: ExpressionContext): Seq[FhirPathResult] = {
     val fdate: Option[Temporal] = new FhirPathExpressionEvaluator(context, current).visit(fromDate) match {
       case Seq(FhirPathDateTime(dt)) => Some(dt)
@@ -680,7 +681,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Converts it to a custom date string.",
-    insertText = "utl:toFhirDate(<sourcePattern>)",detail = "utl", label = "utl:toFhirDate")
+    insertText = "utl:toFhirDate(<sourcePattern>)",detail = "utl", label = "utl:toFhirDate", kind = "Method", returnType = Seq("dateTime"), inputType = Seq("string"))
   def toFhirDate(sourcePattern: ExpressionContext): Seq[FhirPathResult] = {
     val pattern = new FhirPathExpressionEvaluator(context, current).visit(sourcePattern)
     if (pattern.isEmpty || !pattern.forall(_.isInstanceOf[FhirPathString])) {
@@ -710,7 +711,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Converts the current string value to string representation of Fhir DateTime format (ISO DATE TIME). Ex: '2012-01-13 22:10:45'.utl:toFhirDateTime()",
-    insertText = "utl:toFhirDateTime()",detail = "utl", label = "utl:toFhirDateTime")
+    insertText = "utl:toFhirDateTime()",detail = "utl", label = "utl:toFhirDateTime", kind = "Method", returnType = Seq("dateTime"), inputType = Seq("string"))
   def toFhirDateTime(): Seq[FhirPathResult] = {
     val patternsToTry = Seq("yyyy-MM-dd HH:mm:ss", "yyyy-MM-ddHH:mm:ss")
     _toFhirDateTime(patternsToTry)
@@ -724,7 +725,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Converts the current string value to string representation of Fhir DateTime format (ISO DATE TIME). Ex: '20120113.22:10:45'.utl:toFhirDateTime('yyyy-MM-ddHH:mm:ss' | 'yyyyMMdd.HH:mm:ss')",
-    insertText = "utl:toFhirDateTime(<system>)",detail = "utl", label = "utl:toFhirDateTime")
+    insertText = "utl:toFhirDateTime(<system>)",detail = "utl", label = "utl:toFhirDateTime", kind = "Method", returnType = Seq("dateTime"), inputType = Seq("string"))
   def toFhirDateTime(sourcePattern: ExpressionContext): Seq[FhirPathResult] = {
     val pattern = new FhirPathExpressionEvaluator(context, current).visit(sourcePattern)
     if (pattern.isEmpty || !pattern.forall(_.isInstanceOf[FhirPathString])) {
@@ -742,7 +743,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Converts the current string value to string representation of Fhir DateTime format (ISO DATE TIME) with the given time zone",
-    insertText = "utl:toFhirDateTime(<sourcePattern>, <zoneId>)",detail = "utl", label = "utl:toFhirDateTime")
+    insertText = "utl:toFhirDateTime(<sourcePattern>, <zoneId>)",detail = "utl", label = "utl:toFhirDateTime", kind = "Method", returnType = Seq("dateTime"), inputType = Seq("string"))
   def toFhirDateTime(sourcePattern: ExpressionContext, zoneId: ExpressionContext): Seq[FhirPathResult] = {
     val pattern = new FhirPathExpressionEvaluator(context, current).visit(sourcePattern)
     if (pattern.isEmpty || !pattern.forall(_.isInstanceOf[FhirPathString])) {
@@ -792,7 +793,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "For FHIR coding elements, filters the ones that match the given coding list as FHIR code query",
-    insertText = "utl:isCodingIn(<codingListExpr>)",detail = "utl", label = "utl:isCodingIn")
+    insertText = "utl:isCodingIn(<codingListExpr>)",detail = "utl", label = "utl:isCodingIn", kind = "Method", returnType = Seq("boolean"), inputType = Seq())
   def isCodingIn(codingList: ExpressionContext): Seq[FhirPathResult] = {
     val systemAndCodes: Seq[(Option[String], Option[String])] = new FhirPathExpressionEvaluator(context, current).visit(codingList) match {
       case s: Seq[_] if s.forall(i => i.isInstanceOf[FhirPathString]) =>
