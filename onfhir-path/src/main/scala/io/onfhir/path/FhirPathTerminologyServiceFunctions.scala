@@ -3,6 +3,7 @@ package io.onfhir.path
 import akka.http.scaladsl.model.Uri
 import io.onfhir.api.service.IFhirTerminologyService
 import io.onfhir.api.util.FHIRUtil
+import io.onfhir.path.annotation.FhirPathFunction
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
 import io.onfhir.util.JsonFormatter.formats
 import org.json4s.JsonAST.{JArray, JBool, JObject, JString}
@@ -28,6 +29,8 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
    * @param paramsExpr       A URL encoded string with other parameters for the validate-code operation (e.g. 'source=http://acme.org/valueset/23&target=http://acme.org/valueset/23')
    * @return
    */
+  @FhirPathFunction(documentation = "This calls the Terminology Service $translate operation. Ex: %terminologies.translate('http://aiccelerate.eu/fhir/ConceptMap/labResultsConceptMap', Observation.code, 'conceptMapVersion=1.0')",
+    insertText = "%terminologies.translate(<conceptMapExpr>,<codeExpr>,<paramsExpr>)",detail = "trms", label = "%terminologies.translate", kind = "Function", returnType = Seq(), inputType = Seq())
   def translate(conceptMapExpr:ExpressionContext, codeExpr:ExpressionContext, paramsExpr:ExpressionContext):Seq[FhirPathResult] = {
     val terminologyService = checkTerminologyService()
     //Evaluate concept map url
@@ -86,6 +89,8 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
    * @param paramsExpr     A URL encoded string with other parameters for the validate-code operation (e.g. 'source=http://acme.org/valueset/23&target=http://acme.org/valueset/23')
    * @return
    */
+  @FhirPathFunction(documentation = "This calls the Terminology Service $translate operation without a concept map. Ex: %terminologies.translate(Observation.code, 'source=http://hus.fi/ValueSet/labResultCodes'&target=http://aiccelerate.eu/ValueSet/labResultCodes)",
+    insertText = "%terminologies.translate(<codeExpr>,<paramsExpr>)",detail = "trms", label = "%terminologies.translate", kind = "Function", returnType = Seq(), inputType = Seq())
   def translate(codeExpr:ExpressionContext, paramsExpr:ExpressionContext):Seq[FhirPathResult] = {
     val terminologyService = checkTerminologyService()
     // Evaluate code
@@ -143,6 +148,8 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
    * @param paramsExpr  Expression to evaluate a URL encoded string with other parameters for the lookup operation (e.g. 'date=2011-03-04&displayLanguage=en')
    * @return
    */
+  @FhirPathFunction(documentation = "This calls the Terminology Service $lookup operation. Ex: %terminologies.lookup(Observation.code.coding[0], 'displayLanguage=tr')",
+    insertText = "%terminologies.lookup(<codeExpr>,<paramsExpr>)",detail = "trms", label = "%terminologies.lookup", kind = "Function", returnType = Seq(), inputType = Seq())
   def lookup(codeExpr:ExpressionContext, paramsExpr:ExpressionContext):Seq[FhirPathResult] = {
     val terminologyService = checkTerminologyService()
     // Evaluate code
@@ -206,6 +213,8 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
    * @param displayLanguageExpr Expression to evaluate optional displayLanguage
    * @return
    */
+  @FhirPathFunction(documentation = "Returns the display string in preferred language for the given code+system. Ex:trms:lookupDisplay('C12', 'http://hus.fi/CodeSystem/labResults', 'tr')",
+    insertText = "trms.lookupDisplay(<codeExpr>,<systemExpr>,<displayLanguageExpr>)",detail = "trms", label = "trms.lookupDisplay", kind = "Function", returnType = Seq("string"), inputType = Seq())
   def lookupDisplay(codeExpr:ExpressionContext, systemExpr:ExpressionContext, displayLanguageExpr:ExpressionContext):Seq[FhirPathResult] = {
     val terminologyService = checkTerminologyService()
     val code = evaluateToSingleString(codeExpr)
@@ -236,6 +245,8 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
    * @param conceptMapUrlExpr   Expression to evaluate the ConceptMap canonical url
    * @return
    */
+  @FhirPathFunction(documentation = "Translates the given Coding or CodeableConcept according to the given conceptMap. Ex:trms:translateToCoding(Observation.code.coding.where(system='http://loinc.org').first(), 'https://www.ncbi.nlm.nih.gov/clinvar')",
+    insertText = "trms.translateToCoding(<codingExpr>,<conceptMapUrlExpr>)",detail = "trms", label = "trms.translateToCoding", kind = "Function", returnType = Seq(), inputType = Seq())
   def translateToCoding(codingExpr:ExpressionContext, conceptMapUrlExpr:ExpressionContext):Seq[FhirPathResult] = {
     val terminologyService = checkTerminologyService()
     val codingResult = evaluateCodeExpr(codingExpr)
@@ -261,6 +272,8 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
    * @param conceptMapUrlExpr Expression to evaluate the ConceptMap canonical url
    * @return                  Matching codes (in Coding data type)
    */
+  @FhirPathFunction(documentation = "Translates the given code+system according to the given conceptMap. Ex:trms:translateToCoding(Observation.code.coding.where(system='http://loinc.org').first(), 'https://system', 'https://www.ncbi.nlm.nih.gov/clinvar')",
+    insertText = "trms.translateToCoding(<codingExpr>,<systemExpr>,<conceptMapUrlExpr>)",detail = "trms", label = "trms.translateToCoding", kind = "Function", returnType = Seq(), inputType = Seq())
   def translateToCoding(codeExpr:ExpressionContext, systemExpr:ExpressionContext, conceptMapUrlExpr:ExpressionContext):Seq[FhirPathResult] = {
     val terminologyService = checkTerminologyService()
     val conceptMapUrl = evaluateToSingleString(conceptMapUrlExpr)
@@ -286,6 +299,8 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
    * @param targetValueSetUrlExpr   Expression to evaluate to the target value set url
    * @return
    */
+  @FhirPathFunction(documentation = "Translates the given code+system according to the given source value set and optional target value set. Ex:trms:translateToCoding(Observation.code.coding.where(system='http://loinc.org').first(), 'https://system','https://sourceValue','https://targetValue')",
+    insertText = "trms.translateToCoding(<codingExpr>,<systemExpr>,<sourceValueSetUrlExpr>,<targetValueSetUrlExpr>)",detail = "trms", label = "trms.translateToCoding", kind = "Function", returnType = Seq(), inputType = Seq())
   def translateToCoding( codeExpr:ExpressionContext,
                          systemExpr:ExpressionContext,
                          sourceValueSetUrlExpr:ExpressionContext,
