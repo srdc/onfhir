@@ -76,7 +76,7 @@ object FHIRResponse {
     * @return
     */
   def errorResponse(code:StatusCode, issues:Seq[OutcomeIssue], newVersion:Option[Long]=None):FHIRResponse = {
-    FHIRResponse(httpStatus = code, newVersion= newVersion.map(_ + ""), outcomeIssues = issues)
+    FHIRResponse(httpStatus = code, newVersion= newVersion.map(""+_), outcomeIssues = issues)
   }
 
   /**
