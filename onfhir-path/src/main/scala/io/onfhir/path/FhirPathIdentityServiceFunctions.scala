@@ -17,13 +17,34 @@ class FhirPathIdentityServiceFunctions(context: FhirPathEnvironment) extends Abs
    * Resolve the given business identifier and return the FHIR Resource identifier (together with the resource type) by using the supplied identity service
    *
    * @param resourceTypeExpr     FHIR resource type
-   * @param identifierValueExpr  Business identifier  value (Identifier.value)
+   * @param identifierValueExpr  Business identifier value (Identifier.value)
+   * @return Identifier for the resource e.g. Patient/455435464698
+   */
+  @FhirPathFunction(documentation = "Resolves the given business identifier and return the FHIR Resource identifier (together with the resource type) by using the supplied identity service. Ex: idxs:resolveIdentifier('Patient', '12345')",
+    insertText = "idxs:resolveIdentifier(<resourceTypeExpr>,<identifierValueExpr>)",detail = "idxs", label = "idxs:resolveIdentifier", kind = "Function", returnType = Seq("string"), inputType = Seq())
+  def resolveIdentifier(resourceTypeExpr: ExpressionContext, identifierValueExpr: ExpressionContext): Seq[FhirPathResult] = resolveIdentifier(resourceTypeExpr, identifierValueExpr, None)
+
+  /**
+   * Resolve the given business identifier and return the FHIR Resource identifier (together with the resource type) by using the supplied identity service
+   *
+   * @param resourceTypeExpr     FHIR resource type
+   * @param identifierValueExpr  Business identifier value (Identifier.value)
    * @param identifierSystemExpr Business identifier system (Identifier.system)
    * @return Identifier for the resource e.g. Patient/455435464698
    */
   @FhirPathFunction(documentation = "Resolves the given business identifier and return the FHIR Resource identifier (together with the resource type) by using the supplied identity service. Ex: idxs:resolveIdentifier('Patient', '12345', 'urn:oid:1.2.36.146.595.217.0.1')",
     insertText = "idxs:resolveIdentifier(<resourceTypeExpr>,<identifierValueExpr>,<identifierSystemExpr>)",detail = "idxs", label = "idxs:resolveIdentifier", kind = "Function", returnType = Seq("string"), inputType = Seq())
-  def resolveIdentifier(resourceTypeExpr: ExpressionContext, identifierValueExpr: ExpressionContext, identifierSystemExpr: Option[ExpressionContext]): Seq[FhirPathResult] = {
+  def resolveIdentifier(resourceTypeExpr: ExpressionContext, identifierValueExpr: ExpressionContext, identifierSystemExpr: ExpressionContext): Seq[FhirPathResult] = resolveIdentifier(resourceTypeExpr,identifierValueExpr,Some(identifierSystemExpr))
+
+  /**
+   * Resolve the given business identifier and return the FHIR Resource identifier (together with the resource type) by using the supplied identity service
+   *
+   * @param resourceTypeExpr     FHIR resource type
+   * @param identifierValueExpr  Business identifier value (Identifier.value)
+   * @param identifierSystemExpr Business identifier system (Identifier.system)
+   * @return Identifier for the resource e.g. Patient/455435464698
+   */
+  private def resolveIdentifier(resourceTypeExpr: ExpressionContext, identifierValueExpr: ExpressionContext, identifierSystemExpr: Option[ExpressionContext]): Seq[FhirPathResult] = {
     val identityService = checkIdentityService()
 
     val resourceType = evaluateToSingleString(resourceTypeExpr)

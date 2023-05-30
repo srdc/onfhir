@@ -581,9 +581,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
   /**
     * Conversion functions http://hl7.org/fhirpath/#conversion
     */
-  @FhirPathFunction(documentation = "If criterion is true, the function returns the value of the true-result argument. Otherwise, it returns otherwise-result",
-    insertText = "iif(<criterium>,<trueResult>,<otherwiseResult>)", detail = "", label = "iif", kind = "Function", returnType = Seq(), inputType = Seq())
-  def iif(criterium: ExpressionContext, trueResult:ExpressionContext, otherwiseResult: Option[ExpressionContext]):Seq[FhirPathResult] = {
+  private def iif(criterium: ExpressionContext, trueResult:ExpressionContext, otherwiseResult: Option[ExpressionContext]):Seq[FhirPathResult] = {
     val criteriaResult = new FhirPathExpressionEvaluator(context, current).visit(criterium)
     val conditionResult = criteriaResult match {
       case Nil => false
@@ -822,9 +820,7 @@ class FhirPathFunctionEvaluator(context:FhirPathEnvironment, current:Seq[FhirPat
       }
     }).getOrElse(Nil)
   }
-  @FhirPathFunction(documentation = "Returns the part of the string starting at position start (zero-based). Ex: 'abcdefg'.substring(3,1)",
-    insertText = "substring(<startExpr>,<lengthExpr>)", detail = "", label = "substring", kind = "Method", returnType = Seq("string"), inputType = Seq("string"))
-  def substring(startExpr : ExpressionContext, lengthExpr:Option[ExpressionContext]):Seq[FhirPathResult] = {
+  private def substring(startExpr : ExpressionContext, lengthExpr:Option[ExpressionContext]):Seq[FhirPathResult] = {
     checkSingleString()
     current.headOption.map(c => {
       val start = new FhirPathExpressionEvaluator(context, current).visit(startExpr) match {
