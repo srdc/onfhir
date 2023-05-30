@@ -1,19 +1,41 @@
 package io.onfhir.path
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, Year, YearMonth, ZoneOffset, ZonedDateTime}
-import java.time.format.DateTimeFormatter
+import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder, SignStyle}
 import java.time.temporal.{Temporal, TemporalAccessor}
-
 import io.onfhir.path.grammar.{FhirPathExprBaseVisitor, FhirPathExprParser}
 
 import scala.util.Try
+import java.time.temporal.ChronoField.{DAY_OF_MONTH, HOUR_OF_DAY, MINUTE_OF_HOUR, MONTH_OF_YEAR, NANO_OF_SECOND, SECOND_OF_MINUTE, YEAR}
 
 /**
   * Evaluator for FHIR Path literals
   */
 object FhirPathLiteralEvaluator extends FhirPathExprBaseVisitor[Seq[FhirPathResult]] {
   // FHIR Path date time formatter
-  val fhirPathDateTimeFormatter =  DateTimeFormatter.ofPattern("yyyy[-MM[-dd['T'HH[:mm[:ss[.SSS][XXX]]]]]]")
+  val fhirPathDateTimeFormatter =
+    new DateTimeFormatterBuilder()
+      .appendValue(YEAR, 4, 10, SignStyle.EXCEEDS_PAD)
+      .optionalStart()
+      .appendLiteral('-')
+      .appendValue(MONTH_OF_YEAR, 2)
+      .optionalStart()
+      .appendLiteral('-')
+      .appendValue(DAY_OF_MONTH, 2)
+      .optionalStart()
+      .appendLiteral('T')
+      .appendValue(HOUR_OF_DAY, 2)
+      .appendLiteral(':')
+      .appendValue(MINUTE_OF_HOUR, 2)
+      .optionalStart
+      .appendLiteral(':')
+      .appendValue(SECOND_OF_MINUTE, 2)
+      .optionalStart
+      .appendFraction(NANO_OF_SECOND, 0, 3, true)
+      .optionalStart()
+      .appendOffset("+HH:MM", "Z")
+      .parseStrict()
+      .toFormatter
 
   //Date time units
   private val dtUnits= Map (
