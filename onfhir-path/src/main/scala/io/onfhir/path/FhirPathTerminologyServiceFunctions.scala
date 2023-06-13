@@ -44,42 +44,44 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
     val paramsOpt = evaluateParamsExpr(paramsExpr)
 
     //Based on how code is given
-    val responseParameters = codeResult match {
-      //Providing the code directly
-      case FhirPathString(code) =>
-        getParam("system", paramsOpt) match {
-          case None => throw FhirPathException("Invalid function call 'translate'. The system should be provided within params expression as code is given.")
-          case Some(system) =>
+      codeResult
+        .map {
+        //Providing the code directly
+        case FhirPathString(code) =>
+          getParam("system", paramsOpt) match {
+            case None => throw FhirPathException("Invalid function call 'translate'. The system should be provided within params expression as code is given.")
+            case Some(system) =>
+              try{
+                Await.result(
+                  terminologyService
+                    .translate(code, system, conceptMapUrl,
+                      version = getParam("version", paramsOpt),
+                      conceptMapVersion = getParam("conceptMapVersion", paramsOpt),
+                      reverse = getParam("reverse", paramsOpt).flatMap(p => Try(p.toBoolean).toOption).getOrElse(false)
+                    ),
+                  terminologyService.getTimeout
+                )
+              } catch {
+                case t:Throwable => throw FhirPathException("Problem while calling terminology service!", t)
+              }
+          }
+        case FhirPathComplex(codingOrCodeableConcept) =>
             try{
-              Await.result(
-                terminologyService
-                  .translate(code, system, conceptMapUrl,
-                    version = getParam("version", paramsOpt),
-                    conceptMapVersion = getParam("conceptMapVersion", paramsOpt),
-                    reverse = getParam("reverse", paramsOpt).flatMap(p => Try(p.toBoolean).toOption).getOrElse(false)
-                  ),
-                terminologyService.getTimeout
-              )
+                Await.result(
+                  terminologyService
+                    .translate(codingOrCodeableConcept, conceptMapUrl,
+                      conceptMapVersion = getParam("conceptMapVersion", paramsOpt),
+                      reverse = getParam("reverse", paramsOpt).flatMap(p => Try(p.toBoolean).toOption).getOrElse(false)
+                    ),
+                  terminologyService.getTimeout
+                )
             } catch {
               case t:Throwable => throw FhirPathException("Problem while calling terminology service!", t)
             }
-        }
-      case FhirPathComplex(codingOrCodeableConcept) =>
-          try{
-              Await.result(
-                terminologyService
-                  .translate(codingOrCodeableConcept, conceptMapUrl,
-                    conceptMapVersion = getParam("conceptMapVersion", paramsOpt),
-                    reverse = getParam("reverse", paramsOpt).flatMap(p => Try(p.toBoolean).toOption).getOrElse(false)
-                  ),
-                terminologyService.getTimeout
-              )
-          } catch {
-            case t:Throwable => throw FhirPathException("Problem while calling terminology service!", t)
-          }
-      case _ => throw FhirPathException("Invalid function call 'translate'. The code expression (the function parameter) should evaluate to a single string value.")
-    }
-    Seq(FhirPathComplex(responseParameters))
+        case _ => throw FhirPathException("Invalid function call 'translate'. The code expression (the function parameter) should evaluate to a single string value.")
+      }
+        .map(FhirPathComplex)
+        .toList
   }
 
   /**
@@ -100,7 +102,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
     val paramsOpt = evaluateParamsExpr(paramsExpr)
 
     //Based on how code is given
-    val responseParameters =  codeResult match {
+    codeResult.map {
       //Providing the code directly
       case FhirPathString(code) =>
         getParam("system", paramsOpt) match {
@@ -137,7 +139,8 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
         }
       case _ => throw FhirPathException("Invalid function call 'translate'. The code expression (the function parameter) should evaluate to a single string value.")
     }
-    Seq(FhirPathComplex(responseParameters))
+      .map(FhirPathComplex)
+      .toList
   }
 
   /**
@@ -159,7 +162,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
     val paramsOpt = evaluateParamsExpr(paramsExpr)
 
     //Based on how code is given
-    val responseParameters = codeResult match {
+    codeResult.flatMap {
       //Providing the code directly
       case FhirPathString(code) =>
         getParam("system", paramsOpt) match {
@@ -196,10 +199,9 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
         }
       case _ => throw FhirPathException("Invalid function call 'lookup'. The code expression (the function parameter) should evaluate to a single string value.")
     }
-    responseParameters match {
-      case None => Nil
-      case Some(rp) => Seq(FhirPathComplex(rp))
-    }
+      .map(FhirPathComplex)
+      .toList
+
   }
 
   /**
@@ -252,17 +254,19 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
     val codingResult = evaluateCodeExpr(codingExpr)
     val conceptMapUrl = evaluateToSingleString(conceptMapUrlExpr)
 
-    if(!codingResult.isInstanceOf[FhirPathComplex])
-      throw FhirPathException(s"Invalid function call translateToCoding. 'coding' parameter should evaluate to FHIR Coding object!")
+    codingResult.map {
+      case FhirPathComplex(json) =>
+        val resultParameters =
+          try {
+            Await.result(terminologyService.translate(json, conceptMapUrl.get), terminologyService.getTimeout)
+          } catch {
+            case t: Throwable => throw FhirPathException("Problem while calling terminology service!", t)
+          }
+        handleTranslationResult(resultParameters)
+      case _ =>
+        throw FhirPathException(s"Invalid function call translateToCoding. 'coding' parameter should evaluate to FHIR Coding object!")
 
-    //Execute the terminology service
-    val resultParameters =
-      try{
-        Await.result(terminologyService.translate(codingResult.asInstanceOf[FhirPathComplex].json, conceptMapUrl.get), terminologyService.getTimeout)
-      } catch {
-        case t:Throwable => throw FhirPathException("Problem while calling terminology service!", t)
-      }
-    handleTranslationResult(resultParameters)
+    }.getOrElse(Nil)
   }
 
   /**
@@ -279,16 +283,21 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
     val conceptMapUrl = evaluateToSingleString(conceptMapUrlExpr)
     val code = evaluateToSingleString(codeExpr)
     val system = evaluateToSingleString(systemExpr)
-    if(code.isEmpty || system.isEmpty || conceptMapUrl.isEmpty)
+    if(conceptMapUrl.isEmpty)
       throw FhirPathException(s"Invalid function call translateToCoding. 'code','system' and 'conceptMapUrl' parameters are mandatory!")
-    //Execute the terminology service
-    val resultParameters =
-      try{
-        Await.result(terminologyService.translate(code.get, system.get, conceptMapUrl.get), terminologyService.getTimeout)
-      } catch {
-        case t:Throwable => throw FhirPathException("Problem while calling terminology service!", t)
-      }
-    handleTranslationResult(resultParameters)
+
+    if(code.isEmpty || system.isEmpty)
+      Nil
+    else {
+      //Execute the terminology service
+      val resultParameters =
+        try {
+          Await.result(terminologyService.translate(code.get, system.get, conceptMapUrl.get), terminologyService.getTimeout)
+        } catch {
+          case t: Throwable => throw FhirPathException("Problem while calling terminology service!", t)
+        }
+      handleTranslationResult(resultParameters)
+    }
   }
 
   /**
@@ -312,17 +321,21 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
     val targetValueSetUrl = evaluateToSingleString(targetValueSetUrlExpr)
     val code = evaluateToSingleString(codeExpr)
     val system = evaluateToSingleString(systemExpr)
-    if(code.isEmpty || system.isEmpty || sourceVsUrl.isEmpty)
+    if(sourceVsUrl.isEmpty)
       throw FhirPathException(s"Invalid function call translateToCoding. 'code','system' and 'sourceValueSetUrl' parameters are mandatory!")
-    //Execute the terminology service
-    val resultParameters =
-      try {
-        Await.result(terminologyService.translate(code.get, system.get, sourceVsUrl, targetValueSetUrl), terminologyService.getTimeout)
-      } catch {
-        case t:Throwable => throw FhirPathException("Problem while calling terminology service!", t)
-      }
+    if(code.isEmpty || system.isEmpty)
+      Nil
+    else {
+      //Execute the terminology service
+      val resultParameters =
+        try {
+          Await.result(terminologyService.translate(code.get, system.get, sourceVsUrl, targetValueSetUrl), terminologyService.getTimeout)
+        } catch {
+          case t: Throwable => throw FhirPathException("Problem while calling terminology service!", t)
+        }
 
-    handleTranslationResult(resultParameters)
+      handleTranslationResult(resultParameters)
+    }
   }
 
   /**
@@ -391,12 +404,12 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
    * @param codeExpr
    * @return
    */
-  private def evaluateCodeExpr(codeExpr:ExpressionContext):FhirPathResult = {
+  private def evaluateCodeExpr(codeExpr:ExpressionContext):Option[FhirPathResult] = {
     // Evaluate code
     val codeResult = new FhirPathExpressionEvaluator(context, context._this).visit(codeExpr)
-    if(codeResult.length != 1)
+    if(codeResult.length > 1)
       throw FhirPathException("Invalid terminology service function call. The code expression (the function parameter) should evaluate to a single value (either string, Coding, CodeableConcept) providing the code value.")
-    codeResult.head
+    codeResult.headOption
   }
 
   private def evaluateToSingleString(expr:ExpressionContext):Option[String] = {
