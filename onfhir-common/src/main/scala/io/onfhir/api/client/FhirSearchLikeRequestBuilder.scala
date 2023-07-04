@@ -12,9 +12,8 @@ abstract class FhirSearchLikeRequestBuilder(onFhirClient: IOnFhirClient, request
   def where(parsedQuery:Map[String, List[String]]):This = {
     val normalizedParams=
       parsedQuery
-        .flatMap(q => q._2.map(pv => q._1 -> pv))
+        .map(q => q._2.map(pv => q._1 -> pv)).toSeq.flatten
         .map(q => q._1 -> q._2.split(',').toSeq)
-        .toSeq
 
     normalizedParams.foreach(np => conditionalParams.append(np._1 -> np._2))
     this.asInstanceOf[This]

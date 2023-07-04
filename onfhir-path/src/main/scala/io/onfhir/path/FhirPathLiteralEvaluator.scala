@@ -169,6 +169,10 @@ object FhirPathLiteralEvaluator extends FhirPathExprBaseVisitor[Seq[FhirPathResu
     fhirPathDateTimeFormatter.parseBest(dt, ZonedDateTime.from(_), LocalDateTime.from(_), LocalDate.from(_), YearMonth.from(_), Year.from(_)).asInstanceOf[Temporal]
   }
 
+  def parseFhirDateTimeBestExceptYear(dt:String):Temporal = {
+    fhirPathDateTimeFormatter.parseBest(dt, ZonedDateTime.from(_), LocalDateTime.from(_), LocalDate.from(_), YearMonth.from(_)).asInstanceOf[Temporal]
+  }
+
   def parseFhirDateBest(dt:String):Temporal = {
     fhirPathDateTimeFormatter.parseBest(dt, LocalDate.from(_), YearMonth.from(_), Year.from(_)).asInstanceOf[Temporal]
   }

@@ -189,14 +189,14 @@ case class FhirPathDateTime(dt:Temporal) extends FhirPathResult with Ordered[Fhi
   private def addOrRemove(amountToAdd:Long, unit:String):Temporal = {
     try {
       val duration = unit match {
-        case "'a'" => Period.ofYears(amountToAdd.toInt)
-        case "'mo'" => Period.ofMonths(amountToAdd.toInt)
-        case "'wk'" => Period.ofWeeks(amountToAdd.toInt)
-        case "'d'" => Period.ofDays(amountToAdd.toInt)
-        case "'h'" => Duration.of(amountToAdd, ChronoUnit.HOURS)
-        case "'min'" => Duration.of(amountToAdd, ChronoUnit.MINUTES)
-        case "'s'" => Duration.of(amountToAdd, ChronoUnit.SECONDS)
-        case "'ms'" => Duration.of(amountToAdd, ChronoUnit.MILLIS)
+        case "'a'" | "a" => Period.ofYears(amountToAdd.toInt)
+        case "'mo'" | "mo" => Period.ofMonths(amountToAdd.toInt)
+        case "'wk'" | "wk" => Period.ofWeeks(amountToAdd.toInt)
+        case "'d'" | "d" => Period.ofDays(amountToAdd.toInt)
+        case "'h'" | "h" => Duration.of(amountToAdd, ChronoUnit.HOURS)
+        case "'min'" | "min" => Duration.of(amountToAdd, ChronoUnit.MINUTES)
+        case "'s'" | "s" => Duration.of(amountToAdd, ChronoUnit.SECONDS)
+        case "'ms'" | "ms" => Duration.of(amountToAdd, ChronoUnit.MILLIS)
       }
 
       dt match {
@@ -243,10 +243,10 @@ case class FhirPathTime(lt:LocalTime, zone:Option[ZoneId] = None) extends FhirPa
   private def addOrRemove(amountToAdd:Long, unit:String):LocalTime = {
     try {
       unit match {
-        case "'h'" => lt.plus(amountToAdd, ChronoUnit.HOURS)
-        case "'min'" => lt.plus(amountToAdd, ChronoUnit.MINUTES)
-        case "'s'" => lt.plus(amountToAdd, ChronoUnit.SECONDS)
-        case "'ms'" => lt.plus(amountToAdd, ChronoUnit.MILLIS)
+        case "'h'" | "h" => lt.plus(amountToAdd, ChronoUnit.HOURS)
+        case "'min'" | "min" => lt.plus(amountToAdd, ChronoUnit.MINUTES)
+        case "'s'" | "s" => lt.plus(amountToAdd, ChronoUnit.SECONDS)
+        case "'ms'" | "ms" => lt.plus(amountToAdd, ChronoUnit.MILLIS)
       }
     } catch {
       case e:Exception => throw new FhirPathException(s"Invalid datetime arithmetic on $lt with zone $zone for quantity $amountToAdd and unit $unit !")

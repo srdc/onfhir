@@ -61,6 +61,7 @@ case class FhirPathEvaluator (
     this.copy(environmentVariables = environmentVariables + (variable -> value))
   }
 
+
   /**
    * Register a function library
    * @param prefix      Prefix for the functions in the library
@@ -98,7 +99,7 @@ case class FhirPathEvaluator (
       FhirPathEnvironment(
         resource,
         referenceResolver,
-        environmentVariables.map(e => e._1 -> FhirPathValueTransformer.transform(e._2, isContentFhir)),
+        environmentVariables.map(e => e._1 -> FhirPathValueTransformer.transform(e._2)),
         functionLibraries,
         terminologyService,
         identityService,

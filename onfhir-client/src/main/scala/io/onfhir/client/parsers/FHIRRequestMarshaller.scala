@@ -178,7 +178,7 @@ object FHIRRequestMarshaller {
    */
   private def getQuery(queryParams: Map[String, List[String]]): Option[Query] = {
     if (queryParams.nonEmpty)
-      Some(Query.apply(queryParams.flatMap(qp => qp._2.map(qpv => qp._1 -> qpv))))
+      Some(Query.apply(queryParams.map(qp => qp._2.map(qpv => qp._1 -> qpv)).toSeq.flatten:_*))
     else
       None
   }

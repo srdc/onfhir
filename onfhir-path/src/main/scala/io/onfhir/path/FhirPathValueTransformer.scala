@@ -29,7 +29,7 @@ object FhirPathValueTransformer {
   }
 
   private def resolveFromString(str:String):FhirPathResult = {
-    Try(FhirPathLiteralEvaluator.parseFhirDateTimeBest(str)).toOption
+    Try(FhirPathLiteralEvaluator.parseFhirDateTimeBestExceptYear(str)).toOption
       .map(FhirPathDateTime)
       .getOrElse(
         //If it seems to be a FHIR time, try to parse it
