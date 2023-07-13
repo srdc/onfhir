@@ -213,7 +213,9 @@ class FHIRServerUtil(fhirConfig:FhirServerConfig) {
       //Construct the value part
       val valuePart =
         if (p.paramCategory == FHIR_PARAMETER_CATEGORIES.RESULT && (p.name == FHIR_SEARCH_RESULT_PARAMETERS.INCLUDE || p.name == FHIR_SEARCH_RESULT_PARAMETERS.REVINCLUDE))
-          p.valuePrefixList.mkString(":") + (if (p.paramType != "") ":" + p.paramType else "")
+          p.valuePrefixList.map {
+            case (typ, prName) => s"$typ:$prName"
+          }.head
         else
           p.valuePrefixList.map(vp => vp._1 + vp._2).mkString(",")
 
