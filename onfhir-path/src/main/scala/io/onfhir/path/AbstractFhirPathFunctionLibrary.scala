@@ -77,7 +77,7 @@ abstract class AbstractFhirPathFunctionLibrary {
       case ite:InvocationTargetException =>
         ite.getTargetException match {
           case fpe:FhirPathException => throw fpe
-          case e:Throwable => throw FhirPathException.apply(s"Invalid FHIR Path function call $fname!: ${e.getMessage}", e)
+          case e:Throwable => throw FhirPathException.apply(s"Invalid FHIR Path function call $fname!", e)
         }
     }
   }
