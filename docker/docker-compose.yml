@@ -18,11 +18,6 @@ services:
     image: srdc/onfhir:r4
     container_name: onfhir
     restart: always
-    healthcheck:
-      test: curl -f localhost:8080/fhir/metadata
-      interval: 10s
-      timeout: 10s
-      retries: 5
     depends_on:
       mongo:
         condition: service_healthy
