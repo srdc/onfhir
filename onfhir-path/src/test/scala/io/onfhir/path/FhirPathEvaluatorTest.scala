@@ -697,6 +697,8 @@ class FhirPathEvaluatorTest extends Specification {
       result = evaluator.evaluateNumerical("period.getPeriod(start, end, 'days')", encounter).head.toLong
       result mustEqual 9
 
+      evaluator.evaluateNumerical("period.getPeriod(start, end, 'hours')", encounter).head.toInt mustEqual 216
+
       evaluator.evaluateNumerical("period.getPeriod(s, end, 'days')", encounter) must empty
 
       var quantity = evaluator.evaluateAndReturnJson("effectivePeriod.utl:getDurationAsQuantityObject(start, @2013-04-02T12:30:10+01:00)", observation).head
