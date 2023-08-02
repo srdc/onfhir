@@ -1,9 +1,10 @@
 package io.onfhir.api.client
 
 import io.onfhir.api.FHIR_INTERACTIONS
-import io.onfhir.api.model.{FHIRRequest, FHIRResponse}
+import io.onfhir.api.model.{FHIRRequest}
 import io.onfhir.api.parsers.BundleRequestParser
 import org.json4s.JsonAST.JObject
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -16,6 +17,9 @@ class FhirBatchTransactionRequestBuilder(onFhirClient:IOnFhirClient, isBatch:Boo
   FhirRequestBuilder(onFhirClient,
     FHIRRequest(interaction = if(isBatch) FHIR_INTERACTIONS.BATCH else FHIR_INTERACTIONS.TRANSACTION, requestUri = s"${onFhirClient.getBaseUrl()}")
   ){
+
+  //Logger
+  implicit val logger: Logger = LoggerFactory.getLogger(this.getClass.getName)
 
   /**
    * Add Request entries from given FHIR Bundle to the request
@@ -68,6 +72,7 @@ class FhirBatchTransactionRequestBuilder(onFhirClient:IOnFhirClient, isBatch:Boo
           new FHIRTransactionBatchBundle(r.responseBody.get)
         } catch {
           case e:Throwable =>
+            logger.error("!!!There is an error while parsing FHIR batch/transaction bundle response!",e)
             throw FhirClientException("Invalid transaction/batch result bundle!", Some(r))
         }
       })
