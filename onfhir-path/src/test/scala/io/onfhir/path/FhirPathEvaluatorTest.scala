@@ -21,6 +21,7 @@ class FhirPathEvaluatorTest extends Specification {
 
   val observation = Source.fromInputStream(getClass.getResourceAsStream("/observation.json")).mkString.parseJson
   val observation2 = Source.fromInputStream(getClass.getResourceAsStream("/observation2.json")).mkString.parseJson
+  val observationSampledData = Source.fromInputStream(getClass.getResourceAsStream("/observation-sampled-data.json")).mkString.parseJson
   val questionnaire = Source.fromInputStream(getClass.getResourceAsStream("/questionnaire.json")).mkString.parseJson
   val questionnaire2 = Source.fromInputStream(getClass.getResourceAsStream("/questionnaire2.json")).mkString.parseJson
   val bundle = Source.fromInputStream(getClass.getResourceAsStream("/bundle.json")).mkString.parseJson
@@ -792,6 +793,7 @@ class FhirPathEvaluatorTest extends Specification {
 
       val fhirDate = evaluator.evaluateDateTime("'20120113'.utl:toFhirDateTime('yyyyMMdd' | 'yyyyMMdd.HH:mm:ss')", JNull)
       fhirDate.head mustEqual LocalDate.of(2012,1, 13)
+      evaluator.evaluate("Observation.component.where(code.coding.exists(system='https://datatools4heart.eu/fhir/CodeSystem/ecg-12-lead-codes' and code='aVF')).valueSampledData.utl:normalizeSampledData()", observationSampledData).map(_.asInstanceOf[FhirPathNumber].v) mustEqual Seq(25.0, 50.0, 75.0)
     }
 
     "evaluate fixed bugs" in {

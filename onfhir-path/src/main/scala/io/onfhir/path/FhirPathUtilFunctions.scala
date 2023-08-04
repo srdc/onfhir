@@ -860,6 +860,40 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
     Seq(FhirPathBoolean(codingMatch))
   }
 
+  /**
+   * Applies the origin and factor transformation on the data array with the following expression for each value in the data field: origin + factor * dataValue.
+   * This method should be called on FHIR SampledData data types.
+   *
+   * @return A sequence of transformed numbers
+   */
+  @FhirPathFunction(documentation = "Applies the origin and factor transformation on the data array with the following expression for each value in the data field: origin + factor * dataValue.",
+    insertText = "utl:normalizeSampledData()", detail = "utl", label = "utl:normalizeSampledData", kind = "Method", returnType = Seq("number[]"), inputType = Seq("SampledData"))
+  def normalizeSampledData(): Seq[FhirPathResult] = {
+    // Validate the sampled data
+    if (current.isEmpty || !current.forall(i => i.isInstanceOf[FhirPathComplex])) {
+      throw new FhirPathException(s"Invalid function call 'normalizeSampledData', the current does not evaluate to sequence of FHIR Path Complex!")
+    }
+    // Validate that the individual items in the data are all numeric and extract them
+    val sampleDataJson: JObject = current.asInstanceOf[Seq[FhirPathComplex]].head.json
+    val data: Seq[Double] = (sampleDataJson \ "data").extractOpt[String]
+      .map(data => data.split(" "))
+      .getOrElse(throw new FhirPathException(s"Invalid function call 'normalizeSampledData', sampled data expression data does not contain a valid data value!"))
+      .map(dataItem => {
+        try {
+          dataItem.toDouble
+        } catch {
+          case _: Throwable => throw new FhirPathException(s"Invalid function call 'normalizeSampledData', data item: $dataItem is not convertable to double!")
+        }
+      })
+
+    val origin: Double = (sampleDataJson \ "origin" \ "value").extractOpt[Double].getOrElse(
+      throw new FhirPathException(s"Invalid function call 'normalizeSampledData', sampled data expression does not contain a valid origin value!")
+    )
+    val factor: Double = (sampleDataJson \ "factor").extractOpt[Double].getOrElse(1)
+
+    // Apply transformation on the base data
+    data.map(dataItem => FhirPathNumber(origin + factor * dataItem))
+  }
 }
 
 object FhirPathUtilFunctionsFactory extends IFhirPathFunctionLibraryFactory {

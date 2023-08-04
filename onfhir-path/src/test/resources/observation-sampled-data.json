@@ -1,0 +1,46 @@
+{
+  "resourceType" : "Observation",
+  "id" : "fe04d5aed3a94035510c80937fb15a18",
+  "status" : "final",
+  "category" : [
+    {
+      "coding" : [
+        {
+          "system" : "http://terminology.hl7.org/CodeSystem/observation-category",
+          "code" : "procedure"
+        }
+      ]
+    }
+  ],
+  "code" : {
+    "coding" : [
+      {
+        "system" : "http://loinc.org",
+        "code" : "34534-8",
+        "display" : "12 lead EKG panel"
+      }
+    ]
+  },
+  "component" : [
+    {
+      "code" : {
+        "coding" : [
+          {
+            "system" : "https://datatools4heart.eu/fhir/CodeSystem/ecg-12-lead-codes",
+            "code" : "aVF",
+            "display" : "Raw lead aVF data"
+          }
+        ]
+      },
+      "valueSampledData" : {
+        "origin" : {
+          "value" : 0
+        },
+        "period" : 1,
+        "factor" : 0.0025,
+        "dimensions" : 1,
+        "data" : "10000 20000 30000"
+      }
+    }
+  ]
+}
