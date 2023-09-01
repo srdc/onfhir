@@ -6,7 +6,7 @@ import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.stream.Materializer
 import io.onfhir.api.client.{BaseFhirClient, FHIRPaginatedBundle, FhirClientException, IFhirBundleReturningRequestBuilder}
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse}
-import io.onfhir.client.intrcp.{BasicAuthenticationInterceptor, BearerTokenInterceptorFromTokenEndpoint}
+import io.onfhir.client.intrcp.{BasicAuthenticationInterceptor, BearerTokenInterceptorFromTokenEndpoint, FixedBasicTokenInterceptor}
 import io.onfhir.client.parsers.{FHIRRequestMarshaller, FHIRResponseUnmarshaller}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -27,6 +27,16 @@ case class OnFhirNetworkClient(serverBaseUrl:String, interceptors:Seq[IHttpReque
    */
   def withBasicAuthentication(username:String, password:String):OnFhirNetworkClient = {
     this.copy(interceptors = interceptors :+ new BasicAuthenticationInterceptor(username, password))
+  }
+
+  /**
+   * Client with fixed basic token authentication
+   *
+   * @param token The fixed token
+   * @return
+   */
+  def withFixedBasicTokenAuthentication(token: String): OnFhirNetworkClient = {
+    this.copy(interceptors = interceptors :+ new FixedBasicTokenInterceptor(token))
   }
 
   /**
