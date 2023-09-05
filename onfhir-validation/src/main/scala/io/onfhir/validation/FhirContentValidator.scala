@@ -612,8 +612,9 @@ class FhirContentValidator(
                 _.matches(cv.toJson, this) //Evaluate the restriction
                )
           ) ||
-          //Non existance restriction for the element
-          (result.isEmpty && m._2.length == 1 && m._2.head.isInstanceOf[CardinalityMaxRestriction] && m._2.head.asInstanceOf[CardinalityMaxRestriction].n == 0)
+          (result.isEmpty &&
+            (m._2.length == 1 && m._2.head.isInstanceOf[CardinalityMaxRestriction] && m._2.head.asInstanceOf[CardinalityMaxRestriction].n == 0 // non-existent restriction for the element
+            || !m._2.exists(r => r.isInstanceOf[CardinalityMinRestriction] && r.asInstanceOf[CardinalityMinRestriction].n != 0))) // optional restriction
     }
   }
 
