@@ -51,7 +51,8 @@ class ProfileValidationTest extends Specification {
     IOUtil.readModuleResource("/fhir/validation/profiles/MyList.StructureDefinition.json"),
     IOUtil.readModuleResource("/fhir/validation/profiles/MyList2.StructureDefinition.json"),
     IOUtil.readModuleResource("/fhir/validation/profiles/MyExtension.StructureDefinition.json"),
-    IOUtil.readModuleResource("/fhir/validation/profiles/MyExtension2.StructureDefinition.json")
+    IOUtil.readModuleResource("/fhir/validation/profiles/MyExtension2.StructureDefinition.json"),
+    IOUtil.readModuleResource("/fhir/validation/profiles/MyFamilyMemberHistory.StructureDefinition.json")
   ).map(sdParser.parseProfile)
 
 
@@ -379,6 +380,12 @@ class ProfileValidationTest extends Specification {
       issues.exists(i => i.expression.head == "entry[1].date" && i.severity == "error") mustEqual true
     }
 
+    "validate a valid resource with slicing with extension in discriminator path" in {
+      var familyMemberHistory = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/valid/family-member-history.json")).mkString).asInstanceOf[JObject]
+      val fhirContentValidator = FhirContentValidator(fhirConfig, "http://example.org/fhir/StructureDefinition/FamilyMemberHistory")
+      var issues = Await.result(fhirContentValidator.validateComplexContent(familyMemberHistory), 1 minutes)
+      issues.exists(_.severity == "error") mustEqual (false)
+    }
 
     "validate a valid resource with slicing with extension in discriminator path" in {
       var observation =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/list/mylist2-valid.json")).mkString).asInstanceOf[JObject]

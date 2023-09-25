@@ -1,0 +1,16 @@
+{
+  "resourceType": "FamilyMemberHistory",
+  "status": "completed",
+  "patient": {
+	"reference": "Patient/1"
+  },
+  "relationship": {
+	"coding": [
+	  {
+		"system": "http://snomed.info/sct",
+		"code": "34581001",
+		"display": "Niece"
+	  }
+	]
+  }
+}
