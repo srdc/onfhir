@@ -216,7 +216,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
    * @return
    */
   @FhirPathFunction(documentation = "Returns the display string in preferred language for the given code+system. Ex:trms:lookupDisplay('C12', 'http://hus.fi/CodeSystem/labResults', 'tr')",
-    insertText = "trms.lookupDisplay(<codeExpr>,<systemExpr>,<displayLanguageExpr>)",detail = "trms", label = "trms.lookupDisplay", kind = "Function", returnType = Seq("string"), inputType = Seq())
+    insertText = "trms:lookupDisplay(<codeExpr>,<systemExpr>,<displayLanguageExpr>)",detail = "trms", label = "trms:lookupDisplay", kind = "Function", returnType = Seq("string"), inputType = Seq())
   def lookupDisplay(codeExpr:ExpressionContext, systemExpr:ExpressionContext, displayLanguageExpr:ExpressionContext):Seq[FhirPathResult] = {
     val terminologyService = checkTerminologyService()
     val code = evaluateToSingleString(codeExpr)
@@ -248,7 +248,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
    * @return
    */
   @FhirPathFunction(documentation = "Translates the given Coding or CodeableConcept according to the given conceptMap. Ex:trms:translateToCoding(Observation.code.coding.where(system='http://loinc.org').first(), 'https://www.ncbi.nlm.nih.gov/clinvar')",
-    insertText = "trms.translateToCoding(<codingExpr>,<conceptMapUrlExpr>)",detail = "trms", label = "trms.translateToCoding", kind = "Function", returnType = Seq(), inputType = Seq())
+    insertText = "trms:translateToCoding(<codingExpr>,<conceptMapUrlExpr>)",detail = "trms", label = "trms:translateToCoding", kind = "Function", returnType = Seq(), inputType = Seq())
   def translateToCoding(codingExpr:ExpressionContext, conceptMapUrlExpr:ExpressionContext):Seq[FhirPathResult] = {
     val terminologyService = checkTerminologyService()
     val codingResult = evaluateCodeExpr(codingExpr)
@@ -277,7 +277,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
    * @return                  Matching codes (in Coding data type)
    */
   @FhirPathFunction(documentation = "Translates the given code+system according to the given conceptMap. Ex:trms:translateToCoding(Observation.code.coding.where(system='http://loinc.org').first(), 'https://system', 'https://www.ncbi.nlm.nih.gov/clinvar')",
-    insertText = "trms.translateToCoding(<codingExpr>,<systemExpr>,<conceptMapUrlExpr>)",detail = "trms", label = "trms.translateToCoding", kind = "Function", returnType = Seq(), inputType = Seq())
+    insertText = "trms:translateToCoding(<codingExpr>,<systemExpr>,<conceptMapUrlExpr>)",detail = "trms", label = "trms:translateToCoding", kind = "Function", returnType = Seq(), inputType = Seq())
   def translateToCoding(codeExpr:ExpressionContext, systemExpr:ExpressionContext, conceptMapUrlExpr:ExpressionContext):Seq[FhirPathResult] = {
     val terminologyService = checkTerminologyService()
     val conceptMapUrl = evaluateToSingleString(conceptMapUrlExpr)
@@ -309,7 +309,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
    * @return
    */
   @FhirPathFunction(documentation = "Translates the given code+system according to the given source value set and optional target value set. Ex:trms:translateToCoding(Observation.code.coding.where(system='http://loinc.org').first(), 'https://system','https://sourceValue','https://targetValue')",
-    insertText = "trms.translateToCoding(<codingExpr>,<systemExpr>,<sourceValueSetUrlExpr>,<targetValueSetUrlExpr>)",detail = "trms", label = "trms.translateToCoding", kind = "Function", returnType = Seq(), inputType = Seq())
+    insertText = "trms:translateToCoding(<codingExpr>,<systemExpr>,<sourceValueSetUrlExpr>,<targetValueSetUrlExpr>)",detail = "trms", label = "trms:translateToCoding", kind = "Function", returnType = Seq(), inputType = Seq())
   def translateToCoding( codeExpr:ExpressionContext,
                          systemExpr:ExpressionContext,
                          sourceValueSetUrlExpr:ExpressionContext,

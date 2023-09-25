@@ -9,6 +9,8 @@ import java.time.temporal.{ChronoUnit, Temporal}
 import java.time._
 import java.util.UUID
 import io.onfhir.path.annotation.FhirPathFunction
+import io.onfhir.util.JsonFormatter.formats
+
 import scala.util.Try
 
 
@@ -629,19 +631,19 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * Get a period between the FHIR date time given in current and  FHIR date time given in first expression
    *
    * @param toDate Given date expression
-   * @param period Period requested to calculate; either 'years','months','weeks','days'
+   * @param period Period requested to calculate; either 'years','months','weeks','days','hours' or 'minutes'
    * @return
    */
   @FhirPathFunction(documentation = "Returns a period between the FHIR date time given in current and  FHIR date time given in first expression. Ex: effectivePeriod.utl:getPeriod(start, @2020-09-07T10:00:00Z, 'years')",
     insertText = "utl:getPeriod(<fromDate>, <toDate>, <period>)",detail = "utl", label = "utl:getPeriod", kind = "Method", returnType = Seq("number"), inputType = Seq("dateTime"))
   def getPeriod(fromDate: ExpressionContext, toDate: ExpressionContext, period: ExpressionContext): Seq[FhirPathResult] = {
-    val fdate: Option[Temporal] = new FhirPathExpressionEvaluator(context, current).visit(fromDate) match {
+    var fdate: Option[Temporal] = new FhirPathExpressionEvaluator(context, current).visit(fromDate) match {
       case Seq(FhirPathDateTime(dt)) => Some(dt)
       case Nil => None
       case _ => throw new FhirPathException(s"Invalid function call 'getPeriod', first expression ${fromDate.getText} does not evaluate to a single FHIR date time!")
     }
 
-    val tdate: Option[Temporal] = new FhirPathExpressionEvaluator(context, current).visit(toDate) match {
+    var tdate: Option[Temporal] = new FhirPathExpressionEvaluator(context, current).visit(toDate) match {
       case Seq(FhirPathDateTime(dt)) => Some(dt)
       case Nil => None
       case _ => throw new FhirPathException(s"Invalid function call 'getPeriod', second expression ${toDate.getText} does not evaluate to a single FHIR date time!")
@@ -667,10 +669,30 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
         }
 
       try {
+        // Transform the input dates to LocalDateTime as the Java library does not allow to use
+        // shorter chrono periods for longer temporal periods while calculating the difference between them e.g. hour-based difference for years.
+        fdate = Some(transformToDateTimeIfApplicable(fdate.get))
+        tdate = Some(transformToDateTimeIfApplicable(tdate.get))
         Seq(FhirPathNumber(fdate.get.until(tdate.get, chronoPeriod)))
       } catch {
         case e: Throwable => throw FhirPathException.apply("Invalid function call 'getPeriod', both date time instances should be either with zone or not!", e)
       }
+    }
+  }
+
+  /**
+   * Transforms the given temporal value into date if the value's type is Year, YearMonth or LocalDate. Otherwise, the value is returned as is.
+   * First possible value is chosen for the missing attributes while constructing the date time value.
+   *
+   * @param value Value to be transformed.
+   * @return
+   */
+  private def transformToDateTimeIfApplicable(value: Temporal): Temporal = {
+    value match {
+      case v: Year => v.atMonth(1).atDay(1).atTime(0, 0)
+      case v: YearMonth => v.atDay(1).atTime(0, 0)
+      case v: LocalDate => v.atTime(0, 0)
+      case _ => value
     }
   }
 
