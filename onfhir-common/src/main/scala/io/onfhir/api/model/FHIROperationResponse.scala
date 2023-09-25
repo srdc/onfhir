@@ -125,7 +125,7 @@ object FHIROperationResponse {
     FHIRUtil.extractValueOption[JObject](parameter, "resource") match {
       case Some(r) => pname -> FHIROperationParam.createSimpleParam(r)
       case None =>
-        parameter.findField(_._1.startsWith("value")).map(_._2) match {
+        parameter.obj.find(_._1.startsWith("value")).map(_._2) match {
           case Some(v) => pname -> FHIROperationParam.createSimpleParam(v)
           case None =>
             val subparts = FHIRUtil.extractValue[Seq[JObject]](parameter, "part")
