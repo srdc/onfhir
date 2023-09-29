@@ -95,7 +95,11 @@ object FHIRResponseUnmarshaller {
     OutcomeIssue(
       severity = FHIRUtil.extractValue[String](outcomeIssue, "severity"),
       code = FHIRUtil.extractValue[String](outcomeIssue, "code"),
-      details = FHIRUtil.extractValueOptionByPath[Seq[String]](outcomeIssue, "details.coding.code").getOrElse(Nil).headOption,
+      details =
+        FHIRUtil
+          .extractValueOptionByPath[Seq[String]](outcomeIssue, "details.coding.code")
+          .orElse(FHIRUtil.extractValueOptionByPath[String](outcomeIssue, "details.text").map(Seq(_)))
+          .getOrElse(Nil).headOption,
       diagnostics = FHIRUtil.extractValueOption[String](outcomeIssue, "diagnostics"),
       expression =
         FHIRUtil.extractValueOption[Seq[String]](outcomeIssue, "expression")
