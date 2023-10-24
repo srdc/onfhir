@@ -78,24 +78,29 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
         }
       queryResultsFuture
         .flatMap(totalAndMatchedResources =>
-          //Handle _include and _revinclude params
-          (includeParams, revIncludeParams) match {
-            //No _include or _revinclude
-            case (Nil, Nil) => Future.apply(FHIRSearchResult(totalAndMatchedResources._1, totalAndMatchedResources._2, Seq.empty, totalAndMatchedResources._3, totalAndMatchedResources._4))
-            //Only _revinclude
-            case (Nil, _) =>
-              handleRevIncludes(rtype, totalAndMatchedResources._2, revIncludeParams)
-                .map(revIncludedResources => FHIRSearchResult(totalAndMatchedResources._1, totalAndMatchedResources._2, revIncludedResources, totalAndMatchedResources._3, totalAndMatchedResources._4))
-            //Only _include
-            case (_, Nil) =>
-              handleIncludes(rtype, totalAndMatchedResources._2, includeParams)
-                .map(includedResources => FHIRSearchResult(totalAndMatchedResources._1, totalAndMatchedResources._2, includedResources, totalAndMatchedResources._3, totalAndMatchedResources._4))
-            //Both
-            case (_, _) =>
-              for {
-                includedResources <- handleIncludes(rtype, totalAndMatchedResources._2, includeParams)
-                revIncludedResources <- handleRevIncludes(rtype, totalAndMatchedResources._2, revIncludeParams)
-              } yield FHIRSearchResult(totalAndMatchedResources._1, totalAndMatchedResources._2, includedResources ++ revIncludedResources, totalAndMatchedResources._3, totalAndMatchedResources._4)
+          if(totalAndMatchedResources._2.nonEmpty) {
+            //Handle _include and _revinclude params
+            (includeParams, revIncludeParams) match {
+              //No _include or _revinclude
+              case (Nil, Nil) => Future.apply(FHIRSearchResult(totalAndMatchedResources._1, totalAndMatchedResources._2, Seq.empty, totalAndMatchedResources._3, totalAndMatchedResources._4))
+              //Only _revinclude
+              case (Nil, _) =>
+                handleRevIncludes(rtype, totalAndMatchedResources._2, revIncludeParams)
+                  .map(revIncludedResources => FHIRSearchResult(totalAndMatchedResources._1, totalAndMatchedResources._2, revIncludedResources, totalAndMatchedResources._3, totalAndMatchedResources._4))
+              //Only _include
+              case (_, Nil) =>
+                handleIncludes(rtype, totalAndMatchedResources._2, includeParams)
+                  .map(includedResources => FHIRSearchResult(totalAndMatchedResources._1, totalAndMatchedResources._2, includedResources, totalAndMatchedResources._3, totalAndMatchedResources._4))
+              //Both
+              case (_, _) =>
+                for {
+                  includedResources <- handleIncludes(rtype, totalAndMatchedResources._2, includeParams)
+                  revIncludedResources <- handleRevIncludes(rtype, totalAndMatchedResources._2, revIncludeParams)
+                } yield FHIRSearchResult(totalAndMatchedResources._1, totalAndMatchedResources._2, includedResources ++ revIncludedResources, totalAndMatchedResources._3, totalAndMatchedResources._4)
+            }
+          } //No matched resources
+          else {
+            Future.apply(FHIRSearchResult(totalAndMatchedResources._1, Nil, Nil))
           }
         )
     }
