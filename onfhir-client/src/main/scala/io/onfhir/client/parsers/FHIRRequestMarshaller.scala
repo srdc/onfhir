@@ -125,7 +125,14 @@ object FHIRRequestMarshaller {
     val method = getHttpMethod(childRequest)
     var request = JObject(
       "method" -> JString(method.value),
-      "url" -> JString(getRequestUri(childRequest, fhirServerBaseUrl, method).toString().replace(fhirServerBaseUrl.toString(), ""))
+      "url" ->
+        JString(
+          getRequestUri(childRequest, fhirServerBaseUrl, method)
+            .toString()
+            .replace(
+              if(fhirServerBaseUrl.toString().endsWith("/")) fhirServerBaseUrl.toString() else fhirServerBaseUrl.toString() + "/",
+              "")
+        )
     )
     childRequest.ifMatch.foreach(im => request = request ~ ("ifMatch" -> JString(im.m.toString())))
     childRequest.ifModifiedSince.foreach(im => request = request ~ ("ifModifiedSince" -> JString(DateTimeUtil.serializeDateTime(im.date))))
