@@ -42,7 +42,7 @@ case class FHIRResponse(
   override def toString(): String = {
     s"***** FHIR Response ${xCorrelationId.map(i => s"($i)").getOrElse("")} *****\n" +
       s"Status: ${httpStatus.intValue()}\n" +
-      s"Body: ${responseBody.map(r => JsonFormatter.convertToJson(r).toPrettyJson)}\n" +
+      s"Body: ${responseBody.map(r => JsonFormatter.convertToJson(r).toPrettyJson)}"
   }
 }
 
