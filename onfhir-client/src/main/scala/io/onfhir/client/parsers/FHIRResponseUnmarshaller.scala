@@ -41,7 +41,7 @@ object FHIRResponseUnmarshaller {
         if (httpResponse.status.isFailure())
           FHIRResponse(
             httpStatus = httpResponse.status,
-            responseBody = None,
+            responseBody = rbody,
             location = getLocation(httpResponse),
             lastModified = getLastModified(httpResponse),
             newVersion = getNewVersion(httpResponse),
