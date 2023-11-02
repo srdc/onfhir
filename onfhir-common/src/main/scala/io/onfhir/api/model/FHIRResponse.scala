@@ -4,8 +4,9 @@ import akka.http.javadsl.model.headers.WWWAuthenticate
 import akka.http.scaladsl.model._
 import io.onfhir.api.Resource
 import io.onfhir.api._
+import io.onfhir.util.JsonFormatter
 import io.onfhir.util.JsonFormatter._
-import org.json4s.{Extraction}
+import org.json4s.Extraction
 
 /**
   * Object representing a HttpResponse for FHIR protocol
@@ -37,6 +38,12 @@ case class FHIRResponse(
    * @return
    */
   def isTransientError:Boolean = httpStatus.intValue() == 409
+
+  override def toString(): String = {
+    s"***** FHIR Response ${xCorrelationId.map(i => s"($i)").getOrElse("")} *****\n" +
+      s"Status: ${httpStatus.intValue()}\n" +
+      s"Body: ${responseBody.map(r => JsonFormatter.convertToJson(r).toPrettyJson)}\n" +
+  }
 }
 
 /**
