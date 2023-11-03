@@ -83,8 +83,9 @@ object FHIRRequestMarshaller {
       case FHIR_INTERACTIONS.SEARCH if method == HttpMethods.POST =>
         getQuery(fhirRequest.queryParams).map(FormData(_).toEntity)
       case opr if opr.startsWith("$") =>
-        val body = fhirRequest.resource.getOrElse(JObject())
-        Some(getEntityContent(body, ctype))
+        fhirRequest
+          .resource
+          .map(r => getEntityContent(r, ctype))
       case _ =>
         None
     }

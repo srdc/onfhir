@@ -105,8 +105,7 @@ class FHIRUpdateEndpointTest extends OnFhirTest with FHIREndpoint {
     }
     "reject update operation for invalid id" in{
       Put("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId + "+", HttpEntity(patientWithInvalidId)) ~> fhirRoute ~> check {
-        status === BadRequest
-        responseAs[String] must contain("Invalid identifier")
+        status === NotFound
       }
     }
 

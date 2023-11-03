@@ -2,7 +2,7 @@ package io.onfhir.api.endpoint
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import io.onfhir.api.{Resource, FHIR_HTTP_OPTIONS}
+import io.onfhir.api.{FHIR_HTTP_OPTIONS, RESOURCE_TYPE_REGEX, Resource}
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.api.service.FHIRCreateService
@@ -21,7 +21,7 @@ trait FHIRCreateEndpoint {
     */
   def createRoute(fhirRequest: FHIRRequest, authContext: (AuthContext, Option[AuthzContext])): Route = {
     post {
-      pathPrefix("""[A-Z][A-Za-z]*""".r) { _type =>
+      pathPrefix(RESOURCE_TYPE_REGEX) { _type =>
         pathEndOrSingleSlash {
           optionalHeaderValueByName(FHIR_HTTP_OPTIONS.IF_NONE_EXIST) { ifNoneExist => //for version-aware updates
             optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { prefer =>

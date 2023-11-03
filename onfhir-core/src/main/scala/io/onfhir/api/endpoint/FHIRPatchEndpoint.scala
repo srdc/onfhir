@@ -3,7 +3,7 @@ package io.onfhir.api.endpoint
 import akka.http.scaladsl.model.headers.`If-Match`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directives, Route}
-import io.onfhir.api.{FHIR_HTTP_OPTIONS, Resource}
+import io.onfhir.api.{FHIR_HTTP_OPTIONS, RESOURCE_ID_REGEX, RESOURCE_TYPE_REGEX, Resource}
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
@@ -27,7 +27,7 @@ trait FHIRPatchEndpoint {
       optionalHeaderValueByType(`If-Match`) { ifMatch => //for version-aware updates
         optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { prefer =>
           //Normal PATCH [base]/[type]/[id] {?_format=[mime-type]}
-          pathPrefix(Segment / Segment) { (_type, _id) =>
+          pathPrefix(RESOURCE_TYPE_REGEX / RESOURCE_ID_REGEX) { (_type, _id) =>
             pathEndOrSingleSlash {
               //Create the FHIR request object
               fhirRequest.initializePatchRequest(_type, Some(_id), ifMatch, prefer)
@@ -43,7 +43,7 @@ trait FHIRPatchEndpoint {
             }
           } ~
             //PATCH [base]/[type]/?[search parameters]
-            pathPrefix(Segment) { _type =>
+            pathPrefix(RESOURCE_TYPE_REGEX) { _type =>
               pathEndOrSingleSlash {
                 //Create the FHIR request object
                 fhirRequest.initializePatchRequest(_type, None, ifMatch, prefer)

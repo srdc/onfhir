@@ -3,7 +3,7 @@ package io.onfhir.api.endpoint
 import akka.http.scaladsl.model.headers.{`If-Modified-Since`, `If-None-Match`}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-import io.onfhir.api.{FHIR_HTTP_OPTIONS, FHIR_SEARCH_RESULT_PARAMETERS}
+import io.onfhir.api.{FHIR_HTTP_OPTIONS, FHIR_SEARCH_RESULT_PARAMETERS, RESOURCE_ID_REGEX, RESOURCE_TYPE_REGEX}
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.api.service.FHIRReadService
@@ -33,7 +33,7 @@ trait FHIRReadEndpoint {
         }
       } ~
         //GET [base]/[type]/[id] {?_format=[mime-type]}
-        pathPrefix(Segment / Segment) { (_type, _id) =>
+        pathPrefix(RESOURCE_TYPE_REGEX / RESOURCE_ID_REGEX) { (_type, _id) =>
           pathEndOrSingleSlash {
             parameters(FHIR_SEARCH_RESULT_PARAMETERS.SUMMARY.?) { summary =>
               parameters(FHIR_SEARCH_RESULT_PARAMETERS.ELEMENTS.?) { elements =>
@@ -55,7 +55,7 @@ trait FHIRReadEndpoint {
           }
         } ~
         //GET [base]/[type]/[id]/_history/[vid] {?_format=[mime-type]}
-        pathPrefix(Segment / Segment / FHIR_HTTP_OPTIONS.HISTORY / Segment) { (_type, _id, _vid) =>
+        pathPrefix(RESOURCE_TYPE_REGEX / RESOURCE_ID_REGEX / FHIR_HTTP_OPTIONS.HISTORY / Segment) { (_type, _id, _vid) =>
           pathEndOrSingleSlash {
             //Create the FHIR request object
             fhirRequest.initializeVReadRequest(_type, _id, _vid)

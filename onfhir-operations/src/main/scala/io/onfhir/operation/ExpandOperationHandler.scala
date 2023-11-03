@@ -76,16 +76,16 @@ class ExpandOperationHandler(fhirConfigurationManager:IFhirConfigurationManager)
     fhirConfigurationManager.resourceManager
       .queryResources(RESOURCE_VALUESET, searchParams, count = 1, excludeExtraFields = true).map {
       case (0, _) =>
-        logger.debug("resource not found, return 404 NotFound...")
+        logger.debug("ValueSet not found, return 404 NotFound...")
         throw new NotFoundException(Seq(
           OutcomeIssue(
             FHIRResponse.SEVERITY_CODES.INFORMATION,
             FHIRResponse.OUTCOME_CODES.INFORMATIONAL,
             None,
             if (queryParams.contains(SEARCHPARAM_ID))
-              Some(s"Resource with type '${RESOURCE_VALUESET}', id '${queryParams.apply(SEARCHPARAM_ID).head}' not found...")
+              Some(s"${RESOURCE_VALUESET} with id '${queryParams.apply(SEARCHPARAM_ID).head}' not found...")
             else
-              Some(s"Resource with type '${RESOURCE_VALUESET}' not found...")
+              Some(s"${RESOURCE_VALUESET} with given search parameters not found...")
             ,
             Nil
           )

@@ -2,7 +2,7 @@ package io.onfhir.api.endpoint
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directives, Route}
-import io.onfhir.api.FHIR_HTTP_OPTIONS
+import io.onfhir.api.{FHIR_HTTP_OPTIONS, RESOURCE_ID_REGEX, RESOURCE_TYPE_REGEX}
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.api.service.FHIRDeleteService
@@ -22,7 +22,7 @@ trait FHIRDeleteEndpoint {
   def deleteRoute(fhirRequest: FHIRRequest, authContext:(AuthContext, Option[AuthzContext])):Route  = {
     delete {
       //DELETE [base]/[type]/[id]
-      pathPrefix(Segment / Segment) { (_type, _id) =>
+      pathPrefix(RESOURCE_TYPE_REGEX / RESOURCE_ID_REGEX) { (_type, _id) =>
         pathEndOrSingleSlash {
           //Create the FHIR request object
           fhirRequest.initializeDeleteRequest(_type, Some(_id))
@@ -36,7 +36,7 @@ trait FHIRDeleteEndpoint {
         }
       } ~
         // Conditional Delete [base]/[type]?{search-params}
-        pathPrefix(Segment) { _type =>
+        pathPrefix(RESOURCE_TYPE_REGEX) { _type =>
           pathEndOrSingleSlash {
             optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { prefer =>
               //Create the FHIR request object

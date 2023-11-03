@@ -52,8 +52,7 @@ class FHIRDeleteEndpointTest extends OnFhirTest with FHIREndpoint {
     }
     "reject delete operation for invalid id" in {
       Delete("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId + "+") ~> fhirRoute ~> check {
-        status === BadRequest
-        responseAs[String] must contain("Invalid identifier")
+        status === NotFound
       }
     }
 

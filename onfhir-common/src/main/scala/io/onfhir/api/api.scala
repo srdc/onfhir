@@ -6,6 +6,7 @@ import io.onfhir.config.OnfhirConfig
 import org.json4s.JsonAST.JObject
 
 import scala.collection.immutable._
+import scala.util.matching.Regex
 
 /**
   * FHIR related constants and important value sets used in the implementation
@@ -18,6 +19,12 @@ package object api {
   type Resource = JObject
 
   val ONFHIR_CODE_SYSTEM = "http://onfhir.io"
+
+  /**
+   * Regular expression for resource type and resource id
+   */
+  val RESOURCE_TYPE_REGEX = """[A-Z][A-Za-z]*""".r
+  val RESOURCE_ID_REGEX =  """\A[A-Za-z0-9\-\.]{1,64}$""".r
 
   /**
     * Default FHIR Version

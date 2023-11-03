@@ -164,12 +164,10 @@ class FHIRReadEndpointTest extends OnFhirTest with FHIREndpoint {
 
     "reject read operation for invalid id" in {
       Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId + "+") ~> fhirRoute ~> check {
-        status === BadRequest
-        responseAs[String] must contain("Invalid identifier")
+        status === NotFound
       }
       Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId + "/_history/3+") ~> fhirRoute ~> check {
         status === BadRequest
-        responseAs[String] must contain("Invalid identifier")
       }
     }
 

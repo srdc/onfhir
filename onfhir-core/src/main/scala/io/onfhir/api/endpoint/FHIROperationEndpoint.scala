@@ -2,7 +2,7 @@ package io.onfhir.api.endpoint
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directive0, Route}
-import io.onfhir.api.Resource
+import io.onfhir.api.{RESOURCE_TYPE_REGEX, Resource}
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.api.service.FHIROperationHandler
@@ -45,7 +45,7 @@ trait FHIROperationEndpoint {
             //If the operation is defined for all Resources
             if (operationConf.resources.contains("Resource")) {
               operationMethod {
-                pathPrefix(Segment / ("$" + operationConf.name)) { resourceType =>
+                pathPrefix(RESOURCE_TYPE_REGEX / ("$" + operationConf.name)) { resourceType =>
                   finalizingRoute(fhirRequest, authContext, operationConf, Some(resourceType))
                 }
               }
@@ -68,7 +68,7 @@ trait FHIROperationEndpoint {
           case "instance" =>
             if (operationConf.resources.isEmpty || operationConf.resources.contains("Resource")) {
               operationMethod {
-                pathPrefix(Segment / Segment / ("$" + operationConf.name)) { (resourceType, resourceId) =>
+                pathPrefix(RESOURCE_TYPE_REGEX / Segment / ("$" + operationConf.name)) { (resourceType, resourceId) =>
                   finalizingRoute(fhirRequest, authContext, operationConf, Some(resourceType), Some(resourceId))
                 }
               }

@@ -2,7 +2,7 @@ package io.onfhir.api.endpoint
 
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directives, Route}
-import io.onfhir.api.{FHIR_HTTP_OPTIONS, FHIR_INTERACTIONS}
+import io.onfhir.api.{FHIR_HTTP_OPTIONS, FHIR_INTERACTIONS, RESOURCE_ID_REGEX, RESOURCE_TYPE_REGEX}
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
@@ -24,7 +24,7 @@ trait FHIRHistoryEndpoint {
   def historyRoute(fhirRequest: FHIRRequest, authContext:(AuthContext, Option[AuthzContext])):Route = {
     (get | head) {
         //GET [base]/[type]/[id]/_history {?[parameters]&_format=[mime-type]}
-        pathPrefix(Segment / Segment / FHIR_HTTP_OPTIONS.HISTORY) { (_type, _id) =>
+        pathPrefix(RESOURCE_TYPE_REGEX / RESOURCE_ID_REGEX / FHIR_HTTP_OPTIONS.HISTORY) { (_type, _id) =>
           pathEndOrSingleSlash {
             //Create the FHIR request object
             fhirRequest.initializeHistoryRequest(FHIR_INTERACTIONS.HISTORY_INSTANCE, Some(_type), Some(_id))
@@ -42,7 +42,7 @@ trait FHIRHistoryEndpoint {
           }
         } ~
           //GET [base]/[type]/_history {?[parameters]&_format=[mime-type]}
-          pathPrefix(Segment / FHIR_HTTP_OPTIONS.HISTORY) { _type =>
+          pathPrefix(RESOURCE_TYPE_REGEX / FHIR_HTTP_OPTIONS.HISTORY) { _type =>
             pathEndOrSingleSlash {
               //Create the FHIR request object
               fhirRequest.initializeHistoryRequest(FHIR_INTERACTIONS.HISTORY_TYPE, Some(_type), None)

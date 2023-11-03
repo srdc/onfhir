@@ -2,7 +2,7 @@ package io.onfhir.api.endpoint
 
 import akka.http.scaladsl.server.Directives
 import akka.http.scaladsl.server.Directives._
-import io.onfhir.api.FHIR_HTTP_OPTIONS
+import io.onfhir.api.{FHIR_HTTP_OPTIONS, RESOURCE_ID_REGEX, RESOURCE_TYPE_REGEX}
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
@@ -29,7 +29,7 @@ trait FHIRCompartmentSearchEndpoint {
   def compartmentSearchRoute(fhirRequest: FHIRRequest, authContext:(AuthContext, Option[AuthzContext])) =
     (get | head) {
       //GET [base][/CompartmentType]/[CompartmentId]/[ResourceType]{?[parameters]{&_format=[mime-type]}} =>
-      pathPrefix(Segment / Segment / """^([A-Za-z0-9\-\.]+|\*)$""".r) { (compartmentName, compartmentId, _type) =>
+      pathPrefix(RESOURCE_TYPE_REGEX / RESOURCE_ID_REGEX / RESOURCE_TYPE_REGEX) { (compartmentName, compartmentId, _type) =>
         pathEndOrSingleSlash {
           optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { prefer =>
             //Create the FHIR request object
@@ -50,7 +50,7 @@ trait FHIRCompartmentSearchEndpoint {
       }
     } ~ post {
       //POST [base]/[CompartmentType]/[CompartmentId]/[ResourceType]/_search{?[parameters]{&_format=[mime-type]}} => power2dm.compartment Search(link problem with type)
-      pathPrefix(OnfhirConfig.baseUri / Segment / Segment / Segment / FHIR_HTTP_OPTIONS.SEARCH) { (compartmentName, compartmentId, _type) =>
+      pathPrefix(OnfhirConfig.baseUri / RESOURCE_TYPE_REGEX / RESOURCE_ID_REGEX / RESOURCE_TYPE_REGEX / FHIR_HTTP_OPTIONS.SEARCH) { (compartmentName, compartmentId, _type) =>
         pathEndOrSingleSlash {
           optionalHeaderValueByName(FHIR_HTTP_OPTIONS.PREFER) { prefer =>
             //Create the FHIR request object

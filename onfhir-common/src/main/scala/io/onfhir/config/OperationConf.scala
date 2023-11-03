@@ -25,7 +25,7 @@ case class OperationConf(url:String,
                          inputParamsProfile:Option[String] = None,
                          affectsState:Boolean = false
                         ) extends InternalEntity {
-  //If HTTP Get is allowed for operation; if it does not affect state of resources and all input parameters are primitive
-  def isHttpGetAllowed() = !affectsState && inputParams.forall(ip => ip.pType.isDefined &&  ip.pType.get.head.isLower)
+  //If HTTP Get is allowed for operation; if it does not affect state of resources and all required input parameters are primitive
+  def isHttpGetAllowed() = !affectsState && inputParams.filter(_.min > 0).forall(ip => ip.pType.isDefined &&  ip.pType.get.head.isLower)
 
 }
