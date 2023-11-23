@@ -371,6 +371,8 @@ object InMemoryPrefixModifierHandler {
         actualValue.extract[String].startsWith(parentUri)
       case FHIR_PREFIXES_MODIFIERS.BELOW =>
         actualValue.extract[String].startsWith(expectedUri)
+      case FHIR_PREFIXES_MODIFIERS.NOT =>
+        actualValue.extract[String] != expectedUri
       case "" =>
         actualValue.extract[String].equals(expectedUri)
     }
