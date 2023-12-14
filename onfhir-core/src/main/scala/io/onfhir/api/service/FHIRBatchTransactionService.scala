@@ -36,6 +36,8 @@ class FHIRBatchTransactionService extends FHIRInteractionService {
         FHIRApiValidator.validateResourceTypeMatching(fhirRequest.resource.get, FHIR_BUNDLE_TYPES.BUNDLE)
       // Validate interaction
       FHIRApiValidator.validateSystemLevelInteraction(fhirRequest.interaction)
+      //Validate resource identity overlapping
+      FHIRApiValidator.validateResourceIdentityOverlapping(fhirRequest)
     }
   }
 
