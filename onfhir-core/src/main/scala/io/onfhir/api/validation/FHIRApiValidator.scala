@@ -230,6 +230,28 @@ object FHIRApiValidator {
       ))
   }
 
+  /**
+   * Checks if the following constraint is satisfied; A resource can only appear in a batch/transaction once (by identity) within the update/patch/delete requests."
+   * @param batchOrTransactionRequest Batch or transaction request
+   */
+  def validateResourceIdentityOverlapping(batchOrTransactionRequest:FHIRRequest) = {
+    //Validate if resource is referred only once within transaction/batch for update/delete/patch
+    val resourcesToBeChanged =
+      batchOrTransactionRequest
+        .childRequests
+        .filter(rq => rq.resourceId.isDefined && Seq(FHIR_INTERACTIONS.UPDATE, FHIR_INTERACTIONS.DELETE, FHIR_INTERACTIONS.PATCH).contains(rq.interaction))
+        .map(rq => rq.resourceType.get + "/" + rq.resourceId.get)
+    val resourcesReferredMultipleTimes = resourcesToBeChanged.groupBy(identity).filter(_._2.length > 1).keys.toSeq
+    if (resourcesReferredMultipleTimes.nonEmpty)
+      throw new BadRequestException(Seq(OutcomeIssue(
+        FHIRResponse.SEVERITY_CODES.ERROR,
+        FHIRResponse.OUTCOME_CODES.INVALID,
+        None,
+        Some(s"Resource identity overlapping! Resources ${resourcesReferredMultipleTimes.mkString(", ")} are referred multiple times within update/patch/delete requests. Batch/transaction can not be performed ..."),
+        Nil
+      )))
+  }
+
 
   /**
     * Validate if the FHIR operation is allowed on ResourceType by the Conformance statement
