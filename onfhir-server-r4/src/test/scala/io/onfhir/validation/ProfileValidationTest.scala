@@ -4,7 +4,7 @@ import io.onfhir.api.{DEFAULT_IMPLEMENTED_FHIR_OPERATIONS, DEFAULT_RESOURCE_PATH
 import io.onfhir.api.model.{FhirLiteralReference, FhirReference}
 import io.onfhir.api.util.IOUtil
 import io.onfhir.api.validation.IReferenceResolver
-import io.onfhir.config.{FhirServerConfig, FhirConfigurationManager, OnfhirConfig, ResourceConf}
+import io.onfhir.config.{FhirConfigurationManager, FhirServerConfig, OnfhirConfig, ResourceConf}
 import io.onfhir.r4.config.FhirR4Configurator
 import io.onfhir.r4.parsers.StructureDefinitionParser
 import org.json4s.JsonAST.JObject
@@ -51,7 +51,11 @@ class ProfileValidationTest extends Specification {
     IOUtil.readModuleResource("/fhir/validation/profiles/MyList.StructureDefinition.json"),
     IOUtil.readModuleResource("/fhir/validation/profiles/MyList2.StructureDefinition.json"),
     IOUtil.readModuleResource("/fhir/validation/profiles/MyExtension.StructureDefinition.json"),
-    IOUtil.readModuleResource("/fhir/validation/profiles/MyExtension2.StructureDefinition.json")
+    IOUtil.readModuleResource("/fhir/validation/profiles/MyExtension2.StructureDefinition.json"),
+    IOUtil.readModuleResource("/fhir/validation/profiles/MyFamilyMemberHistory.StructureDefinition.json"),
+    IOUtil.readModuleResource("/fhir/validation/profiles/MyFamilyMemberHistoryRelationshipExtension1.StructureDefinition.json"),
+    IOUtil.readModuleResource("/fhir/validation/profiles/MyFamilyMemberHistoryRelationshipExtension2.StructureDefinition.json"),
+    IOUtil.readModuleResource("/fhir/validation/profiles/MyFamilyMemberHistoryRelationshipExtension3.StructureDefinition.json")
   ).map(sdParser.parseProfile)
 
 
@@ -402,6 +406,13 @@ class ProfileValidationTest extends Specification {
       var cptStatement = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/foundation/conformance-statement.json")).mkString).asInstanceOf[JObject]
       val fhirContentValidator = FhirContentValidator(fhirConfig, "http://hl7.org/fhir/StructureDefinition/CapabilityStatement")
       var issues = Await.result(fhirContentValidator.validateComplexContent(cptStatement), 1 minutes)
+      issues.exists(_.severity == "error") mustEqual(false)
+    }
+
+    "validate discriminator $this with child restrictions" in {
+      var fh =  JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/valid/familymemberhistory1.json")).mkString).asInstanceOf[JObject]
+      val fhirContentValidator = FhirContentValidator(fhirConfig, "https://www.medizininformatik-initiative.de/fhir/ext/modul-molgen/StructureDefinition/familienanamnese")
+      var issues = Await.result(fhirContentValidator.validateComplexContent(fh), 1 minutes)
       issues.exists(_.severity == "error") mustEqual(false)
     }
 

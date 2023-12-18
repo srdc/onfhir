@@ -108,7 +108,7 @@
         <surefire.plugin.version>2.19.1</surefire.plugin.version>
 
         <!-- dependency versions -->
-        <scala.version>2.13.8</scala.version>
+        <scala.version>2.13.12</scala.version>
         <scala.binary.version>2.13</scala.binary.version>
         <scala.pcombinators>1.1.2</scala.pcombinators>
         <akka-http.version>10.2.9</akka-http.version>
@@ -116,7 +116,7 @@
         <mongodb.scala.version>4.6.1</mongodb.scala.version>
         <mongo.embedded.version>3.2.4</mongo.embedded.version>
         <json4s.version>3.7.0-M11</json4s.version>
-        <logback.version>1.2.11</logback.version>
+        <logback.version>1.2.13</logback.version>
         <kafka.version>3.1.0</kafka.version>
         <config.version>1.4.2</config.version>
         <specs2.version>4.15.0</specs2.version>

@@ -1,0 +1,74 @@
+{
+  "resourceType": "StructureDefinition",
+  "id": "mii-ex-molgen-verwandtschaftsgrad",
+  "url": "https://www.medizininformatik-initiative.de/fhir/ext/modul-molgen/StructureDefinition/mii-ex-molgen-verwandtschaftsgrad",
+  "version": "1.0.0",
+  "name": "MII_EX_MolGen_Verwandtschaftsgrad",
+  "title": "MII EX Mol Gen Verwandtschaftsgrad",
+  "status": "active",
+  "publisher": "Medizininformatik Initiative",
+  "contact":  [
+    {
+      "telecom":  [
+        {
+          "system": "url",
+          "value": "https://www.medizininformatik-initiative.de"
+        }
+      ]
+    }
+  ],
+  "description": "Extension erlaubt die Angabe eines Verwandtschaftsgrades zwischen Patient und Familienangehörigen.",
+  "fhirVersion": "4.0.1",
+  "mapping":  [
+    {
+      "identity": "rim",
+      "uri": "http://hl7.org/v3",
+      "name": "RIM Mapping"
+    }
+  ],
+  "kind": "complex-type",
+  "abstract": false,
+  "context":  [
+    {
+      "type": "element",
+      "expression": "FamilyMemberHistory.relationship.coding"
+    }
+  ],
+  "type": "Extension",
+  "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Extension",
+  "derivation": "constraint",
+  "differential": {
+    "element":  [
+      {
+        "id": "Extension",
+        "path": "Extension",
+        "short": "MII EX Mol Gen Verwandtschaftsgrad",
+        "definition": "Extension erlaubt die Angabe eines Verwandtschaftsgrades zwischen Patient und Familienangehörigen."
+      },
+      {
+        "id": "Extension.extension",
+        "path": "Extension.extension",
+        "max": "0"
+      },
+      {
+        "id": "Extension.url",
+        "path": "Extension.url",
+        "fixedUri": "https://www.medizininformatik-initiative.de/fhir/ext/modul-molgen/StructureDefinition/mii-ex-molgen-verwandtschaftsgrad"
+      },
+      {
+        "id": "Extension.value[x]",
+        "path": "Extension.value[x]",
+        "min": 1,
+        "type":  [
+          {
+            "code": "Coding"
+          }
+        ],
+        "binding": {
+          "strength": "extensible",
+          "valueSet": "https://www.medizininformatik-initiative.de/fhir/ext/modul-molgen/ValueSet/mii-vs-molgen-verwandtschaftsgrad"
+        }
+      }
+    ]
+  }
+}

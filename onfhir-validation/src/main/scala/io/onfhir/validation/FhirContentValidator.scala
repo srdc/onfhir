@@ -562,31 +562,54 @@ class FhirContentValidator(
    * @return
    */
   private def evaluateMatcher(value: JValue, dataType: String, matchers: Map[String, Seq[FhirRestriction]]): Boolean = {
-    //The value should satisfy for each matcher
-    matchers.forall {
+    val matcherPaths = matchers.keys.toSeq
+    //If there is a hierarchy within the matchers (discriminator path shows a root element where other matchers are about sub elements of that element)
+    val rootMatcher = matchers.find(m => m._1 == "$this" || matcherPaths.forall(_.startsWith(m._1)))
+    val childMatchers = if(rootMatcher.isEmpty) matchers else matchers - rootMatcher.get._1
+    //Find that root matcher and evaluate it first, while evaluating child matchers according to its existence
+    rootMatcher match {
+      case Some(rm) => checkIfMatcherMatches(value, dataType, rm, childMatchers.toSeq)
+      //Otherwise evaluate all child matchers also checking if there are further descendant of that matcher
+      case None =>
+        childMatchers.forall(cm =>
+          checkIfMatcherMatches(value, dataType, cm,  childMatchers.filter(cmm => cm._1 != cmm._1 && cmm._1.startsWith(cm._1)).toSeq)
+        )
+    }
+  }
+
+  /**
+   * Checks if a slicing matcher is satisfied with given value
+   * @param value
+   * @param dataType
+   * @param matcher
+   * @param childMatchers
+   * @return
+   */
+  private def checkIfMatcherMatches(value: JValue, dataType: String, matcher:(String, Seq[FhirRestriction]), childMatchers:Seq[(String, Seq[FhirRestriction])]):Boolean = {
+    matcher match {
       //If a slicing over the type of current element, just check if type is correct
       case ("$this", Seq(TypeRestriction(dataTypes))) => dataTypes.map(_._1).contains(dataType)
       //A referenced Resource type restriction e.g. item.resolve() with Patient type
-      case (p, Seq(TypeRestriction(dataTypes))) if  p.endsWith("resolve()") && dataTypes.flatMap(_._2).isEmpty =>
+      case (p, Seq(TypeRestriction(dataTypes))) if p.endsWith("resolve()") && dataTypes.flatMap(_._2).isEmpty =>
         //Get the path to the Reference element
         var refPath = p.replace("resolve()", "")
-        if(refPath.endsWith("."))
+        if (refPath.endsWith("."))
           refPath = refPath.dropRight(1)
 
-        if(!value.isInstanceOf[JObject])
+        if (!value.isInstanceOf[JObject])
           false
         else
           refPath match {
             case "" =>
               Try(FHIRUtil.parseReference(value)).toOption match {
-                case Some(FhirLiteralReference(_ ,rtype, _, _)) =>
+                case Some(FhirLiteralReference(_, rtype, _, _)) =>
                   dataTypes.map(_._1).contains(rtype)
                 case _ =>
                   false
               }
             case p => FhirPathEvaluator().evaluate(p, value).exists {
               case FhirPathComplex(ref) => Try(FHIRUtil.parseReference(ref)).toOption match {
-                case Some(FhirLiteralReference(_ ,rtype, _, _)) =>
+                case Some(FhirLiteralReference(_, rtype, _, _)) =>
                   dataTypes.map(_._1).contains(rtype)
                 case _ =>
                   false
@@ -598,7 +621,7 @@ class FhirContentValidator(
       case m =>
         var matcherPath = m._1.replaceAll("\\[x\\]", "") //remove
         //TODO Better handle this part
-        if(!matcherPath.contains("extension(") && matcherPath.contains(":"))
+        if (!matcherPath.contains("extension(") && matcherPath.contains(":"))
           matcherPath =
             matcherPath
               .split('.')
@@ -606,15 +629,16 @@ class FhirContentValidator(
               .mkString(".")
 
         val result = FhirPathEvaluator(referenceResolver).evaluate(matcherPath, value) //Evaluate the Discriminator path
-        result.exists(cv => //A result should exist, which match the the given restriction
+        result
+          .exists(cv => //A result should exist, which match the the given restriction
             m._2
               .forall(
                 _.matches(cv.toJson, this) //Evaluate the restriction
-               )
-          ) ||
+              ) && //Child matchers should also match (matchers defined on child elements of root matcher)
+                childMatchers.forall(cm => checkIfMatcherMatches(value, dataType, cm, childMatchers.filter(cmm => cm._1 != cmm._1 && cmm._1.startsWith(cm._1))))
+        ) ||
           (result.isEmpty &&
-            (m._2.length == 1 && m._2.head.isInstanceOf[CardinalityMaxRestriction] && m._2.head.asInstanceOf[CardinalityMaxRestriction].n == 0 // non-existent restriction for the element
-            || !m._2.exists(r => r.isInstanceOf[CardinalityMinRestriction] && r.asInstanceOf[CardinalityMinRestriction].n != 0))) // optional restriction
+            (m._2.length == 1 && m._2.head.isInstanceOf[CardinalityMaxRestriction] && m._2.head.asInstanceOf[CardinalityMaxRestriction].n == 0)) // non-existent restriction for the element
     }
   }
 
@@ -674,7 +698,7 @@ class FhirContentValidator(
       val discriminatorRestrictions: Seq[Seq[(String, FhirRestriction)]] =
         disc._1 match {
           case "value" | "pattern" =>
-            //Handle extensions
+            //Handle slicing on extensions
             if(disc._2 == "url" && sliceRestriction.path.contains("extension")) {
               (sliceRestriction.restrictions.get(ConstraintKeys.DATATYPE) : @unchecked) match {
                 //If this is a restriction on resource profile that mentions an Extension profile, find the url of that extension profile
@@ -694,8 +718,10 @@ class FhirContentValidator(
                 .map(
                   _.map(
                     _.map(er => er._1 ->
-                      er._2.restrictions
-                        .view.filterKeys(k => k == ConstraintKeys.PATTERN || k == ConstraintKeys.BINDING || k == ConstraintKeys.MAX).values //These restrictions can be related with value or pattern
+                      er._2
+                        .restrictions
+                        .filter(k => k._1 == ConstraintKeys.PATTERN || k._1 == ConstraintKeys.BINDING || (k._1 == ConstraintKeys.MAX && k._2.asInstanceOf[CardinalityMaxRestriction].n == 0))
+                        .values //These restrictions can be related with value or pattern
                       )
                       .filter(_._2.nonEmpty)
                       .flatMap(er => er._2.toSeq.map(r => er._1 -> r))))
@@ -817,6 +843,7 @@ class FhirContentValidator(
       defPath match {
         case "$this" =>
           Left(Seq(Seq(defPath -> sliceRestriction)) ++ sliceSubElements)
+        //Ignore this as we handle extensions separately
         case "url" if sliceRestriction.path.contains("extension") =>  Left(Nil)
         case _ =>
           Left(

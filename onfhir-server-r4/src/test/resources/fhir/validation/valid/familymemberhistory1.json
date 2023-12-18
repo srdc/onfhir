@@ -1,0 +1,59 @@
+{
+  "resourceType": "FamilyMemberHistory",
+  "id": "fmh1",
+  "status": "completed",
+  "patient": {
+    "reference": "Patient/example",
+    "display": "Peter Patient"
+  },
+  "date": "2011-03-18",
+  "relationship": {
+    "coding": [
+      {
+        "system": "http://snomed.info/sct",
+        "code": "66839005",
+        "display": "father"
+      },
+      {
+        "system": "http://terminology.hl7.org/CodeSystem/v3-RoleCode",
+        "code": "FTH",
+        "display": "father"
+      }
+    ]
+  },
+  "sex": {
+    "coding": [
+      {
+        "system": "http://hl7.org/fhir/administrative-gender",
+        "code": "male",
+        "display": "Male"
+      }
+    ]
+  },
+  "condition": [
+    {
+      "code": {
+        "coding": [
+          {
+            "system": "http://snomed.info/sct",
+            "code": "315619001",
+            "display": "Myocardial Infarction"
+          }
+        ],
+        "text": "Heart Attack"
+      },
+      "contributedToDeath": true,
+      "onsetAge": {
+        "value": 74,
+        "unit": "yr",
+        "system": "http://unitsofmeasure.org",
+        "code": "a"
+      },
+      "note": [
+        {
+          "text": "Was fishing at the time. At least he went doing someting he loved."
+        }
+      ]
+    }
+  ]
+}
