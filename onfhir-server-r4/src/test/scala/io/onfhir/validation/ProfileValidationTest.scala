@@ -55,7 +55,17 @@ class ProfileValidationTest extends Specification {
     IOUtil.readModuleResource("/fhir/validation/profiles/MyFamilyMemberHistory.StructureDefinition.json"),
     IOUtil.readModuleResource("/fhir/validation/profiles/MyFamilyMemberHistoryRelationshipExtension1.StructureDefinition.json"),
     IOUtil.readModuleResource("/fhir/validation/profiles/MyFamilyMemberHistoryRelationshipExtension2.StructureDefinition.json"),
-    IOUtil.readModuleResource("/fhir/validation/profiles/MyFamilyMemberHistoryRelationshipExtension3.StructureDefinition.json")
+    IOUtil.readModuleResource("/fhir/validation/profiles/MyFamilyMemberHistoryRelationshipExtension3.StructureDefinition.json"),
+    IOUtil.readModuleResource("/fhir/validation/profiles/StructureDefinition-us-core-observation-clinical-result.json"),
+    IOUtil.readModuleResource("/fhir/validation/profiles/StructureDefinition-us-core-observation-lab.json"),
+    IOUtil.readModuleResource("/fhir/validation/profiles/StructureDefinition-us-core-birthsex.json"),
+    IOUtil.readModuleResource("/fhir/validation/profiles/StructureDefinition-us-core-ethnicity.json"),
+    IOUtil.readModuleResource("/fhir/validation/profiles/StructureDefinition-us-core-genderIdentity.json"),
+    IOUtil.readModuleResource("/fhir/validation/profiles/StructureDefinition-us-core-patient.json"),
+    IOUtil.readModuleResource("/fhir/validation/profiles/StructureDefinition-us-core-race.json"),
+    IOUtil.readModuleResource("/fhir/validation/profiles/StructureDefinition-us-core-sex.json"),
+    IOUtil.readModuleResource("/fhir/validation/profiles/StructureDefinition-us-core-specimen.json"),
+    IOUtil.readModuleResource("/fhir/validation/profiles/StructureDefinition-us-core-tribal-affiliation.json")
   ).map(sdParser.parseProfile)
 
 
@@ -415,6 +425,22 @@ class ProfileValidationTest extends Specification {
       var issues = Await.result(fhirContentValidator.validateComplexContent(fh), 1 minutes)
       issues.exists(_.severity == "error") mustEqual(false)
     }
+
+    "validate extended slices" in {
+      val valid = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/valid/us-core-lab.json")).mkString).asInstanceOf[JObject]
+      val fhirContentValidator = FhirContentValidator(fhirConfig, "http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-lab")
+      var issues = Await.result(fhirContentValidator.validateComplexContent(valid), 1 minutes)
+      issues.exists(_.severity == "error") mustEqual (false)
+
+      val invalid = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/invalid/us-core-lab-invalid.json")).mkString).asInstanceOf[JObject]
+      issues = Await.result(fhirContentValidator.validateComplexContent(invalid), 1 minutes)
+      issues.exists(_.severity == "error") mustEqual (true)
+
+      val invalid2 = JsonMethods.parse(Source.fromInputStream(getClass.getResourceAsStream("/fhir/validation/invalid/us-core-lab-invalid2.json")).mkString).asInstanceOf[JObject]
+      issues = Await.result(fhirContentValidator.validateComplexContent(invalid2), 1 minutes)
+      issues.exists(_.severity == "error") mustEqual (true)
+    }
+
 
   }
 }

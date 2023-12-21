@@ -941,10 +941,34 @@ class FhirContentValidator(
    * @return
    */
   private def findSlices(fieldName: String, subElementRestrictions: Seq[Seq[(String, ElementRestrictions)]]): Seq[(String, ElementRestrictions)] = {
-    subElementRestrictions
-      .reverse //Order of slice definitions are important, so we start from the parent
-      .flatMap(rm => rm.filter(i => i._2.sliceName.isDefined && !i._1.contains('.'))) // Slice should be on this element not childs
-      .map(s => s._2.sliceName.get -> s._2)
+    val slices =
+      subElementRestrictions
+        .reverse //Order of slice definitions are important, so we start from the parent
+        .flatMap(rm => rm.filter(i => i._2.sliceName.isDefined && !i._1.contains('.'))) // Slice should be on this element not childs
+        .map(s => s._2.sliceName.get -> s._2)
+
+    //Merge slice definitions that are profiled in child profiles
+    slices.foldRight[Seq[(String, ElementRestrictions)]](Nil) {
+      case (s, Nil) => Seq(s)
+      case (s, acc) =>
+        acc.indexWhere(i => i._1 == s._1) match {
+          case -1 =>  s +: acc
+          case i =>
+            (s._1 -> mergeRestrictions(s._2, acc(i)._2)) +: (acc.slice(0, i) ++ acc.slice(i+1, acc.length))
+        }
+    }
+  }
+
+  //
+
+  /**
+   * Merge element restrictions where e1 prioritize (child profile)
+   * @param e1
+   * @param e2
+   * @return
+   */
+  private def mergeRestrictions(e1:ElementRestrictions, e2:ElementRestrictions):ElementRestrictions = {
+    e1.copy(restrictions = e2.restrictions ++ e1.restrictions)
   }
 
   /**

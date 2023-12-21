@@ -1,0 +1,93 @@
+{
+  "resourceType": "Observation",
+  "id": "35dad17da08a5e297cf93f686bd36e98",
+  "meta": {
+	"profile": [
+	  "http://hl7.org/fhir/us/core/StructureDefinition/us-core-observation-lab"
+	],
+	"source": "https://www.uk-koeln.de/medic/lab-csv"
+  },
+  "identifier": [
+	{
+	  "type": {
+		"coding": [
+		  {
+			"system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+			"code": "OBI",
+			"display": "Observation Instance Identifier"
+		  }
+		]
+	  },
+	  "system": "https://www.uk-koeln.de/medic/lab-csv/identifier",
+	  "value": "128947245-170320171357-CAKE",
+	  "assigner": {
+		"type": "Organisation",
+		"identifier": {
+		  "system": "https://www.medizininformatik-initiative.de/fhir/core/CodeSystem/core-location-identifier",
+		  "value": "UKK"
+		}
+	  }
+	}
+  ],
+  "basedOn": [
+	{
+	  "identifier": {
+		"system": "https://www.uk-koeln.de/medic/lab-csv/lab-order",
+		"value": "1649100783"
+	  }
+	}
+  ],
+  "status": "final",
+  "category": [
+	{
+	  "coding": [
+		{
+		  "system": "http://terminology.hl7.org/CodeSystem/observation-category",
+		  "code": "laboratory",
+		  "display": "Laboratory"
+		},
+		{
+		  "system": "http://loinc.org",
+		  "code": "26436-6",
+		  "display": "Laboratory studies"
+		}
+	  ],
+	  "text": "Laboratory"
+	}
+  ],
+  "code": {
+	"coding": [
+	  {
+		"system": "http://loinc.org",
+		"code": "18281-6",
+		"display": "Calcium (korr. Eiw)"
+	  },
+	  {
+		"system": "https://www.uk-koeln.de/medic/CodeSystem/swisslab",
+		"code": "CAKE",
+		"display": "Calcium (korr. Eiw)"
+	  }
+	]
+  },
+  "subject": {
+	"type": "Patient",
+	"identifier": {
+	  "system": "https://www.uk-koeln.de/medic/lab-csv/fhir/pids",
+	  "value": "1824934703"
+	}
+  },
+  "encounter": {
+	"type": "Encounter",
+	"identifier": {
+	  "system": "https://www.uk-koeln.de/medic/lab-csv/fhir/eids",
+	  "value": "128947245"
+	}
+  },
+  "effectiveDateTime": "2017-03-17T15:24:00+01:00",
+  "valueQuantity": {
+	"value": 2.44,
+	"unit": "mmol/l",
+	"system": "http://unitsofmeasure.org",
+	"code": "mmol/L"
+  }
+}
