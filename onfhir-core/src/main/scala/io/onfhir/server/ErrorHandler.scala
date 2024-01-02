@@ -16,7 +16,7 @@ object ErrorHandler {
     * Exception Handler object
     * @return
     */
-  implicit def fhirErrorHandler(fhirRequest:FHIRRequest) =
+  implicit def fhirErrorHandler(fhirRequest:FHIRRequest): ExceptionHandler =
     ExceptionHandler {
       case e:Throwable if fhirErrorHandlerToResponse.isDefinedAt(e) => Directives.complete{
         val response = fhirErrorHandlerToResponse(e)
@@ -113,7 +113,7 @@ object ErrorHandler {
       case ex: ConflictException => FHIRResponse.errorResponse(StatusCodes.Conflict, Seq(ex.outcomeIssue))
       case ex: NotModifiedException => FHIRResponse(StatusCodes.NotModified)
       case ex: NotImplementedException => FHIRResponse.errorResponse(StatusCodes.NotImplemented, ex.outcomeIssues)
-      case ex: UnprocessableEntityException => FHIRResponse.errorResponse(StatusCodes.UnprocessableEntity, ex.outcomeIssues)
+      case ex: UnprocessableEntityException => FHIRResponse.errorResponse(StatusCodes.UnprocessableContent, ex.outcomeIssues)
       case ex: BadRequestException =>
         FHIRResponse.errorResponse(StatusCodes.BadRequest, ex.outcomeIssues)
       case ex: NotFoundException => FHIRResponse.errorResponse(StatusCodes.NotFound, ex.outcomeIssues)

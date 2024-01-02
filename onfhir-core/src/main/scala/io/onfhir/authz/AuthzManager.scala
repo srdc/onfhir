@@ -1,19 +1,19 @@
 package io.onfhir.authz
 
 import akka.http.scaladsl.model.StatusCodes
+import akka.http.scaladsl.server.Directive0
 import akka.http.scaladsl.server.directives.FutureDirectives.onComplete
 import akka.http.scaladsl.server.directives.{BasicDirectives, RouteDirectives}
-import akka.http.scaladsl.server.Directive0
 import io.onfhir.Onfhir
-import io.onfhir.api.{FHIR_INTERACTIONS, FHIR_OPERATIONS, FHIR_PARAMETER_CATEGORIES}
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, Parameter}
-import io.onfhir.api.util.ResourceChecker
+import io.onfhir.api.util.{FHIRServerUtil, ResourceChecker}
+import io.onfhir.api.{FHIR_INTERACTIONS, FHIR_OPERATIONS, FHIR_PARAMETER_CATEGORIES}
 import io.onfhir.config.{IFhirConfigurationManager, OnfhirConfig}
 import io.onfhir.db.ResourceManager
 import io.onfhir.exception.{AuthorizationFailedException, AuthorizationFailedRejection}
 import org.slf4j.{Logger, LoggerFactory}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.Success
 
 /**
@@ -22,12 +22,12 @@ import scala.util.Success
   */
 class AuthzManager(fhirConfigurationManager: IFhirConfigurationManager) {
   //Execution context
-  implicit val executionContext = Onfhir.actorSystem.dispatcher
+  implicit val executionContext: ExecutionContextExecutor = Onfhir.actorSystem.dispatcher
   //Logger
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
   val resourceChecker = new ResourceChecker(fhirConfigurationManager.fhirConfig)
-  val fhirServerUtil = fhirConfigurationManager.fhirServerUtil
-  val resourceManager = fhirConfigurationManager.resourceManager
+  val fhirServerUtil: FHIRServerUtil = fhirConfigurationManager.fhirServerUtil
+  val resourceManager: ResourceManager = fhirConfigurationManager.resourceManager
   /**
     * Our authorization directive
     * @param authzContext Authorization context if any resolved

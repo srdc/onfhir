@@ -11,7 +11,7 @@ object Boot extends App {
   if (OnfhirConfig.mongoEmbedded) {
     // If it is configured to use an embedded Mongo instance
     val firstHostConfig = OnfhirConfig.mongodbHosts.head.split(':')
-    EmbeddedMongo.start(OnfhirConfig.serverName, firstHostConfig(0), firstHostConfig(1).toInt)
+    EmbeddedMongo.start(OnfhirConfig.serverName, firstHostConfig(0), firstHostConfig(1).toInt, withTemporaryDatabaseDir = false)
   }
 
   //Initialize onfhir for R4

@@ -17,7 +17,7 @@ import io.onfhir.util.JsonFormatter._
 import org.json4s.JsonDSL._
 import org.slf4j.{Logger, LoggerFactory}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.util.{Failure, Success}
 
@@ -27,7 +27,7 @@ import scala.util.{Failure, Success}
 class AuditManager(fhirConfigurationManager: IFhirConfigurationManager, customAuditHandler:Option[ICustomAuditHandler]) extends Actor {
   //Actor system
   implicit val actorSystem:ActorSystem = Onfhir.actorSystem
-  implicit val executionContext = context.dispatcher // actorSystem.dispatchers.lookup("akka.actor.onfhir-blocking-dispatcher")
+  implicit val executionContext: ExecutionContextExecutor = context.dispatcher // actorSystem.dispatchers.lookup("akka.actor.onfhir-blocking-dispatcher")
 
   //Logger for actor
   private val logger: Logger = LoggerFactory.getLogger("AuditManager")

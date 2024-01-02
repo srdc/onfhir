@@ -1,9 +1,5 @@
 package io.onfhir.api.endpoint
 
-import java.time.Instant
-import java.time.temporal.ChronoUnit
-import java.util.concurrent.TimeUnit
-
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.model.StatusCodes._
@@ -11,28 +7,28 @@ import akka.http.scaladsl.model.headers.{EntityTag, RawHeader, `If-Match`}
 import akka.http.scaladsl.testkit.RouteTestTimeout
 import io.onfhir.OnFhirTest
 import io.onfhir.api.Resource
+import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.config.{FhirConfigurationManager, OnfhirConfig}
-import io.onfhir.util.DateTimeUtil
+import io.onfhir.config.OnfhirConfig
+import org.json4s.JsonAST.JObject
 import org.junit.runner.RunWith
 import org.specs2.runner.JUnitRunner
-import io.onfhir.api.model.FHIRMarshallers._
-import org.json4s.JsonAST.JObject
 
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
 import scala.io.Source
 
 @RunWith(classOf[JUnitRunner])
 class FHIRUpdateEndpointTest extends OnFhirTest with FHIREndpoint {
-  def actorRefFactory = system
-  implicit def default(implicit system: ActorSystem) = RouteTestTimeout(new FiniteDuration(60, TimeUnit.SECONDS))
+  def actorRefFactory: ActorSystem = system
+  implicit def default(implicit system: ActorSystem): RouteTestTimeout = RouteTestTimeout(new FiniteDuration(60, TimeUnit.SECONDS))
 
-  val patient =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient.json")).mkString
-  val patientNotParsable = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-not-parsable.json")).mkString
-  val patientWithoutId = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-without-id.json")).mkString
-  val patientWithInvalidId = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-with-invalid-id.json")).mkString
+  val patient: String =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient.json")).mkString
+  val patientNotParsable: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-not-parsable.json")).mkString
+  val patientWithoutId: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-without-id.json")).mkString
+  val patientWithInvalidId: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-with-invalid-id.json")).mkString
 
-  val practitioner = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Practitioner/practitioner.json")).mkString
+  val practitioner: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Practitioner/practitioner.json")).mkString
 
   val resourceType = "Patient"
   val resourceId   = "example"

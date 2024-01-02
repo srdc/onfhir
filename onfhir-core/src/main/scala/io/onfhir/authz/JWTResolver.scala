@@ -1,7 +1,6 @@
 package io.onfhir.authz
 
 import java.text.ParseException
-
 import com.nimbusds.jose.JWSAlgorithm.Family
 import com.nimbusds.jose.jwk.source.{ImmutableSecret, RemoteJWKSet}
 import com.nimbusds.jose.proc.{BadJOSEException, JWSVerificationKeySelector, SecurityContext}
@@ -11,14 +10,14 @@ import io.onfhir.Onfhir
 import io.onfhir.config.AuthzConfig
 
 import scala.jdk.CollectionConverters._
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContextExecutor, Future}
 import scala.util.Try
 
 /**
   * Created by tuncay on 2/27/2017.
   */
 class JWTResolver(authzConfig:AuthzConfig) extends ITokenResolver {
-  implicit val executionContext = Onfhir.actorSystem.dispatcher
+  implicit val executionContext: ExecutionContextExecutor = Onfhir.actorSystem.dispatcher
   /**
     * Initialize JWT Processor on setup
     */

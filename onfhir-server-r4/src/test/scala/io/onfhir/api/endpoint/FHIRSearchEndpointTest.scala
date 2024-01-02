@@ -24,44 +24,44 @@ import scala.io.Source
 
 @RunWith(classOf[JUnitRunner])
 class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
-  def actorRefFactory = system
+  def actorRefFactory: ActorSystem = system
 
-  implicit def default(implicit system: ActorSystem) = RouteTestTimeout(new FiniteDuration(600, TimeUnit.SECONDS))
+  implicit def default(implicit system: ActorSystem): RouteTestTimeout = RouteTestTimeout(new FiniteDuration(600, TimeUnit.SECONDS))
 
-  val obsGlucose = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Observation/observation-glucose.json")).mkString
-  val obsHemoglobin = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Observation/observation-hemoglobin.json")).mkString
-  val obsHemoglobin2 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Observation/observation-hemoglobin2.json")).mkString
-  val obsCholesterol = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Observation/observation-cholesterol.json")).mkString
-  val obsBP = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Observation/observation-bp.json")).mkString
-  val obsBP2 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Observation/observation-bp2.json")).mkString
-  val obsEkg = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Observation/observation-ekg.json")).mkString
+  val obsGlucose: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Observation/observation-glucose.json")).mkString
+  val obsHemoglobin: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Observation/observation-hemoglobin.json")).mkString
+  val obsHemoglobin2: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Observation/observation-hemoglobin2.json")).mkString
+  val obsCholesterol: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Observation/observation-cholesterol.json")).mkString
+  val obsBP: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Observation/observation-bp.json")).mkString
+  val obsBP2: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Observation/observation-bp2.json")).mkString
+  val obsEkg: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Observation/observation-ekg.json")).mkString
 
-  val patient = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient.json")).mkString
-  val patient2 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-with-meta.json")).mkString
-  val patient3 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-without-id.json")).mkString
+  val patient: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient.json")).mkString
+  val patient2: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-with-meta.json")).mkString
+  val patient3: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-without-id.json")).mkString
 
-  val actdef = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/ActivityDefinition/activity-def.json")).mkString
-  val actdef2 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/ActivityDefinition/activity-def2.json")).mkString
+  val actdef: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/ActivityDefinition/activity-def.json")).mkString
+  val actdef2: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/ActivityDefinition/activity-def2.json")).mkString
 
-  val geneticRisk = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/RiskAssessment/genetic.json")).mkString
-  val cardiacRisk = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/RiskAssessment/cardiac.json")).mkString
-  val cardiacRisk2 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/RiskAssessment/cardiac2.json")).mkString
-  val cardiacRisk3 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/RiskAssessment/cardiac3.json")).mkString
-  val cardiacRisk4 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/RiskAssessment/cardiac4.json")).mkString
-  val breastCancerRisk = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/RiskAssessment/breastcancer.json")).mkString
-  val breastCancerRisk2 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/RiskAssessment/breastcancer2.json")).mkString
+  val geneticRisk: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/RiskAssessment/genetic.json")).mkString
+  val cardiacRisk: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/RiskAssessment/cardiac.json")).mkString
+  val cardiacRisk2: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/RiskAssessment/cardiac2.json")).mkString
+  val cardiacRisk3: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/RiskAssessment/cardiac3.json")).mkString
+  val cardiacRisk4: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/RiskAssessment/cardiac4.json")).mkString
+  val breastCancerRisk: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/RiskAssessment/breastcancer.json")).mkString
+  val breastCancerRisk2: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/RiskAssessment/breastcancer2.json")).mkString
 
-  val molseq = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/MolecularSequence/molecular-sequence.json")).mkString
+  val molseq: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/MolecularSequence/molecular-sequence.json")).mkString
 
-  val questionnaire =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Questionnaire/q.json")).mkString
-  val questionnaireResponse =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/QuestionnaireResponse/qr.json")).mkString
-  val questionnaireResponse2 =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/QuestionnaireResponse/qr2.json")).mkString
+  val questionnaire: String =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Questionnaire/q.json")).mkString
+  val questionnaireResponse: String =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/QuestionnaireResponse/qr.json")).mkString
+  val questionnaireResponse2: String =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/QuestionnaireResponse/qr2.json")).mkString
 
-  val patientLinked1 =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-linked1.json")).mkString
-  val patientLinked2 =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-linked2.json")).mkString
-  val patientLinked3 =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-linked3.json")).mkString
+  val patientLinked1: String =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-linked1.json")).mkString
+  val patientLinked2: String =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-linked2.json")).mkString
+  val patientLinked3: String =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-linked3.json")).mkString
 
-  val practitioner =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Practitioner/practitioner.json")).mkString
+  val practitioner: String =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Practitioner/practitioner.json")).mkString
 
 
   val resourceType = "Observation"

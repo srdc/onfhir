@@ -4,23 +4,23 @@ import akka.Done
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives.concat
-import org.slf4j.{Logger, LoggerFactory}
 import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.settings.ServerSettings
 import io.onfhir.api.endpoint.{FHIREndpoint, OnFhirInternalEndpoint}
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.audit.AuditManager
 import io.onfhir.authz._
-import io.onfhir.config.{FhirConfigurationManager, IFhirServerConfigurator, IFhirVersionConfigurator, OnfhirConfig, SSLConfig}
+import io.onfhir.config.{FhirConfigurationManager, IFhirServerConfigurator, OnfhirConfig, SSLConfig}
 import io.onfhir.db.{DBConflictManager, EmbeddedMongo}
-import io.onfhir.event.{FhirDataEvent, FhirEventBus, FhirEventSubscription}
 import io.onfhir.event.kafka.KafkaEventProducer
+import io.onfhir.event.{FhirDataEvent, FhirEventSubscription}
+import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.{Duration, FiniteDuration}
-import scala.concurrent.{Await, ExecutionContext, Future, Promise, blocking}
-import scala.util.{Failure, Success}
+import scala.concurrent._
 import scala.io.StdIn
+import scala.util.{Failure, Success}
 
 /**
   * Created by tuncay on 10/16/2017.
@@ -194,7 +194,7 @@ class Onfhir(
   */
 object Onfhir {
   //Base Akka Actor system for the whole system
-  implicit val actorSystem = ActorSystem("onfhir")
+  implicit val actorSystem: ActorSystem = ActorSystem("onfhir")
   //Singleton onfhir server instance
   private var _instance:Onfhir = null
 

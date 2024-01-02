@@ -1,7 +1,8 @@
 package io.onfhir.authz
 
-import java.util.Date
+import akka.dispatch.MessageDispatcher
 
+import java.util.Date
 import com.nimbusds.jose.jwk.RSAKey
 import com.nimbusds.oauth2.sdk._
 import com.nimbusds.oauth2.sdk.auth.{ClientAuthentication, ClientAuthenticationMethod, ClientSecretBasic, PrivateKeyJWT}
@@ -19,7 +20,7 @@ import scala.util.Try
   * Created by tuncay on 2/27/2017.
   */
 class ResolverWithTokenIntrospection(authzConfig:AuthzConfig) extends ITokenResolver{
-  implicit val executionContext = Onfhir.actorSystem.dispatchers.lookup("akka.actor.onfhir-blocking-dispatcher")
+  implicit val executionContext: MessageDispatcher = Onfhir.actorSystem.dispatchers.lookup("akka.actor.onfhir-blocking-dispatcher")
   protected val logger:Logger = LoggerFactory.getLogger(this.getClass)
 
   /**

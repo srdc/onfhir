@@ -19,11 +19,11 @@ import scala.language.postfixOps
 
 object OnFhirNetworkClientTest extends Specification {
   val baseUrl = "http://localhost:8080/fhir"
-  val patientWithoutId =  Source.fromInputStream(getClass.getResourceAsStream("/patient-without-id.json")).mkString.parseJson
-  val obsGlucose = Source.fromInputStream(getClass.getResourceAsStream("/observation-glucose.json")).mkString.parseJson
-  implicit val actorSystem = ActorSystem("OnFhirClientTest")
+  val patientWithoutId: Resource =  Source.fromInputStream(getClass.getResourceAsStream("/patient-without-id.json")).mkString.parseJson
+  val obsGlucose: Resource = Source.fromInputStream(getClass.getResourceAsStream("/observation-glucose.json")).mkString.parseJson
+  implicit val actorSystem: ActorSystem = ActorSystem("OnFhirClientTest")
   implicit val ec:ExecutionContext = ExecutionContext.global
-  val onFhirClient = OnFhirNetworkClient.apply(baseUrl)
+  val onFhirClient: OnFhirNetworkClient = OnFhirNetworkClient.apply(baseUrl)
   implicit val ee: ExecutionEnv = ExecutionEnv.fromGlobalExecutionContext
   var createdResource:Resource = _
   sequential

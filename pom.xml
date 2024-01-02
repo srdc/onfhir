@@ -10,7 +10,9 @@
     <version>3.2-SNAPSHOT</version>
 
     <name>OnFHIR Secure FHIR Repository</name>
-    <description>onFHIR is an HL7 FHIR compliant secure, high-performance and scalable health data repository that can be used as the central data service for HL7 FHIR compliant healthcare applications.</description>
+    <description>onFHIR is an HL7 FHIR compliant secure, high-performance and scalable health data repository that can
+        be used as the central data service for HL7 FHIR compliant healthcare applications.
+    </description>
     <url>https://onfhir.io</url>
 
     <licenses>
@@ -78,43 +80,26 @@
         <module>onfhir-r4</module>
     </modules>
 
-    <repositories>
-        <!--repository>
-            <id>maven-releases</id>
-            <url>http://nexus.srdc.com.tr/repository/maven-releases/</url>
-        </repository>
-        <repository>
-            <id>maven-snapshots</id>
-            <url>http://nexus.srdc.com.tr/repository/maven-snapshots/</url>
-        </repository-->
-        <repository>
-            <id>oss-snapshots</id>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-            <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
-        </repository>
-    </repositories>
-
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
 
         <!-- plugin versions -->
-        <scala.maven.plugin.version>4.5.6</scala.maven.plugin.version>
-        <jar.plugin.version>3.1.0</jar.plugin.version>
-        <maven-shade-plugin.version>3.2.4</maven-shade-plugin.version>
-        <surefire.plugin.version>2.19.1</surefire.plugin.version>
+        <scala.maven.plugin.version>4.8.1</scala.maven.plugin.version>
+        <jar.plugin.version>3.3.0</jar.plugin.version>
+        <maven-shade-plugin.version>3.5.0</maven-shade-plugin.version>
+        <surefire.plugin.version>3.1.2</surefire.plugin.version>
+        <maven-compiler.plugin.version>3.11.0</maven-compiler.plugin.version>
 
         <!-- dependency versions -->
         <scala.version>2.13.12</scala.version>
         <scala.binary.version>2.13</scala.binary.version>
-        <scala.pcombinators>1.1.2</scala.pcombinators>
-        <akka-http.version>10.2.9</akka-http.version>
-        <akka.version>2.6.18</akka.version>
-        <mongodb.scala.version>4.6.1</mongodb.scala.version>
-        <mongo.embedded.version>3.2.4</mongo.embedded.version>
+        <scala.pcombinators>2.3.0</scala.pcombinators>
+        <akka-http.version>10.5.0</akka-http.version>
+        <akka.version>2.8.0</akka.version>
+        <mongodb.scala.version>4.10.2</mongodb.scala.version>
+        <mongo.embedded.version>4.12.0</mongo.embedded.version>
         <json4s.version>3.7.0-M11</json4s.version>
         <logback.version>1.2.13</logback.version>
         <kafka.version>3.1.0</kafka.version>
@@ -200,7 +185,7 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.8.1</version>
+                    <version>${maven-compiler.plugin.version}</version>
                 </plugin>
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
@@ -577,13 +562,32 @@
         </dependencies>
 
     </dependencyManagement>
-    <dependencies>
-        <!-- Scala Language -->
-        <dependency>
-            <groupId>org.scala-lang</groupId>
-            <artifactId>scala-library</artifactId>
-        </dependency>
-    </dependencies>
+
+    <!--    <dependencies>-->
+    <!--        &lt;!&ndash; Scala Language &ndash;&gt;-->
+    <!--        <dependency>-->
+    <!--            <groupId>org.scala-lang</groupId>-->
+    <!--            <artifactId>scala-library</artifactId>-->
+    <!--        </dependency>-->
+    <!--    </dependencies>-->
+
+        <repositories>
+            <!--repository>
+                <id>maven-releases</id>
+                <url>http://nexus.srdc.com.tr/repository/maven-releases/</url>
+            </repository>
+            <repository>
+                <id>maven-snapshots</id>
+                <url>http://nexus.srdc.com.tr/repository/maven-snapshots/</url>
+            </repository-->
+            <repository>
+                <id>oss-snapshots</id>
+                <snapshots>
+                    <enabled>true</enabled>
+                </snapshots>
+                <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+            </repository>
+        </repositories>
 
     <distributionManagement>
         <snapshotRepository>
