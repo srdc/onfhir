@@ -6,8 +6,9 @@
 
     <groupId>io.onfhir</groupId>
     <artifactId>fhir-repository_2.13</artifactId>
+    <version>${revision}</version>
+
     <packaging>pom</packaging>
-    <version>3.2-SNAPSHOT</version>
 
     <name>OnFHIR Secure FHIR Repository</name>
     <description>onFHIR is an HL7 FHIR compliant secure, high-performance and scalable health data repository that can
@@ -85,6 +86,10 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
 
+        <!-- This is a special placeholder to manage the version from a single property throughout the parent and child modules. No other property name can be used. -->
+        <!-- https://maven.apache.org/maven-ci-friendly.html -->
+        <revision>3.3-SNAPSHOT</revision>
+
         <!-- plugin versions -->
         <scala.maven.plugin.version>4.8.1</scala.maven.plugin.version>
         <jar.plugin.version>3.3.0</jar.plugin.version>
@@ -100,20 +105,19 @@
         <akka.version>2.8.0</akka.version>
         <mongodb.scala.version>4.10.2</mongodb.scala.version>
         <mongo.embedded.version>4.12.0</mongo.embedded.version>
-        <json4s.version>3.7.0-M11</json4s.version>
-        <logback.version>1.2.13</logback.version>
-        <kafka.version>3.1.0</kafka.version>
+        <json4s.version>4.1.0-M3</json4s.version>
+        <logback.version>1.4.8</logback.version>
+        <kafka.version>3.5.1</kafka.version>
         <config.version>1.4.2</config.version>
-        <specs2.version>4.15.0</specs2.version>
-        <nimbus-jose.version>9.20</nimbus-jose.version>
-        <nimbus-oidc.version>9.27</nimbus-oidc.version>
+        <specs2.version>4.20.0</specs2.version>
+        <nimbus-jose.version>9.31</nimbus-jose.version>
+        <nimbus-oidc.version>10.13.2</nimbus-oidc.version>
         <apache-commons-lang.version>3.12.0</apache-commons-lang.version>
-        <apache-commons-io.version>2.11.0</apache-commons-io.version>
+        <apache-commons-io.version>2.13.0</apache-commons-io.version>
         <apache-commons-text.version>1.10.0</apache-commons-text.version>
 
         <!-- release plugin versions -->
         <version.plugin.source>3.2.1</version.plugin.source>
-        <version.plugin.javadoc>3.2.0</version.plugin.javadoc>
         <version.plugin.gpg>1.6</version.plugin.gpg>
         <version.plugin.nexus-staging>1.6.8</version.plugin.nexus-staging>
     </properties>
@@ -204,6 +208,26 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>1.5.0</version>
+                <configuration>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+
     </build>
 
     <profiles>
@@ -325,57 +349,57 @@
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-common_${scala.binary.version}</artifactId>
-                <version>3.2-SNAPSHOT</version>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-config_${scala.binary.version}</artifactId>
-                <version>3.2-SNAPSHOT</version>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-core_${scala.binary.version}</artifactId>
-                <version>3.2-SNAPSHOT</version>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-operations_${scala.binary.version}</artifactId>
-                <version>3.2-SNAPSHOT</version>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-kafka_${scala.binary.version}</artifactId>
-                <version>3.2-SNAPSHOT</version>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-r4_${scala.binary.version}</artifactId>
-                <version>3.2-SNAPSHOT</version>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-server-r4_${scala.binary.version}</artifactId>
-                <version>3.2-SNAPSHOT</version>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-server-stu3_${scala.binary.version}</artifactId>
-                <version>3.2-SNAPSHOT</version>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-path_${scala.binary.version}</artifactId>
-                <version>3.2-SNAPSHOT</version>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-validation_${scala.binary.version}</artifactId>
-                <version>3.2-SNAPSHOT</version>
+                <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.onfhir</groupId>
                 <artifactId>onfhir-client_${scala.binary.version}</artifactId>
-                <version>3.2-SNAPSHOT</version>
+                <version>${project.version}</version>
             </dependency>
             <!-- Akka HTTP Suite -->
             <dependency>
@@ -469,7 +493,7 @@
             <dependency>
                 <groupId>org.scala-lang.modules</groupId>
                 <artifactId>scala-xml_${scala.binary.version}</artifactId>
-                <version>2.0.0-M1</version>
+                <version>2.2.0</version>
             </dependency>
             <dependency>
                 <groupId>org.json4s</groupId>

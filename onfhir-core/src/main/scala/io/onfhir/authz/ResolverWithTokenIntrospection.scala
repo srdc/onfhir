@@ -17,18 +17,19 @@ import scala.concurrent.Future
 import scala.util.Try
 
 /**
-  * Created by tuncay on 2/27/2017.
-  */
-class ResolverWithTokenIntrospection(authzConfig:AuthzConfig) extends ITokenResolver{
+ * Created by tuncay on 2/27/2017.
+ */
+class ResolverWithTokenIntrospection(authzConfig: AuthzConfig) extends ITokenResolver {
   implicit val executionContext: MessageDispatcher = Onfhir.actorSystem.dispatchers.lookup("akka.actor.onfhir-blocking-dispatcher")
-  protected val logger:Logger = LoggerFactory.getLogger(this.getClass)
+  protected val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   /**
-    * Prepare Client Authentication according to configurations
-    * @return
-    */
-  private def prepareClientAuthentication():Option[ClientAuthentication] = {
-    authzConfig.protectedResourceInformation.getMetadata.getTokenEndpointAuthMethod  match {
+   * Prepare Client Authentication according to configurations
+   *
+   * @return
+   */
+  private def prepareClientAuthentication(): Option[ClientAuthentication] = {
+    authzConfig.protectedResourceInformation.getMetadata.getTokenEndpointAuthMethod match {
       case ClientAuthenticationMethod.CLIENT_SECRET_BASIC => Some(new ClientSecretBasic(authzConfig.protectedResourceInformation.getID, authzConfig.protectedResourceInformation.getSecret))
       case ClientAuthenticationMethod.PRIVATE_KEY_JWT =>
         Some(new PrivateKeyJWT(
@@ -37,6 +38,8 @@ class ResolverWithTokenIntrospection(authzConfig:AuthzConfig) extends ITokenReso
           authzConfig.protectedResourceInformation.getMetadata.getTokenEndpointAuthJWSAlg,
           authzConfig.protectedResourceJWKSet.getKeyByKeyId(authzConfig.protectedResourceCurrentSignerKeyId).asInstanceOf[RSAKey].toRSAPrivateKey,
           authzConfig.protectedResourceCurrentSignerKeyId,
+          null,
+          null,
           null
         ))
       case ClientAuthenticationMethod.NONE => None
@@ -44,12 +47,13 @@ class ResolverWithTokenIntrospection(authzConfig:AuthzConfig) extends ITokenReso
   }
 
   /**
-    * Call the OAuth2 Token Introspection endpoint of the configured Authorization Server and validate the access token and extract the Authorization context
-    * @param accessToken Bearer access token
-    * @param furtherParams Name of further parameters outside the scope of OAuth2 standard
-    * @return
-    */
-  override def resolveToken(accessToken: String, furtherParams:List[String] = Nil): Future[AuthzContext] = {
+   * Call the OAuth2 Token Introspection endpoint of the configured Authorization Server and validate the access token and extract the Authorization context
+   *
+   * @param accessToken   Bearer access token
+   * @param furtherParams Name of further parameters outside the scope of OAuth2 standard
+   * @return
+   */
+  override def resolveToken(accessToken: String, furtherParams: List[String] = Nil): Future[AuthzContext] = {
     Future.apply {
       //Prepare Token Introspection request based on client authentication method preferred
       val introspectionRequest = prepareClientAuthentication() match {
@@ -67,7 +71,7 @@ class ResolverWithTokenIntrospection(authzConfig:AuthzConfig) extends ITokenReso
           //Check if the token is valid
           if (
             Try(s.isActive).getOrElse(false) &&
-            Try(s.getNotBeforeTime.getTime < new Date().getTime).getOrElse(true) && //Check if the client use the token before nbt (not before time), if there is no nbt it is ok
+              Try(s.getNotBeforeTime.getTime < new Date().getTime).getOrElse(true) && //Check if the client use the token before nbt (not before time), if there is no nbt it is ok
               Try(s.getExpirationTime.getTime > new Date().getTime).getOrElse(true)) {
             //Check if it is not expired
             val paramObject = s.toJSONObject
