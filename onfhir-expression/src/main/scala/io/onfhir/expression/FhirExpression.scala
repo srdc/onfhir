@@ -7,13 +7,15 @@ import org.json4s.JValue
  *
  * @param name       Name of the expression
  * @param language   Language of expression e.g. text/fhirpath , application/x-fhir-query
- * @param expression Expression itself
+ * @param description Description of the expression
+ * @param expression Expression itself given in the format of expression language
  * @param reference  Uri to the expression content (template languages or FHIR Mapping expression may use this; URL of structure map)
- * @param value      JSON value as content (fhir-template, or direct value assignment)
+ * @param value      If expression is complex content, JSON serialization as content (fhir-template, or direct value assignment)
  */
 case class FhirExpression(name: String,
                           language: String,
-                          expression: Option[String],
-                          reference: Option[String],
-                          value: Option[JValue])
+                          description:Option[String] = None,
+                          expression: Option[String] = None,
+                          reference: Option[String] = None,
+                          value: Option[JValue] = None)
 
