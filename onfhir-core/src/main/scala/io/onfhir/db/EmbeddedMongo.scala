@@ -9,7 +9,7 @@ import de.flapdoodle.reverse.TransitionWalker
 import de.flapdoodle.reverse.transitions.Start
 import org.slf4j.LoggerFactory
 
-import java.nio.file.Paths
+import java.nio.file.{Files, Paths}
 
 /**
  * Embedded MongoDB Server
@@ -28,8 +28,16 @@ object EmbeddedMongo {
 
     var mongodBuilder = Mongod.builder()
       .net(Start.to(classOf[Net]).initializedWith(Net.of(host, port, de.flapdoodle.net.Net.localhostIsIPv6())))
-    if(!withTemporaryDatabaseDir) {
-      mongodBuilder = mongodBuilder.databaseDir(Start.to(classOf[DatabaseDir]).initializedWith(DatabaseDir.of(Paths.get(s"./${appName.filterNot(_.isWhitespace)}$FOLDER_EXT"))))
+    if (!withTemporaryDatabaseDir) {
+      val dbDir = Paths.get(s"./${appName.filterNot(_.isWhitespace)}$FOLDER_EXT")
+      if (Files.notExists(dbDir)) {
+        try {
+          Files.createDirectories(dbDir)
+        } catch {
+          case e: Exception => logger.error(s"Error creating database directory folder for MongoDB at ${dbDir.toAbsolutePath.toString}", e)
+        }
+      }
+      mongodBuilder = mongodBuilder.databaseDir(Start.to(classOf[DatabaseDir]).initializedWith(DatabaseDir.of(dbDir)))
     }
 
     val mongod = mongodBuilder.build()
