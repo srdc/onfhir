@@ -1,6 +1,7 @@
 package io.onfhir.client
 
 import akka.actor.ActorSystem
+import io.onfhir.api.Resource
 import io.onfhir.api.service.IFhirIdentityCache
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.util.JsonFormatter.parseFromJson
@@ -8,20 +9,20 @@ import org.specs2.mutable.Specification
 import org.specs2.specification.BeforeAfterAll
 
 import scala.collection.mutable
-import scala.concurrent.duration.{Duration, DurationInt}
+import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.io.Source
 import scala.language.postfixOps
 
 class IdentityServiceClientTest extends Specification with BeforeAfterAll {
   val baseUrl = "http://localhost:8080/fhir"
-  val patientWithoutId =  Source.fromInputStream(getClass.getResourceAsStream("/patient-without-id.json")).mkString.parseJson
-  val patientWithoutLink1 =  Source.fromInputStream(getClass.getResourceAsStream("/patient-with-link.json")).mkString.parseJson
-  val patientWithoutLink2 =  Source.fromInputStream(getClass.getResourceAsStream("/patient-with-link2.json")).mkString.parseJson
+  val patientWithoutId: Resource =  Source.fromInputStream(getClass.getResourceAsStream("/patient-without-id.json")).mkString.parseJson
+  val patientWithoutLink1: Resource =  Source.fromInputStream(getClass.getResourceAsStream("/patient-with-link.json")).mkString.parseJson
+  val patientWithoutLink2: Resource =  Source.fromInputStream(getClass.getResourceAsStream("/patient-with-link2.json")).mkString.parseJson
 
-  implicit val actorSystem = ActorSystem("OnFhirClientTest")
+  implicit val actorSystem: ActorSystem = ActorSystem("OnFhirClientTest")
   implicit val ec:ExecutionContext = ExecutionContext.global
-  val onFhirClient = OnFhirNetworkClient.apply(baseUrl)
+  val onFhirClient: OnFhirNetworkClient = OnFhirNetworkClient.apply(baseUrl)
 
   var pid1:String = _
 

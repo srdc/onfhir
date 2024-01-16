@@ -1,32 +1,31 @@
 package io.onfhir.api.endpoint
 
-import java.util.concurrent.TimeUnit
 import akka.actor.ActorSystem
+import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.model.{DateTime, HttpEntity}
 import akka.http.scaladsl.testkit.RouteTestTimeout
 import io.onfhir.OnFhirTest
-import io.onfhir.config.OnfhirConfig
-import org.junit.runner.RunWith
-import org.specs2.runner.JUnitRunner
-import akka.http.scaladsl.model.StatusCodes._
-import akka.http.scaladsl.model.headers.`Last-Modified`
 import io.onfhir.api.Resource
-import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.model.FHIRMarshallers._
+import io.onfhir.api.util.FHIRUtil
+import io.onfhir.config.OnfhirConfig
 import io.onfhir.util.JsonFormatter._
 import org.json4s.JsonAST.{JArray, JObject}
+import org.junit.runner.RunWith
+import org.specs2.runner.JUnitRunner
 
-import scala.concurrent.{Await, Future}
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.{Await, Future}
 import scala.io.Source
 
 @RunWith(classOf[JUnitRunner])
 class FHIRHistoryEndpointTest extends OnFhirTest with FHIREndpoint {
-  def actorRefFactory = system
-  implicit def default(implicit system: ActorSystem) = RouteTestTimeout(new FiniteDuration(60, TimeUnit.SECONDS))
+  def actorRefFactory: ActorSystem = system
+  implicit def default(implicit system: ActorSystem): RouteTestTimeout = RouteTestTimeout(new FiniteDuration(60, TimeUnit.SECONDS))
 
   //Test resources
-  val patient =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient.json")).mkString
+  val patient: String =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient.json")).mkString
 
   val resourceType = "Patient"
   val resourceId   = "example"

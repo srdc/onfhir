@@ -2,7 +2,6 @@ package io.onfhir.client.util
 
 import io.onfhir.api.Resource
 import io.onfhir.api.util.FhirPatchUtil
-import io.onfhir.client.util.FhirResourceMutator.FhirMutableResource
 import io.onfhir.path.FhirPathEvaluator
 import org.json4s.JsonAST.JValue
 
@@ -10,7 +9,7 @@ import org.json4s.JsonAST.JValue
  * Utility class to make it easy to update FHIR resource content by using FHIR Patch like operations
  */
 object FhirResourceMutator {
-  implicit val ic = scala.language.implicitConversions
+  implicit val ic: languageFeature.implicitConversions = scala.language.implicitConversions
 
   class FhirMutableResource(var resource:Resource) {
 

@@ -21,26 +21,26 @@ import scala.io.Source
 
 @RunWith(classOf[JUnitRunner])
 class FHIRPatchEndpointTest extends OnFhirTest with FHIREndpoint {
-  def actorRefFactory = system
-  implicit def default(implicit system: ActorSystem) = RouteTestTimeout(new FiniteDuration(60, TimeUnit.SECONDS))
+  def actorRefFactory: ActorSystem = system
+  implicit def default(implicit system: ActorSystem): RouteTestTimeout = RouteTestTimeout(new FiniteDuration(60, TimeUnit.SECONDS))
 
-  val obsBP = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Observation/observation-bp.json")).mkString
+  val obsBP: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Observation/observation-bp.json")).mkString
 
-  val jsonPatch = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-json-patch-multi1.json")).mkString
-  val jsonPatchProblem1 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-json-patch-with-problem1.json")).mkString
-  val jsonPatchProblem2 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-json-patch-with-problem2.json")).mkString
-  val jsonPatchProblem3 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-json-patch-with-problem3.json")).mkString
+  val jsonPatch: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-json-patch-multi1.json")).mkString
+  val jsonPatchProblem1: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-json-patch-with-problem1.json")).mkString
+  val jsonPatchProblem2: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-json-patch-with-problem2.json")).mkString
+  val jsonPatchProblem3: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-json-patch-with-problem3.json")).mkString
 
-  val fhirPathPatch = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-path-patch-multi1.json")).mkString
-  val fhirPathPatchProblem1 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-path-patch-with-problem1.json")).mkString
-  val fhirPathPatchProblem2 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-path-patch-with-problem2.json")).mkString
+  val fhirPathPatch: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-path-patch-multi1.json")).mkString
+  val fhirPathPatchProblem1: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-path-patch-with-problem1.json")).mkString
+  val fhirPathPatchProblem2: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-path-patch-with-problem2.json")).mkString
 
-  val jsonPatchContentType = ContentType.apply(MediaType.applicationWithOpenCharset("json-patch+json"), HttpCharsets.`UTF-8`)
-  val jsonFhirContentType =ContentType.apply(MediaType.applicationWithOpenCharset("fhir+json"), HttpCharsets.`UTF-8`)
+  val jsonPatchContentType: ContentType.WithCharset = ContentType.apply(MediaType.applicationWithOpenCharset("json-patch+json"), HttpCharsets.`UTF-8`)
+  val jsonFhirContentType: ContentType.WithCharset =ContentType.apply(MediaType.applicationWithOpenCharset("fhir+json"), HttpCharsets.`UTF-8`)
 
-  val bodyWeightGoal = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Goal/goal-weight.json")).mkString
-  val goalStatusPatch = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-path-patch-with-expression-value.json")).mkString
-  val goalStatusPatch2 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-path-patch-with-expression-value-2.json")).mkString
+  val bodyWeightGoal: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Goal/goal-weight.json")).mkString
+  val goalStatusPatch: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-path-patch-with-expression-value.json")).mkString
+  val goalStatusPatch2: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/patch/fhir-path-patch-with-expression-value-2.json")).mkString
 
   val resourceType = "Observation"
   val observationId = "obsbp"

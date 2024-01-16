@@ -1,17 +1,16 @@
 package io.onfhir.api.util
 
-import akka.http.scaladsl.model.{MediaRange, MediaTypes}
 import akka.http.scaladsl.model.headers.{EntityTag, `Content-Type`}
-import io.onfhir.api.{FHIR_BUNDLE_ENTRY_TYPES, FHIR_BUNDLE_FIELDS, FHIR_BUNDLE_TYPES, FHIR_COMMON_FIELDS, FHIR_EXTRA_FIELDS, FHIR_HTTP_OPTIONS, FHIR_METHOD_NAMES, FHIR_PARAMETER_CATEGORIES, FHIR_SEARCH_RESULT_PARAMETERS, Resource}
+import akka.http.scaladsl.model.{MediaRange, MediaTypes}
 import io.onfhir.api.model.{FHIRSearchResult, Parameter}
 import io.onfhir.api.parsers.FHIRResultParameterResolver
 import io.onfhir.api.util.FHIRUtil.resourceLocation
+import io.onfhir.api._
 import io.onfhir.config.{FhirServerConfig, OnfhirConfig}
-import org.json4s.{JArray, JNothing}
+import io.onfhir.util.JsonFormatter.formats
 import org.json4s.JsonAST.JObject
 import org.json4s.JsonDSL._
 import org.json4s._
-import io.onfhir.util.JsonFormatter.formats
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -44,6 +43,7 @@ class FHIRServerUtil(fhirConfig:FhirServerConfig) {
     val (count, pageOrOffset) = resultParameterResolver.resolveCountPageParameters(parameters)
     val page = pageOrOffset match {
       case Left(p) => p
+      case _ => throw new IllegalStateException("Illegal state occurred while resolving count page parameters (at FHIRServerUtil.generateBundleLinks).")
     }
 
     //Extract compartment type and id if exist
@@ -115,6 +115,7 @@ class FHIRServerUtil(fhirConfig:FhirServerConfig) {
     val offsetParam = pageOrOffset match {
       case Right( offsets -> true) => s"${FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_AFTER}=${offsets.mkString(",")}"
       case Right( offsets -> false) => s"${FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_BEFORE}=${offsets.mkString(",")}"
+      case _ => throw new IllegalStateException("Illegal state occurred while resolving count page parameters (at FHIRServerUtil.generateBundleLinksForOffsetBasedPagination).")
     }
 
     //Extract compartment type and id if exist

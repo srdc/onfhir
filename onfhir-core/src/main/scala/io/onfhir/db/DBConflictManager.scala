@@ -1,21 +1,19 @@
 package io.onfhir.db
 
-import java.util.concurrent.TimeUnit
-
 import akka.actor.{Actor, ActorRef, Props}
 import io.onfhir.Onfhir
 import io.onfhir.api.FHIR_COMMON_FIELDS
 import io.onfhir.config.OnfhirConfig
 import io.onfhir.db.DBConflictManager.RealizeConflictCheck
 import org.mongodb.scala.model.Filters
-import org.mongodb.scala.model.Filters.equal
 import org.slf4j.{Logger, LoggerFactory}
 
-import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 
 class DBConflictManager extends Actor {
-  implicit val executionContext = context.dispatcher
+  implicit val executionContext: ExecutionContextExecutor = context.dispatcher
 
   //Logger for actor
   private val logger: Logger = LoggerFactory.getLogger("DBConflictManager")

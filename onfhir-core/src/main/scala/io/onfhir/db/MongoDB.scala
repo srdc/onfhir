@@ -9,13 +9,13 @@ import org.mongodb.scala.{ClientSession, MongoClient, MongoClientSettings, Mongo
 
 import java.util.concurrent.TimeUnit
 import scala.jdk.CollectionConverters._
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContextExecutor, Future}
 
 /**
   * MongoDB client object
   */
 object MongoDB {
-  implicit val executionContext = Onfhir.actorSystem.dispatcher
+  implicit val executionContext: ExecutionContextExecutor = Onfhir.actorSystem.dispatcher
 
   private val SYSTEM_INDEXES = "system.indexes"
 

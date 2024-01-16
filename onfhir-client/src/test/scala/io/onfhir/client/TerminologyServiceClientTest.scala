@@ -15,7 +15,7 @@ class TerminologyServiceClientTest extends Specification {
   val username = "<!!!!FILL HERE BEFORE TESTING>"
   val password = "<!!!!FILL HERE BEFORE TESTING>"
 
-  implicit val actorSystem = ActorSystem("TerminologyServiceClientTest")
+  implicit val actorSystem: ActorSystem = ActorSystem("TerminologyServiceClientTest")
   implicit val ec:ExecutionContext = ExecutionContext.global
 
   val terminologyServiceClient = new TerminologyServiceClient(OnFhirNetworkClient.apply(baseUrl, new BasicAuthenticationInterceptor(username, password)))

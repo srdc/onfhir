@@ -15,26 +15,25 @@ import org.junit.runner.RunWith
 import org.specs2.runner.JUnitRunner
 
 import java.nio.charset.StandardCharsets
-import java.time.temporal.ChronoUnit
 import java.util.concurrent.TimeUnit
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.{Await, Future}
 import scala.io.Source
 
 @RunWith(classOf[JUnitRunner])
 class FHIRCreateEndpointTest extends OnFhirTest with FHIREndpoint {
-  def actorRefFactory = system
-  implicit def default(implicit system: ActorSystem) = RouteTestTimeout(new FiniteDuration(60, TimeUnit.SECONDS))
+  def actorRefFactory: ActorSystem = system
+  implicit def default(implicit system: ActorSystem): RouteTestTimeout = RouteTestTimeout(new FiniteDuration(60, TimeUnit.SECONDS))
 
   //Test resources
-  val patient =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient.json")).mkString
-  val patientNotParsable = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-not-parsable.json")).mkString
-  val patientWithoutId = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-without-id.json")).mkString
-  val patientWithMeta = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-with-meta.json")).mkString
+  val patient: String =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient.json")).mkString
+  val patientNotParsable: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-not-parsable.json")).mkString
+  val patientWithoutId: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-without-id.json")).mkString
+  val patientWithMeta: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-with-meta.json")).mkString
 
-  val patientXml =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient.xml")).mkString
-  val patientInvalidXml =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-invalid.xml")).mkString
-  val patientNotParsableXml =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-not-parsable.xml")).mkString
+  val patientXml: String =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient.xml")).mkString
+  val patientInvalidXml: String =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-invalid.xml")).mkString
+  val patientNotParsableXml: String =  Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/Patient/patient-not-parsable.xml")).mkString
 
 
   val resourceType = "Patient"

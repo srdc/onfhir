@@ -7,13 +7,13 @@ import akka.http.scaladsl.model.headers.{Authorization, BasicHttpCredentials, OA
 import akka.http.scaladsl.server.Directive1
 import akka.http.scaladsl.server.directives.{BasicDirectives, Credentials, HeaderDirectives, MiscDirectives}
 import io.onfhir.Onfhir
-import io.onfhir.api.{AUTHZ_METHOD_BASIC, AUTHZ_METHOD_FHIR_ON_SMART, AUTHZ_METHOD_NONE}
+import io.onfhir.api.{AUTHZ_METHOD_BASIC, AUTHZ_METHOD_NONE}
 import io.onfhir.config.OnfhirConfig
 import io.onfhir.config.OnfhirConfig.authzConfig
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContextExecutor, Future}
 import scala.util.Try
 
 /**
@@ -21,7 +21,7 @@ import scala.util.Try
   * Authentication Manager
   */
 object AuthManager {
-  implicit val executionContext = Onfhir.actorSystem.dispatcher
+  implicit val executionContext: ExecutionContextExecutor = Onfhir.actorSystem.dispatcher
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
 
   final val PARAM_NETWORK_ADDRESS = "networkAddress"

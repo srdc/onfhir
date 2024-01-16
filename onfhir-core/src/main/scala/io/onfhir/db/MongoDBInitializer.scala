@@ -14,7 +14,7 @@ import org.mongodb.scala.model.{IndexModel, Indexes}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContextExecutor, Future}
 import scala.language.postfixOps
 
 /**
@@ -26,7 +26,7 @@ import scala.language.postfixOps
   * The class is also used to retrieve infrastructure resources from database during initialization (for other runs)
   */
 class MongoDBInitializer(resourceManager: ResourceManager) extends BaseDBInitializer(OnfhirConfig.mongoShardingEnabled){
-  implicit val executionContext = Onfhir.actorSystem.dispatcher
+  implicit val executionContext: ExecutionContextExecutor = Onfhir.actorSystem.dispatcher
   private val logger:Logger = LoggerFactory.getLogger(this.getClass)
 
   val MONGO_SINGLE_FIELD_INDEX="single"

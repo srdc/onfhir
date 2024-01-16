@@ -1,33 +1,31 @@
 package io.onfhir.api.endpoint
 
-import java.util.concurrent.TimeUnit
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpEntity
+import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.testkit.RouteTestTimeout
 import io.onfhir.OnFhirTest
 import io.onfhir.api.Resource
-import io.onfhir.api.util.FHIRUtil
+import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.config.OnfhirConfig
+import io.onfhir.path.FhirPathEvaluator
 import org.junit.runner.RunWith
 import org.specs2.runner.JUnitRunner
-import akka.http.scaladsl.model.StatusCodes._
-import akka.http.scaladsl.model.headers.RawHeader
 
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
 import scala.io.Source
-import io.onfhir.api.model.FHIRMarshallers._
-import io.onfhir.path.FhirPathEvaluator
 
 @RunWith(classOf[JUnitRunner])
 class FHIRBatchTransactionEndpointTest extends OnFhirTest with FHIREndpoint {
-  def actorRefFactory = system
-  implicit def default(implicit system: ActorSystem) = RouteTestTimeout(new FiniteDuration(60, TimeUnit.SECONDS))
+  def actorRefFactory: ActorSystem = system
+  implicit def default(implicit system: ActorSystem): RouteTestTimeout = RouteTestTimeout(new FiniteDuration(60, TimeUnit.SECONDS))
 
-  val batch1 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/BatchTransaction/batch1.json")).mkString
-  val batch2 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/BatchTransaction/batch2.json")).mkString
+  val batch1: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/BatchTransaction/batch1.json")).mkString
+  val batch2: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/BatchTransaction/batch2.json")).mkString
 
-  val transaction1 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/BatchTransaction/transaction1.json")).mkString
-  val transaction2 = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/BatchTransaction/transaction2.json")).mkString
+  val transaction1: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/BatchTransaction/transaction1.json")).mkString
+  val transaction2: String = Source.fromInputStream(getClass.getResourceAsStream("/fhir/samples/BatchTransaction/transaction2.json")).mkString
 
 
   sequential

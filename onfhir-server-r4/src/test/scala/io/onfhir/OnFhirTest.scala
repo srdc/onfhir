@@ -32,7 +32,7 @@ trait OnFhirTest extends Specification with Specs2RouteTest with BeforeAll {
   override def beforeAll(): Unit = {
     if (OnfhirConfig.mongoEmbedded) {
       val firstHostConfig = OnfhirConfig.mongodbHosts.head.split(':')
-      EmbeddedMongo.start(OnfhirConfig.serverName, firstHostConfig(0), firstHostConfig(1).toInt)
+      EmbeddedMongo.start(OnfhirConfig.serverName, firstHostConfig(0), firstHostConfig(1).toInt, withTemporaryDatabaseDir = true)
     }
     OnfhirSetup.environment
   }
