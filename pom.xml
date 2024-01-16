@@ -593,32 +593,6 @@
 
     </dependencyManagement>
 
-    <!--    <dependencies>-->
-    <!--        &lt;!&ndash; Scala Language &ndash;&gt;-->
-    <!--        <dependency>-->
-    <!--            <groupId>org.scala-lang</groupId>-->
-    <!--            <artifactId>scala-library</artifactId>-->
-    <!--        </dependency>-->
-    <!--    </dependencies>-->
-
-        <repositories>
-            <!--repository>
-                <id>maven-releases</id>
-                <url>http://nexus.srdc.com.tr/repository/maven-releases/</url>
-            </repository>
-            <repository>
-                <id>maven-snapshots</id>
-                <url>http://nexus.srdc.com.tr/repository/maven-snapshots/</url>
-            </repository-->
-            <repository>
-                <id>oss-snapshots</id>
-                <snapshots>
-                    <enabled>true</enabled>
-                </snapshots>
-                <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
-            </repository>
-        </repositories>
-
     <distributionManagement>
         <snapshotRepository>
             <id>ossrh</id>
