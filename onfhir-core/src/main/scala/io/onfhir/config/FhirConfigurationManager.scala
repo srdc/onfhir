@@ -42,6 +42,7 @@ object FhirConfigurationManager extends IFhirConfigurationManager {
    */
   def initialize(fhirConfigurator: IFhirServerConfigurator, fhirOperationImplms: Map[String, String] = Map.empty[String, String]): Unit = {
     val fsConfigReader = new FSConfigReader(
+      fhirVersion = fhirConfigurator.fhirVersion,
       fhirStandardZipFilePath = OnfhirConfig.baseDefinitions,
       conformancePath = OnfhirConfig.conformancePath,
       profilesPath = OnfhirConfig.profilesPath,

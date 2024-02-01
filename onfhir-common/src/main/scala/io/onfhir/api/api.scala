@@ -2,11 +2,9 @@ package io.onfhir
 
 import akka.http.scaladsl.model.{ContentType, HttpCharsets, MediaType}
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.config.OnfhirConfig
 import org.json4s.JsonAST.JObject
 
 import scala.collection.immutable._
-import scala.util.matching.Regex
 
 /**
   * FHIR related constants and important value sets used in the implementation
@@ -61,7 +59,8 @@ package object api {
     * Default paths for the infrastructure resources to configure the platform
     */
   object DEFAULT_RESOURCE_PATHS {
-    def BASE_DEFINITONS:String = FHIRUtil.mergeFilePath(DEFAULT_ROOT_FOLDER, s"definitions${FOUNDATION_RESOURCES_FILE_SUFFIX}.zip")
+    def BASE_DEFINITONS_R4:String = FHIRUtil.mergeFilePath(DEFAULT_ROOT_FOLDER, s"definitions-r4${FOUNDATION_RESOURCES_FILE_SUFFIX}.zip")
+    def BASE_DEFINITONS_R5:String = FHIRUtil.mergeFilePath(DEFAULT_ROOT_FOLDER, s"definitions-r5${FOUNDATION_RESOURCES_FILE_SUFFIX}.zip")
     def PROFILES_FOLDER:String = FHIRUtil.mergeFilePath(DEFAULT_ROOT_FOLDER, "profiles.zip")
     def CONFORMANCE_PATH:String = FHIRUtil.mergeFilePath(DEFAULT_ROOT_FOLDER, s"conformance-statement$FOUNDATION_RESOURCES_FILE_SUFFIX")
     def SEARCH_PARAMETER:String = FHIRUtil.mergeFilePath(DEFAULT_ROOT_FOLDER,  "search-parameters.zip")

@@ -12,9 +12,9 @@ import org.specs2.runner.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 class StructureDefinitionParserTest extends Specification {
 
-  val resourceProfiles = IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS,"profiles-resources.json", Set("StructureDefinition"))
-  val dataTypeProfiles = IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS,"profiles-types.json", Set("StructureDefinition"))
-  val otherProfiles = IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS,"profiles-others.json", Set("StructureDefinition"))
+  val resourceProfiles = IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4,"profiles-resources.json", Set("StructureDefinition"))
+  val dataTypeProfiles = IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4,"profiles-types.json", Set("StructureDefinition"))
+  val otherProfiles = IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4,"profiles-others.json", Set("StructureDefinition"))
   val furtherProfiles =
     Seq(
       IOUtil.readModuleResource("/fhir/validation/profiles/MyObservation.StructureDefinition.json"),

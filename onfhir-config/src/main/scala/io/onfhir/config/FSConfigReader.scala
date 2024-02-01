@@ -1,28 +1,32 @@
 package io.onfhir.config
+
 import io.onfhir.api.FHIR_FOUNDATION_RESOURCES.FHIR_CONFORMANCE
 import io.onfhir.api.util.IOUtil
 import io.onfhir.api.{DEFAULT_RESOURCE_PATHS, FHIR_FOUNDATION_RESOURCES, Resource}
 
 /**
  * FHIR configuration reader from file system
- * @param fhirStandardZipFilePath   Path to the FHIR standard zip file (definitions.json.zip)
- * @param profilesPath              Path to the zip file or folder that supported FHIR profiles (StructuredDefinition)  are given
- * @param valueSetsPath             Path to the zip file or folder that supported FHIR ValueSet definitions are given
- * @param codeSystemsPath           Path to the zip file or folder that supported FHIR CodeSystem definitions are given
- * @param conformancePath           Path to the CapabilityStatement definition
- * @param searchParametersPath      Path to the zip file or folder that supported FHIR SearchParameter definitions are given
- * @param operationDefinitionsPath  Path to the zip file or folder that supported FHIR OperationDefinition definitions are given
- * @param compartmentDefinitionsPath  Path to the zip file or folder that supported FHIR CompartmentDefinition definitions are given
+ *
+ * @param fhirVersion                The version of the FHIR to be used (R4 or R5). For now, this affects which default base definitions will be loaded (R4 or R5) unless fhirStandardZipFilePath is given.
+ * @param fhirStandardZipFilePath    Path to the FHIR standard zip file (definitions.json.zip)
+ * @param profilesPath               Path to the zip file or folder that supported FHIR profiles (StructuredDefinition)  are given
+ * @param valueSetsPath              Path to the zip file or folder that supported FHIR ValueSet definitions are given
+ * @param codeSystemsPath            Path to the zip file or folder that supported FHIR CodeSystem definitions are given
+ * @param conformancePath            Path to the CapabilityStatement definition
+ * @param searchParametersPath       Path to the zip file or folder that supported FHIR SearchParameter definitions are given
+ * @param operationDefinitionsPath   Path to the zip file or folder that supported FHIR OperationDefinition definitions are given
+ * @param compartmentDefinitionsPath Path to the zip file or folder that supported FHIR CompartmentDefinition definitions are given
  */
 class FSConfigReader(
-                      fhirStandardZipFilePath:Option[String] = None,
-                      profilesPath:Option[String] = None,
-                      valueSetsPath:Option[String] = None,
-                      codeSystemsPath:Option[String] = None,
-                      conformancePath:Option[String] = None,
-                      searchParametersPath:Option[String] = None,
-                      operationDefinitionsPath:Option[String] = None,
-                      compartmentDefinitionsPath:Option[String] = None,
+                      fhirVersion: String,
+                      fhirStandardZipFilePath: Option[String] = None,
+                      profilesPath: Option[String] = None,
+                      valueSetsPath: Option[String] = None,
+                      codeSystemsPath: Option[String] = None,
+                      conformancePath: Option[String] = None,
+                      searchParametersPath: Option[String] = None,
+                      operationDefinitionsPath: Option[String] = None,
+                      compartmentDefinitionsPath: Option[String] = None,
                     ) extends IFhirConfigReader {
   /**
    * Read and parse FHIR Bundle zip file (JSON version) published by FHIR for specific versions and
@@ -34,10 +38,11 @@ class FSConfigReader(
    * @return
    */
   override def readStandardBundleFile(fileName: String, resourceTypeFilter: Set[String]): Seq[Resource] = {
+    val baseDefinitionsFile = if(fhirVersion == "R5") DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R5 else DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4
     IOUtil
       .readStandardBundleFile(
         fhirStandardZipFilePath,
-        DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS,
+        baseDefinitionsFile,
         fileName,
         resourceTypeFilter
       )
@@ -45,6 +50,7 @@ class FSConfigReader(
 
   /**
    * Read FHIR infrastructure resources (profiles, value sets, etc) supplied for a FHIR configuration
+   *
    * @param rtype Resource type of the foundation resource e.g. StructureDefinition, ValueSet, etc
    * @return
    */
@@ -67,6 +73,6 @@ class FSConfigReader(
     IOUtil.readResourcesInFolderOrZip(pathsToSearch._1, pathsToSearch._2)
   }
 
-  def readCapabilityStatement():Resource =
+  def readCapabilityStatement(): Resource =
     IOUtil.readResource(conformancePath, DEFAULT_RESOURCE_PATHS.CONFORMANCE_PATH, FHIR_CONFORMANCE)
 }
