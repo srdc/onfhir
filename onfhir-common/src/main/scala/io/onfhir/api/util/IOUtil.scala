@@ -124,7 +124,7 @@ object IOUtil {
    * @param recursively   If exists and true, the folder will be searched recursively to retrieve all files within.
    * @return
    */
-  private def getFilesFromFolder(folder: File, withExtension: Option[String], recursively: Option[Boolean]): Seq[File] = {
+  def getFilesFromFolder(folder: File, withExtension: Option[String], recursively: Option[Boolean]): Seq[File] = {
     if (folder.exists && folder.isDirectory) {
       val files = folder.listFiles().toSeq // List all available files in the given folder
       val filteredFiles = withExtension
