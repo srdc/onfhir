@@ -38,7 +38,11 @@ class FSConfigReader(
    * @return
    */
   override def readStandardBundleFile(fileName: String, resourceTypeFilter: Set[String]): Seq[Resource] = {
-    val baseDefinitionsFile = if(fhirVersion == "R5") DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R5 else DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4
+    val baseDefinitionsFile = fhirVersion match {
+      case "R4" => DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4
+      case "R5" => DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R5
+      case _ => throw new IllegalArgumentException(s"Unknown FHIR version: $fhirVersion")
+    }
     IOUtil
       .readStandardBundleFile(
         fhirStandardZipFilePath,

@@ -1042,14 +1042,25 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
   }
 
   @FhirPathFunction(documentation = "Returns the low boundary of the input that this function is called upon. The input can be a decimal number, time or dateTime. " +
-    "Ex: 2.386.lowBoundary() will return 2.38550. ",
+    "Ex: 2.386.lowBoundary() will return 2.38550. 2015.utl:toFhirDateTime('yyyy').lowBoundary() will return 2015-01-01T00:00:00",
     insertText = "lowBoundary()", detail = "", label = "lowBoundary", kind = "Method", returnType = Seq("number", "time", "date", "dateTime"), inputType = Seq("number", "time", "date", "dateTime"))
   def lowBoundary(): Seq[FhirPathResult] = lowBoundary(None)
 
+  @FhirPathFunction(documentation = "Returns the low boundary of the input that this function is called upon by optionally accepting a precision for boundary calculation. " +
+    "The input can be a decimal number, time or dateTime. " +
+    "Ex: 2.386.lowBoundary(7) will return 2.3855000. '2018'.utl:toFhirDateTime('yyyy').lowBoundary(6) will return 2018-01",
+    insertText = "lowBoundary(<precision>)", detail = "", label = "lowBoundary", kind = "Method", returnType = Seq("number", "time", "date", "dateTime"), inputType = Seq("number", "time", "date", "dateTime"))
   def lowBoundary(precisionExpr: ExpressionContext): Seq[FhirPathResult] = lowBoundary(Some(precisionExpr))
 
+  @FhirPathFunction(documentation = "Returns the high boundary of the input that this function is called upon. The input can be a decimal number, time or dateTime. " +
+    "Ex: 2.386.lowBoundary() will return 2.38650. 2015.utl:toFhirDateTime('yyyy').lowBoundary() will return 2015-12-31T23:59:59",
+    insertText = "lowBoundary()", detail = "", label = "lowBoundary", kind = "Method", returnType = Seq("number", "time", "date", "dateTime"), inputType = Seq("number", "time", "date", "dateTime"))
   def highBoundary(): Seq[FhirPathResult] = highBoundary(None)
 
+  @FhirPathFunction(documentation = "Returns the high boundary of the input that this function is called upon by optionally accepting a precision for boundary calculation. " +
+    "The input can be a decimal number, time or dateTime. " +
+    "Ex: 2.386.lowBoundary(7) will return 2.3865000. '2018'.utl:toFhirDateTime('yyyy').lowBoundary(6) will return 2018-12",
+    insertText = "lowBoundary(<precision>)", detail = "", label = "lowBoundary", kind = "Method", returnType = Seq("number", "time", "date", "dateTime"), inputType = Seq("number", "time", "date", "dateTime"))
   def highBoundary(precisionExpr: ExpressionContext): Seq[FhirPathResult] = highBoundary(Some(precisionExpr))
 
   /**
