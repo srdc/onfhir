@@ -1176,23 +1176,23 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
   private def adjustDateTimeBoundary(input: Temporal, precision: Option[Int], months: Int, days: Int, hours: Int, minutes: Int, seconds: Int, milliseconds: Int): Temporal = {
     input match {
       case dt: Year =>
-        val daysInMonth = if(days == 1) days else YearMonth.of(dt.getValue, months).lengthOfMonth()
+        val dayInMonth = if(days == 1) days else YearMonth.of(dt.getValue, months).lengthOfMonth()
         precision match {
           case Some(4) => dt
           case Some(6) => YearMonth.of(dt.getValue, months)
-          case Some(8) => LocalDate.of(dt.getValue, months, daysInMonth)
-          case Some(14) => LocalDateTime.of(dt.getValue, months, daysInMonth, hours, minutes, seconds)
-          case p if p.isEmpty || p.get >= 17 => LocalDateTime.of(dt.getValue, months, daysInMonth, hours, minutes, seconds)
+          case Some(8) => LocalDate.of(dt.getValue, months, dayInMonth)
+          case Some(14) => LocalDateTime.of(dt.getValue, months, dayInMonth, hours, minutes, seconds)
+          case p if p.isEmpty || p.get >= 17 => LocalDateTime.of(dt.getValue, months, dayInMonth, hours, minutes, seconds)
           case _ => throw new IllegalArgumentException("Unsupported DateTime precision for a Temporal (Year) type.")
         }
       case dt: YearMonth =>
-        val daysInMonth = if(days == 1) days else dt.lengthOfMonth()
+        val dayInMonth = if(days == 1) days else dt.lengthOfMonth()
         precision match {
           case Some(4) => Year.of(dt.getYear)
           case Some(6) => dt
-          case Some(8) => LocalDate.of(dt.getYear, dt.getMonthValue, daysInMonth)
-          case Some(14) => LocalDateTime.of(dt.getYear, dt.getMonthValue, daysInMonth, hours, minutes, seconds)
-          case p if p.isEmpty || p.get >= 17 => LocalDateTime.of(dt.getYear, dt.getMonthValue, daysInMonth, hours, minutes, seconds, milliseconds * 1000000)
+          case Some(8) => LocalDate.of(dt.getYear, dt.getMonthValue, dayInMonth)
+          case Some(14) => LocalDateTime.of(dt.getYear, dt.getMonthValue, dayInMonth, hours, minutes, seconds)
+          case p if p.isEmpty || p.get >= 17 => LocalDateTime.of(dt.getYear, dt.getMonthValue, dayInMonth, hours, minutes, seconds, milliseconds * 1000000)
           case _ => throw new IllegalArgumentException("Unsupported DateTime precision for a Temporal (YearMonth) type.")
         }
       case dt: LocalDate =>
@@ -1201,7 +1201,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
           case Some(6) => YearMonth.of(dt.getYear, dt.getMonthValue)
           case Some(8) => dt
           case Some(14) => LocalDateTime.of(dt.getYear, dt.getMonthValue, dt.getDayOfMonth, hours, minutes, seconds)
-          case p if p.isEmpty || p.get >= 17 => LocalDateTime.of(dt.getYear, dt.getMonthValue, days, hours, minutes, seconds, milliseconds * 1000000)
+          case p if p.isEmpty || p.get >= 17 => LocalDateTime.of(dt.getYear, dt.getMonthValue, dt.getDayOfMonth, hours, minutes, seconds, milliseconds * 1000000)
           case _ => throw new IllegalArgumentException("Unsupported DateTime precision for a Temporal (LocalDate) type.")
         }
       case dt: LocalDateTime =>
@@ -1209,7 +1209,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
           case Some(4) => Year.of(dt.getYear)
           case Some(6) => YearMonth.of(dt.getYear, dt.getMonthValue)
           case Some(8) => LocalDate.of(dt.getYear, dt.getMonthValue, dt.getDayOfMonth)
-          case Some(14) => LocalDateTime.of(dt.getYear, dt.getMonthValue, dt.getDayOfMonth, dt.getHour, dt.getMinute, dt.getSecond)
+          case Some(14) => dt
           case p if p.isEmpty || p.get >= 17 => LocalDateTime.of(dt.getYear, dt.getMonthValue, dt.getDayOfMonth, dt.getHour, dt.getMinute, dt.getSecond, milliseconds * 1000000)
           case _ => throw new IllegalArgumentException("Unsupported DateTime precision for a Temporal (LocalDateTime) type.")
         }

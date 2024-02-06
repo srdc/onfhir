@@ -968,27 +968,22 @@ class FhirPathEvaluatorTest extends Specification {
       LocalDateTime.from(evaluator.evaluateDateTime("'2015-03-0307'.utl:toFhirDateTime('yyyy-MM-ddHH').lowBoundary(17)", JNull).head).format(DateTimeFormatter.ISO_DATE_TIME) mustEqual "2015-03-03T07:00:00"
       LocalDateTime.from(evaluator.evaluateDateTime("'2015'.utl:toFhirDateTime('yyyy').lowBoundary()", JNull).head).format(DateTimeFormatter.ISO_DATE_TIME) mustEqual "2015-01-01T00:00:00"
       evaluator.evaluateOptionalTime("'09:05'.utl:toFhirTime('HH:mm').lowBoundary()", JNull).head._1.format(DateTimeFormatter.ofPattern("HH:mm:ss.SSS")) mustEqual "09:05:00.000"
-
-//      ("@T10:30.lowBoundary(9) = @T10:30:00.000", true),
-//      ("@T10:30:00.000.lowBoundary() = @T10:30:00.000", true),
-//      ("@T10:30.lowBoundary() = @T10:30:00", true),
+      evaluator.evaluateOptionalTime("'09:05:00'.utl:toFhirTime().lowBoundary(9)", JNull).head._1.format(DateTimeFormatter.ofPattern("HH:mm:ss.SSS")) mustEqual "09:05:00.000"
 
       // lowBoundary on numbers
       evaluator.evaluateNumerical("2.386.highBoundary(3)", JNull).headOption.map(_.toString()) must beSome("2.38650")
-//      evaluator.evaluateNumerical("2.386.lowBoundary()", JNull).headOption.map(_.toString()) must beSome("2.38550")
-//      evaluator.evaluateNumerical("2.386.lowBoundary(3)", JNull).headOption must beSome(BigDecimal(2.38550))
-//      evaluator.evaluateNumerical("2.386.lowBoundary()", JNull).headOption must beSome(BigDecimal(2.38550))
-//      evaluator.evaluateNumerical("2.386.lowBoundary(7)", JNull).headOption.map(_.toString()) must beSome("2.3855000")
-//      evaluator.evaluateNumerical("2.386.lowBoundary(8)", JNull).headOption.map(_.toString()) must beSome("2.38550000")
-//      evaluator.evaluateNumerical("2.1.lowBoundary(4)", JNull).headOption.map(_.toString()) must beSome("2.0500")
+      evaluator.evaluateNumerical("2.386.highBoundary()", JNull).headOption.map(_.toString()) must beSome("2.38650")
+      evaluator.evaluateNumerical("2.386.highBoundary(7)", JNull).headOption.map(_.toString()) must beSome("2.3865000")
+      evaluator.evaluateNumerical("2.386.highBoundary(8)", JNull).headOption.map(_.toString()) must beSome("2.38650000")
+      evaluator.evaluateNumerical("1.95.highBoundary()", JNull).headOption.map(_.toString()) must beSome("1.955")
 
       // highBoundary on dates and times
       YearMonth.from(evaluator.evaluateDateTime("'2018'.utl:toFhirDateTime('yyyy').highBoundary(6)", JNull).head).format(DateTimeFormatter.ofPattern("yyyy-MM")) mustEqual "2018-12"
-//      LocalDate.from(evaluator.evaluateDateTime("'2015'.utl:toFhirDateTime('yyyy').lowBoundary(8)", JNull).head).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) mustEqual "2015-01-01"
-//      LocalDate.from(evaluator.evaluateDateTime("'2015-03'.utl:toFhirDateTime('yyyy-MM').lowBoundary(8)", JNull).head).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) mustEqual "2015-03-01"
-//      LocalDateTime.from(evaluator.evaluateDateTime("'2015-03-0307'.utl:toFhirDateTime('yyyy-MM-ddHH').lowBoundary(17)", JNull).head).format(DateTimeFormatter.ISO_DATE_TIME) mustEqual "2015-03-03T07:00:00"
+      LocalDate.from(evaluator.evaluateDateTime("'2015'.utl:toFhirDateTime('yyyy').highBoundary(8)", JNull).head).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) mustEqual "2015-12-31"
+      LocalDate.from(evaluator.evaluateDateTime("'2015-03'.utl:toFhirDateTime('yyyy-MM').highBoundary(8)", JNull).head).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) mustEqual "2015-03-31"
+      LocalDate.from(evaluator.evaluateDateTime("'1985-02'.utl:toFhirDateTime('yyyy-MM').highBoundary(8)", JNull).head).format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) mustEqual "1985-02-28"
       LocalDateTime.from(evaluator.evaluateDateTime("'2015'.utl:toFhirDateTime('yyyy').highBoundary()", JNull).head).format(DateTimeFormatter.ISO_DATE_TIME) mustEqual "2015-12-31T23:59:59"
-//      evaluator.evaluateOptionalTime("'09:05'.utl:toFhirTime('HH:mm').lowBoundary()", JNull).head._1.format(DateTimeFormatter.ofPattern("HH:mm:ss.SSS")) mustEqual "09:05:00.000"
+      evaluator.evaluateOptionalTime("'09:05'.utl:toFhirTime('HH:mm').highBoundary()", JNull).head._1.format(DateTimeFormatter.ofPattern("HH:mm:ss.SSS")) mustEqual "09:05:00.999"
     }
 
   }
