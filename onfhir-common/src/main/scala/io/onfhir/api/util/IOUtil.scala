@@ -1,7 +1,5 @@
 package io.onfhir.api.util
 
-import java.io.{File, FileInputStream, InputStream, InputStreamReader, Reader, StringReader}
-import java.util.zip.{ZipEntry, ZipInputStream}
 import io.onfhir.api.Resource
 import io.onfhir.exception.InitializationException
 import io.onfhir.util.OnFhirZipInputStream
@@ -10,8 +8,9 @@ import org.json4s.JsonAST.JObject
 import org.json4s.jackson.JsonMethods
 import org.slf4j.{Logger, LoggerFactory}
 
+import java.io._
+import java.util.zip.{ZipEntry, ZipInputStream}
 import scala.collection.mutable
-import scala.io.Source
 
 /**
  * Utility functions to read FHIR resources (in JSON format) from file system
@@ -48,7 +47,7 @@ object IOUtil {
    * @return
    */
   def readResource(filePath: String): Resource = {
-    parseResource(new InputStreamReader(new BOMInputStream(new FileInputStream(new File(filePath)))), filePath)
+    parseResource(new InputStreamReader(BOMInputStream.builder.setInputStream(new FileInputStream(filePath)).get()), filePath)
   }
 
   /**
@@ -57,16 +56,16 @@ object IOUtil {
    * @return
    */
   def readInnerResource(resourcePath: String): Resource = {
-    parseResource(new InputStreamReader(new BOMInputStream(getClass.getClassLoader.getResourceAsStream(resourcePath))), resourcePath)
+    parseResource(new InputStreamReader(BOMInputStream.builder.setInputStream(getClass.getClassLoader.getResourceAsStream(resourcePath)).get()), resourcePath)
   }
 
   /**
    *
-   * @param resourcePath
+   * @param resourcePath Resource path
    * @return
    */
   def readModuleResource(resourcePath: String): Resource = {
-    parseResource(new InputStreamReader(new BOMInputStream(getClass.getResourceAsStream(resourcePath))), resourcePath)
+    parseResource(new InputStreamReader(BOMInputStream.builder.setInputStream(getClass.getResourceAsStream(resourcePath)).get()), resourcePath)
   }
 
   /**
@@ -97,7 +96,7 @@ object IOUtil {
           getFilesFromFolder(folder = givenFile, withExtension = None, recursively = Some(true))
             .map(file => {
               try {
-                parseResource(new InputStreamReader(new BOMInputStream(new FileInputStream(file))), file.getAbsolutePath)
+                parseResource(new InputStreamReader(BOMInputStream.builder.setInputStream(new FileInputStream(file)).get()), file.getAbsolutePath)
               } catch {
                 case e: Exception =>
                   throw new InitializationException(s"Cannot parse resource in ${path + "/" + file.getName}  ...", Some(e))
@@ -158,7 +157,7 @@ object IOUtil {
       case Some(is) =>
         try {
           //Parse the Bundle
-          val bundle = parseResource(new InputStreamReader(new BOMInputStream(is)), fileName)
+          val bundle = parseResource(new InputStreamReader(BOMInputStream.builder.setInputStream(is).get()), fileName)
           //Get the resources
           val resources = FHIRUtil.extractValueOptionByPath[Seq[Resource]](bundle, "entry.resource").getOrElse(Nil)
 
@@ -183,7 +182,7 @@ object IOUtil {
    * @param rtype              Resource type to filter
    * @return
    */
-  def readResourceInZip(zipFilePath: Option[String], defaultZipFilePath: String, resourceName: String, rtype: String): Option[InputStream] = {
+  private def readResourceInZip(zipFilePath: Option[String], defaultZipFilePath: String, resourceName: String, rtype: String): Option[InputStream] = {
     try {
       val inputStream = zipFilePath match {
         case Some(path) =>
@@ -209,7 +208,7 @@ object IOUtil {
    * @param fileName  The name of the file to be searched within the zip file
    * @return
    */
-  def findFileInZip(zipStream: ZipInputStream, fileName: String): Option[InputStream] = {
+  private def findFileInZip(zipStream: ZipInputStream, fileName: String): Option[InputStream] = {
     var zipEntry: ZipEntry = zipStream.getNextEntry
     while (zipEntry != null) {
       if (zipEntry.getName.equalsIgnoreCase(fileName))
@@ -231,7 +230,7 @@ object IOUtil {
     var zipEntry: ZipEntry = zipStream.getNextEntry
 
     while (zipEntry != null) {
-      val reader = new InputStreamReader(new BOMInputStream(zipStream), "UTF-8")
+      val reader = new InputStreamReader(BOMInputStream.builder.setInputStream(zipStream).get(), "UTF-8")
       resources.append(parseResource(reader, zipEntry.getName))
       zipStream.closeEntry()
       zipEntry = zipStream.getNextEntry

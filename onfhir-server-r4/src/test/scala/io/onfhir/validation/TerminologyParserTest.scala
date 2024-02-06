@@ -10,8 +10,8 @@ import org.specs2.runner.JUnitRunner
 @RunWith(classOf[JUnitRunner])
 class TerminologyParserTest extends Specification {
   val valueSetsOrCodeSystems =
-    IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS,"valuesets.json", Set("ValueSet", "CodeSystem")) ++
-      IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS,"v3-codesystems.json", Set("ValueSet", "CodeSystem"))
+    IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4,"valuesets.json", Set("ValueSet", "CodeSystem")) ++
+      IOUtil.readStandardBundleFile(OnfhirConfig.baseDefinitions, DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4,"v3-codesystems.json", Set("ValueSet", "CodeSystem"))
 
   sequential
   "TerminologyParserTest" should {
