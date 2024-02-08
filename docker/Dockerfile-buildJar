@@ -19,8 +19,9 @@ RUN apt -y update; apt -y install curl
 ENV ONFHIR_HOME /usr/local/onfhir
 RUN mkdir -p "$ONFHIR_HOME"
 WORKDIR $ONFHIR_HOME
-
-COPY --from=builder $ONFHIR_HOME/onfhir-server-r4/target/onfhir-server-standalone.jar .
+# Define the FHIR_VERSION variable to specify the version of the FHIR server
+ARG FHIR_VERSION
+COPY --from=builder $ONFHIR_HOME/onfhir-server-$FHIR_VERSION/target/onfhir-server-standalone.jar .
 
 COPY docker/docker-entrypoint.sh .
 RUN chmod +x docker-entrypoint.sh
