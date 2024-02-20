@@ -57,7 +57,7 @@ if [ ! -z "$DB_NAME" ]; then
 fi
 
 if [ ! -z "$DB_SHARDING" ]; then
-    JAVA_CMD+="-Dmongodb.sharding=$DB_SHARDING"
+    JAVA_CMD+="-Dmongodb.sharding=$DB_SHARDING "
 fi
 
 # Configure Auditing
