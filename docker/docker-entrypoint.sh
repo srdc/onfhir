@@ -56,6 +56,10 @@ if [ ! -z "$DB_NAME" ]; then
     JAVA_CMD+="-Dmongodb.db=$DB_NAME "
 fi
 
+if [ ! -z "$DB_SHARDING" ]; then
+    JAVA_CMD+="-Dmongodb.sharding=$DB_SHARDING"
+fi
+
 # Configure Auditing
 if [ ! -z "$AUDIT_SERVER_ROOT_URL" ]; then
     JAVA_CMD+="-Dfhir.auditing.repository='remote' "
