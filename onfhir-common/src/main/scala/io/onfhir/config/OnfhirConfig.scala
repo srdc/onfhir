@@ -117,6 +117,11 @@ object OnfhirConfig {
   /** If true, onfhir will use MongoDB Transaction which requires Mongo to be a replication set or sharded cluster */
   lazy val mongoUseTransaction:Boolean = Try(config.getBoolean("mongodb.transaction")).toOption.getOrElse(false)
 
+  /**
+   * MongoDB write concern (ACKNOWLEDGED, MAJORITY, 1, 2, ...)
+   */
+  lazy val mongoWriteConcern:String = Try(config.getString("mongodb.write-concern")).toOption.getOrElse("1")
+  
   /** Path to the zip file of definitions for validation(Default DSTU2 within resources) */
   lazy val baseDefinitions:Option[String] = Try(config.getString("fhir.initialization.base-definitions-path")).toOption
 

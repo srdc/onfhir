@@ -21,12 +21,17 @@ object MongoDB {
 
   private val dbHosts = OnfhirConfig.mongodbHosts
 
+  private val writeConcern:WriteConcern = OnfhirConfig.mongoWriteConcern match {
+    case "1" | "2" | "3" => WriteConcern.apply(OnfhirConfig.mongoWriteConcern.toInt)
+    case oth => WriteConcern.apply(oth)
+  }
+
   val transactionOptions:TransactionOptions =
     TransactionOptions
     .builder()
     .readPreference(ReadPreference.primary())
     .readConcern(ReadConcern.LOCAL)
-    .writeConcern(WriteConcern.ACKNOWLEDGED)
+    .writeConcern(writeConcern)
     .build()
 
 
