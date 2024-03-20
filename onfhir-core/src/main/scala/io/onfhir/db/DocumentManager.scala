@@ -2,7 +2,8 @@ package io.onfhir.db
 
 import com.mongodb.MongoClientSettings
 import com.mongodb.bulk.BulkWriteUpsert
-import org.mongodb.scala.model.{Field, Filters, InsertOneModel}
+import com.mongodb.client.model.UpdateOneModel
+import org.mongodb.scala.model.{Field, Filters, InsertOneModel, ReplaceOneModel, ReplaceOptions}
 import org.mongodb.scala.result.InsertOneResult
 
 import java.time.Instant
@@ -888,6 +889,27 @@ object DocumentManager {
       .bulkWrite(documents.map(d => new InsertOneModel[Document](d)), BulkWriteOptions.apply().ordered(ordered))
       .toFuture()
       .map(br => br.getUpserts.asScala.toSeq)
+  }
+
+  /**
+   * Insert or update given documents
+   * @param rtype       Resource type
+   * @param documents   Resource id if upsert and the document
+   * @param ordered     Whether order is important
+   * @return
+   */
+  def upsertDocuments(rtype:String, documents:Seq[(Option[String], Document)], ordered:Boolean = false):Future[(Int, Int)] = {
+    val operations =
+      documents.map {
+        case (Some(id), d) => new ReplaceOneModel[Document](Filters.eq("id", id), d, new ReplaceOptions().upsert(true))
+        case (None, d) => new InsertOneModel[Document](d)
+     }
+
+    MongoDB
+      .getCollection(rtype)
+      .bulkWrite(operations, BulkWriteOptions.apply().ordered(ordered))
+      .toFuture()
+      .map(br => br.getInsertedCount -> br.getModifiedCount)
   }
 
   /**

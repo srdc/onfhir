@@ -185,4 +185,13 @@ object OnfhirConfig {
   lazy val internalApiActive:Boolean = Try(config.getBoolean("server.internal.active")).toOption.getOrElse(false)
   lazy val internalApiPort:Int = Try(config.getInt("server.internal.port")).toOption.getOrElse(8081)
   lazy val internalApiAuthenticate:Boolean = Try(config.getBoolean("server.internal.authenticate")).toOption.getOrElse(false)
+
+  /**
+   * Configuration for bulk operations
+   */
+  //Number of resource per group
+  lazy val bulkNumResourcesPerGroup: Int = Try(config.getInt("fhir.bulk.num-resources-per-group")).toOption.getOrElse(200)
+  //If upsert is true, we use Mongo upsert (replace the current version of resource or create) for FHIR bulk import operations. IMPORTANT This is not a version aware interaction.
+  //Otherwise normal FHIR batch operation is used for grouped resources
+  lazy val bulkUpsertMode:Boolean = Try(config.getBoolean("fhir.bulk.upsert")).toOption.getOrElse(false)
 }

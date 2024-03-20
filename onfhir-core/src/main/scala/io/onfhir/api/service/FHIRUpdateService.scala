@@ -4,7 +4,7 @@ import akka.http.scaladsl.model.headers.`If-Match`
 import akka.http.scaladsl.model.{StatusCodes, Uri}
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue, Parameter}
-
+import io.onfhir.config.FhirConfigurationManager.fhirConfig
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
@@ -188,20 +188,24 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
   def updateResource(resource: Resource, _type:String, _id:String, ifMatch:Option[`If-Match`], prefer:Option[String], testUpdate:Boolean = false) : Future[FHIRResponse] = {
     logger.debug(s"requesting 'update' for ${_type} with ${_id}...")
 
-    //1) check if resource already exists
-    fhirConfigurationManager.resourceManager.getResource(_type, _id) flatMap {
-      case None =>
+    if(fhirConfig.isResourceTypeVersioned(_type)) {
+      //1) check if resource already exists
+      fhirConfigurationManager.resourceManager.getResource(_type, _id) flatMap {
+        case None =>
 
-        //1.a) Check if user requested a version aware update
-        FHIRApiValidator.validateIfMatch(ifMatch, 0L)
-        performUpdate(resource, _type, Some(_id), prefer, testUpdate)
-      case Some(foundResource) =>
-        val oldVersion = FHIRUtil.extractVersionFromResource(foundResource)
-        val wasDeleted = FHIRUtil.isDeleted(foundResource)
-        //1.b) Check if user requested a version aware update
-        FHIRApiValidator.validateIfMatch(ifMatch, oldVersion)
-        //Perform update
-        performUpdate(resource, _type, Some(_id), prefer, testUpdate, Some(oldVersion -> foundResource), wasDeleted)
+          //1.a) Check if user requested a version aware update
+          FHIRApiValidator.validateIfMatch(ifMatch, 0L)
+          performUpdate(resource, _type, Some(_id), prefer, testUpdate)
+        case Some(foundResource) =>
+          val oldVersion = FHIRUtil.extractVersionFromResource(foundResource)
+          val wasDeleted = FHIRUtil.isDeleted(foundResource)
+          //1.b) Check if user requested a version aware update
+          FHIRApiValidator.validateIfMatch(ifMatch, oldVersion)
+          //Perform update
+          performUpdate(resource, _type, Some(_id), prefer, testUpdate, Some(oldVersion -> foundResource), wasDeleted)
+      }
+    } else {
+      performUpsert(resource, _type, Some(_id), prefer, testUpdate)
     }
   }
 
@@ -250,6 +254,29 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
                 Some(""+newVersion) //HTTP ETag header
               )
           }
+      }
+    } else Future(FHIRResponse(StatusCodes.OK))
+  }
+
+  /**
+   * For no-versioning resource types upser the new resource
+   * @param resource    Updated content for FHIR resource
+   * @param rtype       Resource type
+   * @param rid         Resource id
+   * @param testUpdate  If this is a test
+   * @return
+   */
+  def performUpsert(resource:Resource, rtype:String, rid:Option[String], prefer:Option[String], testUpdate:Boolean = false):Future[FHIRResponse] = {
+    if (!testUpdate) {
+      fhirConfigurationManager.resourceManager.upsertResource(rtype, rid.get, resource)(transactionSession).map {
+        case (lastModified, updatedResource) =>
+          FHIRResponse(
+            StatusCodes.OK,
+            FHIRUtil.getResourceContentByPreference(updatedResource, prefer), //HTTP Body
+            Some(Uri(FHIRUtil.resourceLocation(rtype, rid.get))), //HTTP Location header
+            Some(lastModified), //HTTP Last-Modified header
+            None //HTTP ETag header
+          )
       }
     } else Future(FHIRResponse(StatusCodes.OK))
   }

@@ -7,6 +7,7 @@ import io.onfhir.api.client.OnFhirLocalClient
 import io.onfhir.api.model.FHIRResponse
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.async.BulkImportJobHandler._
+import io.onfhir.config.OnfhirConfig
 import io.onfhir.util.JsonFormatter
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -53,7 +54,7 @@ class BulkImportJobHandler(job:BulkImportJob) extends Actor {
             Path.of(job.sourceDetails.rootUri.getPath, url).toUri
 
       val bufferedSource = Source.fromFile(finalUri, "UTF-8")
-      groupCount = if(rtype == "Bundle") 10 else 200
+      groupCount = if(rtype == "Bundle") 10 else OnfhirConfig.bulkNumResourcesPerGroup
       sourceItr =
         bufferedSource
           .getLines() //Read the lines one by one
@@ -78,8 +79,12 @@ class BulkImportJobHandler(job:BulkImportJob) extends Actor {
                       case "batch" => OnFhirLocalClient.batch().entriesFromBundle(r).execute()
                     }
                   )
-            case _ =>
-              resources.map(r => OnFhirLocalClient.update(r).execute())
+            case rtype =>
+              //Special upsert without checking previous versions (for performance)
+              if(OnfhirConfig.bulkUpsertMode)
+                Seq(resources.foldLeft(OnFhirLocalClient.bulkUpsert(rtype))((rb, r) => rb.upsert(r)).execute())
+              else
+                Seq(resources.foldLeft(OnFhirLocalClient.batch())((rb, r) => rb.entry(_.update(r))).execute())
           }
         ).map(HandleGroupResponse)
       jobForGroup.pipeTo(self)

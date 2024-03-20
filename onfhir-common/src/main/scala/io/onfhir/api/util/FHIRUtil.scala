@@ -129,6 +129,29 @@ object FHIRUtil {
     result
   }
 
+  def populateResourceWithMeta(resource: Resource, id: Option[String],  lastModified: Instant): Resource = {
+    val resourceTypeField = resource.findField(_._1 == FHIR_COMMON_FIELDS.RESOURCE_TYPE).get
+
+    val meta: Resource = (resource \ FHIR_COMMON_FIELDS.META) match {
+      case meta: JObject =>
+        FHIR_COMMON_FIELDS.META -> (meta merge JObject(FHIR_COMMON_FIELDS.LAST_UPDATED -> JString(DateTimeUtil.serializeInstant(lastModified))))
+      case _ =>
+        FHIR_COMMON_FIELDS.META -> JObject(FHIR_COMMON_FIELDS.LAST_UPDATED -> JString(DateTimeUtil.serializeInstant(lastModified)))
+    }
+
+    var result: Resource = resource.obj.filterNot(f => f._1 == FHIR_COMMON_FIELDS.ID || f._1 == FHIR_COMMON_FIELDS.META || f._1 == FHIR_COMMON_FIELDS.RESOURCE_TYPE)
+
+    //Merge it
+    result = meta merge result
+
+    //Put id
+    if (id.isDefined)
+      result = (JObject() ~ (FHIR_COMMON_FIELDS.ID -> id.get)) merge result //add id field to resource
+
+    result = resourceTypeField ~ result
+    result
+  }
+
   /**
    * Populate the resource with our own fields (required for Bundle.entry construction)
    *

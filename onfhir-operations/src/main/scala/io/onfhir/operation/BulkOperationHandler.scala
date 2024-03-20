@@ -19,8 +19,13 @@ import scala.collection.mutable
 import scala.concurrent.Future
 import scala.util.Try
 
+/**
+ *
+ * @param fhirConfigurationManager
+ */
 class BulkOperationHandler(fhirConfigurationManager: IFhirConfigurationManager) extends FHIROperationHandlerService(fhirConfigurationManager) {
   private val logger: Logger = LoggerFactory.getLogger("BulkOperationHandler")
+
   /**
    * Job and actor handlers
    * TODO Design a better async job management architecture

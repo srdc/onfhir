@@ -621,6 +621,8 @@ package object api {
     val TRANSACTION = "transaction"
     val BATCH = "batch"
     val UNKNOWN = "unknown"
+    //OnFhir specific interactions
+    val BULK_UPSERT = "bulk-upsert"
   }
 
   /**

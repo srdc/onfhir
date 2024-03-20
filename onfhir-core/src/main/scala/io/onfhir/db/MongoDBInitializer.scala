@@ -61,7 +61,7 @@ class MongoDBInitializer(resourceManager: ResourceManager) extends BaseDBInitial
             IndexModel(Indexes.ascending(FHIR_COMMON_FIELDS.MONGO_ID)),
             //Create a index on resource id
             IndexModel(
-                Indexes.ascending(FHIR_COMMON_FIELDS.ID),
+                Indexes.hashed(FHIR_COMMON_FIELDS.ID),
                 new IndexOptions().name("onfhir_rid")
             ),
             //Index on Last Updated
@@ -93,7 +93,7 @@ class MongoDBInitializer(resourceManager: ResourceManager) extends BaseDBInitial
             //Create a unique compound index on resource id and version
             IndexModel(
               Indexes.compoundIndex(
-                Indexes.ascending(FHIR_COMMON_FIELDS.ID),
+                Indexes.hashed(FHIR_COMMON_FIELDS.ID),
                 Indexes.descending(s"${FHIR_COMMON_FIELDS.META}.${FHIR_COMMON_FIELDS.VERSION_ID}")),
               new IndexOptions().name("onfhir_rid")),
             //Index on Mongo id

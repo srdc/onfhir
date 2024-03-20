@@ -1304,6 +1304,47 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
         )
   }
 
+  /**
+   * Upsert the new version of resource for no-versioning resource types
+   * @param rtype               FHIR resource type
+   * @param rid                 FHIR resource id
+   * @param resource            Updated content
+   * @param transactionSession
+   * @return
+   */
+  def upsertResource(rtype:String, rid:String, resource:Resource)(implicit transactionSession: Option[TransactionSession] = None):Future[(DateTime, Resource)] = {
+    //1) Update the  last update time
+    val lastModified = Instant.now() //last modified will be "now"
+    val resourceWithMeta = FHIRUtil.populateResourceWithMeta(resource, Some(rid), lastModified)
+    //2) Add "current" field with value. (after serializing to json)
+    val populatedResource = FHIRUtil.populateResourceWithExtraFields(resourceWithMeta, FHIR_METHOD_NAMES.METHOD_PUT, StatusCodes.OK)
+    //3) Construct shard query if sharding is enabled and on a field other than id
+    val shardQueryOpt = ResourceQueryBuilder.constructShardingQuery(rtype, resource)
+    DocumentManager
+      .replaceCurrent(rtype, rid, Document(populatedResource.toBson), shardQueryOpt)
+      .map(_ =>
+        DateTimeUtil.instantToDateTime(lastModified) -> resourceWithMeta
+      )
+  }
+
+  /**
+   * Insert or replace given resources
+   * @param rtype                 Resource type
+   * @param resources             Resources with resource id if replace
+   * @param ordered               Whether order is important
+   * @param transactionSession
+   * @return
+   */
+  def bulkUpsertResources(rtype:String, resources:Seq[(Option[String], Resource)], ordered:Boolean = false)(implicit transactionSession: Option[TransactionSession] = None):Future[(Int, Int)] = {
+    val lastModified = Instant.now()
+    val populatedDocuments  =
+      resources
+        .map(r => r._1 -> FHIRUtil.populateResourceWithMeta(r._2, r._1.orElse(Some(FHIRUtil.generateResourceId())), lastModified))
+        .map(r => r._1 -> FHIRUtil.populateResourceWithExtraFields(r._2, FHIR_METHOD_NAMES.METHOD_PUT, StatusCodes.OK))
+        .map(r => r._1 -> Document(r._2.toBson))
+
+    DocumentManager.upsertDocuments(rtype, populatedDocuments, ordered)
+  }
 
   /*/***
     * Deletes a given FHIR resource

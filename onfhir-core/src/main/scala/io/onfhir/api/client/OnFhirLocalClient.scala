@@ -1,6 +1,5 @@
 package io.onfhir.api.client
 
-import akka.http.scaladsl.model.Uri.Path
 import io.onfhir.Onfhir
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse}
 import io.onfhir.api.service.FHIRServiceFactory
@@ -8,8 +7,6 @@ import io.onfhir.api.service.FHIRServiceFactory
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
 import io.onfhir.config.OnfhirConfig
 import io.onfhir.server.ErrorHandler
-
-import scala.util.Try
 
 object OnFhirLocalClient extends BaseFhirClient {
   implicit val executionContext: ExecutionContextExecutor = Onfhir.actorSystem.dispatcher
@@ -47,4 +44,10 @@ object OnFhirLocalClient extends BaseFhirClient {
         baseRequest.executeAndReturnBundle().map(_.asInstanceOf[T])
     }
   }
+
+  /**
+   * Special request to create/update resources in bulk
+   * @return
+   */
+  def bulkUpsert(rtype:String): OnFhirBulkRequestBuilder = new OnFhirBulkRequestBuilder(this, rtype)
 }

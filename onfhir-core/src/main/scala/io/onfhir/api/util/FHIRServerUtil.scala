@@ -269,7 +269,7 @@ class FHIRServerUtil(fhirConfig:FhirServerConfig) {
 
     val resourceType = (resource \ FHIR_COMMON_FIELDS.RESOURCE_TYPE).extract[String]
     val resourceId = (resource \ FHIR_COMMON_FIELDS.ID).extract[String]
-    val currentVersion = (resource \ FHIR_COMMON_FIELDS.META \ FHIR_COMMON_FIELDS.VERSION_ID).extract[String]
+    val currentVersion = (resource \ FHIR_COMMON_FIELDS.META \ FHIR_COMMON_FIELDS.VERSION_ID).extractOpt[String].getOrElse("1")
     val lastUpdated = (resource \ FHIR_COMMON_FIELDS.META \ FHIR_COMMON_FIELDS.LAST_UPDATED).extract[String]
     val resourceUrl = resourceLocation(resourceType, resourceId)
     val statusCode = (resource \ FHIR_EXTRA_FIELDS.STATUS_CODE).extract[String]

@@ -48,6 +48,9 @@ object FHIRServiceFactory {
       case FHIR_INTERACTIONS.PATCH => new FHIRPatchService(transactionSession)
       //If it is an FHIR operation
       case op if op.startsWith("$") => new FHIROperationHandler(transactionSession)
+
+      //Specific Onfhir interactions
+      case FHIR_INTERACTIONS.BULK_UPSERT => new FHIRBulkService
       case _ => fhirUnknownService
     }
   }
