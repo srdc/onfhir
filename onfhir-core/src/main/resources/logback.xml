@@ -46,4 +46,5 @@
     <logger name="spray" level="WARN"/>
     <logger name="io.onfhir.path" level="WARN"/>
     <logger name="io.onfhir.validation" level="WARN"/>
+    <logger name="io.onfhir.api.service.FHIRUpdateService" level="WARN"/>
 </configuration>

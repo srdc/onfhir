@@ -190,5 +190,11 @@
             <artifactId>specs2-junit_${scala.binary.version}</artifactId>
             <scope>provided</scope>
         </dependency>
+
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+            <version>3.3.4</version>
+        </dependency>
     </dependencies>
 </project>

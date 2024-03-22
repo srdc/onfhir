@@ -10,11 +10,15 @@ import io.onfhir.async.BulkImportJobHandler._
 import io.onfhir.config.OnfhirConfig
 import io.onfhir.util.JsonFormatter
 import org.slf4j.{Logger, LoggerFactory}
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{FileSystem, Path}
 
 import java.net.URI
-import java.nio.file.{Path, Paths}
+import scala.collection.immutable.Stream
+import java.io.{BufferedInputStream, BufferedReader, InputStreamReader}
+import java.net.URI
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.duration.{DAYS, Duration, HOURS}
+import scala.concurrent.duration.{Duration, HOURS}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.io.Source
 
@@ -46,14 +50,21 @@ class BulkImportJobHandler(job:BulkImportJob) extends Actor {
       sourceIndex = i
       val (rtype, url) = job.sources.apply(sourceIndex)
       logger.debug(s"Starting bulk import from source ${url} for job ${job.jobId} ...")
-      val finalUri =
-          //Absolute path
-          if(Paths.get(url).isAbsolute)
-            new URI(url)
-          else  //Relative path
-            Path.of(job.sourceDetails.rootUri.getPath, url).toUri
+      val finalUri = new URI(job.sourceDetails.rootUri + "/" + url)
+//          //Absolute path
+//          if(Paths.get(url).isAbsolute)
+//            new URI(url)
+//          else  //Relative path
+//            Path.of(job.sourceDetails.rootUri.getPath, url).toUri
+      logger.debug(s"FinalUri: ${finalUri}")
 
-      val bufferedSource = Source.fromFile(finalUri, "UTF-8")
+      val hdfs = FileSystem.get(job.sourceDetails.rootUri, new Configuration())
+      val path = new Path(url)
+      val stream = hdfs.open(path)
+
+//      val bufferedReader = new BufferedReader(new InputStreamReader(stream))
+
+      val bufferedSource = Source.fromInputStream(new BufferedInputStream(stream), "UTF-8")
       groupCount = if(rtype == "Bundle") 10 else OnfhirConfig.bulkNumResourcesPerGroup
       sourceItr =
         bufferedSource
