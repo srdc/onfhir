@@ -63,7 +63,7 @@ object PrefixModifierHandler {
     else {
       //If the value is given in exponential form, we use precision
       if(value.contains("e") || value.contains("E")){
-        val precision = calculatePrecisionDelta(value)
+        val precision = FHIRUtil.calculatePrecisionDelta(value)
         // Generated function values for comparison
         val floor = value.toDouble - precision
         val ceil = value.toDouble + precision
@@ -95,45 +95,6 @@ object PrefixModifierHandler {
   }
 
   /**
-   * Calculate the delta for precision issues
-   * @param value
-   * @return
-   */
-  private def calculatePrecisionDelta(value:String):Double = {
-    val preprocessedValue = if(value.startsWith("-")) value.drop(1)  else value
-    preprocessedValue match {
-      case d if(d.contains('.')) =>
-        val parts = if(d.contains('e')) d.split('e') else d.split('E')
-        //Find the precision e.g. 5.4 --> -2 -->  0.05 -->  5.4 +- 0.05
-        var i = (parts.apply(0).length - parts.apply(0).indexOf('.')) * -1  + 1
-        //Also include the power part e.g. 5.4e-2 --> -4 --> 0.0005 -> [5.35e-2,5.45e-2)
-        if(parts.length > 1) {
-          if(parts.apply(1).startsWith("-"))
-            i = i + (parts.apply(1).drop(1).toInt * -1)
-          else
-            i = i + parts.apply(1).replace("+", "").toInt
-        }
-        pow(10, i) * 0.5
-
-      case n if(!n.contains('.')) =>
-        val parts = if(n.contains('e')) n.split('e') else n.split('E')
-        var i = if(parts.apply(0).length != 1) 0 else -1
-        if(parts.length > 1){
-          if(!parts.apply(1).startsWith("-")){
-            val p = parts.apply(1).replace("+", "").toInt
-            i = i + p
-          } else {
-            val p = parts.apply(1).drop(1).toInt
-            i = i - p
-          }
-
-        }
-
-        pow(10, i) * 0.5
-    }
-  }
-
-  /**
     * Handles prefixes for decimal values
     *
     * @param path absolute path of the parameter
@@ -142,7 +103,7 @@ object PrefixModifierHandler {
     */
   def decimalPrefixHandler(path:String, value:String, prefix:String): Bson = {
     // Calculation of precision to generate implicit ranges
-    val precision = calculatePrecisionDelta(value)
+    val precision = FHIRUtil.calculatePrecisionDelta(value)
     //if(!value.contains('.')) 0.5 else pow(0.1, value.length - (value.indexOf(".") + 1)) * 0.5
     // Generated function values for comparison
     val floor = value.toDouble - precision
@@ -174,7 +135,7 @@ object PrefixModifierHandler {
     */
   def rangePrefixHandler(path:String, value:String, prefix:String, isSampleData:Boolean = false): Bson = {
     // Calculation of precision to generate implicit ranges
-    val precision = calculatePrecisionDelta(value)
+    val precision = FHIRUtil.calculatePrecisionDelta(value)
     // Paths to the range structure's high and low values
     val pathLow = if(isSampleData) FHIRUtil.mergeElementPath(path, FHIR_COMMON_FIELDS.LOWER_LIMIT) else  FHIRUtil.mergeElementPath(path,s"${FHIR_COMMON_FIELDS.LOW}.${FHIR_COMMON_FIELDS.VALUE}")
     val pathHigh = if(isSampleData) FHIRUtil.mergeElementPath(path, FHIR_COMMON_FIELDS.UPPER_LIMIT) else FHIRUtil.mergeElementPath(path, s"${FHIR_COMMON_FIELDS.HIGH}.${FHIR_COMMON_FIELDS.VALUE}")

@@ -924,4 +924,44 @@ object FHIRUtil {
       case Failure(e) => Try(ClassLoader.getSystemClassLoader.loadClass(classPath)).toOption
     }
   }
+
+  /**
+   * Calculate the delta for precision issues in FHIR search for numbers
+   *
+   * @param value
+   * @return
+   */
+  def calculatePrecisionDelta(value: String): Double = {
+    val preprocessedValue = if (value.startsWith("-")) value.drop(1) else value
+    preprocessedValue match {
+      case d if (d.contains('.')) =>
+        val parts = if (d.contains('e')) d.split('e') else d.split('E')
+        //Find the precision e.g. 5.4 --> -2 -->  0.05 -->  5.4 +- 0.05
+        var i = (parts.apply(0).length - parts.apply(0).indexOf('.')) * -1 + 1
+        //Also include the power part e.g. 5.4e-2 --> -4 --> 0.0005 -> [5.35e-2,5.45e-2)
+        if (parts.length > 1) {
+          if (parts.apply(1).startsWith("-"))
+            i = i + (parts.apply(1).drop(1).toInt * -1)
+          else
+            i = i + parts.apply(1).replace("+", "").toInt
+        }
+        Math.pow(10, i) * 0.5
+
+      case n if (!n.contains('.')) =>
+        val parts = if (n.contains('e')) n.split('e') else n.split('E')
+        var i = if (parts.apply(0).length != 1) 0 else -1
+        if (parts.length > 1) {
+          if (!parts.apply(1).startsWith("-")) {
+            val p = parts.apply(1).replace("+", "").toInt
+            i = i + p
+          } else {
+            val p = parts.apply(1).drop(1).toInt
+            i = i - p
+          }
+
+        }
+
+        Math.pow(10, i) * 0.5
+    }
+  }
 }

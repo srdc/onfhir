@@ -280,7 +280,7 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
    * @param baseProfiles          Base profiles given in standard bundle
    * @return
    */
-  private def validateAndConfigureProfiles(fhirConfig: FhirServerConfig, conformance:FHIRCapabilityStatement, profiles:Map[String, ProfileRestrictions], baseProfiles:Map[String, ProfileRestrictions]):FhirServerConfig = {
+  protected def validateAndConfigureProfiles(fhirConfig: FhirServerConfig, conformance:FHIRCapabilityStatement, profiles:Map[String, ProfileRestrictions], baseProfiles:Map[String, ProfileRestrictions]):FhirServerConfig = {
     //Check if all base profiles mentioned in Conformance are given in profile configurations
     var profileDefinitionsNotGiven = conformance.restResourceConf.flatMap(_.profile).filter(p => !profiles.contains(p) && !baseProfiles.contains(p))
     if(profileDefinitionsNotGiven.nonEmpty)
@@ -347,7 +347,7 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
    * @param allProfiles           All profiles both base and given
    * @return
    */
-  private def validateAndConfigureSearchParameters(fhirConfig: FhirServerConfig, conformance:FHIRCapabilityStatement, searchParameters:Map[String, FHIRSearchParameter], baseSearchParameters:Map[String, FHIRSearchParameter], allProfiles:Map[String, ProfileRestrictions]) :FhirServerConfig = {
+  protected def validateAndConfigureSearchParameters(fhirConfig: FhirServerConfig, conformance:FHIRCapabilityStatement, searchParameters:Map[String, FHIRSearchParameter], baseSearchParameters:Map[String, FHIRSearchParameter], allProfiles:Map[String, ProfileRestrictions]) :FhirServerConfig = {
     //Check if for all search parameters mentioned in the Conformance, a SearchParameter definition exist in base standard or given configuration
     val resourcesWithMissingSearchParameterDefs =
       conformance.restResourceConf
@@ -399,7 +399,7 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
    * @param baseOperationDefinitions  Base OperationDefinitions given in standard bundle
    * @return
    */
-  private def validateAndConfigureOperations(fhirConfig: FhirServerConfig, conformance:FHIRCapabilityStatement, operationDefs:Map[String, OperationConf], baseOperationDefinitions:Map[String, OperationConf], fhirOperationImplms:Map[String, String]): FhirServerConfig = {
+  protected def validateAndConfigureOperations(fhirConfig: FhirServerConfig, conformance:FHIRCapabilityStatement, operationDefs:Map[String, OperationConf], baseOperationDefinitions:Map[String, OperationConf], fhirOperationImplms:Map[String, String]): FhirServerConfig = {
     //Check if all operations mentioned in Conformance are given in operation definition configurations
     val operationDefinitionsNotGiven = conformance.operationDefUrls.diff(operationDefs.keySet ++ baseOperationDefinitions.keySet)
     if(operationDefinitionsNotGiven.nonEmpty)
@@ -436,7 +436,7 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
    * @param baseCompartmentDefinitions  Base compartments given in standard bundle
    * @return
    */
-  private def validateAndConfigureCompartments(fhirConfig: FhirServerConfig, conformance:FHIRCapabilityStatement, compartments:Map[String, FHIRCompartmentDefinition], baseCompartmentDefinitions:Map[String, FHIRCompartmentDefinition]):FhirServerConfig = {
+  protected def validateAndConfigureCompartments(fhirConfig: FhirServerConfig, conformance:FHIRCapabilityStatement, compartments:Map[String, FHIRCompartmentDefinition], baseCompartmentDefinitions:Map[String, FHIRCompartmentDefinition]):FhirServerConfig = {
     //Check if all compartments mentioned in Conformance are given in compartment configurations
     val compartmentsNotGiven = conformance.compartments.diff(baseCompartmentDefinitions.keySet ++ compartments.keySet)
     if(compartmentsNotGiven.nonEmpty)

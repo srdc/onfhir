@@ -985,6 +985,5 @@ class FhirPathEvaluatorTest extends Specification {
       LocalDateTime.from(evaluator.evaluateDateTime("'2015'.utl:toFhirDateTime('yyyy').highBoundary()", JNull).head).format(DateTimeFormatter.ISO_DATE_TIME) mustEqual "2015-12-31T23:59:59"
       evaluator.evaluateOptionalTime("'09:05'.utl:toFhirTime('HH:mm').highBoundary()", JNull).head._1.format(DateTimeFormatter.ofPattern("HH:mm:ss.SSS")) mustEqual "09:05:00.999"
     }
-
   }
 }
