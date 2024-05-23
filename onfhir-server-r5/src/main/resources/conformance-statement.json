@@ -14143,6 +14143,10 @@
           {
             "code" : "search-type",
             "documentation" : "Implemented per the specification (or Insert other doco here)"
+          },
+          {
+            "code" : "patch",
+            "documentation" : "Implemented per the specification (or Insert other doco here)"
           }],
         "conditionalCreate" : true,
         "conditionalUpdate" : true,

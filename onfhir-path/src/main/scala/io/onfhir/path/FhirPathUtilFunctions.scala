@@ -731,7 +731,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "Converts the current string value to FHIR Time format (ISO TIME). Ex: '22:10:45'.utl:toFhirTime()",
-    insertText = "utl:toFhirTime()", detail = "utl", label = "utl:toFhirDateTime", kind = "Method", returnType = Seq("time"), inputType = Seq("string"))
+    insertText = "utl:toFhirTime()", detail = "utl", label = "utl:toFhirTime", kind = "Method", returnType = Seq("time"), inputType = Seq("string"))
   def toFhirTime(): Seq[FhirPathResult] = {
     val patternsToTry = Seq("HH:mm:ss.SSS", "HH:mm:ss")
     _toFhirTime(patternsToTry)

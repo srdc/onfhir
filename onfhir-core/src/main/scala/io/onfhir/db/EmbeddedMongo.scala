@@ -42,7 +42,7 @@ object EmbeddedMongo {
 
     val mongod = mongodBuilder.build()
 
-    val version = Version.Main.V4_4
+    val version = Version.Main.V7_0
     mongodProcess = mongod.start(version)
     logger.info("Embedded Mongo is listening at {}", mongodProcess.current().getServerAddress.toString)
   }
