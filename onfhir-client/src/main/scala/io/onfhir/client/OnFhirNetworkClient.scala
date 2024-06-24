@@ -10,6 +10,7 @@ import io.onfhir.client.intrcp.{BasicAuthenticationInterceptor, BearerTokenInter
 import io.onfhir.client.parsers.{FHIRRequestMarshaller, FHIRResponseUnmarshaller}
 import org.slf4j.{Logger, LoggerFactory}
 
+import scala.annotation.unused
 import scala.concurrent.{ExecutionContext, Future}
 
 case class OnFhirNetworkClient(serverBaseUrl:String, interceptors:Seq[IHttpRequestInterceptor] = Nil)(implicit actorSystem: ActorSystem) extends BaseFhirClient {
@@ -21,6 +22,7 @@ case class OnFhirNetworkClient(serverBaseUrl:String, interceptors:Seq[IHttpReque
 
   /**
    * Client with basic authentication
+ *
    * @param username  Username
    * @param password  Password
    * @return
@@ -71,9 +73,9 @@ case class OnFhirNetworkClient(serverBaseUrl:String, interceptors:Seq[IHttpReque
 
   /**
    * Execute the next page for the search
-   * @param bundle
-   * @tparam T
-   *  @return
+   * @param bundle  FHIR search result-set bundle
+   * @tparam T      Concrete class for bundle representation
+   * @return
    */
   override def next[T <: FHIRPaginatedBundle](bundle: T): Future[T] = {
     FHIRRequestMarshaller
@@ -97,7 +99,7 @@ case class OnFhirNetworkClient(serverBaseUrl:String, interceptors:Seq[IHttpReque
 
   /**
    * Execut the HTTP request while handling interceptors
-   * @param httpRequest
+   * @param httpRequest HTTP request constructed by the client
    * @return
    */
   private def executeHttpRequest(httpRequest:HttpRequest):Future[HttpResponse] = {
@@ -110,8 +112,8 @@ case class OnFhirNetworkClient(serverBaseUrl:String, interceptors:Seq[IHttpReque
 
   /**
    * Recursively handle interceptors to update the request
-   * @param interceptors
-   * @param httpRequest
+   * @param interceptors  Configured request intercetors
+   * @param httpRequest   HTTP request constructed by the client
    * @return
    */
   private def handleInterceptors(interceptors:Seq[IHttpRequestInterceptor], httpRequest: HttpRequest):Future[HttpRequest] = {
@@ -137,16 +139,18 @@ object OnFhirNetworkClient {
 
   /**
    * Create an network FHIR client with the given server base url and http request interceptors
-   * @param serverBaseUrl
-   * @param interceptors
+   * @param serverBaseUrl   FHIR server's base url
+   * @param interceptors    Interceptors for the request that configures the HTTP Request before sending it
+   *                        (e.g. an authorization interceptor that insert certain headers to the HTTP request)
    * @return
    */
   def apply(serverBaseUrl: String, interceptors: Seq[IHttpRequestInterceptor])(implicit actorSystem: ActorSystem): OnFhirNetworkClient = new OnFhirNetworkClient(serverBaseUrl, interceptors)
 
   /**
-   *
-   * @param serverBaseUrl
-   * @param interceptor
+   * Create an network FHIR client with the given server base url and http request interceptor
+   * @param serverBaseUrl FHIR server's base url
+   * @param interceptor   Interceptor for the request that configures the HTTP Request before sending it
+   *                      (e.g. an authorization interceptor that insert certain headers to the HTTP request)
    * @return
    */
   def apply(serverBaseUrl: String, interceptor:IHttpRequestInterceptor)(implicit actorSystem: ActorSystem):OnFhirNetworkClient = new OnFhirNetworkClient(serverBaseUrl, Seq(interceptor))

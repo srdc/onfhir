@@ -3,14 +3,15 @@ package io.onfhir.client
 import akka.actor.ActorSystem
 import akka.http.javadsl.model.StatusCodes
 import io.onfhir.api.Resource
-import io.onfhir.api.client.{FHIRHistoryBundle, FHIRSearchSetBundle, FHIRTransactionBatchBundle}
+import io.onfhir.api.client.{FHIRHistoryBundle, FHIRSearchSetBundle, FHIRTransactionBatchBundle, FhirClientException}
 import io.onfhir.api.model.FHIRResponse
 import io.onfhir.api.util.FHIRUtil
+import io.onfhir.path.FhirPathEvaluator
 
 import scala.concurrent.duration.DurationInt
 import scala.io.Source
 import io.onfhir.util.JsonFormatter._
-import org.json4s.JsonAST.{JObject, JString}
+import org.json4s.JsonAST.{JNothing, JNull, JObject, JString}
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.mutable.Specification
 
@@ -261,7 +262,6 @@ object OnFhirNetworkClientTest extends Specification {
       opResponse.httpStatus mustEqual(StatusCodes.OK)
       opResponse.getOutputParam("return") must not beEmpty
     }
-
   }
 
 }
