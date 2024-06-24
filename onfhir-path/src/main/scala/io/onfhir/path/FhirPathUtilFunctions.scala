@@ -700,7 +700,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param sourcePattern Java time date pattern e.g. dd.MM.yyyy
    * @return
    */
-  @FhirPathFunction(documentation = "Converts it to a custom date string.",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Converts a given date string, based on the specified Java time date pattern, to a custom date string that is compliant with FHIR standards.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`sourcePattern`**  \nThe Java time date pattern that defines the format of the input date string. This pattern must follow the Java SimpleDateFormat conventions. The pattern should be designed to match the format of the date strings that will be input to this function. For example:\n- yyyy-MM-dd for dates like 2021-12-25\n- dd/MM/yyyy for dates like 25/12/2024\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n\"25/12/2024\"\n```\n\n\uD83D\uDCA1 **E.g.** '25.12.2024'.utl:toFhirDate('dd.MM.yyyy')",
     insertText = "utl:toFhirDate(<sourcePattern>)", detail = "utl", label = "utl:toFhirDate", kind = "Method", returnType = Seq("dateTime"), inputType = Seq("string"))
   def toFhirDate(sourcePattern: ExpressionContext): Seq[FhirPathResult] = {
     val pattern = new FhirPathExpressionEvaluator(context, current).visit(sourcePattern)
@@ -730,7 +730,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    *
    * @return
    */
-  @FhirPathFunction(documentation = "Converts the current string value to FHIR Time format (ISO TIME). Ex: '22:10:45'.utl:toFhirTime()",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Converts the current string value of time to the FHIR Time format. The current string representation of the time is expected to be in the following formats:  \n- HH:mm:ss\n- HH:mm:ss.SSS\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n\"22:10:45.123\"\n```\n\n\uD83D\uDCA1 **E.g.** '22:10:45'.utl:toFhirTime()",
     insertText = "utl:toFhirTime()", detail = "utl", label = "utl:toFhirTime", kind = "Method", returnType = Seq("time"), inputType = Seq("string"))
   def toFhirTime(): Seq[FhirPathResult] = {
     val patternsToTry = Seq("HH:mm:ss.SSS", "HH:mm:ss")
@@ -744,7 +744,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param sourcePattern The format pattern of the time string to be converted.
    * @return
    */
-  @FhirPathFunction(documentation = "Converts the current string value to FHIR Time format (ISO TIME). Ex: '22:10:45'.utl:toFhirTime('HH:mm:ss' | 'HH:mm')",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Converts a given time string, based on the specified format pattern, to a FHIR Time format, compliant with ISO 8601 standards.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`sourcePattern`**  \nThe format pattern of the time string to be converted. Multiple formats at the same time are also supported using `|` character. The pattern should be designed to match the format of the time strings that will be input to this function. For example:\n- 'HH:mm:ss' for times such as 22:10:45\n- 'HH:mm' for times such as 22:10\n- 'HH:mm:ss.SSS' for times with milliseconds, such as 22:10:45.123\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n\"22:10:45.123\"\n```\n\n\uD83D\uDCA1 **E.g.** '22:10:45'.utl:toFhirTime('HH:mm:ss' | 'HH:mm')",
     insertText = "utl:toFhirTime(<sourcePattern>)", detail = "utl", label = "utl:toFhirTime", kind = "Method", returnType = Seq("time"), inputType = Seq("string"))
   def toFhirTime(sourcePattern: ExpressionContext): Seq[FhirPathResult] = {
     val pattern = new FhirPathExpressionEvaluator(context, current).visit(sourcePattern)
@@ -786,7 +786,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    *
    * @return
    */
-  @FhirPathFunction(documentation = "Converts the current string value to FHIR DateTime format (ISO DATE TIME). Ex: '2012-01-13 22:10:45'.utl:toFhirDateTime()",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Converts the current string value to the string representation of FHIR DateTime format, which complies with ISO 8601 standards. The current string representation of the date-time is expected to be in one of these formats:\n- \"yyyy-MM-dd HH:mm:ss\"\n- \"yyyy-MM-ddHH:mm:ss\"\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n\"2012-01-13 22:10:45\"\n```\n\n\uD83D\uDCA1 **E.g.** '2012-01-13 22:10:45'.utl:toFhirDateTime()",
     insertText = "utl:toFhirDateTime()", detail = "utl", label = "utl:toFhirDateTime", kind = "Method", returnType = Seq("dateTime"), inputType = Seq("string"))
   def toFhirDateTime(): Seq[FhirPathResult] = {
     val patternsToTry = Seq("yyyy-MM-dd HH:mm:ss", "yyyy-MM-ddHH:mm:ss")
@@ -800,7 +800,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param sourcePattern The format pattern of the date-time string to be converted.
    * @return
    */
-  @FhirPathFunction(documentation = "Converts the current string value to FHIR DateTime format (ISO DATE TIME). Ex: '20120113.22:10:45'.utl:toFhirDateTime('yyyy-MM-ddHH:mm:ss' | 'yyyyMMdd.HH:mm:ss')",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Converts the current string value to the string representation of FHIR DateTime format, which complies with ISO 8601 standards. \n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`sourcePattern`**  \nThe format pattern of the date-time string to be converted. Multiple formats at the same time are also supported using `|` character. The pattern should be designed to match the format of the time strings that will be input to this function. For example:\n- 'yyyy-MM-dd HH:mm:ss.SSS' for times such as 2024-01-13 22:10:45.167\n- 'yyyyMMdd.HH:mm:ss' for times such as 20240113.22:10:45\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n\"2012-01-13 22:10:45\"\n```\n\n\uD83D\uDCA1 **E.g.** '20240113.22:10:45'.utl:toFhirDateTime('yyyy-MM-dd HH:mm:ss' | 'yyyyMMdd.HH:mm:ss')",
     insertText = "utl:toFhirDateTime(<sourcePattern>)", detail = "utl", label = "utl:toFhirDateTime", kind = "Method", returnType = Seq("dateTime"), inputType = Seq("string"))
   def toFhirDateTime(sourcePattern: ExpressionContext): Seq[FhirPathResult] = {
     val pattern = new FhirPathExpressionEvaluator(context, current).visit(sourcePattern)
@@ -818,7 +818,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param zoneId        Java ZoneId representation e.g. Europe/Berlin
    * @return
    */
-  @FhirPathFunction(documentation = "Converts the current string value to FHIR DateTime format (ISO DATE TIME) with the given time zone",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Converts the current string value to the string representation of FHIR DateTime format (ISO DATE TIME) with the given time zone.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`sourcePattern`**  \nThe format pattern of the date-time string to be converted. Multiple formats at the same time are also supported using `|` character. The pattern should be designed to match the format of the time strings that will be input to this function. For example:\n- 'yyyy-MM-dd HH:mm:ss.SSS' for times such as 2024-01-13 22:10:45.167\n- 'yyyyMMdd.HH:mm:ss' for times such as 20240113.22:10:45\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`zoneId`**  \nThe Java ZoneId representation of the time zone to be applied to the date-time string. For example:\n- Europe/Berlin\n- America/New_York\n- Asia/Tokyo\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n\"2024-01-13 22:10:45\"\n```\n\n\uD83D\uDCA1 **E.g.** '20240113.22:10:45'.utl:toFhirDateTime('yyyy-MM-dd HH:mm:ss', 'Europe/Berlin')",
     insertText = "utl:toFhirDateTime(<sourcePattern>, <zoneId>)", detail = "utl", label = "utl:toFhirDateTime", kind = "Method", returnType = Seq("dateTime"), inputType = Seq("string"))
   def toFhirDateTime(sourcePattern: ExpressionContext, zoneId: ExpressionContext): Seq[FhirPathResult] = {
     val pattern = new FhirPathExpressionEvaluator(context, current).visit(sourcePattern)

@@ -160,11 +160,11 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
     Seq(FhirPathBoolean(result))
   }
 
-  @FhirPathFunction(documentation = "Returns true if the collection has any elements satisfying the criteria, and false otherwise.",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns `true` if the collection has any elements satisfying the criteria, and `false` otherwise. For more information, refer to the [FHIRPath documentation](https://hl7.org/fhirpath/#existscriteria-expression-boolean).\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`criteria`**  \nThe condition or expression used to test elements within the collection. This can be any valid expression that evaluates to a boolean value (`true` or `false`).\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \nThe method returns `true` if the collection has any elements satisfying the `criteria`, and `false` otherwise.\n\n\uD83D\uDCA1 **E.g.** identifier.exists(use = 'official')",
     insertText = "exists(<expr>)", detail = "", label = "exists", kind = "Method", returnType = Seq("boolean"), inputType = Seq())
   def exists(expr: ExpressionContext): Seq[FhirPathResult] = exists(Some(expr))
 
-  @FhirPathFunction(documentation = "Returns true if the collection has any elements, and false otherwise.",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns `true` if the collection has any elements, and `false` otherwise. For more information, refer to the [FHIRPath documentation](https://hl7.org/fhirpath/#existscriteria-expression-boolean).\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \nThe method returns `true` if the collection has any elements, and `false` otherwise.\n\n\uD83D\uDCA1 **E.g.** name.exists()",
     insertText = "exists()", detail = "", label = "exists", kind = "Method", returnType = Seq("boolean"), inputType = Seq())
   def exists(): Seq[FhirPathResult] = exists(None)
 
@@ -633,11 +633,11 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
       otherwiseResult.map(ore => new FhirPathExpressionEvaluator(context, current).visit(ore)).getOrElse(Nil)
   }
 
-  @FhirPathFunction(documentation = "If criterion is true, the function returns the value of the true-result argument. Otherwise, it returns otherwise-result",
-    insertText = "iif(<criterium>,<trueResult>,<otherwiseResult>)", detail = "", label = "iif", kind = "Function", returnType = Seq(), inputType = Seq())
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Evaluates a given criterion and returns one of two specified results based on whether the criterion is true or false. It functions similarly to an inline if-else statement.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`criterium`**  \nThe condition or expression to be evaluated. This can be any expression that resolves to a boolean value (`true` or `false`).\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`trueResult`**  \nThe value to be returned if the `criterium` evaluates to true. This can be any valid value or expression.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`otherwiseResult`**  \nThe value to be returned if the `criterium` evaluates to false. This can be any valid value or expression.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \nThe method returns the value of `trueResult` if `criterium` is true, otherwise it returns the value of `otherwiseResult`.\n\n\uD83D\uDCA1 **E.g.** iif(measuredLabValue >= 50, 'High', 'Normal')",
+    insertText = "iif(<criterium>, <trueResult>, <otherwiseResult>)", detail = "", label = "iif", kind = "Function", returnType = Seq(), inputType = Seq())
   def iif(criterium: ExpressionContext, trueResult: ExpressionContext, otherwiseResult: ExpressionContext): Seq[FhirPathResult] = iif(criterium, trueResult, Some(otherwiseResult))
 
-  @FhirPathFunction(documentation = "If criterion is true, the function returns the value of the true-result argument.",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Evaluates a given criterion and returns a specified result if the criterion is true. If the criterion is false, it returns an empty value.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`criterium`**  \nThe condition or expression to be evaluated. This can be any expression that resolves to a boolean value (`true` or `false`).\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`trueResult`**  \nThe value to be returned if the `criterium` evaluates to true. This can be any valid value or expression.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \nThe method returns the value of `trueResult` if `criterium` is true. If `criterium` is false, it returns an empty value.\n\n\uD83D\uDCA1 **E.g.** iif(measuredLabValue >= 50, 'High')",
     insertText = "iif(<criterium>,<trueResult>)", detail = "", label = "iif", kind = "Function", returnType = Seq(), inputType = Seq())
   def iif(criterium: ExpressionContext, trueResult: ExpressionContext): Seq[FhirPathResult] = iif(criterium, trueResult, None)
 
@@ -747,7 +747,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
    *
    * @return
    */
-  @FhirPathFunction(documentation = "Converts it to a date.",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Converts the input to a Date format. This method follows the FHIRPath standard and only accepts a single format: YYYY-MM-DD. For more information, refer to the [FHIRPath documentation](https://hl7.org/fhirpath/#todate-date).  \n⚠\uFE0F For custom patterns and conversion purposes, please use the `utl` library methods (e.g., `utl:toFhirDate`).\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \nThe method returns a Date string in the format YYYY-MM-DD.\n```json\n\"2023-05-23\"\n```\n\uD83D\uDCA1 **E.g.** '2012-01-01'.toDate()",
     insertText = "toDate()", detail = "", label = "toDate", kind = "Method", returnType = Seq("dateTime"), inputType = Seq("dateTime", "string"))
   def toDate(): Seq[FhirPathResult] = {
     current match {
@@ -769,7 +769,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
    *
    * @return
    */
-  @FhirPathFunction(documentation = "Converts it to a datetime.",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Converts the input to a DateTime format. This method follows the FHIRPath standard and only accepts a single format: YYYY-MM-DDThh:mm:ss.fff(+|-)hh:mm. For more information, refer to the [FHIRPath documentation](https://hl7.org/fhirpath/#todatetime-datetime).  \n⚠\uFE0F For custom patterns and conversion purposes, please use the `utl` library methods (e.g., `utl:toFhirDateTime`).\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \nThe method returns a DateTime string in the format YYYY-MM-DDThh:mm:ss.fff(+|-)hh:mm.\n```json\n\"2023-05-23T13:45:30.000+02:00\"\n```\n\uD83D\uDCA1 **E.g.** '2012-01-01T10:00'.toDateTime()",
     insertText = "toDateTime()", detail = "", label = "toDateTime", kind = "Method", returnType = Seq("dateTime"), inputType = Seq("dateTime", "string"))
   def toDateTime(): Seq[FhirPathResult] = {
     current match {
