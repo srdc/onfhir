@@ -4,6 +4,7 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.stream.Materializer
+import com.typesafe.config.Config
 import io.onfhir.api.client.{BaseFhirClient, FHIRPaginatedBundle, FhirClientException, IFhirBundleReturningRequestBuilder}
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse}
 import io.onfhir.client.intrcp.{BasicAuthenticationInterceptor, BearerTokenInterceptorFromTokenEndpoint, FixedBasicTokenInterceptor}
@@ -12,6 +13,7 @@ import org.slf4j.{Logger, LoggerFactory}
 
 import scala.annotation.unused
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Try
 
 case class OnFhirNetworkClient(serverBaseUrl:String, interceptors:Seq[IHttpRequestInterceptor] = Nil)(implicit actorSystem: ActorSystem) extends BaseFhirClient {
   val logger:Logger = LoggerFactory.getLogger(this.getClass)
@@ -154,4 +156,25 @@ object OnFhirNetworkClient {
    * @return
    */
   def apply(serverBaseUrl: String, interceptor:IHttpRequestInterceptor)(implicit actorSystem: ActorSystem):OnFhirNetworkClient = new OnFhirNetworkClient(serverBaseUrl, Seq(interceptor))
+
+  /**
+   * Create the network client from the configuration
+   * @param config
+   * @param actorSystem
+   * @return
+   */
+  def apply(config:Config)(implicit actorSystem: ActorSystem):OnFhirNetworkClient = {
+    val authzInterceptor =
+      Try(config.getConfig("authz"))
+      .toOption
+      .map(authzConfig =>
+        authzConfig.getString("method") match {
+          case "basic" => BasicAuthenticationInterceptor.apply(authzConfig)
+          case "oauth2" =>  BearerTokenInterceptorFromTokenEndpoint.apply(authzConfig)
+        }
+      )
+
+    val serverBaseUrl = config.getString("serverBaseUrl")
+    new OnFhirNetworkClient(serverBaseUrl, authzInterceptor.toSeq)
+  }
 }

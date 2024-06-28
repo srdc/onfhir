@@ -2,7 +2,6 @@ package io.onfhir.client.intrcp
 
 import java.net.URI
 import java.time.Instant
-
 import akka.http.scaladsl.model.HttpRequest
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.oauth2.sdk.auth.{ClientSecretBasic, ClientSecretJWT, ClientSecretPost, Secret}
@@ -13,6 +12,8 @@ import io.onfhir.api.client.FhirClientException
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.jdk.CollectionConverters.ListHasAsScala
+import scala.util.Try
 
 /**
   * Created by tuncay on 10/16/2020.
@@ -100,4 +101,18 @@ object BearerTokenInterceptorFromTokenEndpoint {
   }
 
   def apply(clientId: String, clientSecret: String, requiredScopes: Seq[String], authzServerTokenEndpoint: String, clientAuthenticationMethod: String): BearerTokenInterceptorFromTokenEndpoint = new BearerTokenInterceptorFromTokenEndpoint(clientId, clientSecret, requiredScopes, authzServerTokenEndpoint, clientAuthenticationMethod)
+
+  /**
+   * Construct interceptor for given onfhir.client.authz config
+   * @param config  Typesafe config
+   * @return
+   */
+  def apply(config:Config):BearerTokenInterceptorFromTokenEndpoint = {
+    val clientId = config.getString("client_id")
+    val clientSecret = config.getString("client_secret")
+    val authzServerTokenEndpoint = config.getString("token_endpoint")
+    val clientAuthenticationMethod = config.getString("token_endpoint_auth_method")
+    val scopes = config.getStringList("scopes").asScala.toSeq
+    new BearerTokenInterceptorFromTokenEndpoint(clientId, clientSecret, scopes, authzServerTokenEndpoint, clientAuthenticationMethod)
+  }
 }
