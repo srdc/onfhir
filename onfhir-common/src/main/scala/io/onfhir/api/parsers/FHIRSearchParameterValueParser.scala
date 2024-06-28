@@ -622,6 +622,17 @@ object FHIRSearchParameterValueParser {
   }
 
   /**
+   * Parse a simple FHIR search param name expression part to extract name and suffix
+   * @param nameExpr  FHIR saarch param name expression e.g. code, code:not
+   * @return          Parameter name and suffix e.g. code:not -> (code, :not)
+   */
+  def parseSimpleName(nameExpr:String):(String, String) = {
+    NameParser
+      .parse(NameParser.parseName, nameExpr)
+      .getOrElse(throw new InvalidParameterException(s"Invalid search parameter name part $nameExpr!"))
+  }
+
+  /**
    * Parse the value part of the given search parameter expression and return prefix and expected value(s)
    *
    * @param valueExpr Value part of search expression
