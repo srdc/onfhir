@@ -1,8 +1,9 @@
 package io.onfhir.client
 
+import io.onfhir.api.Resource
 import io.onfhir.api.client.{FhirClientException, IOnFhirClient}
 import io.onfhir.api.service.IFhirTerminologyService
-import io.onfhir.client.TerminologyServiceClient.{LOOKUP_OPERATION_NAME, LOOKUP_OPERATION_REQUEST_PARAMS, TRANSLATE_OPERATION_NAME, TRANSLATE_OPERATION_REQUEST_PARAMS}
+import io.onfhir.client.TerminologyServiceClient.{EXPAND_OPERATION_NAME, EXPAND_OPERATION_REQUEST_PARAMS, LOOKUP_OPERATION_NAME, LOOKUP_OPERATION_REQUEST_PARAMS, TRANSLATE_OPERATION_NAME, TRANSLATE_OPERATION_REQUEST_PARAMS}
 import org.json4s.JObject
 import org.slf4j.LoggerFactory
 
@@ -278,11 +279,79 @@ class TerminologyServiceClient(onFhirClient: IOnFhirClient)(implicit ec: Executi
           throw t
       }
   }
+
+  /**
+   * Expand the given ValueSet with identifier (ValueSet.id)
+   *
+   * @param id     Identifier of the ValueSet
+   * @param filter Filter text
+   * @param offset Paging support - where to start if a subset is desired (default = 0). Offset is number of records (not number of pages)
+   * @param count  Paging support - how many codes should be provided in a partial page view. Paging only applies to flat expansions - servers ignore paging if the expansion is not flat. If count = 0, the client is asking how large the expansion is. Servers SHOULD honor this request for hierarchical expansions as well, and simply return the overall count
+   * @return
+   */
+  override def expandWithId(id: String, filter: Option[String], offset: Option[Long], count: Option[Long]): Future[JObject] = {
+    var request =
+      onFhirClient
+        .operation(EXPAND_OPERATION_NAME)
+        .on("ValueSet", Some(id))
+
+    filter.foreach(f => request = request.addSimpleParam(EXPAND_OPERATION_REQUEST_PARAMS.FILTER, f))
+    offset.foreach(o => request = request.addSimpleParam(EXPAND_OPERATION_REQUEST_PARAMS.OFFSET, ""+o))
+    count.foreach(c => request = request.addSimpleParam(EXPAND_OPERATION_REQUEST_PARAMS.COUNT, ""+c))
+
+    request
+      .executeAndReturnResource()
+  }
+
+  /**
+   *
+   * @param url     Canonical url of the valueset
+   * @param version The identifier that is used to identify a specific version of the value set to be used when generating the expansion. This is an arbitrary value managed by the value set author and is not expected to be globally unique. For example, it might be a timestamp (e.g. yyyymmdd) if a managed version is not available.
+   * @param filter  Filter text
+   * @param offset  Paging support - where to start if a subset is desired (default = 0). Offset is number of records (not number of pages)
+   * @param count   Paging support - how many codes should be provided in a partial page view. Paging only applies to flat expansions - servers ignore paging if the expansion is not flat. If count = 0, the client is asking how large the expansion is. Servers SHOULD honor this request for hierarchical expansions as well, and simply return the overall count
+   * @return
+   */
+  override def expand(url: String, version: Option[String], filter: Option[String], offset: Option[Long], count: Option[Long]): Future[JObject] = {
+    var request =
+      onFhirClient
+      .operation(EXPAND_OPERATION_NAME)
+      .on("ValueSet")
+
+    filter.foreach(f => request = request.addSimpleParam(EXPAND_OPERATION_REQUEST_PARAMS.FILTER, f))
+    offset.foreach(o => request = request.addSimpleParam(EXPAND_OPERATION_REQUEST_PARAMS.OFFSET, "" + o))
+    count.foreach(c => request = request.addSimpleParam(EXPAND_OPERATION_REQUEST_PARAMS.COUNT, "" + c))
+
+    request
+      .executeAndReturnResource()
+  }
+
+  /**
+   *
+   * @param valueSet ValueSet definition
+   * @param offset   Paging support - where to start if a subset is desired (default = 0). Offset is number of records (not number of pages)
+   * @param count    Paging support - how many codes should be provided in a partial page view. Paging only applies to flat expansions - servers ignore paging if the expansion is not flat. If count = 0, the client is asking how large the expansion is. Servers SHOULD honor this request for hierarchical expansions as well, and simply return the overall count
+   *  @return
+   */
+  override def expand(valueSet:Resource, offset: Option[Long] = None, count: Option[Long] = None):Future[JObject] = {
+    var request =
+      onFhirClient
+        .operation(EXPAND_OPERATION_NAME)
+        .on("ValueSet")
+        .addResourceParam("valueSet", valueSet)
+
+    offset.foreach(o => request = request.addSimpleParam(EXPAND_OPERATION_REQUEST_PARAMS.OFFSET, "" + o))
+    count.foreach(c => request = request.addSimpleParam(EXPAND_OPERATION_REQUEST_PARAMS.COUNT, "" + c))
+
+    request
+      .executeAndReturnResource()
+  }
 }
 
 object TerminologyServiceClient {
   final val TRANSLATE_OPERATION_NAME = "translate"
   final val LOOKUP_OPERATION_NAME = "lookup"
+  final val EXPAND_OPERATION_NAME = "expand"
 
   final object TRANSLATE_OPERATION_REQUEST_PARAMS {
     val CONCEPT_MAP_URL = "url"
@@ -305,5 +374,13 @@ object TerminologyServiceClient {
     val PROPERTIES = "property"
     val CODING = "coding"
     val DISPLAY_LANGUAGE = "displayLanguage"
+  }
+
+  final object EXPAND_OPERATION_REQUEST_PARAMS {
+    val URL = "url"
+    val FILTER  = "filter"
+    val VERSION = "valueSetVersion"
+    val OFFSET = "offset"
+    val COUNT = "count"
   }
 }

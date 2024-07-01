@@ -1,14 +1,16 @@
 package io.onfhir.api.service
 
+import io.onfhir.api.Resource
 import org.json4s.JObject
 
+import java.time.OffsetDateTime
 import scala.concurrent.Future
 import scala.concurrent.duration.Duration
 
 /**
  * Interface for FHIR terminology service
  */
-trait IFhirTerminologyService extends IFhirTerminologyTranslationService with IFhirTerminologyLookupService with Serializable{
+trait IFhirTerminologyService extends IFhirTerminologyTranslationService with IFhirTerminologyLookupService with IFhirTerminologyExpandService with Serializable{
   /**
    * Return timeout specified for the terminology service calls
    * @return
@@ -146,3 +148,44 @@ trait IFhirTerminologyTranslationService {
   def translate(codingOrCodeableConcept:JObject, source:Option[String], target:Option[String]):Future[JObject]
 }
 
+trait IFhirTerminologyExpandService {
+  /**
+   * Expand the given ValueSet with identifier (ValueSet.id)
+   * @param id        Identifier of the ValueSet
+   * @param filter    Filter text
+   * @param offset    Paging support - where to start if a subset is desired (default = 0). Offset is number of records (not number of pages)
+   * @param count     Paging support - how many codes should be provided in a partial page view. Paging only applies to flat expansions - servers ignore paging if the expansion is not flat. If count = 0, the client is asking how large the expansion is. Servers SHOULD honor this request for hierarchical expansions as well, and simply return the overall count
+   * @return
+   */
+  def expandWithId(id:String,
+                   filter: Option[String] = None,
+                   offset: Option[Long] = None,
+                   count: Option[Long] = None):Future[JObject]
+
+
+  /**
+   * Expand the ValueSet for given url and version
+   * @param url     Canonical url of the valueset
+   * @param version The identifier that is used to identify a specific version of the value set to be used when generating the expansion. This is an arbitrary value managed by the value set author and is not expected to be globally unique. For example, it might be a timestamp (e.g. yyyymmdd) if a managed version is not available.
+   * @param filter  Filter text
+   * @param offset  Paging support - where to start if a subset is desired (default = 0). Offset is number of records (not number of pages)
+   * @param count   Paging support - how many codes should be provided in a partial page view. Paging only applies to flat expansions - servers ignore paging if the expansion is not flat. If count = 0, the client is asking how large the expansion is. Servers SHOULD honor this request for hierarchical expansions as well, and simply return the overall count
+   * @return
+   */
+  def expand(url:String,
+             version:Option[String] = None,
+             filter:Option[String] = None,
+             offset:Option[Long] = None,
+             count:Option[Long] = None
+            ):Future[JObject]
+
+  /**
+   * Expand the given ValueSet
+   *
+   * @param valueSet ValueSet definition
+   * @param offset   Paging support - where to start if a subset is desired (default = 0). Offset is number of records (not number of pages)
+   * @param count    Paging support - how many codes should be provided in a partial page view. Paging only applies to flat expansions - servers ignore paging if the expansion is not flat. If count = 0, the client is asking how large the expansion is. Servers SHOULD honor this request for hierarchical expansions as well, and simply return the overall count
+   * @return
+   */
+  def expand(valueSet:Resource, offset: Option[Long] = None, count: Option[Long] = None):Future[JObject]
+}
