@@ -187,5 +187,5 @@ trait IFhirTerminologyExpandService {
    * @param count    Paging support - how many codes should be provided in a partial page view. Paging only applies to flat expansions - servers ignore paging if the expansion is not flat. If count = 0, the client is asking how large the expansion is. Servers SHOULD honor this request for hierarchical expansions as well, and simply return the overall count
    * @return
    */
-  def expand(valueSet:Resource, offset: Option[Long] = None, count: Option[Long] = None):Future[JObject]
+  def expandWithValueSet(valueSet:Resource, offset: Option[Long] = None, count: Option[Long] = None):Future[JObject]
 }
