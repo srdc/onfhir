@@ -45,7 +45,7 @@ class FhirContentValidator(
   def validateComplexContent(value: JObject): Future[Seq[OutcomeIssue]] = {
     logger.debug(s"Validating against profile chain starting with $profileUrl...")
     if (rootProfileChain.isEmpty)
-      throw new InitializationException(s"Resource profile with url $profileUrl is nor recognized in this onFhir setup !")
+      throw new InitializationException(s"Resource profile with url $profileUrl is not recognized in this onFhir setup !")
 
     for {
       issues <- validateComplexContentAgainstProfile(rootProfileChain, value, None, Nil)
