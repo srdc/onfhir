@@ -77,6 +77,12 @@ class FSConfigReader(
     IOUtil.readResourcesInFolderOrZip(pathsToSearch._1, pathsToSearch._2)
   }
 
-  def readCapabilityStatement(): Resource =
-    IOUtil.readResource(conformancePath, DEFAULT_RESOURCE_PATHS.CONFORMANCE_PATH, FHIR_CONFORMANCE)
+  override def readCapabilityStatement(): Resource = {
+    val conformanceFileDefaultPath = fhirVersion match {
+      case "R4" => DEFAULT_RESOURCE_PATHS.CONFORMANCE_PATH_R4
+      case "R5" => DEFAULT_RESOURCE_PATHS.CONFORMANCE_PATH_R5
+      case _ => throw new IllegalArgumentException(s"Unknown FHIR version: $fhirVersion")
+    }
+    IOUtil.readResource(conformancePath, conformanceFileDefaultPath, FHIR_CONFORMANCE)
+  }
 }

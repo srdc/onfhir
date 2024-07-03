@@ -457,8 +457,14 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
    * @return
    */
   private def readIndexConfigurationsAndConfigureShardKeys(fhirConfig: FhirServerConfig):FhirServerConfig = {
+    //fhirConfig.fhirVersion
+    val dbIndexFileDefaultPath = fhirVersion match {
+      case "R4" => DEFAULT_RESOURCE_PATHS.INDEX_CONF_PATH_R4
+      case "R5" => DEFAULT_RESOURCE_PATHS.INDEX_CONF_PATH_R5
+      case _ => throw new IllegalArgumentException(s"Unknown FHIR version: $fhirVersion")
+    }
     //Parse Index configurations, and set configured shard keys
-    indexConfigurations = IndexConfigurator.parseIndexConfigurationFile(OnfhirConfig.dbIndexConfigurationPath, DEFAULT_RESOURCE_PATHS.INDEX_CONF_PATH, fhirConfig.compartmentRelations)
+    indexConfigurations = IndexConfigurator.parseIndexConfigurationFile(OnfhirConfig.dbIndexConfigurationPath, dbIndexFileDefaultPath, fhirConfig.compartmentRelations)
     if(OnfhirConfig.mongoShardingEnabled)
       fhirConfig.shardKeys = indexConfigurations.map(c => c._1 -> c._2.shardKey.getOrElse(Nil).toSet)
     fhirConfig

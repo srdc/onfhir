@@ -121,8 +121,8 @@
 
         <!-- release plugin versions -->
         <version.plugin.source>3.2.1</version.plugin.source>
-        <version.plugin.gpg>1.6</version.plugin.gpg>
-        <version.plugin.nexus-staging>1.6.8</version.plugin.nexus-staging>
+        <version.plugin.gpg>3.2.4</version.plugin.gpg>
+        <version.plugin.nexus-staging>1.7.0</version.plugin.nexus-staging>
     </properties>
 
     <build>
@@ -138,8 +138,6 @@
                     <configuration>
                         <scalaCompatVersion>${scala.binary.version}</scalaCompatVersion>
                         <encoding>UTF-8</encoding>
-                        <!--source>1.8</source>
-                        <target>1.8</target-->
                         <args>
                             <arg>-deprecation</arg>
                             <arg>-feature</arg>
