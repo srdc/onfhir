@@ -144,7 +144,7 @@ class FHIRServerUtil(fhirConfig:FhirServerConfig) {
           Some(FHIR_BUNDLE_FIELDS.NEXT_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_AFTER}=${searchResult.offsetAfter.mkString(",")}")
         else None,
         if (searchResult.offsetBefore.nonEmpty)
-          Some(FHIR_BUNDLE_FIELDS.PREVIOUS_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_BEFORE}=${searchResult.offsetAfter.mkString(",")}")
+          Some(FHIR_BUNDLE_FIELDS.PREVIOUS_LINK -> s"$location${FHIR_SEARCH_RESULT_PARAMETERS.SEARCH_BEFORE}=${searchResult.offsetBefore.mkString(",")}")
         else None
       ).flatten
 

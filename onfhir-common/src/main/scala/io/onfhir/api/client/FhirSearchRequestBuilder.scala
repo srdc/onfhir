@@ -82,6 +82,17 @@ class FhirSearchRequestBuilder(onFhirClient: IOnFhirClient, rtype: String, count
     this.asInstanceOf[This]
   }
 
+  /**
+   * Set pagination parameter for this query
+   * @param paramName Paginatipn parameter name e.g. _page, _searchafter
+   * @param page      Pagination parameter value
+   * @return
+   */
+  def setPaginationParam(paramName:String, page:String):FhirSearchRequestBuilder = {
+    request.queryParams = request.queryParams + (paramName -> List(page))
+    this.asInstanceOf[This]
+  }
+
 
   override protected def compile(): Unit = {
     super.compile()
