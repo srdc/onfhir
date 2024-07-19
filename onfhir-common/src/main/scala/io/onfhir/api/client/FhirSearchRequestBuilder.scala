@@ -16,13 +16,14 @@ import scala.util.{Failure, Success}
  * @param rtype
  * @param count
  */
-class FhirSearchRequestBuilder(onFhirClient: IOnFhirClient, rtype: String, count: Option[Int] = None, var page: Option[Long] = None)
+class FhirSearchRequestBuilder(onFhirClient: IOnFhirClient, rtype: String, count: Option[Int] = None)
   extends FhirSearchLikeRequestBuilder(onFhirClient, FHIRRequest(interaction = FHIR_INTERACTIONS.SEARCH, requestUri = s"${onFhirClient.getBaseUrl()}/$rtype", resourceType = Some(rtype)))
     with IFhirBundleReturningRequestBuilder {
   type This = FhirSearchRequestBuilder
   // Sort parameters where true indicate descending sort
   protected val sortParams: mutable.ListBuffer[(String, Boolean)] = new ListBuffer[(String, Boolean)]
-
+  //Page to get
+  var page:Option[(String, String)] = None
   /**
    * Use HTTP Post for the search
    * @return
@@ -84,22 +85,32 @@ class FhirSearchRequestBuilder(onFhirClient: IOnFhirClient, rtype: String, count
 
   /**
    * Set pagination parameter for this query
-   * @param paramName Paginatipn parameter name e.g. _page, _searchafter
+   * @param paramName Pagination parameter name e.g. _page, _searchafter
    * @param page      Pagination parameter value
    * @return
    */
-  def setPaginationParam(paramName:String, page:String):FhirSearchRequestBuilder = {
-    request.queryParams = request.queryParams + (paramName -> List(page))
+  def setPaginationParam(paramName:String, pageValue:String):FhirSearchRequestBuilder = {
+    page = Some(paramName -> pageValue)
     this.asInstanceOf[This]
   }
-
+  def setPaginationParam(paramName: String, pageValue: Int): FhirSearchRequestBuilder = {
+    page = Some(paramName, ""+pageValue)
+    this.asInstanceOf[This]
+  }
+  def setPage(pageValue:Int):FhirSearchRequestBuilder = {
+    setPaginationParam("_page", pageValue)
+  }
+  def setSearchAfter(offset:String):FhirSearchRequestBuilder =
+    setPaginationParam("_searchafter", offset)
+  def setSearchBefore(offset:String):FhirSearchRequestBuilder =
+    setPaginationParam("_searchbefore", offset)
 
   override protected def compile(): Unit = {
     super.compile()
     if (sortParams.nonEmpty)
       request.queryParams = request.queryParams ++ Map("_sort" -> sortParams.map(sp => s"${if (sp._2) "-" else ""}${sp._1}").toList)
     if (page.isDefined)
-      request.queryParams = request.queryParams ++ Map("_page" -> List(s"${page.get}"))
+      request.queryParams = request.queryParams ++ Map(page.get._1 -> List(page.get._2))
     //Also add the compartment as param
     if (count.isDefined)
       request.queryParams = request.queryParams ++ Map("_count" -> List(s"${count.get}"))
@@ -170,12 +181,6 @@ class FhirSearchRequestBuilder(onFhirClient: IOnFhirClient, rtype: String, count
     }
   }
 
-  /**
-   *
-   */
-  override def nextPage(): Unit = {
-    this.page = Some(this.page.getOrElse(1L) + 1)
-  }
 }
 
 /**

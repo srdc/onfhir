@@ -158,6 +158,14 @@ object OnFhirNetworkClientTest extends Specification {
       itr.next().map(_.searchResults.length) must be_==(1).await
     }
 
+    "should help searching resources - starting from a page" in {
+      var bundle: FHIRSearchSetBundle = Await.result(
+        onFhirClient
+          .search("Patient", count = 1)
+          .where("gender", "male").setPaginationParam("_page", 5), 5 seconds)
+      bundle.searchResults.length mustEqual 0
+    }
+
     "should help searching resources- compartment search" in {
       onFhirClient
         .update(obsGlucose).execute().map(_.httpStatus.isSuccess()) must be_==(true).await

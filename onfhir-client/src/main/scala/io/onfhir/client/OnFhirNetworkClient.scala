@@ -5,7 +5,7 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
 import akka.stream.Materializer
 import com.typesafe.config.Config
-import io.onfhir.api.client.{BaseFhirClient, FHIRPaginatedBundle, FhirClientException, IFhirBundleReturningRequestBuilder}
+import io.onfhir.api.client.{BaseFhirClient, FHIRPaginatedBundle, FhirClientException, FhirHistoryRequestBuilder, FhirSearchRequestBuilder, IFhirBundleReturningRequestBuilder}
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse}
 import io.onfhir.client.intrcp.{BasicAuthenticationInterceptor, BearerTokenInterceptorFromTokenEndpoint, FixedBasicTokenInterceptor}
 import io.onfhir.client.parsers.{FHIRRequestMarshaller, FHIRResponseUnmarshaller}
@@ -80,11 +80,27 @@ case class OnFhirNetworkClient(serverBaseUrl:String, interceptors:Seq[IHttpReque
    * @return
    */
   override def next[T <: FHIRPaginatedBundle](bundle: T): Future[T] = {
+    val nextPageParams = Uri.apply(bundle.getNext()).query().toMultiMap
+    val previousPageParams = bundle.request.request.queryParams
+    val paginationParam =
+      nextPageParams.find {
+        case (pn, pv) => !previousPageParams.contains(pn) || previousPageParams(pn).toSet != pv.toSet
+      }.getOrElse(throw FhirClientException(s"Problem in response no pagination param found in response!"))
+
+    //Set the new page
+    bundle.request match {
+      case srb:FhirSearchRequestBuilder => srb.page = Some(paginationParam._1, paginationParam._2.head)
+      case hrb:FhirHistoryRequestBuilder => hrb.page = Some(paginationParam._1, paginationParam._2.head)
+    }
+
+
     FHIRRequestMarshaller
-      .marshallRequest(bundle.request.request, serverBaseUrl)
-      .flatMap(httpRequest =>
+      .marshallRequest(bundle.request.compileRequest(), serverBaseUrl)
+      .flatMap(httpRequest =>  executeHttpRequest(httpRequest))
+      //.marshallRequest(bundle.request.request, serverBaseUrl)
+      /*.flatMap(httpRequest =>
         executeHttpRequest(httpRequest.withUri(Uri.apply(bundle.getNext())))
-      )
+      )*/
       .flatMap(httpResponse => FHIRResponseUnmarshaller.unmarshallResponse(httpResponse))
       .recover {
         case t:Throwable =>

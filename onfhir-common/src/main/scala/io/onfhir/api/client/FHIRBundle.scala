@@ -47,6 +47,14 @@ abstract class FHIRPaginatedBundle(bundle:Resource, val request:FhirRequestBuild
   def getLastPage():Long = links.get("last").flatMap(l => Uri(l).query().get("_page")).map(_.toLong).getOrElse(if(entries.isEmpty) 0L else 1L)
 
   /**
+   * Return next page value given pagination param
+   * @param pgnParam
+   * @return
+   */
+  def getNextPage(pgnParam: String): Option[String] =
+    links.get("next").flatMap(l => Uri(l).query().get(pgnParam))
+
+  /**
    * If search set has next page
    * @return
    */

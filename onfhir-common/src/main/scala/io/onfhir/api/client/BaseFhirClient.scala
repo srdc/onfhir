@@ -161,9 +161,7 @@ abstract class BaseFhirClient extends IOnFhirClient {
   def search(rtype:String, count:Int):FhirSearchRequestBuilder = {
     new FhirSearchRequestBuilder(this, rtype, Some(count))
   }
-  def search(rtype:String, count:Int, page:Long):FhirSearchRequestBuilder = {
-    new FhirSearchRequestBuilder(this, rtype, Some(count), Some(page))
-  }
+
 
   /**
    * All FHIR operations

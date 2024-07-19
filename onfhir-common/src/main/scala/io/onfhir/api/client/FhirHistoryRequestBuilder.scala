@@ -9,7 +9,7 @@ import io.onfhir.util.DateTimeUtil
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class FhirHistoryRequestBuilder(onFhirClient: IOnFhirClient, rtype:Option[String], rid:Option[String], count:Option[Int] = None, var page:Option[Long] = None)
+class FhirHistoryRequestBuilder(onFhirClient: IOnFhirClient, rtype:Option[String], rid:Option[String], count:Option[Int] = None)
   extends FhirRequestBuilder(onFhirClient,
     FHIRRequest(
       interaction =
@@ -23,6 +23,7 @@ class FhirHistoryRequestBuilder(onFhirClient: IOnFhirClient, rtype:Option[String
   private var sinceParam:Option[(String, String)] = None
   private var atParam:Option[(String, String)] = None
   private var listParam:Option[(String, String)] = None
+  var page:Option[(String, String)] = None
 
   def since(instant:Instant):FhirHistoryRequestBuilder = {
     sinceParam = Some("_since" -> DateTimeUtil.serializeInstant(instant))
@@ -39,10 +40,20 @@ class FhirHistoryRequestBuilder(onFhirClient: IOnFhirClient, rtype:Option[String
     this
   }
 
+  def setPaginationParam(paramName: String, pageValue: String): FhirHistoryRequestBuilder = {
+    page = Some(paramName -> pageValue)
+    this
+  }
+
+  def setPaginationParam(paramName: String, pageValue: Int): FhirHistoryRequestBuilder = {
+    page = Some(paramName, "" + pageValue)
+    this
+  }
+
   override protected def compile(): Unit = {
     super.compile()
 
-    val allParams = sinceParam.toSeq ++ atParam.toSeq ++ listParam.toSeq ++ count.toSeq.map(c => "_count" -> (""+c)) ++ page.toSeq.map(p => "_page" -> (""+p))
+    val allParams = sinceParam.toSeq ++ atParam.toSeq ++ listParam.toSeq ++ count.toSeq.map(c => "_count" -> (""+c)) ++ page.toSeq.map(p => p._1 -> (""+p._2))
 
     request.queryParams = allParams.map(p => p._1 -> List(p._2)).toMap
   }
@@ -63,9 +74,5 @@ class FhirHistoryRequestBuilder(onFhirClient: IOnFhirClient, rtype:Option[String
       case e:Throwable =>
         throw FhirClientException("Invalid history result bundle!", Some(fhirResponse))
     }
-  }
-
-  override def nextPage(): Unit = {
-    this.page = Some(this.page.getOrElse(1L) + 1)
   }
 }

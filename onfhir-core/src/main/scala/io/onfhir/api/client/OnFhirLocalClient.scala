@@ -36,11 +36,15 @@ object OnFhirLocalClient extends BaseFhirClient {
     bundle match {
       case s:FHIRSearchSetBundle =>
         val baseRequest = s.request
-        baseRequest.page = Some(baseRequest.page.getOrElse(1L) + 1)
+        val paginationParam = baseRequest.page.map(_._1).getOrElse("_page")
+        val nextPage = bundle.getNextPage(paginationParam).get
+        baseRequest.page = Some(paginationParam -> nextPage)
         baseRequest.executeAndReturnBundle().map(_.asInstanceOf[T])
       case h:FHIRHistoryBundle =>
         val baseRequest = h.request
-        baseRequest.page = Some(baseRequest.page.getOrElse(1L) + 1)
+        val paginationParam = baseRequest.page.map(_._1).getOrElse("_page")
+        val nextPage = bundle.getNextPage(paginationParam).get
+        baseRequest.page = Some(paginationParam -> nextPage)
         baseRequest.executeAndReturnBundle().map(_.asInstanceOf[T])
     }
   }
