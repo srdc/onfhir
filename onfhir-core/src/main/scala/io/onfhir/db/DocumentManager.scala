@@ -185,11 +185,16 @@ object DocumentManager {
         case Some(ts) => if(finalFilter.isDefined )  MongoDB.getCollection(rtype).find(ts.dbSession, finalFilter.get) else MongoDB.getCollection(rtype).find(ts.dbSession)
       }
 
-      //Handle sorting
-      sortingPaths
-        .foreach(sf =>
-          query = query.sort(if (sf._2 > 0) ascending(sf._3.head) else descending(sf._3.head))
-        )
+      //Sort by given params + MongoDB _id to ensure uniqueness for pagination
+      val sortStmt = (sortingPaths :+ ("_id", 1, Seq("_id"))) match {
+        case Seq(sf) => if (sf._2 > 0) ascending(sf._3.head) else descending(sf._3.head)
+        case multiple =>
+          Sorts.orderBy(
+            multiple.map(sf => if (sf._2 > 0) ascending(sf._3.head) else descending(sf._3.head)): _*
+          )
+      }
+
+      query = query.sort(sortStmt)
 
       //If count is given limit the search result
       if (count > 0)
@@ -394,14 +399,15 @@ object DocumentManager {
 
     //Add sorting aggregations
     val sorts =
-      sortingPaths.map(sp => sp._3.length match {
-        //For single alternative path, sort it
-        case 1 =>
-          if(sp._2 > 0) ascending(sp._3.head) else descending(sp._3.head)
-        //For multiple alternatives, sort against the added field which is based on parameter name
-        case _ =>
-          if(sp._2 > 0) ascending(s"__sort_${sp._1}") else descending(s"__sort_${sp._1}")
-      })
+      (sortingPaths :+ ("_id", 1, Seq("_id"))) //Finally sort on MongoDB _id to ensure uniqueness for pagination
+        .map(sp => sp._3.length match {
+          //For single alternative path, sort it
+          case 1 =>
+            if(sp._2 > 0) ascending(sp._3.head) else descending(sp._3.head)
+          //For multiple alternatives, sort against the added field which is based on parameter name
+          case _ =>
+            if(sp._2 > 0) ascending(s"__sort_${sp._1}") else descending(s"__sort_${sp._1}")
+        })
     if(sorts.nonEmpty)
       aggregations.append(Aggregates.sort(Sorts.orderBy(sorts:_*)))
 
