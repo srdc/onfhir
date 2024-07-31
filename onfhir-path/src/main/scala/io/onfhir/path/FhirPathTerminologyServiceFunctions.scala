@@ -29,7 +29,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
    * @param paramsExpr       A URL encoded string with other parameters for the validate-code operation (e.g. 'source=http://acme.org/valueset/23&target=http://acme.org/valueset/23')
    * @return
    */
-  @FhirPathFunction(documentation = "This calls the Terminology Service $translate operation. Ex: %terminologies.translate('http://aiccelerate.eu/fhir/ConceptMap/labResultsConceptMap', Observation.code, 'conceptMapVersion=1.0')",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC This calls the Terminology Service $translate operation.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`conceptMapExpr`**  \nEither an actual ConceptMap, or a canonical URL reference to a value set.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`codeExpr`**  \nThe source to translate: a Coding or code.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`paramsExpr`**  \nA URL encoded string with other parameters for the validate-code operation (e.g. 'source=http://acme.org/valueset/23&target=http://acme.org/valueset/23')\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n{\n  \"code\": \"12345\",\n  \"system\": \"http://example.org/system\",\n  \"display\": \"Example Display\"\n}\n```\n\uD83D\uDCA1 **E.g.** %terminologies.trms:translate('http://aiccelerate.eu/fhir/ConceptMap/labResultsConceptMap', Observation.code, 'conceptMapVersion=1.0')",
     insertText = "%terminologies.translate(<conceptMapExpr>,<codeExpr>,<paramsExpr>)",detail = "trms", label = "%terminologies.translate", kind = "Function", returnType = Seq(), inputType = Seq())
   def translate(conceptMapExpr:ExpressionContext, codeExpr:ExpressionContext, paramsExpr:ExpressionContext):Seq[FhirPathResult] = {
     val terminologyService = checkTerminologyService()
@@ -91,7 +91,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
    * @param paramsExpr     A URL encoded string with other parameters for the validate-code operation (e.g. 'source=http://acme.org/valueset/23&target=http://acme.org/valueset/23')
    * @return
    */
-  @FhirPathFunction(documentation = "This calls the Terminology Service $translate operation without a concept map. Ex: %terminologies.translate(Observation.code, 'source=http://hus.fi/ValueSet/labResultCodes'&target=http://aiccelerate.eu/ValueSet/labResultCodes)",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC This calls the Terminology Service $translate operation without a concept map.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`codeExpr`**  \nThe source to translate: a Coding or code.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`paramsExpr`**  \nA URL encoded string with other parameters for the validate-code operation (e.g. 'source=http://acme.org/valueset/23&target=http://acme.org/valueset/23')\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n{\n  \"code\": \"12345\",\n  \"system\": \"http://example.org/system\",\n  \"display\": \"Example Display\"\n}\n```\n\uD83D\uDCA1 **E.g.** %terminologies.trms:translate(Observation.code, 'source=http://hus.fi/ValueSet/labResultCodes'&target=http://aiccelerate.eu/ValueSet/labResultCodes)",
     insertText = "%terminologies.translate(<codeExpr>,<paramsExpr>)",detail = "trms", label = "%terminologies.translate", kind = "Function", returnType = Seq(), inputType = Seq())
   def translate(codeExpr:ExpressionContext, paramsExpr:ExpressionContext):Seq[FhirPathResult] = {
     val terminologyService = checkTerminologyService()
@@ -151,7 +151,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
    * @param paramsExpr  Expression to evaluate a URL encoded string with other parameters for the lookup operation (e.g. 'date=2011-03-04&displayLanguage=en')
    * @return
    */
-  @FhirPathFunction(documentation = "This calls the Terminology Service $lookup operation. Ex: %terminologies.lookup(Observation.code.coding[0], 'displayLanguage=tr')",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC This calls the Terminology Service $lookup operation.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`codeExpr`**  \nExpression to evaluate to a code, Coding or CodeableConcept.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`paramsExpr`**  \nExpression to evaluate a URL encoded string with other parameters for the lookup operation (e.g. 'date=2011-03-04&displayLanguage=en')\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n{\n  \"code\": \"12345\",\n  \"system\": \"http://example.org/system\",\n  \"display\": \"Example Display\"\n}\n```\n\uD83D\uDCA1 **E.g.** %terminologies.trms:lookup(Observation.code.coding[0], 'displayLanguage=tr')",
     insertText = "%terminologies.lookup(<codeExpr>,<paramsExpr>)",detail = "trms", label = "%terminologies.lookup", kind = "Function", returnType = Seq(), inputType = Seq())
   def lookup(codeExpr:ExpressionContext, paramsExpr:ExpressionContext):Seq[FhirPathResult] = {
     val terminologyService = checkTerminologyService()

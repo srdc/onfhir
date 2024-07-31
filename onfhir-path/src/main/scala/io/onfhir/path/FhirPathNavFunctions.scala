@@ -15,7 +15,7 @@ class FhirPathNavFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @param elseExpr
    * @return
    */
-  @FhirPathFunction(documentation = "If the current expression returns Nil, then evaluates the else expression from start, otherwise return current. Ex: startTime.nav:orElse(plannedTime)",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC If the current expression returns Nil, then evaluates the else expression from start, otherwise returns the current.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`elseExpr`**  \nThe else expression to be evaluated if the current expression returns Nil.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \nCurrent expression if it is not Nil, else expression otherwise.\n\n\uD83D\uDCA1 **E.g.** startTime.nav:orElse(plannedTime)",
     insertText = "nav:orElse(<expression>)",detail = "nav", label = "nav:orElse", kind = "Method", returnType = Seq(), inputType = Seq())
   def orElse(elseExpr:ExpressionContext):Seq[FhirPathResult] = {
     current match {
