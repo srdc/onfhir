@@ -15,7 +15,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * Sum of the input numeric values, 0 if input list is empty
    * @return
    */
-  @FhirPathFunction(documentation = "Returns sum of the input numeric values, 0 if input list is empty. Ex: valueQuantity.value.sum()",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns the sum of the input numeric values. If the input list is empty, returns 0.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n9, 9.5, etc.\n``` \n\n\uD83D\uDCA1 **E.g.** valueQuantity.value.agg:sum()",
     insertText = "agg:sum()",detail = "agg", label = "agg:sum", kind = "Method", returnType = Seq("number"), inputType = Seq("number"))
   def sum():Seq[FhirPathResult] = {
     if(current.exists(!_.isInstanceOf[FhirPathNumber]))
@@ -37,7 +37,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @param expr Expression to calculate the sum
    * @return
    */
-  @FhirPathFunction(documentation = "Returns the sum of the values after executing the expression on given input values. Ex: sum(valueQuantity.value)",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns the sum of the numeric values in the given expression.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`expr`**  \nThe expression of which the sum will be calculated.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n9, 9.5, etc.\n``` \n\n\uD83D\uDCA1 **E.g.** agg:sum(valueQuantity.value)",
     insertText = "agg:sum(<expr>)",detail = "agg", label = "agg:sum", kind = "Function", returnType = Seq("number"), inputType = Seq())
   def sum(expr:ExpressionContext):Seq[FhirPathResult] = {
     val results = current.map(c => {
@@ -58,7 +58,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @param expr  Expression to compute the average
    * @return
    */
-  @FhirPathFunction(documentation = "Returns the average of given expression that returns a numeric value. Ex: avg($this.valueQuantity.value)",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns the average of the numeric values in the given expression.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`expr`**  \nThe expression of which the average will be calculated.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n5, 5.5, etc.\n``` \n\n\uD83D\uDCA1 **E.g.** agg:avg($this.valueQuantity.value)",
     insertText = "agg:avg(<expr>)",detail = "agg", label = "agg:avg", kind = "Function", returnType = Seq("number"), inputType = Seq())
   def avg(expr:ExpressionContext):Seq[FhirPathResult] = {
     if(current.isEmpty)
@@ -71,7 +71,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * Average of the input numeric values
    * @return
    */
-  @FhirPathFunction(documentation = "Returns the average of the input numeric values. Ex: valueQuantity.value.avg()",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns the average of the input numeric values.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n5, 5.5, etc.\n``` \n\n\uD83D\uDCA1 **E.g.** valueQuantity.value.agg:avg()",
     insertText = "agg:avg()",detail = "agg", label = "agg:avg", kind = "Method", returnType = Seq("number"), inputType = Seq("number"))
   def avg():Seq[FhirPathResult] = {
     if(current.exists(!_.isInstanceOf[FhirPathNumber]))
@@ -88,7 +88,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * Get the minimum of the input comparable values (numeric, dateTime
    * @return
    */
-  @FhirPathFunction(documentation = "Returns the minimum of the input comparable values. Ex: min($this.valueQuantity.value)",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns the minimum of the input comparable values.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n1, 1.5, etc.\n``` \n\n\uD83D\uDCA1 **E.g.** valueQuantity.value.agg:min()",
     insertText = "agg:min()",detail = "agg", label = "agg:min", kind = "Method", returnType = Seq("string","number","dateTime","time","quantity"), inputType = Seq("string","number","dateTime","time","quantity"))
   def min():Seq[FhirPathResult] = {
     if(current.exists(c => c.isInstanceOf[FhirPathComplex] || c.isInstanceOf[FhirPathBoolean]))
@@ -110,7 +110,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @param expr  Expression to calculate
    * @return
    */
-  @FhirPathFunction(documentation = "Returns the minimum of given expression that returns a comparable value. Ex: min($this.valueQuantity.value)",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns the minimum of the comparable values in the given expression.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`expr`**  \nThe expression of which the minimum will be found.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n1, 1.5, etc.\n``` \n\n\uD83D\uDCA1 **E.g.** agg:min($this.valueQuantity.value)",
     insertText = "agg:min(<expr>)",detail = "agg", label = "agg:min", kind = "Function", returnType = Seq("string","number","dateTime","time","quantity"), inputType = Seq())
   def min(expr:ExpressionContext):Seq[FhirPathResult] = {
     val results =
@@ -135,7 +135,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @param expr  Expression to calculate
    * @return
    */
-  @FhirPathFunction(documentation = "Returns the maximum of given expression that returns a comparable value. Ex: max($this.valueQuantity.value)",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns the maximum of the comparable values in the given expression.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`expr`**  \nThe expression of which the maximum will be found.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n8, 8.5, etc.\n``` \n\n\uD83D\uDCA1 **E.g.** agg:max($this.valueQuantity.value)",
     insertText = "agg:max(<expr>)",detail = "agg", label = "agg:max", kind = "Function", returnType = Seq("string","number","dateTime","time","quantity"), inputType = Seq())
   def max(expr:ExpressionContext):Seq[FhirPathResult] = {
     val results = current
@@ -158,7 +158,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * Getting the maximum of given input values
    * @return
    */
-  @FhirPathFunction(documentation = "Returns the maximum of given input values. Ex: valueQuantity.value.max()",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns the maximum of the input comparable values.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n8, 8.5, etc.\n``` \n\n\uD83D\uDCA1 **E.g.** valueQuantity.value.agg:max()",
     insertText = "agg:max()",detail = "agg", label = "agg:max", kind = "Method", returnType = Seq("string","number","dateTime","time","quantity"), inputType = Seq("string","number","dateTime","time","quantity"))
   def max():Seq[FhirPathResult] = {
     if(current.exists(c => c.isInstanceOf[FhirPathComplex] || c.isInstanceOf[FhirPathBoolean]))
@@ -180,7 +180,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @param aggregateExpr   Aggregation expression
    * @return                A list of special JSON Objects with field 'bucket' indicating the key for the bucket and 'agg' indicating the resulting aggregated value
    */
-  @FhirPathFunction(documentation = "Groups the values based on some expression returning a key and apply the aggregation to each group. Ex: groupBy(Condition.subject.reference.substring(8),count())",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Groups the values based on some expression returning a key and applies the aggregation expression to each of these groups.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`groupByExpr`**  \nAn expression to determine the key for grouping.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`aggregateExpr`**  \nThe aggregation expression to apply to each group.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n[\n  {\n    \"bucket\": \"123\",\n    \"agg\": \"2\"\n  },\n  {\n    \"bucket\": \"456\",\n    \"agg\": \"3\"\n  },\n  {\n    \"bucket\": \"789\",\n    \"agg\": \"1\"\n  }\n]\n``` \n\uD83D\uDCA1 **E.g.** agg:groupBy(Condition.subject.reference.substring(8),count())",
     insertText = "agg:groupBy(<groupByExpr>,<aggregateExpr>)",detail = "agg", label = "agg:groupBy", kind = "Function", returnType = Seq(), inputType = Seq())
   def groupBy(groupByExpr:ExpressionContext, aggregateExpr:ExpressionContext):Seq[FhirPathResult] = {
     if(!current.forall(_.isInstanceOf[FhirPathComplex]))
