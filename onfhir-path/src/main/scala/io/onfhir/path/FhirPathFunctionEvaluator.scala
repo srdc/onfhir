@@ -1118,7 +1118,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
   }
 
   /**
-   * They the current element is single or not.
+   * Check the current element is single or not.
    * @param fName The function name from which checkSingleElement is called (for logging purposes)
    */
   private def checkSingleElement(fName: String): Unit = {
