@@ -27,8 +27,8 @@ class TransactionSession(val transactionId:String) {
     * @return
     */
   def commit():Future[Unit] = {
-    val commitTransactionObservable: SingleObservable[Void] = new ScalaClientSession(dbSession).commitTransaction()
-    val commitAndRetryObservable: SingleObservable[Void] = commitAndRetry(commitTransactionObservable)
+    val commitTransactionObservable: SingleObservable[Unit] = new ScalaClientSession(dbSession).commitTransaction()
+    val commitAndRetryObservable: SingleObservable[Unit] = commitAndRetry(commitTransactionObservable)
     runTransactionAndRetry(commitAndRetryObservable).head().map(_ => ())
   }
 
@@ -47,7 +47,7 @@ class TransactionSession(val transactionId:String) {
     * @param observable
     * @return
     */
-  private def commitAndRetry(observable: SingleObservable[Void]): SingleObservable[Void] = {
+  private def commitAndRetry(observable: SingleObservable[Unit]): SingleObservable[Unit] = {
     observable.recoverWith({
       case e: MongoException if e.hasErrorLabel(MongoException.UNKNOWN_TRANSACTION_COMMIT_RESULT_LABEL) => {
         println("UnknownTransactionCommitResult, retrying commit operation ...")
@@ -60,7 +60,7 @@ class TransactionSession(val transactionId:String) {
     })
   }
 
-  private def runTransactionAndRetry(observable: SingleObservable[Void]): SingleObservable[Void] = {
+  private def runTransactionAndRetry(observable: SingleObservable[Unit]): SingleObservable[Unit] = {
     observable.recoverWith({
       case e: MongoException if e.hasErrorLabel(MongoException.TRANSIENT_TRANSACTION_ERROR_LABEL) => {
         println("TransientTransactionError, aborting transaction and retrying ...")

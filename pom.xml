@@ -104,7 +104,8 @@
         <scala.pcombinators>2.3.0</scala.pcombinators>
         <akka-http.version>10.5.3</akka-http.version>
         <akka.version>2.8.5</akka.version>
-        <mongodb.scala.version>4.11.1</mongodb.scala.version>
+        <!--mongodb.scala.version>4.11.1</mongodb.scala.version-->
+        <mongodb.scala.version>5.1.3</mongodb.scala.version>
         <mongo.embedded.version>4.12.0</mongo.embedded.version>
         <json4s.version>3.7.0-M11</json4s.version>
         <scala.xml.version>2.2.0</scala.xml.version>
