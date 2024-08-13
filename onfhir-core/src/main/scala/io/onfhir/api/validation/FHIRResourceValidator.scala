@@ -88,5 +88,12 @@ class FHIRResourceValidator(fhirConfigurationManager: IFhirConfigurationManager)
           })
       }
   }
+
+  /**
+   * Return terminology validator
+   *
+   * @return
+   */
+  override def getTerminologyValidator(): Option[IFhirTerminologyValidator] = Option(fhirConfigurationManager.fhirTerminologyValidator)
 }
 

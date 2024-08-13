@@ -1,11 +1,13 @@
 package io.onfhir.config
 
+import io.onfhir.Onfhir
 import io.onfhir.api.DEFAULT_IMPLEMENTED_FHIR_OPERATIONS
 import io.onfhir.api.parsers.{FHIRResultParameterResolver, FHIRSearchParameterValueParser}
 import io.onfhir.api.util.FHIRServerUtil
 import io.onfhir.api.validation.{FHIRResourceValidator, IFhirResourceValidator, IFhirTerminologyValidator}
 import io.onfhir.audit.IFhirAuditCreator
 import io.onfhir.authz.AuthzManager
+import io.onfhir.client.{OnFhirNetworkClient, TerminologyServiceClient}
 import io.onfhir.db.{MongoDBInitializer, ResourceManager}
 import io.onfhir.event.{FhirEventBus, IFhirEventBus}
 import io.onfhir.validation.FhirTerminologyValidator
@@ -65,7 +67,15 @@ object FhirConfigurationManager extends IFhirConfigurationManager {
     }
     //Initialize FHIR Resource and terminology Validator
     fhirValidator = new FHIRResourceValidator(this)
-    fhirTerminologyValidator = new FhirTerminologyValidator(fhirConfig)
+
+    //Integrated terminology services
+    val integratedTerminologyServices =
+      OnfhirConfig
+      .integratedTerminologyServices
+      .map(_.map(tsConf => tsConf._1 -> new TerminologyServiceClient(OnFhirNetworkClient.apply(tsConf._2)(Onfhir.actorSystem))(Onfhir.actorSystem.dispatcher)))
+      .getOrElse(Nil)
+
+    fhirTerminologyValidator = new FhirTerminologyValidator(fhirConfig, integratedTerminologyServices)
     //Initialize FHIR Audit creator if necessary
     if (OnfhirConfig.fhirAuditingRepository.equalsIgnoreCase("local") || OnfhirConfig.fhirAuditingRepository.equalsIgnoreCase("remote"))
       fhirAuditCreator = fhirConfigurator.getAuditCreator()

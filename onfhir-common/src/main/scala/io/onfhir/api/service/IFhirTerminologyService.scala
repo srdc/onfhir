@@ -10,7 +10,7 @@ import scala.concurrent.duration.Duration
 /**
  * Interface for FHIR terminology service
  */
-trait IFhirTerminologyService extends IFhirTerminologyTranslationService with IFhirTerminologyLookupService with IFhirTerminologyExpandService with Serializable{
+trait IFhirTerminologyService extends IFhirTerminologyTranslationService with IFhirTerminologyLookupService with IFhirTerminologyExpandService with IFhirTerminologyValidateService with Serializable{
   /**
    * Return timeout specified for the terminology service calls
    * @return
@@ -188,4 +188,18 @@ trait IFhirTerminologyExpandService {
    * @return
    */
   def expandWithValueSet(valueSet:Resource, offset: Option[Long] = None, count: Option[Long] = None):Future[JObject]
+}
+
+trait IFhirTerminologyValidateService {
+  /**
+   * Validate that a coded value is in the set of codes allowed by a value set.
+   * @param url               Value set Canonical URL.
+   * @param valueSetVersion   The identifier that is used to identify a specific version of the value set to be used when validating the code
+   * @param code              The code that is to be validated.
+   * @param system            The system for the code that is to be validated
+   * @param systemVersion     The version of the system, if one was provided in the source data
+   * @param display           The display associated with the code to validate.
+   * @return
+   */
+  def validateCode(url:String, valueSetVersion:Option[String] = None, code:String, system:Option[String], systemVersion:Option[String] = None, display:Option[String] = None):Future[JObject]
 }

@@ -3,7 +3,7 @@ package io.onfhir.client
 import io.onfhir.api.Resource
 import io.onfhir.api.client.{FhirClientException, IOnFhirClient}
 import io.onfhir.api.service.IFhirTerminologyService
-import io.onfhir.client.TerminologyServiceClient.{EXPAND_OPERATION_NAME, EXPAND_OPERATION_REQUEST_PARAMS, LOOKUP_OPERATION_NAME, LOOKUP_OPERATION_REQUEST_PARAMS, TRANSLATE_OPERATION_NAME, TRANSLATE_OPERATION_REQUEST_PARAMS}
+import io.onfhir.client.TerminologyServiceClient.{EXPAND_OPERATION_NAME, EXPAND_OPERATION_REQUEST_PARAMS, LOOKUP_OPERATION_NAME, LOOKUP_OPERATION_REQUEST_PARAMS, TRANSLATE_OPERATION_NAME, TRANSLATE_OPERATION_REQUEST_PARAMS, VALIDATE_CODE_OPERATION_NAME, VALIDATE_CODE_REQUEST_PARAMS}
 import org.json4s.JObject
 import org.slf4j.LoggerFactory
 
@@ -346,12 +346,41 @@ class TerminologyServiceClient(onFhirClient: IOnFhirClient)(implicit ec: Executi
     request
       .executeAndReturnResource()
   }
+
+  /**
+   * Validate that a coded value is in the set of codes allowed by a value set.
+   *
+   * @param url             Value set Canonical URL.
+   * @param valueSetVersion The identifier that is used to identify a specific version of the value set to be used when validating the code
+   * @param code            The code that is to be validated.
+   * @param system          The system for the code that is to be validated
+   * @param systemVersion   The version of the system, if one was provided in the source data
+   * @param display         The display associated with the code to validate.
+   * @return
+   */
+  override def validateCode(url: String, valueSetVersion: Option[String], code: String, system: Option[String], systemVersion: Option[String], display: Option[String]): Future[JObject] = {
+    var request =
+      onFhirClient
+        .operation(VALIDATE_CODE_OPERATION_NAME)
+        .on("ValueSet")
+        .addSimpleParam(VALIDATE_CODE_REQUEST_PARAMS.URL, url)
+        .addSimpleParam(VALIDATE_CODE_REQUEST_PARAMS.CODE, code)
+    //Optional params
+    valueSetVersion.foreach(v => request = request.addSimpleParam(VALIDATE_CODE_REQUEST_PARAMS.VALUE_SET_VERSION, v))
+    system.foreach(s => request = request.addSimpleParam(VALIDATE_CODE_REQUEST_PARAMS.SYSTEM, s))
+    systemVersion.foreach(v => request = request.addSimpleParam(VALIDATE_CODE_REQUEST_PARAMS.SYSTEM_VERSION, v))
+    display.foreach(d => request = request.addSimpleParam(VALIDATE_CODE_REQUEST_PARAMS.DISPLAY, d))
+
+    request
+      .executeAndReturnResource()
+  }
 }
 
 object TerminologyServiceClient {
   final val TRANSLATE_OPERATION_NAME = "translate"
   final val LOOKUP_OPERATION_NAME = "lookup"
   final val EXPAND_OPERATION_NAME = "expand"
+  final val VALIDATE_CODE_OPERATION_NAME = "validate-code"
 
   final object TRANSLATE_OPERATION_REQUEST_PARAMS {
     val CONCEPT_MAP_URL = "url"
@@ -382,5 +411,14 @@ object TerminologyServiceClient {
     val VERSION = "valueSetVersion"
     val OFFSET = "offset"
     val COUNT = "count"
+  }
+
+  final object VALIDATE_CODE_REQUEST_PARAMS {
+    final val URL = "url"
+    final val VALUE_SET_VERSION = "valueSetVersion"
+    final val CODE = "code"
+    final val SYSTEM = "system"
+    final val SYSTEM_VERSION = "systemVersion"
+    final val DISPLAY = "display"
   }
 }

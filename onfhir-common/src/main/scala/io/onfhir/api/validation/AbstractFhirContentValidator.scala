@@ -17,7 +17,9 @@ import scala.concurrent.Future
 abstract class AbstractFhirContentValidator(
                                              val fhirConfig:BaseFhirConfig,
                                              val profileUrl:String,
-                                             val referenceResolver:Option[IReferenceResolver] = None) {
+                                             val referenceResolver:Option[IReferenceResolver] = None,
+                                             val terminologyValidator: IFhirTerminologyValidator
+                                           ) {
   //Chain of profiles for this profile, where parents are on the right in hierarchy order e.g. MyObservation2 -> MyObservation -> Observation -> DomainResource -> Resource
   val rootProfileChain: Seq[ProfileRestrictions] = fhirConfig.findProfileChain(profileUrl)
 

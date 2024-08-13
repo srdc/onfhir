@@ -1,9 +1,14 @@
 package io.onfhir.config
 
 import java.time.Duration
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{Config, ConfigFactory}
+import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.{DEFAULT_FHIR_VERSION, FHIR_HTTP_OPTIONS, FHIR_VALIDATION_ALTERNATIVES}
 
+import java.time.temporal.ChronoUnit
+import java.util.concurrent.TimeUnit
+import scala.concurrent.duration.FiniteDuration
+import scala.jdk.DurationConverters._
 import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
@@ -194,4 +199,39 @@ object OnfhirConfig {
   //If upsert is true, we use Mongo upsert (replace the current version of resource or create) for FHIR bulk import operations. IMPORTANT This is not a version aware interaction.
   //Otherwise normal FHIR batch operation is used for grouped resources
   lazy val bulkUpsertMode:Boolean = Try(config.getBoolean("fhir.bulk.upsert")).toOption.getOrElse(false)
+
+  /**
+   * Configurations for integrated terminology services
+   */
+  lazy val integratedTerminologyServices:Option[Seq[(TerminologyServiceConf, Config)]] =
+    Try(config.getObject("fhir.integrated-terminology-services").asScala)
+      .toOption
+      .map(cnf =>
+        cnf
+          .map(entry => {
+            val sname = entry._1
+
+            val timeout =
+              Try(config.getDuration(s"fhir.integrated-terminology-services.$sname.timeout"))
+                .toOption.map(_.toScala)
+                .getOrElse(FiniteDuration.apply(1, TimeUnit.SECONDS))
+            val supportedValueSets =
+              config.getStringList(s"fhir.integrated-terminology-services.$sname.value-sets")
+                .asScala
+                .map(vs => FHIRUtil.parseCanonicalValue(vs))
+                .groupBy(_._1)
+                .map(g => g._1 -> (g._2.flatMap(_._2).toSeq match {
+                  case Nil => None
+                  case oth => Some(oth.toSet)
+                }))
+
+            TerminologyServiceConf(
+              sname,
+              timeout,
+              supportedValueSets
+            ) ->
+              config.getConfig(s"fhir.integrated-terminology-services.$sname")
+          })
+          .toSeq
+      )
 }

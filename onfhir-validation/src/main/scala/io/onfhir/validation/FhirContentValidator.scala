@@ -33,7 +33,12 @@ class FhirContentValidator(
                             profileUrl:String,
                             referenceResolver:Option[IReferenceResolver] = None,
                             resourceValidator:Option[IFhirResourceValidator] = None
-                          )(implicit val ec:ExecutionContext) extends AbstractFhirContentValidator(fhirConfig, profileUrl, referenceResolver) {
+                          )(implicit val ec:ExecutionContext)
+  extends AbstractFhirContentValidator(
+    fhirConfig,
+    profileUrl,
+    referenceResolver,
+    resourceValidator.flatMap(_.getTerminologyValidator()).getOrElse(FhirTerminologyValidator.apply(fhirConfig, Nil))) {
   protected val logger: Logger = LoggerFactory.getLogger(this.getClass)
   //Temporary store of bundle content for bundle validations
   private var bundle:Option[Resource] = None

@@ -1,11 +1,22 @@
 package io.onfhir.validation
 
+import io.onfhir.api.service.{IFhirTerminologyService}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.{IFhirTerminologyValidator, ValueSetDef, ValueSetRestrictions}
-import io.onfhir.config.BaseFhirConfig
+import io.onfhir.config.{BaseFhirConfig, TerminologyServiceConf}
+import io.onfhir.util.JsonFormatter.formats
+import org.slf4j.{Logger, LoggerFactory}
 
-class FhirTerminologyValidator(fhirConfig:BaseFhirConfig) extends IFhirTerminologyValidator{
+import scala.concurrent.{Await, TimeoutException}
+import scala.language.postfixOps
 
+/**
+ * Validation utility for terminologies (code-binding restrictions)
+ * @param fhirConfig            FHIR configurations
+ * @param terminologyServices   Integrated terminology services for validation
+ */
+class FhirTerminologyValidator(fhirConfig:BaseFhirConfig, terminologyServices:Seq[(TerminologyServiceConf, IFhirTerminologyService)]) extends IFhirTerminologyValidator{
+  protected val logger: Logger = LoggerFactory.getLogger(this.getClass)
   /**
    * Check if a value set is supported for validation within OnFHir setup
    * @param vsUrl   URL of the value set
@@ -34,7 +45,31 @@ class FhirTerminologyValidator(fhirConfig:BaseFhirConfig) extends IFhirTerminolo
    * @return
    */
   def isValueSetSupported(vsUrl:String, version:Option[String] = None):Boolean = {
-    getValueSet(vsUrl, version).isDefined
+    //First check among the integrated terminology services
+    findTerminologyService(vsUrl, version).isDefined || //Then internal ValueSet configurations
+        getValueSet(vsUrl, version).isDefined
+  }
+
+  /**
+   * Find the terminology service
+   * @param vsUrl     ValueSet url (ValueSet.url)
+   * @param version   ValueSet version (ValueSet.version)
+   * @return
+   */
+  private def findTerminologyService(vsUrl:String, version:Option[String] = None):Option[(TerminologyServiceConf, IFhirTerminologyService)] = {
+    terminologyServices
+      .find {
+        case (sconf, _) =>
+          sconf.supportedValueSets.contains("*") || //Either all terminology validations are directed to this
+            //Or ValueSet url is explicitly listed
+            sconf.supportedValueSets
+              .get(vsUrl)
+              .exists(versions => version.forall(v => versions.forall(_.contains(v)))) ||
+            //Or ValueSet url is given as prefix (all ValueSets starting with this prefix e.g. http://aiccelerate.eu/fhir/ValueSet/*
+            sconf
+              .supportedValueSets.keySet.filter(_.endsWith("/*"))
+              .exists(vsPrefix => vsUrl.startsWith(vsPrefix.dropRight(1)))
+      }
   }
 
   /**
@@ -46,10 +81,42 @@ class FhirTerminologyValidator(fhirConfig:BaseFhirConfig) extends IFhirTerminolo
    * @return
    */
   def validateCodeAgainstValueSet(vsUrl:String, version:Option[String], codeSystem:Option[String], code:String):Boolean = {
-    getValueSet(vsUrl, version) match {
-      case None => true
-      case Some(vs) =>
-        validateCodeBinding(vs, codeSystem, code)
+    findTerminologyService(vsUrl, version) match {
+      case Some(sconf -> ts) =>
+        validateCodeViaTerminologyService(sconf, ts, vsUrl, version, codeSystem, code)
+      //Not found in integrated terminology services
+      case None =>
+        getValueSet(vsUrl, version) match {
+          case None => true
+          case Some(vs) =>
+            validateCodeBinding(vs, codeSystem, code)
+        }
+    }
+  }
+
+  /**
+   *
+   * @param sconf
+   * @param ts
+   * @param vsUrl
+   * @param version
+   * @param codeSystem
+   * @param code
+   * @return
+   */
+  private def validateCodeViaTerminologyService(sconf:TerminologyServiceConf, ts:IFhirTerminologyService, vsUrl:String, version:Option[String], codeSystem:Option[String], code:String):Boolean = {
+    try {
+      //Call the terminology service's validate-code operation
+      val result = Await.result(ts.validateCode(vsUrl, version, code, codeSystem), sconf.timeout)
+      val isValid = FHIRUtil.getParameterValueByName(result, "result").exists(_.extract[Boolean])
+      isValid
+    } catch {
+      case t:TimeoutException =>
+        logger.error(s"Timeout while using terminology service ${sconf.name} for validation of a code ${codeSystem.getOrElse("")}|$code for ValueSet $vsUrl!")
+        false
+      case e:Exception =>
+        logger.error(s"Timeout while using terminology service ${sconf.name} for validation of a code ${codeSystem.getOrElse("")}|$code for ValueSet $vsUrl!", e)
+        false
     }
   }
 
@@ -101,5 +168,5 @@ class FhirTerminologyValidator(fhirConfig:BaseFhirConfig) extends IFhirTerminolo
 }
 
 object FhirTerminologyValidator {
-  def apply(fhirConfig: BaseFhirConfig): FhirTerminologyValidator = new FhirTerminologyValidator(fhirConfig)
+  def apply(fhirConfig: BaseFhirConfig, terminologyServices:Seq[(TerminologyServiceConf, IFhirTerminologyService)]): FhirTerminologyValidator = new FhirTerminologyValidator(fhirConfig, terminologyServices)
 }

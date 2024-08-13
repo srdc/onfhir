@@ -42,6 +42,14 @@ class TerminologyServiceClientTest extends Specification {
       val result = Await.result(terminologyServiceClient.translate(coding, "https://www.ncbi.nlm.nih.gov/clinvar"), Duration.Inf)
       FHIRUtil.getParameterValueByName(result, "result") shouldEqual Some(JBool(true))
     }
+
+    "handle validate-code operation with given code and system" in {
+      val result = Await.result(terminologyServiceClient.validateCode("http://loinc.org/vs", code= "2339-0", system=Some("http://loinc.org")), Duration.Inf)
+      FHIRUtil.getParameterValueByName(result, "result") shouldEqual Some(JBool(true))
+
+      val result2 = Await.result(terminologyServiceClient.validateCode("http://loinc.org/vs", code = "23", system = Some("http://loinc.org")), Duration.Inf)
+      FHIRUtil.getParameterValueByName(result2, "result") shouldEqual Some(JBool(false))
+    }
   }
 
 }

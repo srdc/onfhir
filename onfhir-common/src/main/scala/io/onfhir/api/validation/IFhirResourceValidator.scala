@@ -33,4 +33,9 @@ trait IFhirResourceValidator {
     */
   def validateResourceAgainstProfile(resource: Resource, rtype:String, profile:Option[String], parentPath:Option[String] = None,  bundle:Option[(Option[String],Resource)] = None, silent:Boolean = false): Future[Seq[OutcomeIssue]]
 
+  /**
+   * Return terminology validator
+   * @return
+   */
+  def getTerminologyValidator():Option[IFhirTerminologyValidator]
 }

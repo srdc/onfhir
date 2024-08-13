@@ -81,6 +81,11 @@
             <groupId>io.onfhir</groupId>
             <artifactId>onfhir-path_${scala.binary.version}</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.onfhir</groupId>
+            <artifactId>onfhir-client_${scala.binary.version}</artifactId>
+        </dependency>
+
         <!--Configurations-->
         <dependency>
             <groupId>com.typesafe</groupId>
