@@ -25,7 +25,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    *
    * @return
    */
-  @FhirPathFunction(documentation = "Generates an UUID",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Generates an UUID.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n\"3f12a3e4-74c2-48c1-9836-53c1c1016554\"\n``` \n\uD83D\uDCA1 **E.g.** utl:uuid()",
     insertText = "utl:uuid()", detail = "utl", label = "utl:uuid", kind = "Function", returnType = Seq("string"), inputType = Seq())
   def uuid(): Seq[FhirPathResult] = {
     Seq(FhirPathString(UUID.randomUUID().toString))
@@ -36,7 +36,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    *
    * @return
    */
-  @FhirPathFunction(documentation = "Checks whether the given string or character starts with or is a letter.",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Checks whether the given string or character starts with or is a letter.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\ntrue or false\n``` \n\uD83D\uDCA1 **E.g.** 'abc'.utl:isLetter()",
     insertText = "utl:isLetter()", detail = "utl", label = "utl:isLetter", kind = "Method", returnType = Seq("boolean"), inputType = Seq("string"))
   def isLetter(): Seq[FhirPathResult] = {
     current match {
@@ -53,7 +53,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @example ' ali  '.trim() --> 'ali'
    * @return
    */
-  @FhirPathFunction(documentation = "Trims the strings in the current set. Ex: ' ali  '.trim()",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Trims the strings in the current set so that they do not contain whitespaces. If the string is all whitespaces then returns Nil.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n\"ali\"\n``` \n\uD83D\uDCA1 **E.g.** ' ali '.utl:trim()",
     insertText = "utl:trim()", detail = "utl", label = "utl:trim", kind = "Method", returnType = Seq("string"), inputType = Seq("string"))
   def trim(): Seq[FhirPathResult] = {
     current.flatMap {
@@ -75,7 +75,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param ridExp          Resource identifier(s)
    * @return
    */
-  @FhirPathFunction(documentation = "Creates FHIR Reference object(s) with given resource type and id(s). Ex: utl:createFhirReference('Observation', id)",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Creates FHIR Reference object(s) with given resource type and id(s). If ridExp returns Nil, the function also returns Nil.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`resourceTypeExp`**  \nExpression to provide FHIR Resource type 'Patient'.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`ridExp`**  \nResource identifier(s).\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n[\n  {\n    \"reference\": \"Observation/123\"\n  },\n  {\n    \"reference\": \"Observation/456\"\n  }\n]\n```\n\uD83D\uDCA1 **E.g.** utl:createFhirReference('Observation', id)",
     insertText = "utl:createFhirReference(<resourceTypeExp>, <ridExp>)", detail = "utl", label = "utl:createFhirReference", kind = "Function", returnType = Seq(), inputType = Seq())
   def createFhirReference(resourceTypeExp: ExpressionContext, ridExp: ExpressionContext): Seq[FhirPathResult] = {
     val rids = new FhirPathExpressionEvaluator(context, current).visit(ridExp)
@@ -103,7 +103,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param displayExpr Expression to give the display value (optional)
    * @return
    */
-  @FhirPathFunction(documentation = "Creates a FHIR Coding content with given system code and optional display. Ex: utl:createFhirCoding('http://snomed.info/sct', '246103008', 'Certainty')",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Creates a FHIR Coding content with given system code and optional display. If system or code parameters return Nil, the function returns Nil. All parameters should return 0 or 1 string value.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`systemExp`**  \nExpression to give the system value.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`codeExpr`**  \nExpression to give the code value.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`displayExpr`**  \nExpression to give the display value (optional).\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n[\n  {\n    \"system\": \"http://snomed.info/sct\",\n    \"code\": \"246103008\",\n    \"display\": \"Certainty\"\n  }\n]\n```\n\uD83D\uDCA1 **E.g.** utl:createFhirCoding('http://snomed.info/sct', '246103008', 'Certainty')",
     insertText = "utl:createFhirCoding(<system>, <code>, <display>)", detail = "utl", label = "utl:createFhirCoding", kind = "Function", returnType = Seq(), inputType = Seq())
   def createFhirCoding(systemExp: ExpressionContext, codeExpr: ExpressionContext, displayExpr: ExpressionContext): Seq[FhirPathResult] = {
     val system = new FhirPathExpressionEvaluator(context, current).visit(systemExp)
@@ -141,7 +141,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param displayExpr Expression to give the display value (optional)
    * @return
    */
-  @FhirPathFunction(documentation = "Creates FHIR codeable concept. Ex: utl:createFhirCodeableConcept('http://snomed.info/sct', '246103008', 'Certainty')",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Create a FHIR CodeableConcept content with given system code and optional display. If system or code parameters return Nil, the function returns Nil. All parameters should return 0 or 1 string value.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`systemExp`**  \nExpression to give the system value.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`codeExpr`**  \nExpression to give the code value.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`displayExpr`**  \nExpression to give the display value (optional).\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n[\n  {\n    \"system\": \"http://snomed.info/sct\",\n    \"code\": \"246103008\",\n    \"display\": \"Certainty\"\n  }\n]\n```\n\uD83D\uDCA1 **E.g.** utl:createFhirCodeableConcept('http://snomed.info/sct', '246103008', 'Certainty')",
     insertText = "utl:createFhirCodeableConcept(<system>, <code>, <display>)", detail = "utl", label = "utl:createFhirCodeableConcept", kind = "Function", returnType = Seq(), inputType = Seq())
   def createFhirCodeableConcept(systemExp: ExpressionContext, codeExpr: ExpressionContext, displayExpr: ExpressionContext): Seq[FhirPathResult] = {
     val system = new FhirPathExpressionEvaluator(context, current).visit(systemExp)
@@ -186,7 +186,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param unitExpr  Expression for quantity unit
    * @return
    */
-  @FhirPathFunction(documentation = "Creates FHIR quantity. Ex: utl:createFhirQuantity(1, 'mg')",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Creates FHIR Quantity json object with given value and unit (system or code not set). If value expression returns Nil, the function also returns Nil.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`valueExpr`**  \nExpression for quantity value.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`unitExpr`**  \nExpression for quantity unit.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n[\n  {\n    \"value\": 1,\n    \"unit\": \"mg\"\n  }\n]\n```\n\uD83D\uDCA1 **E.g.** utl:createFhirQuantity(1, 'mg')",
     insertText = "utl:createFhirQuantity(<value>, <unit>)", detail = "utl", label = "utl:createFhirQuantity", kind = "Function", returnType = Seq(), inputType = Seq())
   def createFhirQuantity(valueExpr: ExpressionContext, unitExpr: ExpressionContext): Seq[FhirPathResult] = {
     val value = handleFhirQuantityValue(valueExpr)
@@ -209,7 +209,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param codeExpr   Expression to return the the unit
    * @return
    */
-  @FhirPathFunction(documentation = "Creates FHIR Quantity json object with given value, system and unit. Ex: utl:createFhirQuantity(15.2, %ucum, 'mg')",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Creates FHIR Quantity json object with given value, system and unit. If any parameter expression returns Nil, the function will also return Nil.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`valueExpr`**  \nExpression to return the quantity value.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`systemExpr`**  \nExpression to return the system for the unit.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`codeExpr`**  \nExpression to return the unit.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n[\n  {\n    \"value\": 15.2,\n    \"unit\": \"mg\",\n    \"system\": \"%ucum\"\n  }\n]\n```\n\uD83D\uDCA1 **E.g.** utl:createFhirQuantity(15.2, %ucum, 'mg')",
     insertText = "utl:createFhirQuantity(<valueExpr>, <systemExpr>, <codeExpr>)", detail = "utl", label = "utl:createFhirQuantity", kind = "Function", returnType = Seq(), inputType = Seq())
   def createFhirQuantity(valueExpr: ExpressionContext, systemExpr: ExpressionContext, codeExpr: ExpressionContext): Seq[FhirPathResult] = {
     val value = handleFhirQuantityValue(valueExpr)
@@ -238,7 +238,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param codeExpr   Expression to return the unit code
    * @return
    */
-  @FhirPathFunction(documentation = "Creates FHIR Quantity json object with given value unit and optional system and code. Ex: utl:createFhirQuantity(15.2, %ucum, 'mg')",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Creates FHIR Quantity json object with given value, unit and optional system and code. If value or unit parameter expression returns Nil, the function will also return Nil.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`valueExpr`**  \nExpression to return the quantity value.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`unitExpr`**  \nExpression to return the unit.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`systemExpr`**  \nExpression to return the system for the unit.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`codeExpr`**  \nExpression to return the unit code.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n[\n  {\n    \"value\": 15.2,\n    \"unit\": \"mg\",\n    \"system\": \"%ucum\",\n    \"code\": \"mg\"\n  }\n]\n```\n\uD83D\uDCA1 **E.g.** utl:createFhirQuantity(15.2, 'mg', %ucum, 'mg')",
     insertText = "utl:createFhirQuantity(<valueExpr>, <unitExpr>, <systemExpr>, <codeExpr>)", detail = "utl", label = "utl:createFhirQuantity", kind = "Function", returnType = Seq(), inputType = Seq())
   def createFhirQuantity(valueExpr: ExpressionContext,
                          unitExpr: ExpressionContext,
@@ -291,10 +291,9 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * Returns false otherwise
    * If current value return multiple values, throws exception
    *
-   * @param valueExpr Expression to return the value
    * @return
    */
-  @FhirPathFunction(documentation = "Checks if the given value is a FHIR Quantity expression e.g. 5.2, >7.1, etc.",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Checks if the given value is a FHIR Quantity expression e.g. 5.2, >7.1, etc. Returns true if given value is numeric, or given value evaluates to string but can be converted to numeric, or given value is string starting with comparators and the remaining string can be converted to numeric; otherwise returns false. If current value returns multiple values, throws exception.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\ntrue or false\n``` \n\uD83D\uDCA1 **E.g.** 5.utl:isFhirQuantityExpression()",
     insertText = "utl:isFhirQuantityExpression()", detail = "utl", label = "utl:isFhirQuantityExpression", kind = "Method", returnType = Seq("boolean")
     , inputType = Seq("dateTime", "number", "string"))
   def isFhirQuantityExpression(): Seq[FhirPathResult] = {
@@ -330,7 +329,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param valueExpr FHIR Quantity expression with optional comparator
    * @return Seq of results where first element is the numeric value and second if exists is the comparator
    */
-  @FhirPathFunction(documentation = "Parses a FHIR quantity expression.",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Parses a FHIR quantity expression e.g. >50.5, 42, etc. Returns a sequence of results where the first element is the numeric value and the second if exists is the comparator. If the given value is empty or not a quantity expression, returns Nil.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`valueExpr`**  \nFHIR Quantity expression with optional comparator.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n{\n  \"numericValue\": 50.5,\n  \"comparator\": \">\",\n}\n```\n\uD83D\uDCA1 **E.g.** utl:parseFhirQuantityExpression('>50.5')",
     insertText = "utl:parseFhirQuantityExpression(<valueExpr>)", detail = "utl", label = "utl:parseFhirQuantityExpression", kind = "Function", returnType = Seq(), inputType = Seq())
   def parseFhirQuantityExpression(valueExpr: ExpressionContext): Seq[FhirPathResult] = {
     handleFhirQuantityValue(valueExpr) match {
@@ -382,7 +381,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param toDate   Other date expression
    * @return
    */
-  @FhirPathFunction(documentation = "Retrieves the duration between given FHIR dateTimes as FHIR Duration with a suitable duration unit (either minute, day, or month). Ex: utl:getDurationAsQuantityObject(startTime, endTime)",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Retrieves the duration between given FHIR dateTimes as FHIR Duration with a suitable duration unit (either minute, day, or month).\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`fromDate`**  \nGiven date expression.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`toDate`**  \nOther date expression.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n{\n  \"durationValue\": 30,\n  \"unit\": \"d\"\n}\n```\n\uD83D\uDCA1 **E.g.** utl:parseFhirQuantityExpression('2020-04-20T10:30:00Z', '2020-05-20T10:30:00Z')",
     insertText = "utl:getDurationAsQuantityObject(<startTime>, <endTime>)", detail = "utl", label = "utl:getDurationAsQuantityObject", kind = "Function", returnType = Seq(), inputType = Seq())
   def getDurationAsQuantityObject(fromDate: ExpressionContext, toDate: ExpressionContext): Seq[FhirPathResult] = {
     val fdate: Option[Temporal] = new FhirPathExpressionEvaluator(context, current).visit(fromDate) match {
@@ -468,7 +467,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param splitCharExpr Expression to return split character(s)
    * @return
    */
-  @FhirPathFunction(documentation = "Splits the current string value by given split character or string. Ex: code.coding.first().code.utl:split('-')",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Splits the current string value by given split character or string.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`splitCharExpr`**  \nExpression to return split string(s).\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n{\n  \"first\",\n  \"second\",\n  \"third\"\n}\n```\n\uD83D\uDCA1 **E.g.** Observation.valueSampleData.data.utl:split(' ') --> Split by empty space",
     insertText = "utl:split(<splitCharExpr>)", detail = "utl", label = "utl:split", kind = "Method", returnType = Seq("string"), inputType = Seq("string"))
   def split(splitCharExpr: ExpressionContext): Seq[FhirPathResult] = {
 
@@ -501,7 +500,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param stopCharExpr List of stop characters
    * @return
    */
-  @FhirPathFunction(documentation = "Takes the prefix of a string until one of the given stop character. Ex: 'VERY LOW.'.utl:takeUntil('.' | '*')",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Takes the prefix of a string until one of the given stop characters is encountered. If stopCharExpr returns empty list, returns the whole string. If given stopCharExpr does not return single character strings or current is not a string, throws an exception.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`stopCharExpr`**  \nList of stop characters.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n\"VERY LOW\"\n``` \n\uD83D\uDCA1 **E.g.** 'VERY LOW.'.utl:takeUntil('.' | '*')",
     insertText = "utl:takeUntil(<stopCharExpr>)", detail = "utl", label = "utl:takeUntil", kind = "Method", returnType = Seq("string"), inputType = Seq("string"))
   def takeUntil(stopCharExpr: ExpressionContext): Seq[FhirPathResult] = {
     val stopChars: Set[Char] =
@@ -525,7 +524,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param toExpr   End index (inclusive)
    * @return
    */
-  @FhirPathFunction(documentation = "Creates a list of numbers. Ex: utl:indices(1, 10)",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Creates a list of integers between and including given two integers.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`fromExpr`**  \nStart index (inclusive).\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`toExpr`**  \nEnd index (inclusive).\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]\n``` \n\uD83D\uDCA1 **E.g.** utl:indices(1, 10)",
     insertText = "utl:indices(<startnumber>, <endnumber>)", detail = "utl", label = "utl:indices", kind = "Function", returnType = Seq("integer"), inputType = Seq())
   def indices(fromExpr: ExpressionContext, toExpr: ExpressionContext): Seq[FhirPathResult] = {
     val from = new FhirPathExpressionEvaluator(context, current).visit(fromExpr)
@@ -546,7 +545,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param condExpr Boolean expression to check for each item
    * @return
    */
-  @FhirPathFunction(documentation = "Returns the indices (starting from 1) in the current sequence of results where given expression returns true. Ex: Observation.code.coding.utl:indicesWhere($this.system='http://snomed.info/sct')",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns the indices (starting from 1) in the current sequence of results where the given expression returns true. If condition expression returns non boolean value, it returns false.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`condExpr`**  \nBoolean expression to check for each item.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n[1, 3, 5]\n``` \n\uD83D\uDCA1 **E.g.** Observation.code.coding.utl:indicesWhere($this.system='http://snomed.info/sct')",
     insertText = "utl:indicesWhere(<condExpr>)", detail = "utl", label = "utl:indicesWhere", kind = "Method", returnType = Seq("integer"), inputType = Seq())
   def indicesWhere(condExpr: ExpressionContext): Seq[FhirPathResult] = {
     current
@@ -566,7 +565,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param separatorExp Expression to return a separator string
    * @return
    */
-  @FhirPathFunction(documentation = "Combines current string results with the given separator and return a string. Ex: code.mkString(' | ')",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Combines the current string results with the given separator and returns a string. If current is Nil, returns Nil.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`separatorExp`**  \nExpression to return a separator string.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n\"first | second | third\"\n``` \n\uD83D\uDCA1 **E.g.** code.utl:mkString(' | ')",
     insertText = "utl:mkString(<separatorExp>)", detail = "utl", label = "utl:mkString", kind = "Method", returnType = Seq("string"), inputType = Seq("string"))
   def mkString(separatorExp: ExpressionContext): Seq[FhirPathResult] = {
     if (!current.forall(_.isInstanceOf[FhirPathString]))
@@ -592,7 +591,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param fhirPathExpression FHIR Path expression in string format
    * @return
    */
-  @FhirPathFunction(documentation = "Evaluates expression. Ex: utl:evaluateExpression('1 + 1')",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Evaluates the given FHIR Path expression in string format on current content and context.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`fhirPathExpression`**  \nFHIR Path expression in string format.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n{\n  \"type\": \"Integer\",\n  \"value\": 2\n}\n```\n\uD83D\uDCA1 **E.g.** utl:evaluateExpression('Observation.code[' & i &']') --> Return the ith code",
     insertText = "utl:evaluateExpression(<expression>)", detail = "utl", label = "utl:evaluateExpression", kind = "Function", returnType = Seq(), inputType = Seq())
   def evaluateExpression(fhirPathExpression: ExpressionContext): Seq[FhirPathResult] = {
     val fhirPath = new FhirPathExpressionEvaluator(context, current).visit(fhirPathExpression)
@@ -615,7 +614,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param msgExpr Message for the exception
    * @return
    */
-  @FhirPathFunction(documentation = "Throws a FHIR Path exception with the given msg.",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Throws a FHIR Path exception with the given message.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`msgExpr`**  \nMessage for the exception.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n{\n  \"exception\": {\n    \"message\": \"An error occurred\"\n  }\n}\n```\n\uD83D\uDCA1 **E.g.** utl:throwException('An error occurred')",
     insertText = "utl:throwException(<msgExpr>)", detail = "utl", label = "utl:throwException", kind = "Function", returnType = Seq(), inputType = Seq())
   def throwException(msgExpr: ExpressionContext): Seq[FhirPathResult] = {
     val excMsg = new FhirPathExpressionEvaluator(context, current).visit(msgExpr)
@@ -626,13 +625,14 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
   }
 
   /**
-   * Get a period between the FHIR date time given in current and  FHIR date time given in first expression
+   * Get a period between the FHIR date time given in fromDate and the FHIR date time given in toDate
    *
-   * @param toDate Given date expression
-   * @param period Period requested to calculate; either 'years','months','weeks','days','hours' or 'minutes'
+   * @param fromDate Given start date expression
+   * @param toDate   Given end date expression
+   * @param period   Period requested to calculate; either 'years','months','weeks','days','hours' or 'minutes'
    * @return
    */
-  @FhirPathFunction(documentation = "Returns a period between the FHIR date time given in current and  FHIR date time given in first expression. Ex: effectivePeriod.utl:getPeriod(start, @2020-09-07T10:00:00Z, 'years')",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns a period between the FHIR date time given in fromDate and the FHIR date time given in toDate.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`fromDate`**  \nGiven start date expression.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`toDate`**  \nGiven end date expression.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`period`**  \nPeriod requested to calculate; either 'years','months','weeks','days','hours' or 'minutes'.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n{\n  \"period\": {\n    \"value\": 3,\n    \"unit\": \"years\",\n    \"system\": \"http://unitsofmeasure.org\",\n    \"code\": \"a\"\n  }\n}\n```\n\uD83D\uDCA1 **E.g.** effectivePeriod.utl:getPeriod(start, @2020-09-07T10:00:00Z, 'years')",
     insertText = "utl:getPeriod(<fromDate>, <toDate>, <period>)", detail = "utl", label = "utl:getPeriod", kind = "Method", returnType = Seq("number"), inputType = Seq("dateTime"))
   def getPeriod(fromDate: ExpressionContext, toDate: ExpressionContext, period: ExpressionContext): Seq[FhirPathResult] = {
     var fdate: Option[Temporal] = new FhirPathExpressionEvaluator(context, current).visit(fromDate) match {
@@ -868,7 +868,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @param codingList Expression that evaluates to Seq[FhirPathString] in FHIR token query format [system]|[code]
    * @return
    */
-  @FhirPathFunction(documentation = "For FHIR coding elements, filters the ones that match the given coding list as FHIR code query",
+  @FhirPathFunction(documentation = "\uD83D\uDCDC For FHIR coding elements, filters the ones that match the given coding list as FHIR code query.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`codingList`**  \nExpression that evaluates to Seq[FhirPathString] in FHIR token query format [system]|[code]\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\ntrue or false\n```\n\n\uD83D\uDCA1 **E.g.** 'http://loinc.org|12345-6'.utl:isCodingIn(Observation.code.coding)",
     insertText = "utl:isCodingIn(<codingListExpr>)", detail = "utl", label = "utl:isCodingIn", kind = "Method", returnType = Seq("boolean"), inputType = Seq())
   def isCodingIn(codingList: ExpressionContext): Seq[FhirPathResult] = {
     val systemAndCodes: Seq[(Option[String], Option[String])] = new FhirPathExpressionEvaluator(context, current).visit(codingList) match {

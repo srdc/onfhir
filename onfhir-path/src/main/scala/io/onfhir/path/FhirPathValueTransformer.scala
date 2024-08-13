@@ -9,45 +9,53 @@ import scala.util.Try
 object FhirPathValueTransformer {
 
   /**
-    * Transform a JValue to FhirPathResult
-    * @param v
-    * @return
-    */
-  def transform(v:JValue, isContentFhir:Boolean = true):Seq[FhirPathResult] = {
+   * Transform a JValue to FhirPathResult
+   *
+   * @param v
+   * @return
+   */
+  def transform(v: JValue, isContentFhir: Boolean = true): Seq[FhirPathResult] = {
     v match {
       case JArray(arr) => arr.flatMap(i => transform(i, isContentFhir))
-      case jobj:JObject => Seq(FhirPathComplex(jobj))
+      case jobj: JObject =>
+        // Check whether this object is Quantity or not
+        val result = for {
+          value <- (jobj \ "value").extractOpt[BigDecimal]
+          unit <- (jobj \ "unit").extractOpt[String]
+        } yield Seq(FhirPathQuantity(FhirPathNumber(value), unit))
+        // Return a generic FhirPathComplex object if it is not a Quantity
+        result.getOrElse(Seq(FhirPathComplex(jobj)))
       case JInt(i) => Seq(FhirPathNumber(BigDecimal(i)))
       case JDouble(num) => Seq(FhirPathNumber(num))
       case JDecimal(num) => Seq(FhirPathNumber(num.toDouble))
       case JLong(num) => Seq(FhirPathNumber(num.toDouble))
-      case JString(s) if isContentFhir && s.headOption.exists(_.isDigit)  => Seq(resolveFromString(s))
+      case JString(s) if isContentFhir && s.headOption.exists(_.isDigit) => Seq(resolveFromString(s))
       case JString(s) => Seq(FhirPathString(s))
       case JBool(b) => Seq(FhirPathBoolean(b))
       case _ => Nil
     }
   }
 
-  private def resolveFromString(str:String):FhirPathResult = {
+  private def resolveFromString(str: String): FhirPathResult = {
     Try(FhirPathLiteralEvaluator.parseFhirDateTimeBestExceptYear(str)).toOption
       .map(FhirPathDateTime)
       .getOrElse(
         //If it seems to be a FHIR time, try to parse it
-        if(
+        if (
           (str.length == 5 && str.apply(2) == ':') ||
             (str.length == 8 && str.apply(2) == ':' && str.apply(5) == ':') ||
-              (str.length > 9 && str.apply(9) == '.' && str.length < 13 )
-            )
+            (str.length > 9 && str.apply(9) == '.' && str.length < 13)
+        )
           Try(FhirPathLiteralEvaluator.parseFhirTime(str)).toOption
             .map(t => FhirPathTime(t._1, t._2))
             .getOrElse(FhirPathString(str))
         else
           FhirPathString(str)
-       )
+      )
   }
 
 
-  def serializeToJson(result:Seq[FhirPathResult]):JValue = {
+  def serializeToJson(result: Seq[FhirPathResult]): JValue = {
     val jsonValues = result.map(_.toJson)
     jsonValues.length match {
       case 0 => JNull
