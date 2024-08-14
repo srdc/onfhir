@@ -1283,11 +1283,15 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
     oldBsonDocument.remove(FHIR_COMMON_FIELDS.MONGO_ID)
 
     val fop =
-      //If the resource type is versioned, insert new version and move the old version to history
-      if(fhirConfig.isResourceTypeVersioned(rtype))
-        DocumentManager
-          .insertNewVersion(rtype, rid, Left(Document(populatedResource.toBson)), previousVersion._1 -> Document(oldBsonDocument), shardQueryOpt)
-      else
+      //If the resource type is versioned
+      if(fhirConfig.isResourceTypeVersioned(rtype)) {
+        //If deleted, just insert this new to current collection
+        if(wasDeleted)
+          DocumentManager.insertDocument(rtype, Document(populatedResource.toBson))
+        else  //If not deleted,  insert new version and move the old version to history
+          DocumentManager
+            .insertNewVersion(rtype, rid, Document(populatedResource.toBson), previousVersion._1 -> Document(oldBsonDocument), shardQueryOpt)
+      } else
         //Otherwise, replace current version
         DocumentManager
           .replaceCurrent(rtype, rid, Document(populatedResource.toBson), shardQueryOpt)
@@ -1385,18 +1389,23 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
     //2) Construct shard query if sharding is enabled and on a field other than id
     val shardQueryOpt = ResourceQueryBuilder.constructShardingQuery(rtype, previousVersion._2)
 
-    //3) Remove mongo id from old version
-    val oldBsonDocument = previousVersion._2.toBson
-    oldBsonDocument.remove(FHIR_COMMON_FIELDS.MONGO_ID)
-
     val fop =
       // 4) If resource type is versioned, insert this deleted version, and move old version to history
-      if(fhirConfig.isResourceTypeVersioned(rtype))
+      if(fhirConfig.isResourceTypeVersioned(rtype)) {
+        //3) Remove mongo id from old version
+        val oldBsonDocument = previousVersion._2.toBson
+        oldBsonDocument.remove(FHIR_COMMON_FIELDS.MONGO_ID)
+
+        var deletedResource = FHIRUtil.populateResourceWithMeta(previousVersion._2, None, newVersion, lastModified)
+        deletedResource = FHIRUtil.populateResourceWithExtraFields(deletedResource, FHIR_METHOD_NAMES.METHOD_DELETE, statusCode)
+        val deletedBsonDocument = deletedResource.toBson
+        deletedBsonDocument.remove(FHIR_COMMON_FIELDS.MONGO_ID)
+
         DocumentManager
-          .insertNewVersion(rtype, rid, Right(statusCode.intValue().toString -> lastModified), previousVersion._1 -> Document(oldBsonDocument), shardQueryOpt)
-      else
+          .deleteCurrentAndMoveToHistory(rtype, rid, previousVersion._1, oldBsonDocument, deletedBsonDocument, shardQueryOpt)
+      } else
         //Otherwise, mark the current as deleted
-        DocumentManager.deleteCurrent(rtype, rid, statusCode.intValue().toString, newVersion, lastModified, shardQueryOpt)
+        DocumentManager.deleteCurrent(rtype, rid, shardQueryOpt)
 
      fop
       .map( _ => resourceDeleted(rtype, rid, FHIRUtil.clearExtraFields(previousVersion._2))) //trigger the event

@@ -3,6 +3,9 @@ package io.onfhir.db
 import com.mongodb.MongoClientSettings
 import com.mongodb.bulk.BulkWriteUpsert
 import com.mongodb.client.model.UpdateOneModel
+import io.onfhir.api.util.FHIRUtil
+import io.onfhir.db.DocumentManager.getDocumentHelper
+import io.onfhir.exception.NotFoundException
 import org.mongodb.scala.model.{Field, Filters, InsertOneModel, ReplaceOneModel, ReplaceOptions}
 import org.mongodb.scala.result.InsertOneResult
 
@@ -61,17 +64,8 @@ object DocumentManager {
     */
   private def vidQuery(vid:String):Bson = equal(s"${FHIR_COMMON_FIELDS.META}.${FHIR_COMMON_FIELDS.VERSION_ID}", vid)
 
-  /***
-    * Query to get latest version documents
-    * @return
-    */
-  //private def isCurrentQuery:Bson = equal(FHIR_EXTRA_FIELDS.CURRENT, true)
-
-  /***
-    * Query to get the documents that are the latest version and active (not deleted)
-    * @return
-    */
-  private def isActiveQuery:Bson = /*and(isCurrentQuery,*/ notEqual(FHIR_EXTRA_FIELDS.METHOD, FHIR_METHOD_NAMES.METHOD_DELETE)//)
+  // Tuncay - 2024-08-14 - We don't need this any more as now we don't keep deleted versions in current collection
+  //private def isActiveQuery:Bson = /*and(isCurrentQuery,*/ notEqual(FHIR_EXTRA_FIELDS.METHOD, FHIR_METHOD_NAMES.METHOD_DELETE)//)
 
   /**
     * And the BSON queries if there is more than one
@@ -98,9 +92,17 @@ object DocumentManager {
     //Try to find the version within current documents
     getDocumentHelper(MongoDB.getCollection(rtype), id, vid, includingOrExcludingFields, excludeExtraFields) flatMap {
       case Nil =>
-        //If not found and version id is not given, return None
         vid match {
-          case None => Future.apply(None)
+          //If not found and version id is not given, check history it may be deleted
+          case None =>
+            getDocumentHelper(MongoDB.getCollection(rtype, history = true), id, vid, includingOrExcludingFields, excludeExtraFields) map {
+              //If still not found, return none
+              case Nil => None
+              case history if history.head.getString(FHIR_EXTRA_FIELDS.METHOD) == FHIR_METHOD_NAMES.METHOD_DELETE  =>
+                Some(history.head)
+              case _ =>
+                throw new InternalServerException(s"Invalid state for resource history ($rtype) with id $id in the database, the last version should be a delete if it does not exits in current collection!")
+            }
           //Otherwise try to find it within history documents
           case Some(_) =>
             getDocumentHelper(MongoDB.getCollection(rtype, history = true), id, vid, includingOrExcludingFields, excludeExtraFields) map {
@@ -141,6 +143,7 @@ object DocumentManager {
         case Some(ts) =>  coll.find(ts.dbSession, baseQuery)
       }
 
+    query = query.sort(Sorts.descending(s"${FHIR_COMMON_FIELDS.META}.${FHIR_COMMON_FIELDS.LAST_UPDATED}.__ts"))
     //Handle projection
     query = handleProjection(query, includingOrExcludingFields, excludeExtraFields)
 
@@ -156,7 +159,6 @@ object DocumentManager {
     * @param sortingPaths Sorting parameters and sorting direction (negative: descending, positive: ascending)
     * @param includingOrExcludingFields List of to be specifically included or excluded fields in the resulting document, if not given; all document included (true-> include, false -> exclude)
     * @param excludeExtraFields If true exclude extra fields related with version control from the document
-    * @param excludeDeleted If deleted resources are not taken into accouunt in search or not
     * @return Two sequence of documents (matched, includes); First the matched documents for the main query, Second included resources
     */
   def searchDocuments(rtype:String,
@@ -165,24 +167,18 @@ object DocumentManager {
                       page:Int= 1,
                       sortingPaths:Seq[(String, Int, Seq[String])] = Seq.empty,
                       includingOrExcludingFields:Option[(Boolean, Set[String])] = None,
-                      excludeExtraFields:Boolean = false,
-                      excludeDeleted:Boolean = true )(implicit transactionSession: Option[TransactionSession] = None):Future[Seq[Document]] = {
-
-    val finalFilter:Option[Bson] = filter match {
-      case None => if(excludeDeleted) Some(isActiveQuery) else None
-      case Some(sfilter) => if(excludeDeleted) Some(and(isActiveQuery, sfilter)) else Some(sfilter)
-    }
+                      excludeExtraFields:Boolean = false)(implicit transactionSession: Option[TransactionSession] = None):Future[Seq[Document]] = {
 
     //If we have alternative paths for a search parameter, use search by aggregation
     if(sortingPaths.exists(_._3.length > 1)){
-      searchDocumentsByAggregation(rtype, finalFilter, count, page, sortingPaths, includingOrExcludingFields, excludeExtraFields)
+      searchDocumentsByAggregation(rtype, filter, count, page, sortingPaths, includingOrExcludingFields, excludeExtraFields)
     }
     //Otherwise run a normal MongoDB find query
     else {
       //Construct query
       var query = transactionSession match {
-        case None => if(finalFilter.isDefined ) MongoDB.getCollection(rtype).find(finalFilter.get) else MongoDB.getCollection(rtype).find()
-        case Some(ts) => if(finalFilter.isDefined )  MongoDB.getCollection(rtype).find(ts.dbSession, finalFilter.get) else MongoDB.getCollection(rtype).find(ts.dbSession)
+        case None => if(filter.isDefined ) MongoDB.getCollection(rtype).find(filter.get) else MongoDB.getCollection(rtype).find()
+        case Some(ts) => if(filter.isDefined )  MongoDB.getCollection(rtype).find(ts.dbSession, filter.get) else MongoDB.getCollection(rtype).find(ts.dbSession)
       }
 
       //Sort by given params + MongoDB _id to ensure uniqueness for pagination
@@ -218,7 +214,6 @@ object DocumentManager {
    * @param sortingPaths               Sorting parameters and sorting direction (negative: descending, positive: ascending)
    * @param includingOrExcludingFields List of to be specifically included or excluded fields in the resulting document, if not given; all document included (true-> include, false -> exclude)
    * @param excludeExtraFields         If true exclude extra fields related with version control from the document
-   * @param excludeDeleted             If deleted resources are not taken into accouunt in search or not
    * @return                           Offset for search before, Offset for search after, and the result set
    */
   def searchDocumentsWithOffset(rtype: String,
@@ -227,14 +222,7 @@ object DocumentManager {
                                 offset:Option[(Seq[String],Boolean)],
                                 sortingPaths: Seq[(String, Int, Seq[String])] = Seq.empty,
                                 includingOrExcludingFields: Option[(Boolean, Set[String])] = None,
-                                excludeExtraFields: Boolean = false,
-                                excludeDeleted: Boolean = true)(implicit transactionSession: Option[TransactionSession] = None):Future[(Seq[String],Seq[String], Seq[Document])] =  {
-
-    var finalFilter: Option[Bson] = filter match {
-      case None => if (excludeDeleted) Some(isActiveQuery) else None
-      case Some(sfilter) => if (excludeDeleted) Some(and(isActiveQuery, sfilter)) else Some(sfilter)
-    }
-
+                                excludeExtraFields: Boolean = false)(implicit transactionSession: Option[TransactionSession] = None):Future[(Seq[String],Seq[String], Seq[Document])] =  {
     //Append the offset filter
     val offsetFilter = offset.map {
       case (Seq(mongoIdOffset), true) =>
@@ -243,9 +231,9 @@ object DocumentManager {
         Filters.lt(FHIR_COMMON_FIELDS.MONGO_ID, BsonObjectId(mongoIdOffset))
       case _ => throw new NotImplementedError("Pagination with offset is only implemented over MongoDB id of resource!")
     }
-
+    var finalFilter = filter
     offsetFilter.foreach(of =>
-      finalFilter = finalFilter.map(f => and(f,of)).orElse(Some(of))
+      finalFilter = filter.map(f => and(f,of)).orElse(Some(of))
     )
 
     //If we have alternative paths for a search parameter, use search by aggregation
@@ -287,7 +275,6 @@ object DocumentManager {
    * @param includingOrExcludingFields      List of to be specifically included or excluded fields in the resulting document,
    *                                        if not given; all document included (true-> include, false -> exclude) for each resource type
    * @param excludeExtraFields              If true exclude extra fields related with version control from the document
-   * @param excludeDeleted                  If deleted resources are not taken into accouunt in search or not
    * @param transactionSession
    * @return
    */
@@ -297,13 +284,7 @@ object DocumentManager {
                       page:Int= 1,
                       sortingPaths:Map[String, Seq[(String, Int, Seq[String])]] = Map.empty,
                       includingOrExcludingFields:Map[String, Option[(Boolean, Set[String])]] = Map.empty,
-                      excludeExtraFields:Boolean = false,
-                      excludeDeleted:Boolean = true )(implicit transactionSession: Option[TransactionSession] = None):Future[Seq[Document]] = {
-    //Construct final filters
-    val finalFilters:Map[String, Option[Bson]] = filters.map(f => f._1 -> (f._2 match {
-      case None => if(excludeDeleted) Some(isActiveQuery) else None
-      case Some(sfilter) => if(excludeDeleted) Some(and(isActiveQuery, sfilter)) else Some(sfilter)
-    }))
+                      excludeExtraFields:Boolean = false)(implicit transactionSession: Option[TransactionSession] = None):Future[Seq[Document]] = {
 
     //Internal method to construct aggregation pipeline for each resource type
     def constructAggQueryForResourceType(filter:Option[Bson], sortingPaths:Seq[(String, Int, Seq[String])], includingOrExcludingFields:Option[(Boolean, Set[String])]):ListBuffer[Bson] = {
@@ -325,7 +306,7 @@ object DocumentManager {
 
     //Construct an aggregation pipeline for each resource type
     val aggregatesForEachResourceType =
-      finalFilters
+      filters
       .map(f => f._1 -> constructAggQueryForResourceType(f._2, sortingPaths(f._1), includingOrExcludingFields(f._1)))
 
     //We will start from the first resource type
@@ -552,27 +533,22 @@ object DocumentManager {
     * @param query Mongo query
     * @return
     */
-  def countDocuments(rtype:String, query:Option[Bson], excludeDeleted:Boolean = true)(implicit transactionSession: Option[TransactionSession] = None): Future[Long] = {
+  def countDocuments(rtype:String, query:Option[Bson])(implicit transactionSession: Option[TransactionSession] = None): Future[Long] = {
     getCount(
       rtype,
       query
-          .map(q => if(excludeDeleted) and(isActiveQuery, q) else q) match {
-        case None => if(excludeDeleted) Some(isActiveQuery) else None
-        case oth => oth
-      }
     )
   }
 
   /**
    * Count documents in multiple resource types
    * @param queries
-   * @param excludeDeleted
    * @param transactionSession
    * @return
    */
-  def countDocumentsFromMultipleCollections(queries:Map[String, Option[Bson]], excludeDeleted:Boolean = true)(implicit transactionSession: Option[TransactionSession] = None): Future[Long] = {
+  def countDocumentsFromMultipleCollections(queries:Map[String, Option[Bson]])(implicit transactionSession: Option[TransactionSession] = None): Future[Long] = {
     Future
-      .sequence(queries.map(q => countDocuments(q._1, q._2, excludeDeleted)))
+      .sequence(queries.map(q => countDocuments(q._1, q._2)))
       .map(counts => counts.sum)
   }
 
@@ -695,17 +671,17 @@ object DocumentManager {
   def searchHistoricDocumentsWithAt(rtype:String,  rid:Option[String], filter:Option[Bson], count:Int = -1, page:Int = -1):Future[(Long,Seq[Document])] = {
     def getIdsOfAllCurrents():Future[Seq[String]] = {
       DocumentManager
-        .searchDocuments(rtype, DocumentManager.andQueries(rid.map(ridQuery).toSeq ++ filter.toSeq), count, page, includingOrExcludingFields  = Some(true, Set(FHIR_COMMON_FIELDS.ID)), excludeDeleted = false)
+        .searchDocuments(rtype, DocumentManager.andQueries(rid.map(ridQuery).toSeq ++ filter.toSeq), count, page, includingOrExcludingFields  = Some(true, Set(FHIR_COMMON_FIELDS.ID)))
         .map(docs => docs.map(d => d.getString(FHIR_COMMON_FIELDS.ID)))
     }
 
-    val totalCurrentFuture = DocumentManager.countDocuments(rtype, DocumentManager.andQueries(rid.map(ridQuery).toSeq ++ filter.toSeq), excludeDeleted = false)
+    val totalCurrentFuture = DocumentManager.countDocuments(rtype, DocumentManager.andQueries(rid.map(ridQuery).toSeq ++ filter.toSeq))
 
     totalCurrentFuture.flatMap {
       //If all records can be supplied from currents
       case totalCurrent:Long if count * page <= totalCurrent =>
         DocumentManager
-          .searchDocuments(rtype, DocumentManager.andQueries(rid.map(ridQuery).toSeq ++ filter.toSeq), count, page, excludeDeleted = false)
+          .searchDocuments(rtype, DocumentManager.andQueries(rid.map(ridQuery).toSeq ++ filter.toSeq), count, page)
           .flatMap(docs => {
             getIdsOfAllCurrents().flatMap(ids =>
               DocumentManager
@@ -716,7 +692,7 @@ object DocumentManager {
       //If some of them should be from current some from history
       case totalCurrent:Long if count * page > totalCurrent && count * (page-1) < totalCurrent =>
         DocumentManager
-          .searchDocuments(rtype, DocumentManager.andQueries(rid.map(ridQuery).toSeq ++ filter.toSeq), count, page, excludeDeleted = false)
+          .searchDocuments(rtype, DocumentManager.andQueries(rid.map(ridQuery).toSeq ++ filter.toSeq), count, page)
           .flatMap(currentDocs => {
             val numOfNeeded = count * page - totalCurrent
             getIdsOfAllCurrents().flatMap(ids =>
@@ -762,6 +738,23 @@ object DocumentManager {
       } yield totalCurrent -> totalHistory
 
     numOfDocs.flatMap {
+      //Not found
+      case (0L, 0L) if rid.isDefined =>
+        throw new NotFoundException(Seq(OutcomeIssue(
+          FHIRResponse.SEVERITY_CODES.ERROR,
+          FHIRResponse.OUTCOME_CODES.INVALID,
+          None,
+          Some(s"Resource history for ${rid.get} is not found!"),
+          Nil
+        )))
+      case (0L, 0L) => Future.apply(0L -> Nil)
+      //No current so it must be deleted
+      case (0L, totalHistory) =>
+        //Skip this number of record
+        val skip = count * (page - 1)
+        //Otherwise search the history directly
+        searchHistoricDocumentsHelper(rtype, history = true, finalFilter, count, skip)
+          .map(docs => totalHistory -> docs)
       case (totalCurrent, totalHistory) =>
         val fresults =
           rid match {
@@ -845,21 +838,6 @@ object DocumentManager {
   }
 
   /**
-    * Returns a boolean future value for the existence of a resource with given id and type
-    *
-    * @param rtype type of the resource
-    * @param id id of the resource
-    * @return a future boolean value for the existence of the resource
-    */
-  def documentExists(rtype:String, id:String) : Future[Boolean] = {
-    val collection = MongoDB.getCollection(rtype)
-    collection
-      .countDocuments(and(ridQuery(id), isActiveQuery))
-      .head()
-      .map(count => count > 0) //check if count of the given resource is greater than 0
-  }
-
-  /**
     * Inserts the given document into a appropriate collection
     * @param rtype type of the resource
     * @param document document to be inserted
@@ -926,7 +904,7 @@ object DocumentManager {
     * @param newDocumentOrDeleted New version of document or status code for deletion
     * @return
     */
-  def insertNewVersion(rtype:String, rid:String, newDocumentOrDeleted:Either[Document, (String, Instant)], oldDocument:(Long, Document), shardQuery:Option[Bson] = None)(implicit transactionSession: Option[TransactionSession] = None):Future[Unit] = {
+  def insertNewVersion(rtype:String, rid:String, newDocument:Document, oldDocument:(Long, Document), shardQuery:Option[Bson] = None)(implicit transactionSession: Option[TransactionSession] = None):Future[Unit] = {
     val needTransaction = transactionSession.isEmpty && OnfhirConfig.mongoUseTransaction
     //Create a transaction session if we support it but it is not part of a transaction
     val tempTransaction =
@@ -946,7 +924,7 @@ object DocumentManager {
               if(!OnfhirConfig.mongoUseTransaction)
                 DBConflictManager.scheduleCheckAndCleanupForHistory(rtype, rid, "" + oldDocument._1)
               //Throw 409 Conflict exception
-              throw throw new ConflictException(
+              throw new ConflictException(
                 OutcomeIssue(
                   FHIRResponse.SEVERITY_CODES.ERROR,
                   FHIRResponse.OUTCOME_CODES.TRANSIENT,
@@ -958,16 +936,83 @@ object DocumentManager {
             })
           //If everything is fine, upsert the new version to current
           case true =>
-            (newDocumentOrDeleted match {
-              case Left(newDocument) => replaceCurrent(rtype, rid, newDocument, shardQuery)(tempTransaction)
-              case Right((sc, lastModified)) => deleteCurrent(rtype, rid, sc, oldDocument._1 + 1, lastModified, shardQuery)
-            }).flatMap( _ =>
-              if(needTransaction)
+             replaceCurrent(rtype, rid, newDocument, shardQuery)(tempTransaction)
+              .flatMap( _ =>
+                if(needTransaction)
+                  tempTransaction.get.commit().map(_ => ())
+                else
+                  Future.apply(())
+              )
+        }
+  }
+
+  /**
+   * Delete the current resource given with id and push the old version and its deleted version (populated with deletion metadata)
+   * to history at the same time
+   * @param rtype                 FHIR resource type
+   * @param rid                   FHIR Resource id
+   * @param deleted               Version of current resource, current version of resource, and populated with deleted metadata
+   * @param shardQuery            If sharding is enabled the shard query
+   * @param transactionSession    Transaction session if this is already part of a transaction
+   * @return
+   */
+  def deleteCurrentAndMoveToHistory(rtype:String, rid:String, deletedVersion:Long, currentVersion:Document, withDeletionMetadata:Document,  shardQuery:Option[Bson] = None)(implicit transactionSession: Option[TransactionSession] = None):Future[Unit] = {
+    val needTransaction = transactionSession.isEmpty && OnfhirConfig.mongoUseTransaction
+    //Create a transaction session if we support it but it is not part of a transaction
+    val tempTransaction =
+      if (needTransaction) Some(new TransactionSession(UUID.randomUUID().toString)) else transactionSession
+
+    insertOldDocumentToHistory(rtype, rid, deletedVersion, currentVersion)(tempTransaction) //If there is old version, push it to history
+      .flatMap {
+        case false => abortTransactionDueToConcurrentAccess(needTransaction, tempTransaction, rtype, rid, deletedVersion)
+        //If everything is fine, push also the deleted version to history
+        case true =>
+          insertOldDocumentToHistory(rtype, rid, deletedVersion + 1, withDeletionMetadata)
+            .flatMap {
+              case false => abortTransactionDueToConcurrentAccess(needTransaction, tempTransaction, rtype, rid, deletedVersion + 1)
+              case true =>
+                deleteCurrent(rtype, rid, shardQuery)
+            }
+            .flatMap(_ =>
+              if (needTransaction)
                 tempTransaction.get.commit().map(_ => ())
               else
                 Future.apply(())
             )
-        }
+      }
+  }
+
+  /**
+   * Abort the transaction due to concurrent access
+   * @param needTransaction   If we are using MongoDB transaction
+   * @param tempTransaction   Transaction session
+   * @param rtype             Resource type
+   * @param rid               Resource id
+   * @param version           Version of resource
+   * @return
+   */
+  private def abortTransactionDueToConcurrentAccess(needTransaction:Boolean, tempTransaction:Option[TransactionSession], rtype:String, rid:String, version:Long) = {
+    //Abort the transaction, if any
+    val transactionFinalize =
+      if (needTransaction)
+        tempTransaction.get.abort()
+      else
+        Future.apply(())
+    transactionFinalize.map(_ => {
+      //Schedule a check on persistency in case there is a invalid state, and we don't support Mongo transactions
+      if (!OnfhirConfig.mongoUseTransaction)
+        DBConflictManager.scheduleCheckAndCleanupForHistory(rtype, rid, "" + version)
+      //Throw 409 Conflict exception
+      throw new ConflictException(
+        OutcomeIssue(
+          FHIRResponse.SEVERITY_CODES.ERROR,
+          FHIRResponse.OUTCOME_CODES.TRANSIENT,
+          None,
+          Some(s"Concurrent update on resource $rid, another interaction is currently overriding the resource! Please try again after a few seconds..."),
+          Nil
+        )
+      )
+    })
   }
 
   /**
@@ -1026,18 +1071,19 @@ object DocumentManager {
     * Mark the current version of a resource as deleted
     * @param rtype              Resource type
     * @param rid                Resource id
-    * @param sc                 Status code for deletion
-    * @param newVersion         New version number for deletion
     * @param transactionSession Transaction session
     * @return
     */
-  def deleteCurrent(rtype:String, rid:String, sc:String, newVersion:Long, lastModified:Instant, shardQuery:Option[Bson])(implicit transactionSession: Option[TransactionSession] = None):Future[Boolean] = {
+  def deleteCurrent(rtype:String, rid:String, shardQuery:Option[Bson])(implicit transactionSession: Option[TransactionSession] = None):Future[Boolean] = {
     val collection = MongoDB.getCollection(rtype)
     val baseQuery = equal(FHIR_COMMON_FIELDS.ID, rid)
     val query = shardQuery.map(sq => and(sq,  baseQuery)).getOrElse(baseQuery)
 
     collection
-      .updateOne(
+      .deleteOne(
+        query
+      )
+      /*.updateOne(
         query,
         Updates.combine(
           //Set the new version id
@@ -1051,9 +1097,10 @@ object DocumentManager {
           //Set method as delete
           Updates.set(FHIR_EXTRA_FIELDS.METHOD, FHIR_METHOD_NAMES.METHOD_DELETE),
         )
-      )
+      )*/
       .toFuture()
-      .map(updateResult => updateResult.getModifiedCount == 1)
+      //.map(updateResult => updateResult.getModifiedCount == 1)
+      .map(deleteResult => deleteResult.getDeletedCount == 1)
   }
 /*
   /**
