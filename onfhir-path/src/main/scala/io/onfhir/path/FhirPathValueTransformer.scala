@@ -2,7 +2,6 @@ package io.onfhir.path
 
 import org.json4s.JValue
 import org.json4s.JsonAST._
-import io.onfhir.util.JsonFormatter._
 
 import scala.util.Try
 
@@ -17,14 +16,7 @@ object FhirPathValueTransformer {
   def transform(v: JValue, isContentFhir: Boolean = true): Seq[FhirPathResult] = {
     v match {
       case JArray(arr) => arr.flatMap(i => transform(i, isContentFhir))
-      case jobj: JObject =>
-        // Check whether this object is Quantity or not
-        val result = for {
-          value <- (jobj \ "value").extractOpt[BigDecimal]
-          unit <- (jobj \ "unit").extractOpt[String]
-        } yield Seq(FhirPathQuantity(FhirPathNumber(value), unit))
-        // Return a generic FhirPathComplex object if it is not a Quantity
-        result.getOrElse(Seq(FhirPathComplex(jobj)))
+      case jobj: JObject => Seq(FhirPathComplex(jobj))
       case JInt(i) => Seq(FhirPathNumber(BigDecimal(i)))
       case JDouble(num) => Seq(FhirPathNumber(num))
       case JDecimal(num) => Seq(FhirPathNumber(num.toDouble))

@@ -4,10 +4,10 @@ import io.onfhir.api.util.FHIRUtil
 import io.onfhir.path.annotation.FhirPathFunction
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
 import org.apache.commons.text.StringEscapeUtils
-import org.json4s.JsonAST.JObject
+import org.json4s.JsonAST._
 
-import java.time.temporal.Temporal
 import java.time._
+import java.time.temporal.Temporal
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.language.postfixOps
@@ -794,6 +794,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
       case Nil => Nil
       case Seq(n: FhirPathNumber) => Seq(FhirPathQuantity(n, "1"))
       case Seq(q: FhirPathQuantity) => Seq(q)
+      case Seq(c: FhirPathComplex) => c.toQuantity().map(Seq(_)).getOrElse(Nil)
       case Seq(FhirPathString(s)) => FhirPathLiteralEvaluator.parseFhirQuantity(s).toSeq
       case Seq(FhirPathBoolean(true)) => Seq(FhirPathQuantity(FhirPathNumber(1.0), "1"))
       case Seq(FhirPathBoolean(false)) => Seq(FhirPathQuantity(FhirPathNumber(0.0), "1"))
@@ -813,6 +814,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
       case Nil => Nil
       case Seq(n: FhirPathNumber) => Seq(FhirPathQuantity(n, unit))
       case Seq(q: FhirPathQuantity) if q.unit == unit => Seq(q)
+      case Seq(c: FhirPathComplex) => c.toQuantity().map(q => Seq(FhirPathQuantity(q.q, unit))).getOrElse(Nil)
       case Seq(FhirPathString(s)) => FhirPathLiteralEvaluator.parseFhirQuantity(s).toSeq
       case Seq(FhirPathBoolean(true)) => Seq(FhirPathQuantity(FhirPathNumber(1.0), unit))
       case Seq(FhirPathBoolean(false)) => Seq(FhirPathQuantity(FhirPathNumber(0.0), unit))
@@ -1041,6 +1043,23 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
     Seq(FhirPathBoolean(current.nonEmpty))
   }
 
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns true if the engine executing the FHIRPath statement can compare the singleton Quantity with the singleton other Quantity and determine their relationship to each other.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>\n```\ntrue or false\n``` \n\uD83D\uDCA1 **E.g.** someQuantity.comparable(otherQuantity)",
+    insertText = "comparable(<thatQuantity>)", detail = "", label = "comparable", kind = "Method", returnType = Seq("boolean"), inputType = Seq("Quantity"))
+  def comparable(thatQuantity: ExpressionContext): Seq[FhirPathResult] = {
+    if (current.length > 1) throw new FhirPathException(s"Invalid function call 'comparable' on multi item collection!")
+    val that = new FhirPathExpressionEvaluator(context, context._this).visit(thatQuantity) match {
+      case Seq(q: FhirPathQuantity) => q
+      case oth =>
+        throw new FhirPathException(s"Invalid function call 'comparable', the thatQuantity expression ${thatQuantity.getText} does not return Quantity! It returns '${oth.getClass}'")
+    }
+    current match {
+      case Nil => Nil
+      case Seq(FhirPathQuantity(_, unit)) => Seq(FhirPathBoolean(unit == that.unit))
+      case oth =>
+        throw new FhirPathException(s"Invalid function call 'comparable'. It cannot be executed on type '${oth.getClass}'")
+    }
+  }
+
   @FhirPathFunction(documentation = "\uD83D\uDCDC Returns the low boundary of the input that this function is called upon. The input can be a decimal number, time or dateTime.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>\n```\n2.38550, 2015-01-01T00:00:00, etc.\n``` \n\uD83D\uDCA1 **E.g.** 2.386.lowBoundary(), 2015.utl:toFhirDateTime('yyyy').lowBoundary(), etc.",
     insertText = "lowBoundary()", detail = "", label = "lowBoundary", kind = "Method", returnType = Seq("number", "time", "date", "dateTime"), inputType = Seq("number", "time", "date", "dateTime"))
   def lowBoundary(): Seq[FhirPathResult] = lowBoundary(None)
@@ -1067,7 +1086,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
     checkSingleElement("lowBoundary")
     val precision: Option[Int] = precisionExpr.map(pExpr => new FhirPathExpressionEvaluator(context, current).visit(pExpr) match {
       case Seq(FhirPathNumber(nn)) if nn.isWhole => nn.intValue
-      case oth =>
+      case _ =>
         throw new FhirPathException(s"Invalid function call 'lowBoundary', the precisionExpr expression ${pExpr.getText} does not return integer!")
     })
     current.head match {
@@ -1113,6 +1132,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
 
   /**
    * Check the current element is single or not.
+   *
    * @param fName The function name from which checkSingleElement is called (for logging purposes)
    */
   private def checkSingleElement(fName: String): Unit = {
@@ -1127,7 +1147,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
    *
    * @param input     The input number
    * @param precision The precision of the output. E.g., precision 4 outputs an adjusted decimal having 4 digits after the point.
-   * @param op Either _ - _ (to calculate low boundary) or _ + _ (to calculate high boundary)
+   * @param op        Either _ - _ (to calculate low boundary) or _ + _ (to calculate high boundary)
    * @return
    */
   private def adjustDecimalBoundary(input: BigDecimal, precision: Option[Int], op: (BigDecimal, BigDecimal) => BigDecimal): BigDecimal = {
@@ -1152,25 +1172,25 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
   /**
    * Calculate the (low or high) date or datetime boundary on the given input.
    *
-   * @param input The input temporal. It can be a Year, YearMonth, LocalDate, LocalDateTime or ZonedDateTime
-   * @param precision The precision of the boundary calculation.
-   *                  4 -> precision at the year level (yyyy),
-   *                  6 -> precision at the month level (yyyy-MM),
-   *                  8 -> precision at the day level (yyyy-MM-dd),
-   *                  14 -> precision at the second level (yyyy-MM-ddTHH-mm-ss),
-   *                  >=17 (or no precision) -> precision at the millisecond level yyyy-MM-ddTHH-mm-ss.SSS
-   * @param months Month to be used at the boundary. 1 -> lowBoundary, 12 -> highBoundary
-   * @param days Day to be used at the boundary. 1 -> lowBoundary, 31 -> highBoundary
-   * @param hours Hour to be used at the boundary. 0 -> lowBoundary, 23 -> highBoundary
-   * @param minutes Minute to be used at the boundary. 0 -> lowBoundary, 59 -> highBoundary
-   * @param seconds Second to be used at the boundary. 0 -> lowBoundary, 59 -> highBoundary
+   * @param input        The input temporal. It can be a Year, YearMonth, LocalDate, LocalDateTime or ZonedDateTime
+   * @param precision    The precision of the boundary calculation.
+   *                     4 -> precision at the year level (yyyy),
+   *                     6 -> precision at the month level (yyyy-MM),
+   *                     8 -> precision at the day level (yyyy-MM-dd),
+   *                     14 -> precision at the second level (yyyy-MM-ddTHH-mm-ss),
+   *                     >=17 (or no precision) -> precision at the millisecond level yyyy-MM-ddTHH-mm-ss.SSS
+   * @param months       Month to be used at the boundary. 1 -> lowBoundary, 12 -> highBoundary
+   * @param days         Day to be used at the boundary. 1 -> lowBoundary, 31 -> highBoundary
+   * @param hours        Hour to be used at the boundary. 0 -> lowBoundary, 23 -> highBoundary
+   * @param minutes      Minute to be used at the boundary. 0 -> lowBoundary, 59 -> highBoundary
+   * @param seconds      Second to be used at the boundary. 0 -> lowBoundary, 59 -> highBoundary
    * @param milliseconds Millisecond to be used at the boundary. 0 -> lowBoundary, 999 -> highBoundary
    * @return
    */
   private def adjustDateTimeBoundary(input: Temporal, precision: Option[Int], months: Int, days: Int, hours: Int, minutes: Int, seconds: Int, milliseconds: Int): Temporal = {
     input match {
       case dt: Year =>
-        val dayInMonth = if(days == 1) days else YearMonth.of(dt.getValue, months).lengthOfMonth()
+        val dayInMonth = if (days == 1) days else YearMonth.of(dt.getValue, months).lengthOfMonth()
         precision match {
           case Some(4) => dt
           case Some(6) => YearMonth.of(dt.getValue, months)
@@ -1180,7 +1200,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
           case _ => throw new IllegalArgumentException("Unsupported DateTime precision for a Temporal (Year) type.")
         }
       case dt: YearMonth =>
-        val dayInMonth = if(days == 1) days else dt.lengthOfMonth()
+        val dayInMonth = if (days == 1) days else dt.lengthOfMonth()
         precision match {
           case Some(4) => Year.of(dt.getYear)
           case Some(6) => dt
@@ -1223,8 +1243,8 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
   /**
    * Calculate the (low or high) time boundary on the given input.
    *
-   * @param input The input LocalTime
-   * @param zone Optional ZoneId for the time.
+   * @param input     The input LocalTime
+   * @param zone      Optional ZoneId for the time.
    * @param precision The precision of the boundary calculation.
    *                  2 -> precision at the hour level (HH),
    *                  4 -> precision at the minute level (HH-mm),

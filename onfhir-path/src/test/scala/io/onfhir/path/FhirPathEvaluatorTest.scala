@@ -26,16 +26,16 @@ class FhirPathEvaluatorTest extends Specification {
   val bundle = Source.fromInputStream(getClass.getResourceAsStream("/bundle.json")).mkString.parseJson
   val bundleOp = Source.fromInputStream(getClass.getResourceAsStream("/bundle-op.json")).mkString.parseJson
   val conditions = Seq(
-      Source.fromInputStream(getClass.getResourceAsStream("/condition1.json")).mkString.parseJson,
-      Source.fromInputStream(getClass.getResourceAsStream("/condition2.json")).mkString.parseJson,
-      Source.fromInputStream(getClass.getResourceAsStream("/condition3.json")).mkString.parseJson
-    )
+    Source.fromInputStream(getClass.getResourceAsStream("/condition1.json")).mkString.parseJson,
+    Source.fromInputStream(getClass.getResourceAsStream("/condition2.json")).mkString.parseJson,
+    Source.fromInputStream(getClass.getResourceAsStream("/condition3.json")).mkString.parseJson
+  )
 
   val encounter = Source.fromInputStream(getClass.getResourceAsStream("/encounter.json")).mkString.parseJson
 
   val emptyBundle = Source.fromInputStream(getClass.getResourceAsStream("/emptybundle.json")).mkString.parseJson
 
-  val medicationAdministration =  Source.fromInputStream(getClass.getResourceAsStream("/med-adm.json")).mkString.parseJson
+  val medicationAdministration = Source.fromInputStream(getClass.getResourceAsStream("/med-adm.json")).mkString.parseJson
 
   sequential
 
@@ -125,25 +125,25 @@ class FhirPathEvaluatorTest extends Specification {
       result must beSome(10.3)
 
       result = FhirPathEvaluator().evaluateOptionalNumerical("7.1 - 3.1", observation)
-      result must beSome( 4)
+      result must beSome(4)
 
       result = FhirPathEvaluator().evaluateOptionalNumerical("2 * 4 - 1", observation)
-      result must beSome( 7)
+      result must beSome(7)
 
       result = FhirPathEvaluator().evaluateOptionalNumerical("4.2/2 ", observation)
-      result must beSome( 2.1)
+      result must beSome(2.1)
 
       result = FhirPathEvaluator().evaluateOptionalNumerical("5 div 2 ", observation)
-      result must beSome( 2)
+      result must beSome(2)
 
       result = FhirPathEvaluator().evaluateOptionalNumerical("5 mod 2 ", observation)
-      result must beSome( 1)
+      result must beSome(1)
 
       result = FhirPathEvaluator().evaluateOptionalNumerical("(Observation.value as Quantity).value + 2.2", observation)
-      result must beSome(  8.5)
+      result must beSome(8.5)
 
       result = FhirPathEvaluator().evaluateOptionalNumerical("(Observation.value as Quantity).value - (Observation.value as Quantity).value", observation)
-      result must beSome(  0)
+      result must beSome(0)
     }
 
     "evaluate path with arithmetic operators on datetime and time" in {
@@ -425,7 +425,7 @@ class FhirPathEvaluatorTest extends Specification {
       FhirPathEvaluator().evaluate("Observation.component.value.ofType(Quantity)", observation2) must empty
       FhirPathEvaluator().evaluate("Observation.component.value.ofType(CodeableConcept)", observation2).length mustEqual 5
       FhirPathEvaluator().evaluate("Observation.component.value.ofType(CodeableConcept).coding.code", observation2).length > 5
-      FhirPathEvaluator().evaluateOptionalNumerical("Observation.value.as(Quantity).value", observation) must beSome( 6.3)
+      FhirPathEvaluator().evaluateOptionalNumerical("Observation.value.as(Quantity).value", observation) must beSome(6.3)
       FhirPathEvaluator().satisfies("Observation.value.is(Quantity)", observation) mustEqual true
     }
 
@@ -567,11 +567,11 @@ class FhirPathEvaluatorTest extends Specification {
       FhirPathEvaluator().satisfies("Observation.performer.display.matches('.*Lan.*')", observation) mustEqual true
       FhirPathEvaluator().satisfies("'M31.2'.matches('M31\\.[0-3]')", observation) mustEqual true
       FhirPathEvaluator().satisfies("'M31.4'.matches('M31\\.[0-3]')", observation) mustEqual false
-      FhirPathEvaluator().satisfies("'K26.4'.matches('K2[5-8](\\..*)?')", observation)  mustEqual true
-      FhirPathEvaluator().satisfies("'K26'.matches('K2[5-8](\\..*)?')", observation)  mustEqual true
-      FhirPathEvaluator().satisfies("'C43.5'.matches('C4[0135](\\..*)?')", observation)  mustEqual true
-      FhirPathEvaluator().satisfies("'C40'.matches('C4[0135](\\..*)?')", observation)  mustEqual true
-      FhirPathEvaluator().satisfies("'C42.5'.matches('C4[0135](\\..*)?')", observation)  mustEqual false
+      FhirPathEvaluator().satisfies("'K26.4'.matches('K2[5-8](\\..*)?')", observation) mustEqual true
+      FhirPathEvaluator().satisfies("'K26'.matches('K2[5-8](\\..*)?')", observation) mustEqual true
+      FhirPathEvaluator().satisfies("'C43.5'.matches('C4[0135](\\..*)?')", observation) mustEqual true
+      FhirPathEvaluator().satisfies("'C40'.matches('C4[0135](\\..*)?')", observation) mustEqual true
+      FhirPathEvaluator().satisfies("'C42.5'.matches('C4[0135](\\..*)?')", observation) mustEqual false
       //replaceMatches
       FhirPathEvaluator().evaluateString("Observation.performer.display.replaceMatches('L.n', 'Lun')", observation).head mustEqual "A. Lungeveld"
       //length
@@ -607,20 +607,22 @@ class FhirPathEvaluatorTest extends Specification {
     "evaluate special functions" in {
       var referenceResolver: IReferenceResolver = new IReferenceResolver {
         override val resource: Resource = JObject()
-        override val bundle: Option[(Option[String], Resource)]= None
-        override def resolveReference(reference: FhirReference): Future[Option[Resource]] = {
-           Future.apply(
-           reference match {
-             case FhirLiteralReference(url, "Patient", rid, version) =>
-               Some(Source.fromInputStream(getClass.getResourceAsStream("/patient.json")).mkString.parseJson)
+        override val bundle: Option[(Option[String], Resource)] = None
 
-             case FhirCanonicalReference("http://example.org", "Questionnaire", "zika-virus-exposure-assessment", Some("2.0"), fragment) =>
-               Some(questionnaire2)
-             case _ =>
-               None
-           }
-           )
+        override def resolveReference(reference: FhirReference): Future[Option[Resource]] = {
+          Future.apply(
+            reference match {
+              case FhirLiteralReference(url, "Patient", rid, version) =>
+                Some(Source.fromInputStream(getClass.getResourceAsStream("/patient.json")).mkString.parseJson)
+
+              case FhirCanonicalReference("http://example.org", "Questionnaire", "zika-virus-exposure-assessment", Some("2.0"), fragment) =>
+                Some(questionnaire2)
+              case _ =>
+                None
+            }
+          )
         }
+
         override def isReferencedResourceExist(reference: FhirReference, profiles: Set[String]): Future[Boolean] = {
           Future.apply(true)
         }
@@ -628,25 +630,24 @@ class FhirPathEvaluatorTest extends Specification {
 
       //Resolving a literal reference
       FhirPathEvaluator(referenceResolver).evaluate("Observation.subject.resolve().gender", observation) mustEqual Seq(FhirPathString("male"))
-      FhirPathEvaluator(referenceResolver).evaluate("Observation.subject.resolve().birthDate", observation) mustNotEqual  Seq(FhirPathString("1974-12-26"))
-
+      FhirPathEvaluator(referenceResolver).evaluate("Observation.subject.resolve().birthDate", observation) mustNotEqual Seq(FhirPathString("1974-12-26"))
 
 
       //Resolving a canonical reference
-      val ld = LocalDate.of(2016,11,14)
+      val ld = LocalDate.of(2016, 11, 14)
       FhirPathEvaluator(referenceResolver).evaluate("Questionnaire.derivedFrom.resolve().date", questionnaire) mustEqual Seq(FhirPathDateTime(ld))
 
-      FhirPathEvaluator(referenceResolver).evaluate("Questionnaire.item.extension.where(url = 'http://example.org/additional-information2').valueAttachment.title", questionnaire2)  mustEqual Seq(FhirPathString("Ali"))
+      FhirPathEvaluator(referenceResolver).evaluate("Questionnaire.item.extension.where(url = 'http://example.org/additional-information2').valueAttachment.title", questionnaire2) mustEqual Seq(FhirPathString("Ali"))
       FhirPathEvaluator(referenceResolver).evaluate("Questionnaire.item.extension('http://example.org/additional-information2').valueAttachment.title", questionnaire2) mustEqual Seq(FhirPathString("Ali"))
     }
 
     "evaluate onfhir aggregation functions" in {
       val evaluator = FhirPathEvaluator().withDefaultFunctionLibraries()
       val results = evaluator.evaluate("groupBy(Condition.subject.reference.substring(8),count())", JArray(conditions.toList))
-      results.length mustEqual(2)
+      results.length mustEqual (2)
 
       val pids = evaluator.evaluateString("agg:groupBy(Condition.subject.reference.substring(8),count()).where(agg >= 2).bucket", JArray(conditions.toList))
-      pids mustEqual(Seq("p1"))
+      pids mustEqual (Seq("p1"))
 
       var results2 = evaluator.evaluateNumerical("groupBy($this.notexist, agg:sum($this.valueQuantity.value))[0].agg", JArray(Seq(observation, observation2).toList))
       results2 mustEqual Seq(16.3)
@@ -735,28 +736,28 @@ class FhirPathEvaluatorTest extends Specification {
       fhirRef mustEqual JObject(List("reference" -> JString("Observation/f001")))
 
       var cdc = evaluator.evaluateAndReturnJson("utl:createFhirCodeableConcept('http://loinc.org', code.coding.code.first(), {})", observation).head
-      (cdc \ "coding" \"code").extract[Seq[String]] mustEqual Seq("15074-8")
+      (cdc \ "coding" \ "code").extract[Seq[String]] mustEqual Seq("15074-8")
       (cdc \ "coding" \ "system").extract[Seq[String]] mustEqual Seq("http://loinc.org")
-      (cdc \ "coding" \"display").extractOpt[String] must beEmpty
+      (cdc \ "coding" \ "display").extractOpt[String] must beEmpty
 
       cdc = evaluator.evaluateAndReturnJson("utl:createFhirCodeableConcept('http://loinc.org', code.coding.code.first(), 'Glucose')", observation).head
-      (cdc \ "coding" \"code").extract[Seq[String]] mustEqual Seq("15074-8")
+      (cdc \ "coding" \ "code").extract[Seq[String]] mustEqual Seq("15074-8")
       (cdc \ "coding" \ "system").extract[Seq[String]] mustEqual Seq("http://loinc.org")
-      (cdc \ "coding" \"display").extract[Seq[String]] mustEqual Seq("Glucose")
+      (cdc \ "coding" \ "display").extract[Seq[String]] mustEqual Seq("Glucose")
 
       val splittedStr = evaluator.evaluateString("code.coding.first().code.utl:split('-')", observation)
       splittedStr mustEqual Seq("15074", "8")
 
-      evaluator.evaluateString("'1+1+2'.utl:split('+')", observation) mustEqual Seq("1","1","2")
+      evaluator.evaluateString("'1+1+2'.utl:split('+')", observation) mustEqual Seq("1", "1", "2")
 
-      val decs =  evaluator.evaluateNumerical("code.coding.first().code.utl:split('-').select($this.toDecimal())", observation)
+      val decs = evaluator.evaluateNumerical("code.coding.first().code.utl:split('-').select($this.toDecimal())", observation)
       decs mustEqual Seq(15074, 8)
 
       var subStr = evaluator.evaluateString("'VERY LOW.'.utl:takeUntil('.' | '*')", observation)
       subStr mustEqual Seq("VERY LOW")
       subStr = evaluator.evaluateString("'VERY LOW*.'.utl:takeUntil('.' | '*')", observation)
       subStr mustEqual Seq("VERY LOW")
-      subStr =evaluator.evaluateString("'NORMAL.  LARGE PLATELETS PRESENT.'.utl:takeUntil('.' | '*')", observation)
+      subStr = evaluator.evaluateString("'NORMAL.  LARGE PLATELETS PRESENT.'.utl:takeUntil('.' | '*')", observation)
       subStr mustEqual Seq("NORMAL")
 
       var qnt = evaluator.evaluateAndReturnJson("utl:createFhirQuantity(15.2, 'mg')", observation).head
@@ -791,7 +792,7 @@ class FhirPathEvaluatorTest extends Specification {
       dtParam.getMinute mustEqual 10
 
       val fhirDate = evaluator.evaluateDateTime("'20120113'.utl:toFhirDateTime('yyyyMMdd' | 'yyyyMMdd.HH:mm:ss')", JNull)
-      fhirDate.head mustEqual LocalDate.of(2012,1, 13)
+      fhirDate.head mustEqual LocalDate.of(2012, 1, 13)
     }
 
     "evaluate fixed bugs" in {
@@ -801,8 +802,8 @@ class FhirPathEvaluatorTest extends Specification {
 
     "find paths indicated by FHIR Path expression" in {
       var result = FhirPathEvaluator().evaluateToFindPaths("Observation.code", observation)
-      result.length mustEqual(1)
-      result.head.length mustEqual(1)
+      result.length mustEqual (1)
+      result.head.length mustEqual (1)
       result.head.head mustEqual "code" -> None
 
       result = FhirPathEvaluator().evaluateToFindPaths("Observation.code.coding", observation)
@@ -865,14 +866,14 @@ class FhirPathEvaluatorTest extends Specification {
       result = FhirPathEvaluator().getPathItemsWithRestrictions("(ActivityDefinition.useContext.value as CodeableConcept)")
       result mustEqual Seq("ActivityDefinition" -> Nil, "useContext" -> Nil, "valueCodeableConcept" -> Nil)
 
-      result =  FhirPathEvaluator().getPathItemsWithRestrictions("Account.subject.where(resolve() is Patient)")
+      result = FhirPathEvaluator().getPathItemsWithRestrictions("Account.subject.where(resolve() is Patient)")
       result mustEqual Seq("Account" -> Nil, "subject" -> Nil)
 
       result = FhirPathEvaluator().getPathItemsWithRestrictions("Bundle.entry[0].resource")
-      result mustEqual Seq("Bundle" -> Nil, "entry[0]" -> Nil, "resource"->Nil)
+      result mustEqual Seq("Bundle" -> Nil, "entry[0]" -> Nil, "resource" -> Nil)
 
       result = FhirPathEvaluator().getPathItemsWithRestrictions("Observation.extension('http://a.b.com/x').extension('c').value as Quantity")
-      result mustEqual Seq("Observation" -> Nil, "extension" -> Seq("url" -> "http://a.b.com/x"), "extension" -> Seq("url" -> "c"),  "valueQuantity"->Nil)
+      result mustEqual Seq("Observation" -> Nil, "extension" -> Seq("url" -> "http://a.b.com/x"), "extension" -> Seq("url" -> "c"), "valueQuantity" -> Nil)
 
       FhirPathEvaluator().getPathItemsWithRestrictions("Observation.where(code.coding.first.code='x').valueQuantity") must throwA[FhirPathException]
       FhirPathEvaluator().getPathItemsWithRestrictions("Observation.code or Observation.component.code") must throwA[FhirPathException]
@@ -891,8 +892,8 @@ class FhirPathEvaluatorTest extends Specification {
 
     "check with non-fhir-content" in {
       val fhirPath = "iif(icd_code.length()=3 or (icd_code.startsWith('E') and icd_version=9 and icd_code.length()=4), icd_code, iif(icd_code.startsWith('E') and icd_version=9, icd_code.substring(0,4)&'.'&icd_code.substring(4), icd_code.substring(0,3) & '.' & icd_code.substring(3)))"
-      new FhirPathEvaluator(isContentFhir = false).evaluateString(fhirPath, JObject("icd_code" -> JString("0010"), "icd_version"-> JInt(9))).headOption must beSome("001.0")
-      new FhirPathEvaluator(isContentFhir = false).evaluateString(fhirPath, JObject("icd_code" -> JString("00329"), "icd_version"-> JInt(9))).headOption must beSome("003.29")
+      new FhirPathEvaluator(isContentFhir = false).evaluateString(fhirPath, JObject("icd_code" -> JString("0010"), "icd_version" -> JInt(9))).headOption must beSome("001.0")
+      new FhirPathEvaluator(isContentFhir = false).evaluateString(fhirPath, JObject("icd_code" -> JString("00329"), "icd_version" -> JInt(9))).headOption must beSome("003.29")
       new FhirPathEvaluator(isContentFhir = false).evaluateString(fhirPath, JObject("icd_code" -> JString("037"), "icd_version" -> JInt(9))).headOption must beSome("037")
       new FhirPathEvaluator(isContentFhir = false).evaluateString(fhirPath, JObject("icd_code" -> JString("C505"), "icd_version" -> JInt(10))).headOption must beSome("C50.5")
       new FhirPathEvaluator(isContentFhir = false).evaluateString(fhirPath, JObject("icd_code" -> JString("C5051"), "icd_version" -> JInt(10))).headOption must beSome("C50.51")
@@ -903,47 +904,55 @@ class FhirPathEvaluatorTest extends Specification {
       new FhirPathEvaluator(isContentFhir = false).evaluateString(fhirPath, JObject("icd_code" -> JString("V9081"), "icd_version" -> JInt(9))).headOption must beSome("V90.81")
       new FhirPathEvaluator(isContentFhir = false).evaluateString(fhirPath, JObject("icd_code" -> JString("V9081"), "icd_version" -> JInt(10))).headOption must beSome("V90.81")
     }
+
     /**
-    * This a integration test and needs a terminology service
-    "evaluate terminology service functions" in {
-      //Test with LOINC's terminology server
-      val baseUrl = "https://fhir.loinc.org/"
-      val username = "<FILL HERE>"
-      val password = "<FILL HERE>"
-      implicit val actorSystem = ActorSystem("FhirPathTest")
-      val terminologyServiceClient = new TerminologyServiceClient(OnFhirNetworkClient.apply(baseUrl, new BasicAuthenticationInterceptor(username, password)))
-      val evaluator = FhirPathEvaluator().withTerminologyService(terminologyServiceClient)
-
-      var result = evaluator.evaluate("%terminologies.lookup(Observation.code.coding.where(system='http://loinc.org').first(), {})", observation)
-      result.nonEmpty shouldEqual(true)
-
-      var loincDisplay = evaluator.evaluateOptionalString("%terminologies.lookup(Observation.code.coding.where(system='http://loinc.org').first(), {}).parameter.where(name='display').valueString", observation)
-      loincDisplay shouldEqual Some("Glucose [Moles/volume] in Blood")
-
-      loincDisplay = evaluator.evaluateOptionalString("trms:lookupDisplay('15074-8', 'http://loinc.org', {})", observation)
-      loincDisplay shouldEqual Some("Glucose [Moles/volume] in Blood")
-
-      val foundMatching = evaluator.evaluateOptionalBoolean("%terminologies.translate('https://www.ncbi.nlm.nih.gov/clinvar', Observation.code.coding.where(system='http://loinc.org').first(), {}).parameter.exists(name='result' and valueBoolean=true)", observation)
-      foundMatching shouldEqual Some(true)
-
-      result = evaluator.evaluate("trms:translateToCoding(Observation.code.coding.where(system='http://loinc.org').first(), 'https://www.ncbi.nlm.nih.gov/clinvar')", observation)
-      result.length shouldEqual(2)
-    }*/
+     * This a integration test and needs a terminology service
+     * "evaluate terminology service functions" in {
+     * //Test with LOINC's terminology server
+     * val baseUrl = "https://fhir.loinc.org/"
+     * val username = "<FILL HERE>"
+     * val password = "<FILL HERE>"
+     * implicit val actorSystem = ActorSystem("FhirPathTest")
+     * val terminologyServiceClient = new TerminologyServiceClient(OnFhirNetworkClient.apply(baseUrl, new BasicAuthenticationInterceptor(username, password)))
+     * val evaluator = FhirPathEvaluator().withTerminologyService(terminologyServiceClient)
+     *
+     * var result = evaluator.evaluate("%terminologies.lookup(Observation.code.coding.where(system='http://loinc.org').first(), {})", observation)
+     * result.nonEmpty shouldEqual(true)
+     *
+     * var loincDisplay = evaluator.evaluateOptionalString("%terminologies.lookup(Observation.code.coding.where(system='http://loinc.org').first(), {}).parameter.where(name='display').valueString", observation)
+     * loincDisplay shouldEqual Some("Glucose [Moles/volume] in Blood")
+     *
+     * loincDisplay = evaluator.evaluateOptionalString("trms:lookupDisplay('15074-8', 'http://loinc.org', {})", observation)
+     * loincDisplay shouldEqual Some("Glucose [Moles/volume] in Blood")
+     *
+     * val foundMatching = evaluator.evaluateOptionalBoolean("%terminologies.translate('https://www.ncbi.nlm.nih.gov/clinvar', Observation.code.coding.where(system='http://loinc.org').first(), {}).parameter.exists(name='result' and valueBoolean=true)", observation)
+     * foundMatching shouldEqual Some(true)
+     *
+     * result = evaluator.evaluate("trms:translateToCoding(Observation.code.coding.where(system='http://loinc.org').first(), 'https://www.ncbi.nlm.nih.gov/clinvar')", observation)
+     * result.length shouldEqual(2)
+     * } */
     /**
      * This a integration test and needs a fhir server
-    "evaluate identity service functions" in {
-      val baseUrl = "http://localhost:8080/fhir"
-      implicit val actorSystem = ActorSystem("FhirPathTest")
-      val onFhirClient = OnFhirNetworkClient.apply(baseUrl)
-      val identityService = new IdentityServiceClient(onFhirClient)
-      val evaluator = FhirPathEvaluator().withIdentityService(identityService)
-
-      evaluator.evaluateOptionalString("idxs:resolveIdentifier('Patient', '12345', 'urn:oid:1.2.36.146.595.217.0.1')", observation) shouldEqual Some("580daafe-bed7-43db-a74b-e8d74a62eeb0")
-    }*/
+     * "evaluate identity service functions" in {
+     * val baseUrl = "http://localhost:8080/fhir"
+     * implicit val actorSystem = ActorSystem("FhirPathTest")
+     * val onFhirClient = OnFhirNetworkClient.apply(baseUrl)
+     * val identityService = new IdentityServiceClient(onFhirClient)
+     * val evaluator = FhirPathEvaluator().withIdentityService(identityService)
+     *
+     * evaluator.evaluateOptionalString("idxs:resolveIdentifier('Patient', '12345', 'urn:oid:1.2.36.146.595.217.0.1')", observation) shouldEqual Some("580daafe-bed7-43db-a74b-e8d74a62eeb0")
+     * } */
 
     "evaluate further" in {
       val result = new FhirPathEvaluator(isContentFhir = true).evaluateOptionalString("MedicationAdministration.medicationCodeableConcept.coding.where(system='http://www.whocc.no/atc').first().code.select(iif($this.exists($this.startsWith('D') or $this.startsWith('S') or $this.startsWith('V') or $this.startsWith('G') or $this.startsWith('A')), $this.substring(0,1), $this.substring(0,3)))", medicationAdministration)
       result must beSome("C02")
+    }
+
+    "evaluate comparable operation" in {
+      val result = FhirPathEvaluator().evaluate("(Observation.valueQuantity.toQuantity()).comparable(Observation.referenceRange.high.toQuantity())", observation)
+      result.length mustEqual 1
+      result.head.isInstanceOf[FhirPathBoolean] mustEqual true
+      result.head.asInstanceOf[FhirPathBoolean].b mustEqual true
     }
 
     "evaluate boundary operations" in {
