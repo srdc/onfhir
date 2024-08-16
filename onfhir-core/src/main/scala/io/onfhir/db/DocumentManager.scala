@@ -346,6 +346,64 @@ object DocumentManager {
     }
   }
 
+  def searchDocumentsByAggregationNew(rtype: String,
+                                           filter: Option[Bson],
+                                           aggPhasesForFiltering:Seq[Bson],
+                                           count: Int = -1,
+                                           page: Int = 1,
+                                           sortingPaths: Seq[(String, Int, Seq[String])] = Seq.empty,
+                                           includingOrExcludingFields: Option[(Boolean, Set[String])] = None,
+                                           excludeExtraFields: Boolean = false)(implicit transactionSession: Option[TransactionSession] = None): Future[Seq[Document]] = {
+    val aggregations = new ListBuffer[Bson]
+
+    //First, append the match query
+    if (filter.isDefined)
+      aggregations.append(Aggregates.`match`(filter.get))
+
+    //Add the phases
+    aggPhasesForFiltering.foreach(p => aggregations.append(p))
+
+
+    //Identify the sorting params that has alternative paths
+    val paramsWithAlternativeSorting =
+      sortingPaths
+        .filter(_._3.length > 1) //Those that have multiple paths
+
+    //Then add common sorting field for sort parameters that has multiple alternative paths
+    aggregations.appendAll(paramsWithAlternativeSorting.map(sp => addFieldAggregationForParamWithAlternativeSorting(sp)))
+
+    //Add sorting aggregations
+    val sorts =
+      (sortingPaths :+ ("_id", 1, Seq("_id"))) //Finally sort on MongoDB _id to ensure uniqueness for pagination
+        .map(sp => sp._3.length match {
+          //For single alternative path, sort it
+          case 1 =>
+            if (sp._2 > 0) ascending(sp._3.head) else descending(sp._3.head)
+          //For multiple alternatives, sort against the added field which is based on parameter name
+          case _ =>
+            if (sp._2 > 0) ascending(s"__sort_${sp._1}") else descending(s"__sort_${sp._1}")
+        })
+    if (sorts.nonEmpty)
+      aggregations.append(Aggregates.sort(Sorts.orderBy(sorts: _*)))
+
+
+    //Handle paging parameters
+    if (count != -1) {
+      aggregations.append(Aggregates.skip((page - 1) * count))
+      aggregations.append(Aggregates.limit(count))
+    }
+
+    //Handle projections
+    val extraSortingFieldsToExclude = paramsWithAlternativeSorting.map(sp => s"__sort_${sp._1}")
+    aggregations.append(handleProjectionForAggregationSearch(includingOrExcludingFields, excludeExtraFields, extraSortingFieldsToExclude.toSet))
+
+    transactionSession match {
+      case None => MongoDB.getCollection(rtype).aggregate(aggregations.toSeq).toFuture()
+      case Some(ts) => MongoDB.getCollection(rtype).aggregate(ts.dbSession, aggregations.toSeq).toFuture()
+    }
+  }
+
+
   /**
     * Searching documents by aggregation pipeline to handle some complex sorting
     * @param rtype  type of the resource
