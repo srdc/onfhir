@@ -1,5 +1,7 @@
 package io.onfhir.db
 
+import org.mongodb.scala.bson.collection.immutable.Document
+import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonString, BsonValue}
 
 object AggregationUtil {
@@ -123,5 +125,36 @@ object AggregationUtil {
           "else" -> ielse
         )
     )
+  }
+
+  /**
+   * Construct Mongodb $lookup phase expression with both fields and pipeline
+   * @param col               Collection name to join
+   * @param localFieldPath    Path to the local field
+   * @param foreignFieldPath  Path to the foreign field
+   * @param pipeline          Pipeline to execute (at least one should be provided)
+   * @param as                The results name
+   * @return
+   */
+  def constructLookupPhaseExpression(col:String, localFieldPath:String, foreignFieldPath:String, pipeline:Seq[BsonValue], as:String):BsonDocument = {
+    BsonDocument(
+      "$lookup" -> BsonDocument.apply(
+        "from" -> BsonString(col),
+        "localField" -> BsonString(localFieldPath),
+        "foreignField" -> BsonString(foreignFieldPath),
+        "pipeline" -> BsonArray.fromIterable(pipeline),
+        "as" -> BsonString(as)
+      )
+    )
+  }
+
+  /**
+   * Construct the Mongodb expression for checking if given array field size is larger than given value
+   * @param field Field name
+   * @param size  Size
+   * @return
+   */
+  def constructGreaterThanSizeExpression(field:String, size:Int):BsonDocument = {
+    BsonDocument(field -> BsonDocument("$gt" -> BsonDocument("$size" -> BsonInt32(size))))
   }
 }
