@@ -163,15 +163,19 @@ object DocumentManager {
     */
   def searchDocuments(rtype:String,
                       filter:Option[Bson],
+                      aggFilteringStages:Seq[Bson],
                       count:Int = -1,
                       page:Int= 1,
                       sortingPaths:Seq[(String, Int, Seq[String])] = Seq.empty,
                       includingOrExcludingFields:Option[(Boolean, Set[String])] = None,
                       excludeExtraFields:Boolean = false)(implicit transactionSession: Option[TransactionSession] = None):Future[Seq[Document]] = {
 
-    //If we have alternative paths for a search parameter, use search by aggregation
-    if(sortingPaths.exists(_._3.length > 1)){
-      searchDocumentsByAggregation(rtype, filter, count, page, sortingPaths, includingOrExcludingFields, excludeExtraFields)
+    val needAggregationPipeline =
+      sortingPaths.exists(_._3.length > 1) || //If we have alternative paths for a search parameter, use search by aggregation
+        aggFilteringStages.nonEmpty
+
+    if(needAggregationPipeline){
+      searchDocumentsByAggregation(rtype, filter,aggFilteringStages, count, page, sortingPaths, includingOrExcludingFields, excludeExtraFields)
     }
     //Otherwise run a normal MongoDB find query
     else {
@@ -218,6 +222,7 @@ object DocumentManager {
    */
   def searchDocumentsWithOffset(rtype: String,
                                 filter: Option[Bson],
+                                filteringStages:Seq[Bson],
                                 count: Int = -1,
                                 offset:Option[(Seq[String],Boolean)],
                                 sortingPaths: Seq[(String, Int, Seq[String])] = Seq.empty,
@@ -236,31 +241,39 @@ object DocumentManager {
       finalFilter = filter.map(f => and(f,of)).orElse(Some(of))
     )
 
-    //If we have alternative paths for a search parameter, use search by aggregation
+    //We don't allow sorting for cursor based pagianation
     if (sortingPaths.nonEmpty) {
       throw new NotImplementedError("Sorting is not implemented for pagination with offset!")
     } else {
-      //Construct query
-      var query = transactionSession match {
-        case None => if (finalFilter.isDefined) MongoDB.getCollection(rtype).find(finalFilter.get) else MongoDB.getCollection(rtype).find()
-        case Some(ts) => if (finalFilter.isDefined) MongoDB.getCollection(rtype).find(ts.dbSession, finalFilter.get) else MongoDB.getCollection(rtype).find(ts.dbSession)
+      val resultsFuture = {
+        //If there are
+        if (filteringStages.nonEmpty) {
+          searchDocumentsByAggregationForOffsetBasedPagination(rtype, finalFilter, filteringStages, count, includingOrExcludingFields, excludeExtraFields)
+        } else {
+          //Construct query
+          var query = transactionSession match {
+            case None => if (finalFilter.isDefined) MongoDB.getCollection(rtype).find(finalFilter.get) else MongoDB.getCollection(rtype).find()
+            case Some(ts) => if (finalFilter.isDefined) MongoDB.getCollection(rtype).find(ts.dbSession, finalFilter.get) else MongoDB.getCollection(rtype).find(ts.dbSession)
+          }
+          //Sort on id
+          query =
+            query
+              .sort(ascending(FHIR_COMMON_FIELDS.MONGO_ID))
+              .limit(count)
+
+          //Handle projection
+          query = handleProjection(query, includingOrExcludingFields, excludeExtraFields, exceptMongoId = true)
+
+          //Execute the query
+          query
+            .toFuture()
+        }
       }
-      //Sort on id
-      query =
-        query
-          .sort(ascending(FHIR_COMMON_FIELDS.MONGO_ID))
-          .limit(count)
-
-      //Handle projection
-      query = handleProjection(query, includingOrExcludingFields, excludeExtraFields, exceptMongoId = true)
-
-      //Execute the query
-      query
-        .toFuture()
+      resultsFuture
         .map(docs => {
           val offsetBefore = docs.headOption.map(d => d.getObjectId(FHIR_COMMON_FIELDS.MONGO_ID).toString).toSeq
           val offsetAfter = docs.lastOption.map(d => d.getObjectId(FHIR_COMMON_FIELDS.MONGO_ID).toString).toSeq
-          val finalDocs = if(excludeExtraFields) docs.map(d => d.filter(_._1 == FHIR_COMMON_FIELDS.MONGO_ID)) else docs
+          val finalDocs = if (excludeExtraFields) docs.map(d => d.filter(_._1 == FHIR_COMMON_FIELDS.MONGO_ID)) else docs
           (offsetBefore, offsetAfter, finalDocs)
         })
     }
@@ -268,7 +281,7 @@ object DocumentManager {
 
   /**
    * Searches and finds document(s) according to given query, pagination, sorting parameters on multiple resource types
-   * @param filters                         Mongo Filter constructed for each resource type
+   * @param filters                         Mongo Filter and filtering aggregation phases constructed for each resource type
    * @param count                           Limit for # of resources to be returned
    * @param page                            Page number
    * @param sortingPaths                    Sorting parameters and sorting direction (negative: descending, positive: ascending) for each resource type
@@ -279,7 +292,7 @@ object DocumentManager {
    * @return
    */
   def searchDocumentsFromMultipleCollection(
-                      filters:Map[String, Option[Bson]],
+                      filters:Map[String, (Option[Bson], Seq[Bson])],
                       count:Int = -1,
                       page:Int= 1,
                       sortingPaths:Map[String, Seq[(String, Int, Seq[String])]] = Map.empty,
@@ -287,19 +300,20 @@ object DocumentManager {
                       excludeExtraFields:Boolean = false)(implicit transactionSession: Option[TransactionSession] = None):Future[Seq[Document]] = {
 
     //Internal method to construct aggregation pipeline for each resource type
-    def constructAggQueryForResourceType(filter:Option[Bson], sortingPaths:Seq[(String, Int, Seq[String])], includingOrExcludingFields:Option[(Boolean, Set[String])]):ListBuffer[Bson] = {
+    def constructAggQueryForResourceType(filter:Option[Bson], filteringStages:Seq[Bson], sortingPaths:Seq[(String, Int, Seq[String])], includingOrExcludingFields:Option[(Boolean, Set[String])]):ListBuffer[Bson] = {
       val aggregations = new ListBuffer[Bson]
       //First, append the match query
       if(filter.isDefined)
         aggregations.append(Aggregates.`match`(filter.get))
+      //Add the filtering stages
+      filteringStages.foreach(s => aggregations.append(s))
 
       if(sortingPaths.nonEmpty) {
         //Then add common sorting field for sort parameters that has multiple alternative paths
         aggregations.appendAll(sortingPaths.map(sp => addFieldAggregationForParamWithAlternativeSorting(sp)))
       }
       //Handle projections (summary and extra fields)
-      if(includingOrExcludingFields.isDefined || excludeExtraFields)
-        aggregations.append(handleProjectionForAggregationSearch(includingOrExcludingFields, excludeExtraFields, Set.empty))
+      handleProjectionForAggregationSearch(includingOrExcludingFields, excludeExtraFields, Set.empty).foreach(prj => aggregations.append(prj))
 
       aggregations
     }
@@ -307,7 +321,7 @@ object DocumentManager {
     //Construct an aggregation pipeline for each resource type
     val aggregatesForEachResourceType =
       filters
-      .map(f => f._1 -> constructAggQueryForResourceType(f._2, sortingPaths(f._1), includingOrExcludingFields(f._1)))
+      .map(f => f._1 -> constructAggQueryForResourceType(f._2._1, f._2._2, sortingPaths(f._1), includingOrExcludingFields(f._1)))
 
     //We will start from the first resource type
     val firstAggregation = aggregatesForEachResourceType.head
@@ -346,14 +360,28 @@ object DocumentManager {
     }
   }
 
-  def searchDocumentsByAggregationNew(rtype: String,
-                                           filter: Option[Bson],
-                                           aggPhasesForFiltering:Seq[Bson],
-                                           count: Int = -1,
-                                           page: Int = 1,
-                                           sortingPaths: Seq[(String, Int, Seq[String])] = Seq.empty,
-                                           includingOrExcludingFields: Option[(Boolean, Set[String])] = None,
-                                           excludeExtraFields: Boolean = false)(implicit transactionSession: Option[TransactionSession] = None): Future[Seq[Document]] = {
+
+  /**
+   * Searching documents by aggregation pipeline to handle some complex sorting
+   *
+   * @param rtype                      type of the resource
+   * @param filter                     query filter for desired resource
+   * @param aggPhasesForFiltering      Further aggregation phases for filtering (handling of chaining, reverse chaining or special params like _list)
+   * @param count                      limit for # of resources to be returned
+   * @param page                       page number
+   * @param sortingPaths               Sorting parameters and sorting direction (negative: descending, positive: ascending)
+   * @param includingOrExcludingFields List of to be specifically included or excluded fields in the resulting document, if not given; all document included (true-> include, false -> exclude)
+   * @param excludeExtraFields         If true exclude extra fields related with version control from the document
+   * @return Two sequence of documents (matched, includes); First the matched documents for the main query, Second included resources
+   */
+  def searchDocumentsByAggregation(rtype: String,
+                                   filter: Option[Bson],
+                                   aggPhasesForFiltering:Seq[Bson],
+                                   count: Int = -1,
+                                   page: Int = 1,
+                                   sortingPaths: Seq[(String, Int, Seq[String])] = Seq.empty,
+                                   includingOrExcludingFields: Option[(Boolean, Set[String])] = None,
+                                   excludeExtraFields: Boolean = false)(implicit transactionSession: Option[TransactionSession] = None): Future[Seq[Document]] = {
     val aggregations = new ListBuffer[Bson]
 
     //First, append the match query
@@ -395,7 +423,8 @@ object DocumentManager {
 
     //Handle projections
     val extraSortingFieldsToExclude = paramsWithAlternativeSorting.map(sp => s"__sort_${sp._1}")
-    aggregations.append(handleProjectionForAggregationSearch(includingOrExcludingFields, excludeExtraFields, extraSortingFieldsToExclude.toSet))
+    handleProjectionForAggregationSearch(includingOrExcludingFields, excludeExtraFields, extraSortingFieldsToExclude.toSet)
+      .foreach(prj => aggregations.append(prj))
 
     transactionSession match {
       case None => MongoDB.getCollection(rtype).aggregate(aggregations.toSeq).toFuture()
@@ -403,7 +432,45 @@ object DocumentManager {
     }
   }
 
+  /**
+   * Search by aggregation pipeline for offset based pagination
+   *
+   * @param rtype                      type of the resource
+   * @param filter                     query filter for desired resource
+   * @param aggPhasesForFiltering      Further aggregation phases for filtering (handling of chaining, reverse chaining or special params like _list)
+   * @param count                      limit for # of resources to be returned
+   * @param includingOrExcludingFields List of to be specifically included or excluded fields in the resulting document, if not given; all document included (true-> include, false -> exclude)
+   * @param excludeExtraFields         If true exclude extra fields related with version control from the document
+   * @param transactionSession
+   * @return
+   */
+  def searchDocumentsByAggregationForOffsetBasedPagination(rtype: String,
+                                      filter: Option[Bson],
+                                      aggPhasesForFiltering: Seq[Bson],
+                                      count: Int = -1,
+                                      includingOrExcludingFields: Option[(Boolean, Set[String])] = None,
+                                      excludeExtraFields: Boolean = false)(implicit transactionSession: Option[TransactionSession] = None): Future[Seq[Document]] = {
+    val aggregations = new ListBuffer[Bson]
 
+    //First, append the match query
+    if (filter.isDefined)
+      aggregations.append(Aggregates.`match`(filter.get))
+
+    //Add the phases
+    aggPhasesForFiltering.foreach(p => aggregations.append(p))
+
+    if(count != -1) {
+      aggregations.append(Aggregates.sort(Sorts.ascending("_id")))
+      aggregations.append(Aggregates.limit(count))
+    }
+
+    transactionSession match {
+      case None => MongoDB.getCollection(rtype).aggregate(aggregations.toSeq).toFuture()
+      case Some(ts) => MongoDB.getCollection(rtype).aggregate(ts.dbSession, aggregations.toSeq).toFuture()
+    }
+  }
+
+/*
   /**
     * Searching documents by aggregation pipeline to handle some complex sorting
     * @param rtype  type of the resource
@@ -484,7 +551,7 @@ object DocumentManager {
       case None => MongoDB.getCollection(rtype).aggregate(aggregations.toSeq).toFuture()
       case Some(ts) =>  MongoDB.getCollection(rtype).aggregate(ts.dbSession, aggregations.toSeq).toFuture()
     }
-  }
+  }*/
 
 
   /**
@@ -530,25 +597,27 @@ object DocumentManager {
     * @param addedFields All added fields for aggregation
     * @return
     */
-  private def handleProjectionForAggregationSearch(includingOrExcludingFields:Option[(Boolean, Set[String])], excludeExtraFields:Boolean, addedFields:Set[String]):Bson = {
+  private def handleProjectionForAggregationSearch(includingOrExcludingFields:Option[(Boolean, Set[String])], excludeExtraFields:Boolean, addedFields:Set[String]):Option[Bson] = {
     includingOrExcludingFields match {
       //Nothing given, so we include all normal FHIR elements
       case None =>
         //If we exclude the extra fields, exclude them
         if(excludeExtraFields)
-          Aggregates.project(exclude((ONFHIR_EXTRA_FIELDS ++ addedFields).toSeq:_*))
+          Some(Aggregates.project(exclude((ONFHIR_EXTRA_FIELDS ++ addedFields).toSeq:_*)))
+        else if(addedFields.nonEmpty)
+          Some(Aggregates.project(exclude(addedFields.toSeq: _*)))
         else
-          Aggregates.project(exclude(addedFields.toSeq: _*))
+          None  //No need for projection
       //Specific inclusion
       case Some((true, fields)) =>
         //If we don't exclude the extra fields, include them to final inclusion set
         val finalIncludes = if(excludeExtraFields) fields ++ FHIR_MANDATORY_ELEMENTS else fields ++ FHIR_MANDATORY_ELEMENTS ++ ONFHIR_EXTRA_FIELDS
-        Aggregates.project(include(finalIncludes.toSeq :_*))
+        Some(Aggregates.project(include(finalIncludes.toSeq :_*)))
 
       //Specific exclusion
       case Some((false, fields)) =>
         val finalExcludes = if(excludeExtraFields) fields ++ ONFHIR_EXTRA_FIELDS else fields
-        Aggregates.project(exclude((finalExcludes ++ addedFields).toSeq :_*))
+        Some(Aggregates.project(exclude((finalExcludes ++ addedFields).toSeq :_*)))
     }
   }
   /**
@@ -591,11 +660,14 @@ object DocumentManager {
     * @param query Mongo query
     * @return
     */
-  def countDocuments(rtype:String, query:Option[Bson])(implicit transactionSession: Option[TransactionSession] = None): Future[Long] = {
-    getCount(
-      rtype,
-      query
-    )
+  def countDocuments(rtype:String, query:Option[Bson], filteringStages:Seq[Bson] = Nil)(implicit transactionSession: Option[TransactionSession] = None): Future[Long] = {
+    if(filteringStages.isEmpty)
+      getCount(
+        rtype,
+        query
+      )
+    else
+      getCountWithAgg(rtype, query, filteringStages, history = false)
   }
 
   /**
@@ -604,9 +676,9 @@ object DocumentManager {
    * @param transactionSession
    * @return
    */
-  def countDocumentsFromMultipleCollections(queries:Map[String, Option[Bson]])(implicit transactionSession: Option[TransactionSession] = None): Future[Long] = {
+  def countDocumentsFromMultipleCollections(queries:Map[String, (Option[Bson], Seq[Bson])])(implicit transactionSession: Option[TransactionSession] = None): Future[Long] = {
     Future
-      .sequence(queries.map(q => countDocuments(q._1, q._2)))
+      .sequence(queries.map(q => countDocuments(q._1, q._2._1, q._2._2)))
       .map(counts => counts.sum)
   }
 
@@ -648,6 +720,37 @@ object DocumentManager {
   }
 
   /**
+   * Count documents by using MongoDb aggregation pipeline
+   *
+   * @param rtype              Resource type
+   * @param filter             Filter for query
+   * @param stages             Further filtering stages
+   * @param history            If this search is on history
+   * @param transactionSession Transaction session if exists
+   * @return
+   */
+  private def getCountWithAgg(rtype:String, filter:Option[Bson], stages:Seq[Bson], history:Boolean = false)(implicit transactionSession: Option[TransactionSession] = None): Future[Long] = {
+    val aggregations = new ListBuffer[Bson]
+    //Add filter
+    filter.foreach(f => aggregations.append(Aggregates.`match`(f)))
+    //Add aggregation stages
+    stages.foreach(s => aggregations.append(s))
+    //Count the documents
+    aggregations.append(Aggregates.count())
+
+    val countResult =
+      transactionSession match {
+        case None => MongoDB.getCollection(rtype).aggregate(aggregations.toSeq).toFuture()
+        case Some(ts) => MongoDB.getCollection(rtype).aggregate(ts.dbSession, aggregations.toSeq).toFuture()
+      }
+    //Return the result
+    countResult.map {
+      case Nil => 0L
+      case Seq(r) => r.getInteger("count").toLong
+    }
+  }
+
+  /**
     * Search documents but return their resource ids
     * @param rtype Resource type
     * @param filter Mongo filter
@@ -658,11 +761,12 @@ object DocumentManager {
     */
   def searchDocumentsReturnIds(rtype:String,
                                filter:Bson,
+                               filteringStages:Seq[Bson],
                                count:Int = -1,
                                page:Int= -1,
                                sortingPaths:Seq[(String, Int, Seq[String])] = Seq.empty) (implicit transactionSession: Option[TransactionSession] = None):Future[Seq[String]] = {
 
-    searchDocuments(rtype, Some(filter), count, page, sortingPaths, includingOrExcludingFields = Some(true -> Set(FHIR_COMMON_FIELDS.ID)))
+    searchDocuments(rtype, Some(filter),filteringStages, count, page, sortingPaths, includingOrExcludingFields = Some(true -> Set(FHIR_COMMON_FIELDS.ID)))
       .map(_.map(_.getString(FHIR_COMMON_FIELDS.ID)))
   }
 
@@ -676,7 +780,7 @@ object DocumentManager {
    * @param skip                Number of records to be skipped
    * @return
    */
-  def getHistoricLast(rtype:String,  rid:Option[String], filter:Option[Bson], count:Int = -1, skip:Int = -1):Future[Seq[Document]] = {
+  def getHistoricLast(rtype:String,  rid:Option[String], filter:Option[Bson], filteringStages:Seq[Bson], count:Int = -1, skip:Int = -1):Future[Seq[Document]] = {
     val collection = MongoDB.getCollection(rtype, true)
 
     val finalFilter = andQueries(rid.map(ridQuery).toSeq ++ filter.toSeq)
@@ -684,6 +788,9 @@ object DocumentManager {
 
     //Filter with the query
     finalFilter.foreach(ff => aggregations.append(Aggregates.filter(ff)))
+    //Add the filtering stages
+    filteringStages.foreach(s => aggregations.append(s))
+
     //Sort according to version in descending order
     aggregations.append(Aggregates.sort(descending("meta.versionId")))
     //Group by resource id and get the first for each group (means the biggest version)
@@ -707,7 +814,7 @@ object DocumentManager {
    * @param filter              Query itself
    * @return
    */
-  def countHistoricLast(rtype:String,  rid:Option[String], filter:Option[Bson]):Future[Long] = {
+  def countHistoricLast(rtype:String,  rid:Option[String], filter:Option[Bson], filteringStages:Seq[Bson]):Future[Long] = {
     val collection = MongoDB.getCollection(rtype, true)
 
     val finalFilter = andQueries(rid.map(ridQuery).toSeq ++ filter.toSeq)
@@ -715,6 +822,9 @@ object DocumentManager {
 
     //Filter with the query
     finalFilter.foreach(ff => aggregations.append(Aggregates.filter(ff)))
+    //Add the filtering stages
+    filteringStages.foreach(s => aggregations.append(s))
+
     //Sort according to version in descending order
     aggregations.append(Aggregates.sort(descending("meta.versionId")))
     //Group by resource id and get the first for each group (means the biggest version)
@@ -726,38 +836,48 @@ object DocumentManager {
     )
   }
 
-  def searchHistoricDocumentsWithAt(rtype:String,  rid:Option[String], filter:Option[Bson], count:Int = -1, page:Int = -1):Future[(Long,Seq[Document])] = {
+  /**
+   * Handle the history search with _at parameter
+   * @param rtype
+   * @param rid
+   * @param filter
+   * @param filteringStages
+   * @param count
+   * @param page
+   * @return
+   */
+  def searchHistoricDocumentsWithAt(rtype:String,  rid:Option[String], filter:Option[Bson], filteringStages:Seq[Bson], count:Int = -1, page:Int = -1):Future[(Long,Seq[Document])] = {
     def getIdsOfAllCurrents():Future[Seq[String]] = {
       DocumentManager
-        .searchDocuments(rtype, DocumentManager.andQueries(rid.map(ridQuery).toSeq ++ filter.toSeq), count, page, includingOrExcludingFields  = Some(true, Set(FHIR_COMMON_FIELDS.ID)))
+        .searchDocuments(rtype, DocumentManager.andQueries(rid.map(ridQuery).toSeq ++ filter.toSeq), filteringStages, count, page, includingOrExcludingFields  = Some(true, Set(FHIR_COMMON_FIELDS.ID)))
         .map(docs => docs.map(d => d.getString(FHIR_COMMON_FIELDS.ID)))
     }
 
-    val totalCurrentFuture = DocumentManager.countDocuments(rtype, DocumentManager.andQueries(rid.map(ridQuery).toSeq ++ filter.toSeq))
+    val totalCurrentFuture = DocumentManager.countDocuments(rtype, DocumentManager.andQueries(rid.map(ridQuery).toSeq ++ filter.toSeq), filteringStages)
 
     totalCurrentFuture.flatMap {
       //If all records can be supplied from currents
       case totalCurrent:Long if count * page <= totalCurrent =>
         DocumentManager
-          .searchDocuments(rtype, DocumentManager.andQueries(rid.map(ridQuery).toSeq ++ filter.toSeq), count, page)
+          .searchDocuments(rtype, DocumentManager.andQueries(rid.map(ridQuery).toSeq ++ filter.toSeq), filteringStages, count, page)
           .flatMap(docs => {
             getIdsOfAllCurrents().flatMap(ids =>
               DocumentManager
-                .countHistoricLast(rtype, rid,  if(ids.nonEmpty) DocumentManager.andQueries(filter.toSeq :+ nin(FHIR_COMMON_FIELDS.ID, ids:_*)) else  filter)
+                .countHistoricLast(rtype, rid,  if(ids.nonEmpty) DocumentManager.andQueries(filter.toSeq :+ nin(FHIR_COMMON_FIELDS.ID, ids:_*)) else  filter, filteringStages)
                 .map(totalHistory => (totalCurrent + totalHistory) -> docs)
             )
           })
       //If some of them should be from current some from history
       case totalCurrent:Long if count * page > totalCurrent && count * (page-1) < totalCurrent =>
         DocumentManager
-          .searchDocuments(rtype, DocumentManager.andQueries(rid.map(ridQuery).toSeq ++ filter.toSeq), count, page)
+          .searchDocuments(rtype, DocumentManager.andQueries(rid.map(ridQuery).toSeq ++ filter.toSeq), filteringStages, count, page)
           .flatMap(currentDocs => {
             val numOfNeeded = count * page - totalCurrent
             getIdsOfAllCurrents().flatMap(ids =>
               DocumentManager
-                .countHistoricLast(rtype, rid, if(ids.nonEmpty) DocumentManager.andQueries(filter.toSeq :+ nin(FHIR_COMMON_FIELDS.ID, ids:_*)) else  filter)
+                .countHistoricLast(rtype, rid, if(ids.nonEmpty) DocumentManager.andQueries(filter.toSeq :+ nin(FHIR_COMMON_FIELDS.ID, ids:_*)) else  filter, filteringStages)
                 .flatMap(totalHistory=>
-                  DocumentManager.getHistoricLast(rtype, rid, if(ids.nonEmpty) DocumentManager.andQueries(filter.toSeq :+ nin(FHIR_COMMON_FIELDS.ID, ids:_*)) else  filter, numOfNeeded.toInt).map(historicDocs =>
+                  DocumentManager.getHistoricLast(rtype, rid, if(ids.nonEmpty) DocumentManager.andQueries(filter.toSeq :+ nin(FHIR_COMMON_FIELDS.ID, ids:_*)) else  filter, filteringStages, numOfNeeded.toInt).map(historicDocs =>
                     (totalCurrent + totalHistory) -> (currentDocs ++ historicDocs)
                   )
                 )
@@ -767,9 +887,9 @@ object DocumentManager {
         val numToSkip = count * (page-1) - totalCurrent
         getIdsOfAllCurrents().flatMap(ids =>
           DocumentManager
-            .countHistoricLast(rtype, rid, if(ids.nonEmpty) DocumentManager.andQueries(filter.toSeq :+ nin(FHIR_COMMON_FIELDS.ID, ids:_*)) else  filter)
+            .countHistoricLast(rtype, rid, if(ids.nonEmpty) DocumentManager.andQueries(filter.toSeq :+ nin(FHIR_COMMON_FIELDS.ID, ids:_*)) else  filter, filteringStages)
             .flatMap(totalHistory =>
-            DocumentManager.getHistoricLast(rtype, rid, if(ids.nonEmpty) DocumentManager.andQueries(filter.toSeq :+ nin(FHIR_COMMON_FIELDS.ID, ids:_*)) else  filter, count, numToSkip.toInt).map(historicDocs =>
+            DocumentManager.getHistoricLast(rtype, rid, if(ids.nonEmpty) DocumentManager.andQueries(filter.toSeq :+ nin(FHIR_COMMON_FIELDS.ID, ids:_*)) else  filter, filteringStages, count, numToSkip.toInt).map(historicDocs =>
               (totalCurrent + totalHistory) -> historicDocs
             )
           )
@@ -787,12 +907,12 @@ object DocumentManager {
     * @param page page number
     * @return
     */
-  def searchHistoricDocuments(rtype:String,  rid:Option[String], filter:Option[Bson], count:Int = -1, page:Int = -1)(implicit transactionSession: Option[TransactionSession] = None):Future[(Long,Seq[Document])]  = {
+  def searchHistoricDocuments(rtype:String,  rid:Option[String], filter:Option[Bson], filteringStages:Seq[Bson], count:Int = -1, page:Int = -1)(implicit transactionSession: Option[TransactionSession] = None):Future[(Long,Seq[Document])]  = {
     val finalFilter = andQueries(rid.map(ridQuery).toSeq ++ filter.toSeq)
     val numOfDocs:Future[(Long, Long)] =
       for {
-        totalCurrent <- getCount(rtype, finalFilter)
-        totalHistory <- getCount(rtype, finalFilter, history = true)
+        totalCurrent <- if(filteringStages.isEmpty) getCount(rtype, finalFilter) else getCountWithAgg(rtype, finalFilter, filteringStages)
+        totalHistory <- if(filteringStages.isEmpty)  getCount(rtype, finalFilter, history = true) else getCountWithAgg(rtype, finalFilter, filteringStages, history = true)
       } yield totalCurrent -> totalHistory
 
     numOfDocs.flatMap {
@@ -811,7 +931,7 @@ object DocumentManager {
         //Skip this number of record
         val skip = count * (page - 1)
         //Otherwise search the history directly
-        searchHistoricDocumentsHelper(rtype, history = true, finalFilter, count, skip)
+        searchHistoricDocumentsHelper(rtype, history = true, finalFilter, filteringStages, count, skip)
           .map(docs => totalHistory -> docs)
       case (totalCurrent, totalHistory) =>
         val fresults =
@@ -820,11 +940,11 @@ object DocumentManager {
             case Some(_) =>
               //If they want page 1, look also to the current collection for resource type
               if(page == 1)
-                searchHistoricDocumentsHelper(rtype, history = false, finalFilter, count, 0)
+                searchHistoricDocumentsHelper(rtype, history = false, finalFilter,filteringStages, count, 0)
                   .flatMap(currentResults =>
                     //If count is not one or current result is not empty, search also history and merge
                     if(count!=1 || totalCurrent > 0)
-                      searchHistoricDocumentsHelper(rtype, history = true, finalFilter, count-1, 0).map(historyResults =>
+                      searchHistoricDocumentsHelper(rtype, history = true, finalFilter, filteringStages, count-1, 0).map(historyResults =>
                         currentResults ++ historyResults
                       )
                     else
@@ -834,15 +954,15 @@ object DocumentManager {
                 //Skip this number of record
                 val skip = count * (page-1) - 1
                 //Otherwise search the history directly
-                searchHistoricDocumentsHelper(rtype, history = true, finalFilter, count, skip)
+                searchHistoricDocumentsHelper(rtype, history = true, finalFilter,filteringStages, count, skip)
               }
             //If history interaction is executed on type level
             case None =>
-              searchHistoricDocumentsHelper(rtype, history = false, finalFilter, count, count * (page-1)).flatMap { cresults =>
+              searchHistoricDocumentsHelper(rtype, history = false, finalFilter,filteringStages, count, count * (page-1)).flatMap { cresults =>
                   if(count * page > totalCurrent) {
                     var skip = count * (page-1) - totalCurrent
                     if(skip < 0) skip = 0
-                    searchHistoricDocumentsHelper(rtype, history = true, finalFilter, count - cresults.length, skip.toInt).map { hresults =>
+                    searchHistoricDocumentsHelper(rtype, history = true, finalFilter,filteringStages, count - cresults.length, skip.toInt).map { hresults =>
                       cresults ++ hresults
                     }
                   } else {
@@ -864,36 +984,76 @@ object DocumentManager {
     * @param skip          Skip this number of record
     * @return
     */
-  private def searchHistoricDocumentsHelper(rtype:String, history:Boolean,  finalFilter:Option[Bson], count:Int, skip:Int)(implicit transactionSession: Option[TransactionSession] = None):Future[Seq[Document]] = {
-    val collection = MongoDB.getCollection(rtype, history)
-    //Construct query
-    var query = transactionSession match {
-      case None =>
-        finalFilter
-          .map(f => collection.find(f))
-          .getOrElse(collection.find())
-      case Some(ts) =>
-        finalFilter
-          .map(f => collection.find(ts.dbSession, f))
-          .getOrElse(collection.find(ts.dbSession))
+  private def searchHistoricDocumentsHelper(rtype:String, history:Boolean,  finalFilter:Option[Bson], filteringStages:Seq[Bson], count:Int, skip:Int)(implicit transactionSession: Option[TransactionSession] = None):Future[Seq[Document]] = {
+    if(filteringStages.nonEmpty)
+      searchHistoricDocumentsHelperWithAgg(rtype, history, finalFilter, filteringStages, count, skip)
+    else {
+      val collection = MongoDB.getCollection(rtype, history)
+      //Construct query
+      var query = transactionSession match {
+        case None =>
+          finalFilter
+            .map(f => collection.find(f))
+            .getOrElse(collection.find())
+        case Some(ts) =>
+          finalFilter
+            .map(f => collection.find(ts.dbSession, f))
+            .getOrElse(collection.find(ts.dbSession))
+      }
+
+
+      //If count is given limit the search result
+      if (count > 0)
+        query = query.skip(skip).limit(count)
+
+      //Exclude extra params
+      query = query.projection(exclude(FHIR_COMMON_FIELDS.MONGO_ID))
+
+      //Sort by last updated and version id
+      val LAST_UPDATED = s"${FHIR_COMMON_FIELDS.META}.${FHIR_COMMON_FIELDS.LAST_UPDATED}"
+      val VERSION_ID = s"${FHIR_COMMON_FIELDS.META}.${FHIR_COMMON_FIELDS.VERSION_ID}"
+      query = query.sort(descending(LAST_UPDATED, VERSION_ID))
+
+      //Execute the query
+      query.toFuture()
     }
+  }
 
+  /**
+   * Search helper for historic or current via MongoDB aggregation pipeline
+   * @param rtype       Resource type
+   * @param history     Is search on history instances
+   * @param finalFilter Final query if exist
+   * @param count       Pagination count
+   * @param skip        Skip this number of record
+   * @param transactionSession
+   * @return
+   */
+  private def searchHistoricDocumentsHelperWithAgg(rtype:String, history:Boolean,  finalFilter:Option[Bson], filteringStages:Seq[Bson], count:Int, skip:Int)(implicit transactionSession: Option[TransactionSession] = None):Future[Seq[Document]] = {
+    val aggregations = new ListBuffer[Bson]
+    //Set the query
+    finalFilter.foreach(f => aggregations.append(Aggregates.`match`(f)))
+    //Add the filtering stages
+    filteringStages.foreach(s => aggregations.append(s))
 
-    //If count is given limit the search result
-    if(count > 0)
-      query = query.skip(skip).limit(count)
-
+    if(count > 0) {
+      aggregations.append(Aggregates.skip(skip))
+      aggregations.append(Aggregates.limit(count))
+    }
     //Exclude extra params
-    query = query.projection(exclude(FHIR_COMMON_FIELDS.MONGO_ID))
+    aggregations.append(Aggregates.project(Projections.exclude(FHIR_COMMON_FIELDS.MONGO_ID)))
 
     //Sort by last updated and version id
     val LAST_UPDATED = s"${FHIR_COMMON_FIELDS.META}.${FHIR_COMMON_FIELDS.LAST_UPDATED}"
-    val VERSION_ID   = s"${FHIR_COMMON_FIELDS.META}.${FHIR_COMMON_FIELDS.VERSION_ID}"
-    query = query.sort(descending(LAST_UPDATED, VERSION_ID))
+    val VERSION_ID = s"${FHIR_COMMON_FIELDS.META}.${FHIR_COMMON_FIELDS.VERSION_ID}"
+    aggregations.append(Aggregates.sort(Sorts.descending(LAST_UPDATED, VERSION_ID)))
 
-    //Execute the query
-    query.toFuture()
+    transactionSession match {
+      case None => MongoDB.getCollection(rtype, history).aggregate(aggregations.toSeq).toFuture()
+      case Some(ts) =>MongoDB.getCollection(rtype, history).aggregate(ts.dbSession, aggregations.toSeq).toFuture()
+    }
   }
+
 
   /**
     * Inserts the given document into a appropriate collection
@@ -1214,6 +1374,7 @@ object DocumentManager {
    */
   def searchLastOrFirstNByAggregation(rtype:String,
                                filter:Option[Bson],
+                               filteringStages:Seq[Bson],
                                lastOrFirstN:Int = -1,
                                sortingPaths:Seq[(String, Seq[String])] = Seq.empty,
                                groupByExpressions:Seq[(String, BsonValue)],
@@ -1224,6 +1385,8 @@ object DocumentManager {
     //First, append the match query
     if(filter.isDefined)
       aggregations.append(Aggregates.`match`(filter.get))
+    //Add the further filtering stages if exist
+    filteringStages.foreach(s => aggregations.append(s))
 
     val spaths = sortingPaths.map(s => (s._1, if(lastOrFirstN < 0) -1 else 1, s._2))
 
@@ -1245,7 +1408,8 @@ object DocumentManager {
 
     //Handle projections
     val extraSortingFieldsToExclude = paramsWithAlternativeSorting.map(sp => s"__sort_${sp._1}")
-    aggregations.append(handleProjectionForAggregationSearch(includingOrExcludingFields, excludeExtraFields, extraSortingFieldsToExclude.toSet))
+    handleProjectionForAggregationSearch(includingOrExcludingFields, excludeExtraFields, extraSortingFieldsToExclude.toSet)
+      .foreach(prj => aggregations.append(prj))
 
     //Merge the expressions into single groupBy expression
     val groupByExpr:Document = Document.apply(groupByExpressions)

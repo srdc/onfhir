@@ -2,7 +2,6 @@ package io.onfhir.db
 
 import java.time.Instant
 import akka.http.scaladsl.model.{DateTime, StatusCode, StatusCodes}
-import com.mongodb.client.model.Variable
 import io.onfhir.Onfhir
 import io.onfhir.api._
 import io.onfhir.api.model.{FHIRSearchResult, FhirCanonicalReference, FhirLiteralReference, FhirReference, Parameter}
@@ -16,7 +15,7 @@ import io.onfhir.event.{FhirEventBus, IFhirEventBus, ResourceCreated, ResourceDe
 import io.onfhir.exception.UnsupportedParameterException
 import io.onfhir.util.DateTimeUtil
 import org.json4s.JsonAST.JValue
-import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonString, BsonValue}
+import org.mongodb.scala.bson.{BsonArray, BsonBoolean, BsonDocument, BsonString, BsonValue}
 import org.mongodb.scala.model.{Aggregates, Filters, Projections}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -163,11 +162,14 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
         .sequence(queryParameters.map(rqp => countResources(rqp._1, rqp._2))) //Count the query for each resource type
         .map(counts => counts.sum -> Nil) //and sum them
     } else {
-      Future
-        .sequence(queryParameters.map(rqp => constructQuery(rqp._1, rqp._2).map(q => rqp._1 -> q))) //Construct queries for each resource type
-        .flatMap(queries =>
-          queryResourcesDirectlyFromMultipleResourceTypes(queries.toMap, count, page, sortingFields, summaryFields, excludeExtraParams, needTotal)
-        )
+      val queryMap =
+        queryParameters
+          .map {
+            case (rtype, params) => rtype -> constructQueryNew(rtype, params)
+          }
+          .toMap
+
+      queryResourcesDirectlyFromMultipleResourceTypes(queryMap, count, page, sortingFields, summaryFields, excludeExtraParams, needTotal)
     }
   }
 
@@ -193,20 +195,9 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
                      needTotal: Boolean = true
                     )(implicit transactionSession: Option[TransactionSession] = None): Future[(Long, Seq[Resource])] = {
 
-    constructQueryNew(rtype, queryParams).flatMap {
-      case None -> Nil if queryParams.nonEmpty => Future.apply((0L, Nil))
-      case (finalQuery, aggFilterStages) =>
-        queryResourcesDirectly(rtype, finalQuery, aggFilterStages, count, page, sortingFields, elementsIncludedOrExcluded, excludeExtraFields, needTotal)
-    }
-    /*
-        //Run the search
-        constructQuery(rtype, queryParams).flatMap {
-          //If there is no query, although there are parameters
-          case None if queryParams.nonEmpty => Future.apply((0L, Nil))
-          //Otherwise run it
-          case finalQuery =>
-            queryResourcesDirectly(rtype, finalQuery, Nil, count, page, sortingFields, elementsIncludedOrExcluded, excludeExtraFields, needTotal)
-        }*/
+    //Construct the MongoDB query and filtering stages if any
+    val (finalQuery, aggFilterStages) = constructQueryNew(rtype, queryParams)
+    queryResourcesDirectly(rtype, finalQuery, aggFilterStages, count, page, sortingFields, elementsIncludedOrExcluded, excludeExtraFields, needTotal)
   }
 
   /**
@@ -233,16 +224,10 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
                                          excludeExtraFields: Boolean = false,
                                          needTotal: Boolean = true
                                         )(implicit transactionSession: Option[TransactionSession] = None): Future[(Long, Seq[Resource], Seq[String], Seq[String])] = {
+    val (finalQuery, filteringStages) = constructQueryNew(rtype, queryParams)
     //Run the search
-    constructQuery(rtype, queryParams).flatMap {
-      //If there is no query, although there are parameters
-      case None if queryParams.nonEmpty => Future.apply((0L, Nil, Nil, Nil))
-      //Otherwise run it
-      case finalQuery =>
-        val offsetOpt = if (!offset._1.exists(_ != "")) None else Some(offset)
-        queryResourcesDirectlyWithOffsetPagination(rtype, finalQuery, count, offsetOpt, sortingFields, elementsIncludedOrExcluded, excludeExtraFields, needTotal)
-    }
-
+    val offsetOpt = if (!offset._1.exists(_ != "")) None else Some(offset)
+    queryResourcesDirectlyWithOffsetPagination(rtype, finalQuery, filteringStages, count, offsetOpt, sortingFields, elementsIncludedOrExcluded, excludeExtraFields, needTotal)
   }
 
   /**
@@ -271,10 +256,10 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
     val sortingPaths = constructFinalSortingPaths(sortingFields)
 
     for {
-      total <- if (needTotal) DocumentManager.countDocuments(rtype, query) else Future.apply(-1L) //If they don't need total number, just return -1 for it
+      total <- if (needTotal) DocumentManager.countDocuments(rtype, query, filteringStages) else Future.apply(-1L) //If they don't need total number, just return -1 for it
       resultResources <-
         DocumentManager
-          .searchDocumentsByAggregationNew(rtype, query, filteringStages, count, page, sortingPaths, elementsIncludedOrExcluded, excludeExtraFields)
+          .searchDocuments(rtype, query, filteringStages, count, page, sortingPaths, elementsIncludedOrExcluded, excludeExtraFields)
           .map(_.map(_.fromBson))
     } yield total -> resultResources
   }
@@ -293,6 +278,7 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
    */
   def queryResourcesDirectlyWithOffsetPagination(rtype: String,
                                                  query: Option[Bson] = None,
+                                                 filteringStages: Seq[Bson] = Nil,
                                                  count: Int = -1,
                                                  offset: Option[(Seq[String], Boolean)],
                                                  sortingFields: Seq[(String, Int, Seq[(String, String)])] = Seq.empty,
@@ -303,10 +289,10 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
     val sortingPaths = constructFinalSortingPaths(sortingFields)
 
     for {
-      total <- if (needTotal) DocumentManager.countDocuments(rtype, query) else Future.apply(-1L) //If they don't need total number, just return -1 for it
+      total <- if (needTotal) DocumentManager.countDocuments(rtype, query, filteringStages) else Future.apply(-1L) //If they don't need total number, just return -1 for it
       resultResources <-
         DocumentManager
-          .searchDocumentsWithOffset(rtype, query, count, offset, sortingPaths, elementsIncludedOrExcluded, excludeExtraFields)
+          .searchDocumentsWithOffset(rtype, query, filteringStages, count, offset, sortingPaths, elementsIncludedOrExcluded, excludeExtraFields)
           .map {
             case (previousOffset, nextOffset, docs) => (previousOffset, nextOffset, docs.map(_.fromBson))
           }
@@ -316,7 +302,7 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
   /**
    * Search FHIR resources from multiple resource types
    *
-   * @param queries                    Queries for each resource type
+   * @param queries                    Queries for each resource type i.e. resourceType -> (Main filter, filtering aggregation phases)
    * @param count                      Number of resources to return
    * @param page                       Page to return
    * @param sortingFields              Sorting fields (param name, sorting direction, path and target data type) for each resource type
@@ -326,7 +312,7 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
    * @param transactionSession         If part of a transaction, the transaction session
    * @return
    */
-  def queryResourcesDirectlyFromMultipleResourceTypes(queries: Map[String, Option[Bson]],
+  def queryResourcesDirectlyFromMultipleResourceTypes(queries: Map[String, (Option[Bson], Seq[Bson])],
                                                       count: Int = -1, page: Int = 1,
                                                       sortingFields: Map[String, Seq[(String, Int, Seq[(String, String)])]],
                                                       elementsIncludedOrExcluded: Map[String, Option[(Boolean, Set[String])]],
@@ -388,78 +374,74 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
     val queryParams = parameters.filter(_.paramCategory != FHIR_PARAMETER_CATEGORIES.RESULT)
 
     //Run the search
-    constructQuery(rtype, queryParams).flatMap {
-      //If there is no query, although there are parameters
-      case None if queryParams.nonEmpty => Future.apply(Nil -> Nil)
-      //Otherwise process groupBy and sorting parameters and execute the query
-      case finalQuery =>
-        //Find out paths for each sorting parameter
-        val finalSortingPaths: Seq[(String, Seq[String])] =
-          sortingParams
-            .map(sp => fhirConfig.findSupportedSearchParameter(rtype, sp) match {
-              case None =>
-                throw new UnsupportedParameterException(s"Search parameter $sp is not supported for resource type $rtype, or you can not use it for sorting! Check conformance statement of server!")
-              case Some(spConf) =>
-                spConf.pname ->
-                  spConf
-                    .extractElementPathsAndTargetTypes()
-                    .flatMap { case (path, ttype) =>
-                      SORTING_SUBPATHS
-                        .getOrElse(ttype, Seq("")) //Get the subpaths for sorting for the target element type
-                        .map(subpath => path + subpath)
-                    }
-            })
+    val (finalQuery, filteringStages) = constructQueryNew(rtype, queryParams)
 
-        //Construct expressions for groupBy params
-        val groupByParamConfs =
-          groupByParams
-            .map(gbyp =>
-              fhirConfig.findSupportedSearchParameter(rtype, gbyp) match {
-                case None =>
-                  throw new UnsupportedParameterException(s"Search parameter $gbyp is not supported for resource type $rtype, or you can not use it for grouping! Check conformance statement of server!")
-                case Some(gbypConf) => gbypConf
-              }
-            )
+    //Find out paths for each sorting parameter
+    val finalSortingPaths: Seq[(String, Seq[String])] =
+      sortingParams
+        .map(sp => fhirConfig.findSupportedSearchParameter(rtype, sp) match {
+          case None =>
+            throw new UnsupportedParameterException(s"Search parameter $sp is not supported for resource type $rtype, or you can not use it for sorting! Check conformance statement of server!")
+          case Some(spConf) =>
+            spConf.pname ->
+              spConf
+                .extractElementPathsAndTargetTypes()
+                .flatMap { case (path, ttype) =>
+                  SORTING_SUBPATHS
+                    .getOrElse(ttype, Seq("")) //Get the subpaths for sorting for the target element type
+                    .map(subpath => path + subpath)
+                }
+        })
 
-        val groupByExpressions = AggregationHandler.constructGroupByExpression(groupByParamConfs, parameters)
-
-        //Execute the query and find the matched results
-        val fResults =
-          DocumentManager
-            .searchLastOrFirstNByAggregation(rtype, finalQuery, lastOrFirstN, finalSortingPaths, groupByExpressions)
-            .map(results =>
-              results.map(r => {
-                val keys =
-                  groupByParams.map(p =>
-                    p -> r._1.get(p).get.fromBson
-                  ).toMap
-                keys -> r._2.map(_.fromBson)
-              })
-            )
-
-        fResults.flatMap(matchedResources =>
-          //Handle _include and _revinclude params
-          (includeParams, revIncludeParams) match {
-            //No _include or _revinclude
-            case (Nil, Nil) => Future.apply(matchedResources, Seq.empty)
-            //Only _revinclude
-            case (Nil, _) =>
-              handleRevIncludes(rtype, matchedResources.flatMap(_._2), revIncludeParams)
-                .map(revIncludedResources => (matchedResources, revIncludedResources))
-            //Only _include
-            case (_, Nil) =>
-              handleIncludes(rtype, matchedResources.flatMap(_._2), includeParams)
-                .map(includedResources => (matchedResources, includedResources))
-            //Both
-            case (_, _) =>
-              val allMatchedResources = matchedResources.flatMap(_._2)
-              for {
-                includedResources <- handleIncludes(rtype, allMatchedResources, includeParams)
-                revIncludedResources <- handleRevIncludes(rtype, allMatchedResources, revIncludeParams)
-              } yield (matchedResources, includedResources ++ revIncludedResources)
+    //Construct expressions for groupBy params
+    val groupByParamConfs =
+      groupByParams
+        .map(gbyp =>
+          fhirConfig.findSupportedSearchParameter(rtype, gbyp) match {
+            case None =>
+              throw new UnsupportedParameterException(s"Search parameter $gbyp is not supported for resource type $rtype, or you can not use it for grouping! Check conformance statement of server!")
+            case Some(gbypConf) => gbypConf
           }
         )
-    }
+
+    val groupByExpressions = AggregationHandler.constructGroupByExpression(groupByParamConfs, parameters)
+
+    //Execute the query and find the matched results
+    val fResults =
+      DocumentManager
+        .searchLastOrFirstNByAggregation(rtype, finalQuery, filteringStages, lastOrFirstN, finalSortingPaths, groupByExpressions, finalIncludesOrExcludes)
+        .map(results =>
+          results.map(r => {
+            val keys =
+              groupByParams.map(p =>
+                p -> r._1.get(p).get.fromBson
+              ).toMap
+            keys -> r._2.map(_.fromBson)
+          })
+        )
+
+    fResults.flatMap(matchedResources =>
+      //Handle _include and _revinclude params
+      (includeParams, revIncludeParams) match {
+        //No _include or _revinclude
+        case (Nil, Nil) => Future.apply(matchedResources, Seq.empty)
+        //Only _revinclude
+        case (Nil, _) =>
+          handleRevIncludes(rtype, matchedResources.flatMap(_._2), revIncludeParams)
+            .map(revIncludedResources => (matchedResources, revIncludedResources))
+        //Only _include
+        case (_, Nil) =>
+          handleIncludes(rtype, matchedResources.flatMap(_._2), includeParams)
+            .map(includedResources => (matchedResources, includedResources))
+        //Both
+        case (_, _) =>
+          val allMatchedResources = matchedResources.flatMap(_._2)
+          for {
+            includedResources <- handleIncludes(rtype, allMatchedResources, includeParams)
+            revIncludedResources <- handleRevIncludes(rtype, allMatchedResources, revIncludeParams)
+          } yield (matchedResources, includedResources ++ revIncludedResources)
+      }
+    )
   }
 
   /**
@@ -493,18 +475,20 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
   def countResources(rtype: String,
                      queryParams: List[Parameter] = List.empty)(implicit transactionSession: Option[TransactionSession] = None): Future[Long] = {
     //Construct query
-    constructQuery(rtype, queryParams).flatMap {
-      //If there is no query, although there are parameters
-      case None if queryParams.nonEmpty => Future.apply(0L)
-      //Otherwise run it
-      case finalQuery => DocumentManager.countDocuments(rtype, finalQuery)
-    }
+    val (query, filteringStages) = constructQueryNew(rtype, queryParams)
+    DocumentManager.countDocuments(rtype, query, filteringStages)
   }
 
-
-  def constructQueryNew(rtype: String, queryParams: List[Parameter] = List.empty)(implicit transactionSession: Option[TransactionSession] = None): Future[(Option[Bson], Seq[Bson])] = {
+  /**
+   * Construct the final Mongo query and aggregation filtering stages from FHIR parameters
+   *
+   * @param rtype       Resource type
+   * @param queryParams Parsed FHIR query parameter
+   * @return
+   */
+  def constructQueryNew(rtype: String, queryParams: List[Parameter] = List.empty): (Option[Bson], Seq[Bson]) = {
     //Handle Special params TODO
-    val specialParamQueries: (Seq[Bson], Seq[Bson]) = Nil -> Nil //handleSpecialParams(rtype, queryParams.filter(_.paramCategory == FHIR_PARAMETER_CATEGORIES.SPECIAL))
+    val specialParamQueries: (Seq[Bson], Seq[Bson]) = getQueryAndFilteringPhasesForSpecialParams(rtype, queryParams.filter(_.paramCategory == FHIR_PARAMETER_CATEGORIES.SPECIAL))
     //Handle Chained Params
     val chainedParamQueries: Seq[Bson] =
       queryParams
@@ -515,7 +499,7 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
     val revchainedParamQueries: Seq[Bson] =
       queryParams
         .filter(_.paramCategory == FHIR_PARAMETER_CATEGORIES.REVCHAINED)
-        .flatMap(p => getChainParamStages(rtype, p))
+        .flatMap(p => getReverseChainParamStages(rtype, p))
 
     //Get valid query parameters for the resource type
     val validQueryParams = fhirConfig.getSupportedParameters(rtype)
@@ -532,64 +516,64 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
         })
     //Merge all the queries and return
     val finalMainQuery = DocumentManager.andQueries(specialParamQueries._1 ++ normalQueries)
-    val filteringStages = revchainedParamQueries ++ chainedParamQueries
+    val filteringStages = revchainedParamQueries ++ chainedParamQueries ++ specialParamQueries._2
 
-    Future.apply(finalMainQuery -> filteringStages)
+    finalMainQuery -> filteringStages
   }
+  /*
+    /**
+     * Construct the final Mongo query from FHIR parameters
+     *
+     * @param rtype       Resource type
+     * @param queryParams Parsed FHIR query parameter
+     * @return None if the query fails (no matching resources) otherwise final Mongo query
+     */
+    def constructQuery(rtype: String, queryParams: List[Parameter] = List.empty)(implicit transactionSession: Option[TransactionSession] = None): Future[Option[Bson]] = {
+      //Handle Special params
+      val specialParamQueries: Future[Seq[Option[Bson]]] = handleSpecialParams(rtype, queryParams.filter(_.paramCategory == FHIR_PARAMETER_CATEGORIES.SPECIAL))
+      //Handle Chained Params
+      val chainedParamQueries: Future[Seq[Option[Bson]]] = Future.sequence(
+        queryParams
+          .filter(_.paramCategory == FHIR_PARAMETER_CATEGORIES.CHAINED)
+          .map(p => handleChainParam(rtype, p))
+      )
+      //Handle Reverse Chained Params
+      val revchainedParamQueries: Future[Seq[Option[Bson]]] = Future.sequence(
+        queryParams
+          .filter(_.paramCategory == FHIR_PARAMETER_CATEGORIES.REVCHAINED)
+          .map(p => handleReverseChainParam(rtype, p))
+      )
 
-  /**
-   * Construct the final Mongo query from FHIR parameters
-   *
-   * @param rtype       Resource type
-   * @param queryParams Parsed FHIR query parameter
-   * @return None if the query fails (no matching resources) otherwise final Mongo query
-   */
-  def constructQuery(rtype: String, queryParams: List[Parameter] = List.empty)(implicit transactionSession: Option[TransactionSession] = None): Future[Option[Bson]] = {
-    //Handle Special params
-    val specialParamQueries: Future[Seq[Option[Bson]]] = handleSpecialParams(rtype, queryParams.filter(_.paramCategory == FHIR_PARAMETER_CATEGORIES.SPECIAL))
-    //Handle Chained Params
-    val chainedParamQueries: Future[Seq[Option[Bson]]] = Future.sequence(
-      queryParams
-        .filter(_.paramCategory == FHIR_PARAMETER_CATEGORIES.CHAINED)
-        .map(p => handleChainParam(rtype, p))
-    )
-    //Handle Reverse Chained Params
-    val revchainedParamQueries: Future[Seq[Option[Bson]]] = Future.sequence(
-      queryParams
-        .filter(_.paramCategory == FHIR_PARAMETER_CATEGORIES.REVCHAINED)
-        .map(p => handleReverseChainParam(rtype, p))
-    )
+      //Merge all special query handlings
+      val fotherQueries =
+        for {
+          r1 <- specialParamQueries
+          r2 <- chainedParamQueries
+          r3 <- revchainedParamQueries
+        } yield r1 ++ r2 ++ r3
 
-    //Merge all special query handlings
-    val fotherQueries =
-      for {
-        r1 <- specialParamQueries
-        r2 <- chainedParamQueries
-        r3 <- revchainedParamQueries
-      } yield r1 ++ r2 ++ r3
-
-    //Get valid query parameters for the resource type
-    val validQueryParams = fhirConfig.getSupportedParameters(rtype)
-    //Construct final query by anding all of them
-    fotherQueries.map(otherQueries => {
-      //If there are other queries, but some empty it means rejection
-      if (otherQueries.exists(_.isEmpty))
-        None
-      else {
-        val normalQueries = queryParams
-          .filter(p => p.paramCategory == FHIR_PARAMETER_CATEGORIES.NORMAL || p.paramCategory == FHIR_PARAMETER_CATEGORIES.COMPARTMENT)
-          .map(p => {
-            p.paramCategory match {
-              case FHIR_PARAMETER_CATEGORIES.NORMAL =>
-                ResourceQueryBuilder.constructQueryForNormal(p, validQueryParams.apply(p.name), validQueryParams)
-              case FHIR_PARAMETER_CATEGORIES.COMPARTMENT =>
-                ResourceQueryBuilder.constructQueryForCompartment(rtype, p, validQueryParams)
-            }
-          })
-        DocumentManager.andQueries(normalQueries ++ otherQueries.flatten)
-      }
-    })
-  }
+      //Get valid query parameters for the resource type
+      val validQueryParams = fhirConfig.getSupportedParameters(rtype)
+      //Construct final query by anding all of them
+      fotherQueries.map(otherQueries => {
+        //If there are other queries, but some empty it means rejection
+        if (otherQueries.exists(_.isEmpty))
+          None
+        else {
+          val normalQueries = queryParams
+            .filter(p => p.paramCategory == FHIR_PARAMETER_CATEGORIES.NORMAL || p.paramCategory == FHIR_PARAMETER_CATEGORIES.COMPARTMENT)
+            .map(p => {
+              p.paramCategory match {
+                case FHIR_PARAMETER_CATEGORIES.NORMAL =>
+                  ResourceQueryBuilder.constructQueryForNormal(p, validQueryParams.apply(p.name), validQueryParams)
+                case FHIR_PARAMETER_CATEGORIES.COMPARTMENT =>
+                  ResourceQueryBuilder.constructQueryForCompartment(rtype, p, validQueryParams)
+              }
+            })
+          DocumentManager.andQueries(normalQueries ++ otherQueries.flatten)
+        }
+      })
+    }*/
 
   /**
    * Handle FHIR _revinclude to return revinclude resources
@@ -628,7 +612,7 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
           val searchParameterConf = fhirConfig.findSupportedSearchParameter(linkedResourceType, linkParam).get
           val query = ResourceQueryBuilder.constructQueryForRevInclude(matchedResourceReferences, searchParameterConf)
           DocumentManager
-            .searchDocuments(linkedResourceType, Some(query))
+            .searchDocuments(linkedResourceType, Some(query), Nil)
             .map(_.map(_.fromBson))
       }
     }).map(_.flatten)
@@ -781,7 +765,7 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
    */
   private def resolveCanonicalReferences(rtype: String, canonicalRefs: Set[FhirCanonicalReference]): Future[Seq[Resource]] = {
     val canonicalQuery = SearchUtil.canonicalRefQuery(canonicalRefs.map(cr => cr.getUrl() -> cr.version).toSeq)
-    DocumentManager.searchDocuments(rtype, Some(canonicalQuery))
+    DocumentManager.searchDocuments(rtype, Some(canonicalQuery), Nil)
       .map(_.map(_.fromBson))
       .map(rs =>
         //Get the latest version of resource for each url (this is required when no version is given in canonical URL)
@@ -901,63 +885,134 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
     }.toSet
   }
 
-
   /**
-   * Handle special parameters
+   * Construct query and aggregation filtering phases
    *
-   * @param rtype             Resource Type
-   * @param specialParameters Parsed FHIR special parameters
+   * @param rtype
+   * @param specialParameters
    * @return
    */
-  private def handleSpecialParams(rtype: String, specialParameters: List[Parameter])(implicit transactionSession: Option[TransactionSession] = None): Future[Seq[Option[Bson]]] = {
-    Future.sequence(
-      specialParameters.map(p => p.name match {
-        //Search with ids
-        case FHIR_SEARCH_SPECIAL_PARAMETERS.ID =>
-          Future.apply(Some(ResourceQueryBuilder.constructQueryForIds(p)))
-        //FHIR _list query
-        case FHIR_SEARCH_SPECIAL_PARAMETERS.LIST =>
-          handleListSearch(rtype, p)
-        case FHIR_SEARCH_SPECIAL_PARAMETERS.TEXT | FHIR_SEARCH_SPECIAL_PARAMETERS.CONTENT | FHIR_SEARCH_SPECIAL_PARAMETERS.FILTER =>
-          throw new UnsupportedParameterException(s"Parameter ${p.name} is not supported in onFhir.io!")
-      })
-    )
-  }
-
-  /**
-   * FHIR _list search
-   *
-   * @param rtype     Resource Type
-   * @param parameter Parsed parameter
-   * @return
-   */
-  private def handleListSearch(rtype: String, parameter: Parameter)(implicit transactionSession: Option[TransactionSession] = None): Future[Option[Bson]] = {
-    val listId = parameter.valuePrefixList.map(_._2).head
-    listId match {
-      case currentInd if currentInd.startsWith("$") => throw new UnsupportedParameterException("Parameter _list is not supported for $current-* like queries!")
-      case lid =>
-        //Try to retrieve the list
-        DocumentManager
-          .getDocument("List", lid, includingOrExcludingFields = Some(true -> Set("entry.item"))) //Retrieve the List document with given id (only item reference elements)
-          .map(_.map(_.fromBson))
-          .map(r => r.map(FHIRUtil.extractReferences("entry.item", _))) //extract the references
-          .map(_.map(_.map(FHIRUtil.parseReferenceValue))) //Parse the references
-          .map(_.map(parsedRefs =>
-            parsedRefs
-              .filter(_._1.forall(_ == OnfhirConfig.fhirRootUrl)) //Only the references in our server
-              .filter(_._2 == rtype) //Only the ones refering the given resource type)
-              .map(_._3) //Get resource id
-              .toSet
-          ))
-          .map(_.map(DocumentManager.ridsQuery)) // Construct the query
+  private def getQueryAndFilteringPhasesForSpecialParams(rtype: String, specialParameters: List[Parameter]): (Seq[Bson], Seq[Bson]) = {
+    if(specialParameters.isEmpty)
+      Nil -> Nil
+    else {
+      specialParameters
+        .map(p => p.name match {
+          //Search with ids
+          case FHIR_SEARCH_SPECIAL_PARAMETERS.ID =>
+            Seq(ResourceQueryBuilder.constructQueryForIds(p)) -> Nil
+          //FHIR _list query
+          case FHIR_SEARCH_SPECIAL_PARAMETERS.LIST =>
+            Nil -> getFilteringPhasesForListSearch(rtype, p)
+          case FHIR_SEARCH_SPECIAL_PARAMETERS.TEXT | FHIR_SEARCH_SPECIAL_PARAMETERS.CONTENT | FHIR_SEARCH_SPECIAL_PARAMETERS.FILTER =>
+            throw new UnsupportedParameterException(s"Parameter ${p.name} is not supported in onFhir.io!")
+        })
+        .reduce((s1, s2) => (s1._1 ++ s2._1) -> (s1._2 ++ s2._2))
     }
   }
 
-  private def getReverseChainParamStages(rtype: String, parameter: Parameter):Seq[Bson] = {
-    //Get the resource type to query (the end of revchain)
-    //e.g. Patient?_has:Observation:code=...
-    //e.g. Patient?_has:Observation:patient:_has:AuditEvent:entity:agent=MyUserId
+  /**
+   * Return the Mongodb Aggregation pipeline phases to handle _list search
+   *
+   * @param rtype     Resource type we are searching on
+   * @param parameter Parsed parameter expression
+   * @return
+   */
+  def getFilteringPhasesForListSearch(rtype: String, parameter: Parameter): Seq[Bson] = {
+    val listIds = parameter.valuePrefixList.map(_._2)
+    if (listIds.exists(_.startsWith("$")))
+      throw new UnsupportedParameterException("Parameter _list is not supported for $current-* like queries!")
 
+    val lookupPhase =
+      AggregationUtil
+        .constructLookupPhaseExpression(
+          col = "List",
+          localFieldPath = "id",
+          foreignFieldPath = "entry.item.reference.__rid", //Match id of resource with the List.entry.item.reference
+          letVariablePathMap = Map("rid" -> "id"), //We will use these again for comparison
+          pipeline =
+            Seq(
+              Aggregates.`match`(Filters.in("id", listIds: _*)).toBsonDocument, //Only with given List(s)
+              Aggregates.unwind("$entry").toBsonDocument, //Unwind the entry array
+              Aggregates.`match`(
+                Filters.expr(Filters.and(
+                  AggregationUtil.constructAggEqual(BsonString("$entry.item.reference.__rtype"), BsonString(rtype)),
+                  AggregationUtil.constructAggEqual(BsonString("$entry.item.reference.__rid"), BsonString("$$rid")),
+                  AggregationUtil.constructAggNotEqual(BsonString("$entry.deleted"), BsonBoolean(true))
+                ))).toBsonDocument,
+              Aggregates.count("count").toBsonDocument //Count the matched items
+            ),
+          as = "_list"
+        )
+    //Filter the ones that has at least one matching
+    val checkPhase = Aggregates.filter(Filters.gt("_list.count", 0))
+    val deletionOfExtraField = Aggregates.project(Projections.exclude("_list"))
+    Seq(lookupPhase, checkPhase, deletionOfExtraField)
+  }
+  /*
+    /**
+     * Handle special parameters
+     *
+     * @param rtype             Resource Type
+     * @param specialParameters Parsed FHIR special parameters
+     * @return
+     */
+    private def handleSpecialParams(rtype: String, specialParameters: List[Parameter])(implicit transactionSession: Option[TransactionSession] = None): Future[Seq[Option[Bson]]] = {
+      Future.sequence(
+        specialParameters.map(p => p.name match {
+          //Search with ids
+          case FHIR_SEARCH_SPECIAL_PARAMETERS.ID =>
+            Future.apply(Some(ResourceQueryBuilder.constructQueryForIds(p)))
+          //FHIR _list query
+          case FHIR_SEARCH_SPECIAL_PARAMETERS.LIST =>
+            handleListSearch(rtype, p)
+          case FHIR_SEARCH_SPECIAL_PARAMETERS.TEXT | FHIR_SEARCH_SPECIAL_PARAMETERS.CONTENT | FHIR_SEARCH_SPECIAL_PARAMETERS.FILTER =>
+            throw new UnsupportedParameterException(s"Parameter ${p.name} is not supported in onFhir.io!")
+        })
+      )
+    }
+
+    /**
+     * FHIR _list search
+     *
+     * @param rtype     Resource Type
+     * @param parameter Parsed parameter
+     * @return
+     */
+    private def handleListSearch(rtype: String, parameter: Parameter)(implicit transactionSession: Option[TransactionSession] = None): Future[Option[Bson]] = {
+      val listId = parameter.valuePrefixList.map(_._2).head
+      listId match {
+        case currentInd if currentInd.startsWith("$") => throw new UnsupportedParameterException("Parameter _list is not supported for $current-* like queries!")
+        case lid =>
+          //Try to retrieve the list
+          DocumentManager
+            .getDocument("List", lid, includingOrExcludingFields = Some(true -> Set("entry.item"))) //Retrieve the List document with given id (only item reference elements)
+            .map(_.map(_.fromBson))
+            .map(r => r.map(FHIRUtil.extractReferences("entry.item", _))) //extract the references
+            .map(_.map(_.map(FHIRUtil.parseReferenceValue))) //Parse the references
+            .map(_.map(parsedRefs =>
+              parsedRefs
+                .filter(_._1.forall(_ == OnfhirConfig.fhirRootUrl)) //Only the references in our server
+                .filter(_._2 == rtype) //Only the ones refering the given resource type)
+                .map(_._3) //Get resource id
+                .toSet
+            ))
+            .map(_.map(DocumentManager.ridsQuery)) // Construct the query
+      }
+    }*/
+
+  /**
+   * Construct the Mongodb filtering aggregation phases for reverse chain param
+   *
+   * @param rtype     Resource type that we are searching on
+   * @param parameter Parsed parameter
+   * @return
+   */
+  private def getReverseChainParamStages(rtype: String, parameter: Parameter): Seq[Bson] = {
+    //Get the resource type to query (the end of revchain)
+    //e.g. Patient?_has:Observation:patient:code=...
+    //e.g. Patient?_has:Observation:patient:_has:AuditEvent:entity:agent=MyUserId
+    //e.g. Practitioner?_has:Patient:general-practitioner:_has:Observation:patient:code=http://loinc.org|15074-8
     val rtypeToQuery = parameter.chain.last._1
     val searchParameterConf = fhirConfig.findSupportedSearchParameter(rtypeToQuery, parameter.name)
     if (searchParameterConf.isEmpty)
@@ -966,71 +1021,63 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
     //Construct the Query on the leaf of chain to find the resource references
     val query = ResourceQueryBuilder.constructQueryForNormal(parameter, searchParameterConf.get, fhirConfig.getSupportedParameters(rtypeToQuery))
 
-    //Keep the resource type for each iteration
-    var previousResourceType = rtype
     var previousPrefix: Option[String] = None
     val chainLookupPhases =
       parameter.chain
-        .sliding(2)
-        .filter(_.length == 2) //Eliminate for single chain
-        .map(s => s.head -> s.last)
+        .dropRight(1)
         .map {
-          //e.g. (Patient, subject), (Practitioner, general-practitioner)
-          case ((c1rtype, c1param), (_, c2param)) =>
-            val chainedSearchParamConf = fhirConfig.findSupportedSearchParameter(previousResourceType, c1param)
+          //e.g. (Patient, general-practitioner)
+          case (c1rtype, c1param) =>
+            val chainedSearchParamConf = fhirConfig.findSupportedSearchParameter(c1rtype, c1param)
             if (chainedSearchParamConf.isEmpty || chainedSearchParamConf.get.ptype != FHIR_PARAMETER_TYPES.REFERENCE)
-              throw new UnsupportedParameterException(s"Parameter $c1param is not supported on $previousResourceType or cannot be used for chaining!")
+              throw new UnsupportedParameterException(s"Parameter $c1param is not supported on $c1rtype or cannot be used for chaining!")
             //Get chained reference path for resource identifier that is chained
-            // e.g. Observation --> subject.reference.__rid
-            val chainedPath = previousPrefix.map(p => p + ".").getOrElse("") + chainedSearchParamConf.get.extractElementPaths().head + ".reference.__rid"
-
-            //Find the next chaining param e.g. general-practitioner
-            val chained2SearchParamConf = fhirConfig.findSupportedSearchParameter(c1rtype, c2param)
-            if (chainedSearchParamConf.isEmpty || chainedSearchParamConf.get.ptype != FHIR_PARAMETER_TYPES.REFERENCE)
-              throw new UnsupportedParameterException(s"Parameter $c2param is not supported on $c1rtype or cannot be used for chaining!")
-            //Find the parameter to keep for next chaining e.g. Patient--> generalPractitioner
-            val elementToInclude = chained2SearchParamConf.get.extractElementPaths().head.split('.').head
+            // e.g. Patient --> generalPractitioner.reference.__rid
+            val chainedPath = chainedSearchParamConf.get.extractElementPaths().head + ".reference.__rid"
+            val idPath = previousPrefix.map(p => p + ".").getOrElse("") + "id"
             //Set previous resource type and prefix
-            previousResourceType = c1rtype
             previousPrefix = Some(s"${c1rtype}_$c1param")
             //Construct the $lookup expression for chaining
             //e.g. { $lookup: {
             //  from: "Patient",
-            //  localField: "subject.reference.__rid",
-            //  foreignField: "id",
+            //  localField: "id",
+            //  foreignField: "generalPractitioner.reference.__rid",
             //  pipeline: [
             //    {
-            //      $project: {"generalPractitioner": 1}
+            //      $project: {"id": 1}
             //    }
             //  ],
-            //  as: "Patient_subject",
+            //  as: "Patient_general-practitioner",
             //}}
             AggregationUtil
-              .constructLookupPhaseExpression(c1rtype, chainedPath, "id", Seq(Aggregates.project(Projections.include(elementToInclude)).toBsonDocument), s"${c1rtype}_$c1param")
-        }.toSeq
+              .constructLookupPhaseExpression(c1rtype, idPath, chainedPath, Seq(Aggregates.project(Projections.include("id")).toBsonDocument), s"${c1rtype}_$c1param")
+        }
 
-    //Leaf lookup
+    //Leaf lookup e.g. (Observation, patient)
     val (crtype, cparam) = parameter.chain.last
-    val chainedSearchParamConf = fhirConfig.findSupportedSearchParameter(previousResourceType, cparam)
-    val chainedPath = previousPrefix.map(p => p + ".").getOrElse("") + chainedSearchParamConf.get.extractElementPaths().head + ".reference.__rid"
+    val chainedSearchParamConf = fhirConfig.findSupportedSearchParameter(crtype, cparam)
+    if(chainedSearchParamConf.isEmpty)
+      throw new UnsupportedParameterException(s"Parameter $cparam is not supported on $crtype or cannot be used for reverse chaining!")
+    val chainedPath = chainedSearchParamConf.get.extractElementPaths().head + ".reference.__rid"
+    val idPath = previousPrefix.map(p => p + ".").getOrElse("") + "id"
     //Construct last lookup phase for leaf
     //e.g.{
-    //  from: "Practitioner",
-    //  localField: "Patient_subject.generalPractitioner.reference.__rid",
-    //  foreignField: "id",
+    //  from: "Observation",
+    //  localField: "Patient_general-practitioner.id",
+    //  foreignField: "subject.reference.__rid",
     //  pipeline: [
     //    {
-    //      $match: { gender: "male" },
+    //      $match: { code.coding.code: "..." },
     //    },
     //    {
     //      $project: { _id: 1 },
     //    },
     //  ],
-    //  as: "Practitioner_general-practitioner",
+    //  as: "Observation_patient",
     //}
     val leafLookupPhases = Seq(
       AggregationUtil
-        .constructLookupPhaseExpression(crtype, chainedPath, "id", Seq(Aggregates.`match`(query).toBsonDocument, Aggregates.project(Projections.include("_id")).toBsonDocument), s"${crtype}_$cparam"),
+        .constructLookupPhaseExpression(crtype, idPath, chainedPath, Seq(Aggregates.`match`(query).toBsonDocument, Aggregates.project(Projections.include("_id")).toBsonDocument), s"${crtype}_$cparam"),
       Aggregates.filter(AggregationUtil.constructGreaterThanSizeExpression(s"${crtype}_$cparam", 0)) //At least one resource should satisfy
     )
 
@@ -1041,100 +1088,102 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
 
     chainPhases
   }
+  /*
+    /**
+     * Handle FHIR _has search (Reverse chain)
+     *
+     * @param rtype     Resource Type to search
+     * @param parameter Parsed parameter
+     * @return
+     */
+    private def handleReverseChainParam(rtype: String, parameter: Parameter)(implicit transactionSession: Option[TransactionSession] = None): Future[Option[Bson]] = {
+      //Get the resource type to query (the end of revchain)
+      //e.g. Patient?_has:Observation:patient:_has:AuditEvent:entity:agent=MyUserId
+      val rtypeToQuery = parameter.chain.last._1
+      val searchParameterConf = fhirConfig.findSupportedSearchParameter(rtypeToQuery, parameter.name)
+      if (searchParameterConf.isEmpty)
+        throw new UnsupportedParameterException(s"Parameter ${parameter.name} is not supported on $rtypeToQuery within '_has' query!")
 
-  /**
-   * Handle FHIR _has search (Reverse chain)
-   *
-   * @param rtype     Resource Type to search
-   * @param parameter Parsed parameter
-   * @return
-   */
-  private def handleReverseChainParam(rtype: String, parameter: Parameter)(implicit transactionSession: Option[TransactionSession] = None): Future[Option[Bson]] = {
-    //Get the resource type to query (the end of revchain)
-    //e.g. Patient?_has:Observation:patient:_has:AuditEvent:entity:agent=MyUserId
-    val rtypeToQuery = parameter.chain.last._1
-    val searchParameterConf = fhirConfig.findSupportedSearchParameter(rtypeToQuery, parameter.name)
-    if (searchParameterConf.isEmpty)
-      throw new UnsupportedParameterException(s"Parameter ${parameter.name} is not supported on $rtypeToQuery within '_has' query!")
-
-    //Construct the Query on the leaf of chain to find the resource references
-    val query = ResourceQueryBuilder.constructQueryForNormal(parameter, searchParameterConf.get, fhirConfig.getSupportedParameters(rtypeToQuery))
-    //Find the path of reference
-    val chainParameterConf = fhirConfig.findSupportedSearchParameter(rtypeToQuery, parameter.chain.last._2)
-    if (chainParameterConf.isEmpty)
-      throw new UnsupportedParameterException(s"Parameter ${parameter.chain.last._2} is not supported on $rtypeToQuery within '_has' query!")
-
-    //Find the paths of reference element to return
-    val referencePaths = chainParameterConf.get.extractElementPaths().toSet
-    //Run query but only return the references on chain parameter
-    var fresourceReferences = DocumentManager
-      .searchDocuments(rtypeToQuery, Some(query), includingOrExcludingFields = Some(true -> referencePaths))
-      .map(_.map(_.fromBson))
-      .map(
-        _.flatMap(r =>
-          referencePaths.flatMap(rpath => FHIRUtil.extractReferences(rpath, r))
-        )
-      )
-
-    // Come from deep in revchain by evaluating from right
-    fresourceReferences =
-      parameter.chain
-        .dropRight(1) // We already evaluate the last one
-        .foldRight(fresourceReferences)(findResourceReferencesInResources)
-
-    fresourceReferences.map {
-      case Nil => None //No such resource
-      case references =>
-        val rids = references
-          .map(FHIRUtil.parseReferenceValue) //Parse the reference value
-          .filter(_._1.forall(_ == OnfhirConfig.fhirRootUrl)) //Only the references in our server
-          .filter(_._2 == rtype) //Only the ones refering the given resource type
-          .map(_._3)
-          .toSet
-        //Return the query
-        Some(DocumentManager.ridsQuery(rids))
-    }
-  }
-
-
-  /** *
-   * Within the given resources (by references)  find resource references within the given parameter
-   *
-   * @param rtypeAndChainParamName Resource Type and Chain Parameter Name
-   * @param freferences            References to the resources that search will be on
-   * @return
-   */
-  private def findResourceReferencesInResources(rtypeAndChainParamName: (String, String), freferences: Future[Seq[String]])(implicit transactionSession: Option[TransactionSession] = None): Future[Seq[String]] = {
-    freferences.flatMap(references => {
-      val rids =
-        references
-          .map(FHIRUtil.parseReferenceValue) //Parse the reference value
-          .filter(_._1.forall(_ == OnfhirConfig.fhirRootUrl)) //Only the references in our server
-          .filter(_._2 == rtypeAndChainParamName._1) //Only the ones refering the given resource type
-          .map(_._3)
-          .toSet
-
+      //Construct the Query on the leaf of chain to find the resource references
+      val query = ResourceQueryBuilder.constructQueryForNormal(parameter, searchParameterConf.get, fhirConfig.getSupportedParameters(rtypeToQuery))
       //Find the path of reference
-      val chainParameterConf = fhirConfig.findSupportedSearchParameter(rtypeAndChainParamName._1, rtypeAndChainParamName._2)
+      val chainParameterConf = fhirConfig.findSupportedSearchParameter(rtypeToQuery, parameter.chain.last._2)
       if (chainParameterConf.isEmpty)
-        throw new UnsupportedParameterException(s"Parameter ${rtypeAndChainParamName._2} is not supported on ${rtypeAndChainParamName._1} within '_has' query!")
+        throw new UnsupportedParameterException(s"Parameter ${parameter.chain.last._2} is not supported on $rtypeToQuery within '_has' query!")
 
       //Find the paths of reference element to return
       val referencePaths = chainParameterConf.get.extractElementPaths().toSet
-      //Go and get the references inside the given resources
-      getResourcesWithIds(rtypeAndChainParamName._1, rids, Some(true -> referencePaths), excludeExtraFields = true)
+      //Run query but only return the references on chain parameter
+      var fresourceReferences = DocumentManager
+        .searchDocuments(rtypeToQuery, Some(query), includingOrExcludingFields = Some(true -> referencePaths))
+        .map(_.map(_.fromBson))
         .map(
           _.flatMap(r =>
             referencePaths.flatMap(rpath => FHIRUtil.extractReferences(rpath, r))
           )
         )
-    })
-  }
+
+      // Come from deep in revchain by evaluating from right
+      fresourceReferences =
+        parameter.chain
+          .dropRight(1) // We already evaluate the last one
+          .foldRight(fresourceReferences)(findResourceReferencesInResources)
+
+      fresourceReferences.map {
+        case Nil => None //No such resource
+        case references =>
+          val rids = references
+            .map(FHIRUtil.parseReferenceValue) //Parse the reference value
+            .filter(_._1.forall(_ == OnfhirConfig.fhirRootUrl)) //Only the references in our server
+            .filter(_._2 == rtype) //Only the ones refering the given resource type
+            .map(_._3)
+            .toSet
+          //Return the query
+          Some(DocumentManager.ridsQuery(rids))
+      }
+    }
+
+
+    /** *
+     * Within the given resources (by references)  find resource references within the given parameter
+     *
+     * @param rtypeAndChainParamName Resource Type and Chain Parameter Name
+     * @param freferences            References to the resources that search will be on
+     * @return
+     */
+    private def findResourceReferencesInResources(rtypeAndChainParamName: (String, String), freferences: Future[Seq[String]])(implicit transactionSession: Option[TransactionSession] = None): Future[Seq[String]] = {
+      freferences.flatMap(references => {
+        val rids =
+          references
+            .map(FHIRUtil.parseReferenceValue) //Parse the reference value
+            .filter(_._1.forall(_ == OnfhirConfig.fhirRootUrl)) //Only the references in our server
+            .filter(_._2 == rtypeAndChainParamName._1) //Only the ones refering the given resource type
+            .map(_._3)
+            .toSet
+
+        //Find the path of reference
+        val chainParameterConf = fhirConfig.findSupportedSearchParameter(rtypeAndChainParamName._1, rtypeAndChainParamName._2)
+        if (chainParameterConf.isEmpty)
+          throw new UnsupportedParameterException(s"Parameter ${rtypeAndChainParamName._2} is not supported on ${rtypeAndChainParamName._1} within '_has' query!")
+
+        //Find the paths of reference element to return
+        val referencePaths = chainParameterConf.get.extractElementPaths().toSet
+        //Go and get the references inside the given resources
+        getResourcesWithIds(rtypeAndChainParamName._1, rids, Some(true -> referencePaths), excludeExtraFields = true)
+          .map(
+            _.flatMap(r =>
+              referencePaths.flatMap(rpath => FHIRUtil.extractReferences(rpath, r))
+            )
+          )
+      })
+    }
+  */
 
   /**
    * Return Mongodb Aggregation phases to handle the chain param for filtering
-   * @param rtype       Resource type we are running the search on
-   * @param parameter   Parsed chained parameter
+   *
+   * @param rtype     Resource type we are running the search on
+   * @param parameter Parsed chained parameter
    * @return
    */
   private def getChainParamStages(rtype: String, parameter: Parameter): Seq[Bson] = {
@@ -1194,6 +1243,9 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
     //Leaf lookup
     val (crtype, cparam) = parameter.chain.last
     val chainedSearchParamConf = fhirConfig.findSupportedSearchParameter(previousResourceType, cparam)
+    if(chainedSearchParamConf.isEmpty)
+      throw new UnsupportedParameterException(s"Parameter $cparam is not supported on $previousResourceType or cannot be used for chaining!")
+
     val chainedPath = previousPrefix.map(p => p + ".").getOrElse("") + chainedSearchParamConf.get.extractElementPaths().head + ".reference.__rid"
     //Construct last lookup phase for leaf
     //e.g.{
@@ -1224,76 +1276,76 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
     chainPhases
   }
 
+  /*
+    /**
+     * Handle a chain parameter and returns a query indicating this chained search
+     *
+     * @param rtype     Resource Type to search
+     * @param parameter Parsed Chained Parameter definition
+     * @return
+     */
+    private def handleChainParam(rtype: String, parameter: Parameter)(implicit transactionSession: Option[TransactionSession] = None): Future[Option[Bson]] = {
+      //Get the resource type to query (the end of chain)
+      // e.g. /DiagnosticReport?subject:Patient.name=peter --> chain=List(Patient, subject) --> Patient
+      // e.g. /DiagnosticReport?subject:Patient.general-practitioner.name=peter --> chain=List(Patient -> subject, Practitioner -> general-practitioner)
+      val rtypeToQuery = parameter.chain.last._1
+      val searchParameterConf = fhirConfig.findSupportedSearchParameter(rtypeToQuery, parameter.name)
+      if (searchParameterConf.isEmpty)
+        throw new UnsupportedParameterException(s"Parameter ${parameter.name} is not supported on $rtypeToQuery within chained query!")
 
-  /**
-   * Handle a chain parameter and returns a query indicating this chained search
-   *
-   * @param rtype     Resource Type to search
-   * @param parameter Parsed Chained Parameter definition
-   * @return
-   */
-  private def handleChainParam(rtype: String, parameter: Parameter)(implicit transactionSession: Option[TransactionSession] = None): Future[Option[Bson]] = {
-    //Get the resource type to query (the end of chain)
-    // e.g. /DiagnosticReport?subject:Patient.name=peter --> chain=List(Patient, subject) --> Patient
-    // e.g. /DiagnosticReport?subject:Patient.general-practitioner.name=peter --> chain=List(Patient -> subject, Practitioner -> general-practitioner)
-    val rtypeToQuery = parameter.chain.last._1
-    val searchParameterConf = fhirConfig.findSupportedSearchParameter(rtypeToQuery, parameter.name)
-    if (searchParameterConf.isEmpty)
-      throw new UnsupportedParameterException(s"Parameter ${parameter.name} is not supported on $rtypeToQuery within chained query!")
+      //Run the Query on the leaf of chain to find the resource references
+      val query = ResourceQueryBuilder.constructQueryForNormal(parameter, searchParameterConf.get, fhirConfig.getSupportedParameters(rtypeToQuery))
+      var fresourceReferences =
+        DocumentManager.searchDocumentsReturnIds(rtypeToQuery, query)
+          .map(rids => rids.map(rid => s"$rtypeToQuery/$rid")) //Only get ids and convert them to references
 
-    //Run the Query on the leaf of chain to find the resource references
-    val query = ResourceQueryBuilder.constructQueryForNormal(parameter, searchParameterConf.get, fhirConfig.getSupportedParameters(rtypeToQuery))
-    var fresourceReferences =
-      DocumentManager.searchDocumentsReturnIds(rtypeToQuery, query)
-        .map(rids => rids.map(rid => s"$rtypeToQuery/$rid")) //Only get ids and convert them to references
-
-    //Resource Type chains by references e.g. DiagnosticReport or DiagnosticReport, Patient
-    val rtypeChain = rtype +: parameter.chain.map(_._1).dropRight(1)
-    //Reference param names chain e.g. subject or subject, general-practitioner
-    val refParamChain = parameter.chain.map(_._2)
-    //Zip these
-    val chain = rtypeChain.zip(refParamChain)
-    // Come from deep in chain by evaluating from right
-    fresourceReferences = chain.tail.foldRight(fresourceReferences)(findResourceIdsReferingChained)
-    //Construct last query
-    fresourceReferences.map {
-      case Nil => None //If the chain search result is empty, we don't have exra query
-      case refs => Some(constructQueryForChained(chain.head._1, chain.head._2, refs))
+      //Resource Type chains by references e.g. DiagnosticReport or DiagnosticReport, Patient
+      val rtypeChain = rtype +: parameter.chain.map(_._1).dropRight(1)
+      //Reference param names chain e.g. subject or subject, general-practitioner
+      val refParamChain = parameter.chain.map(_._2)
+      //Zip these
+      val chain = rtypeChain.zip(refParamChain)
+      // Come from deep in chain by evaluating from right
+      fresourceReferences = chain.tail.foldRight(fresourceReferences)(findResourceIdsReferingChained)
+      //Construct last query
+      fresourceReferences.map {
+        case Nil => None //If the chain search result is empty, we don't have exra query
+        case refs => Some(constructQueryForChained(chain.head._1, chain.head._2, refs))
+      }
     }
-  }
 
-  /**
-   * Construct query for chained searches
-   *
-   * @param rtype      Resource type
-   * @param pname      Parameter name
-   * @param references All Resource references to search
-   * @return
-   */
-  private def constructQueryForChained(rtype: String, pname: String, references: Seq[String]): Bson = {
-    val parameter = Parameter(FHIR_PARAMETER_CATEGORIES.NORMAL, FHIR_PARAMETER_TYPES.REFERENCE, pname, references.map(r => "" -> r))
-    val searchParamConf = fhirConfig.findSupportedSearchParameter(rtype, pname)
-    if (searchParamConf.isEmpty)
-      throw new UnsupportedParameterException(s"Parameter $pname is not supported on $rtype within chained query!")
-    ResourceQueryBuilder.constructQueryForSimpleParameter(parameter, searchParamConf.get)
-  }
+    /**
+     * Construct query for chained searches
+     *
+     * @param rtype      Resource type
+     * @param pname      Parameter name
+     * @param references All Resource references to search
+     * @return
+     */
+    private def constructQueryForChained(rtype: String, pname: String, references: Seq[String]): Bson = {
+      val parameter = Parameter(FHIR_PARAMETER_CATEGORIES.NORMAL, FHIR_PARAMETER_TYPES.REFERENCE, pname, references.map(r => "" -> r))
+      val searchParamConf = fhirConfig.findSupportedSearchParameter(rtype, pname)
+      if (searchParamConf.isEmpty)
+        throw new UnsupportedParameterException(s"Parameter $pname is not supported on $rtype within chained query!")
+      ResourceQueryBuilder.constructQueryForSimpleParameter(parameter, searchParamConf.get)
+    }
 
-  /**
-   * Find resource ids that refer the given resources
-   *
-   * @param rtypeAndPName Resource Type and reference parameter name to search
-   * @param fcids         given resource ids to refer
-   * @return
-   */
-  private def findResourceIdsReferingChained(rtypeAndPName: (String, String), fcids: Future[Seq[String]])(implicit transactionSession: Option[TransactionSession] = None): Future[Seq[String]] = {
-    fcids.flatMap(cids => {
-      val query = constructQueryForChained(rtypeAndPName._1, rtypeAndPName._2, cids)
-      DocumentManager.searchDocumentsReturnIds(rtypeAndPName._1, query)
-        .map(rids =>
-          rids.map(rid => s"${rtypeAndPName._1}/$rid")
-        )
-    })
-  }
+    /**
+     * Find resource ids that refer the given resources
+     *
+     * @param rtypeAndPName Resource Type and reference parameter name to search
+     * @param fcids         given resource ids to refer
+     * @return
+     */
+    private def findResourceIdsReferingChained(rtypeAndPName: (String, String), fcids: Future[Seq[String]])(implicit transactionSession: Option[TransactionSession] = None): Future[Seq[String]] = {
+      fcids.flatMap(cids => {
+        val query = constructQueryForChained(rtypeAndPName._1, rtypeAndPName._2, cids)
+        DocumentManager.searchDocumentsReturnIds(rtypeAndPName._1, query)
+          .map(rids =>
+            rids.map(rid => s"${rtypeAndPName._1}/$rid")
+          )
+      })
+    }*/
 
   /**
    * Returns a specific version of a resource. If version id is not provided then the current version is return
@@ -1342,7 +1394,7 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
    */
   def getResourcesWithIds(rtype: String, rids: Set[String], includingOrExcludingFields: Option[(Boolean, Set[String])] = None, excludeExtraFields: Boolean = false)(implicit transactionSession: Option[TransactionSession] = None): Future[Seq[Resource]] = {
     DocumentManager
-      .searchDocuments(rtype, Some(DocumentManager.ridsQuery(rids)), includingOrExcludingFields = includingOrExcludingFields, excludeExtraFields = excludeExtraFields)
+      .searchDocuments(rtype, Some(DocumentManager.ridsQuery(rids)), Nil, includingOrExcludingFields = includingOrExcludingFields, excludeExtraFields = excludeExtraFields)
       .map(_.map(_.fromBson))
   }
 
@@ -1390,20 +1442,18 @@ class ResourceManager(fhirConfig: FhirServerConfig, fhirEventBus: IFhirEventBus 
       case Right(_) => throw new NotImplementedError("Offset based pagination is not supported for searching history!")
     }
 
-    val listQueryFuture = searchParameters.find(_.name == FHIR_SEARCH_SPECIAL_PARAMETERS.LIST) match {
-      case None => Future.apply(None)
-      case Some(p) => handleListSearch(rtype, p)
-    }
+    val listFilteringStages: Seq[Bson] =
+      searchParameters
+        .find(_.name == FHIR_SEARCH_SPECIAL_PARAMETERS.LIST)
+        .map(p => getFilteringPhasesForListSearch(rtype, p))
+        .getOrElse(Nil)
 
-    val result = listQueryFuture flatMap (listQuery => {
+    val result =
       if (at.isDefined) {
-        val finalQuery = DocumentManager.andQueries(listQuery.toSeq :+ atQuery(at.get))
-        DocumentManager.searchHistoricDocumentsWithAt(rtype, rid, finalQuery, count, page)
+        DocumentManager.searchHistoricDocumentsWithAt(rtype, rid, Some(atQuery(at.get)),listFilteringStages, count, page)
       } else {
-        val finalQuery = DocumentManager.andQueries(since.map(sinceQuery).toSeq ++ listQuery.toSeq)
-        DocumentManager.searchHistoricDocuments(rtype, rid, finalQuery, count, page)
+        DocumentManager.searchHistoricDocuments(rtype, rid, since.map(sinceQuery),listFilteringStages, count, page)
       }
-    })
 
     result
       .map {
