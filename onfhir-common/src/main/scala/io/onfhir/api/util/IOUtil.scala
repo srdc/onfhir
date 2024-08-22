@@ -142,6 +142,20 @@ object IOUtil {
   }
 
   /**
+   * Given a filename, removes its extension if an extension exists (e.g., admissions.json -> admissions)
+   * @param fileName
+   * @return
+   */
+  def removeFileExtension(fileName: String): String = {
+    val lastDotIndex = fileName.lastIndexOf('.')
+    if (lastDotIndex != -1) {
+      fileName.substring(0, lastDotIndex)
+    } else {
+      fileName // No extension found, return the original file name
+    }
+  }
+
+  /**
    * Read and parse FHIR Bundle file
    *
    * @param baseDefinitionsPath        Path to retrieve base FHIR definitions zip
