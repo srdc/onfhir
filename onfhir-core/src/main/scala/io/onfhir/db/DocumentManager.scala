@@ -248,7 +248,7 @@ object DocumentManager {
       //Sort on id
       query =
         query
-          .sort(ascending(FHIR_COMMON_FIELDS.MONGO_ID))
+          .sort(if(offset.forall(_._2)) ascending(FHIR_COMMON_FIELDS.MONGO_ID) else descending(FHIR_COMMON_FIELDS.MONGO_ID))
           .limit(count)
 
       //Handle projection
@@ -258,10 +258,13 @@ object DocumentManager {
       query
         .toFuture()
         .map(docs => {
-          val offsetBefore = docs.headOption.map(d => d.getObjectId(FHIR_COMMON_FIELDS.MONGO_ID).toString).toSeq
-          val offsetAfter = docs.lastOption.map(d => d.getObjectId(FHIR_COMMON_FIELDS.MONGO_ID).toString).toSeq
-          val finalDocs = if(excludeExtraFields) docs.map(d => d.filter(_._1 == FHIR_COMMON_FIELDS.MONGO_ID)) else docs
+          var finalDocs = if(offset.forall(_._2)) docs else docs.reverse
+          val offsetBefore = finalDocs.headOption.map(d => d.getObjectId(FHIR_COMMON_FIELDS.MONGO_ID).toString).toSeq
+          val offsetAfter = finalDocs.lastOption.map(d => d.getObjectId(FHIR_COMMON_FIELDS.MONGO_ID).toString).toSeq
+          finalDocs = if(excludeExtraFields) finalDocs.map(d => d.filter(_._1 == FHIR_COMMON_FIELDS.MONGO_ID)) else finalDocs
+
           (offsetBefore, offsetAfter, finalDocs)
+
         })
     }
   }

@@ -229,7 +229,6 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
         val offsetOpt = if(!offset._1.exists(_ != "")) None else Some(offset)
         queryResourcesDirectlyWithOffsetPagination(rtype, finalQuery, count, offsetOpt, sortingFields, elementsIncludedOrExcluded, excludeExtraFields, needTotal)
     }
-
   }
 
   /**
