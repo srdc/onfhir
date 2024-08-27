@@ -294,8 +294,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
    * @return
    */
   @FhirPathFunction(documentation = "\uD83D\uDCDC Checks if the given value is a FHIR Quantity expression e.g. 5.2, >7.1, etc. Returns true if given value is numeric, or given value evaluates to string but can be converted to numeric, or given value is string starting with comparators and the remaining string can be converted to numeric; otherwise returns false. If current value returns multiple values, throws exception.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\ntrue or false\n``` \n\uD83D\uDCA1 **E.g.** 5.utl:isFhirQuantityExpression()",
-    insertText = "utl:isFhirQuantityExpression()", detail = "utl", label = "utl:isFhirQuantityExpression", kind = "Method", returnType = Seq("boolean")
-    , inputType = Seq("dateTime", "number", "string"))
+    insertText = "utl:isFhirQuantityExpression()", detail = "utl", label = "utl:isFhirQuantityExpression", kind = "Method", returnType = Seq("boolean"), inputType = Seq("dateTime", "number", "string"))
   def isFhirQuantityExpression(): Seq[FhirPathResult] = {
     current match {
       case Nil => Nil
