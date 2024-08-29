@@ -449,12 +449,19 @@ object PrefixModifierHandler {
 
     //If it is a datetime or instant base query
     if(value.contains("T")){
-      // Build dateTime query on date time and period query on implicit ranges and combine them.
-      or(dateTimeQueryBuilder(FHIRUtil.mergeElementPath(path,FHIR_EXTRA_FIELDS.TIME_TIMESTAMP), prefix, implicitRanges), periodQueryBuilder(rangePaths, prefix, implicitRanges))
+      //We handle this specially as onfhir store this in millisecond precision
+      if(path == "meta.lastUpdated")
+        dateTimeQueryBuilder(FHIRUtil.mergeElementPath(path,FHIR_EXTRA_FIELDS.TIME_TIMESTAMP), prefix, implicitRanges)
+      else
+        // Build dateTime query on date time and period query on implicit ranges and combine them.
+        or(dateTimeQueryBuilder(FHIRUtil.mergeElementPath(path,FHIR_EXTRA_FIELDS.TIME_TIMESTAMP), prefix, implicitRanges), periodQueryBuilder(rangePaths, prefix, implicitRanges))
     } else {
-      //If it is year, year-month, or date query
-      //Query over the sub date field
-      or(dateQueryBuilder(FHIRUtil.mergeElementPath(path,FHIR_EXTRA_FIELDS.TIME_DATE), prefix, implicitRanges), periodQueryBuilder(rangePaths, prefix, implicitRanges))
+      if(path == "meta.lastUpdated")
+        dateQueryBuilder(FHIRUtil.mergeElementPath(path,FHIR_EXTRA_FIELDS.TIME_DATE), prefix, implicitRanges)
+      else
+        //If it is year, year-month, or date query
+        //Query over the sub date field
+        or(dateQueryBuilder(FHIRUtil.mergeElementPath(path,FHIR_EXTRA_FIELDS.TIME_DATE), prefix, implicitRanges), periodQueryBuilder(rangePaths, prefix, implicitRanges))
     }
   }
 
