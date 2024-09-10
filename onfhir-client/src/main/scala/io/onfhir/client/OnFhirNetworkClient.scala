@@ -82,10 +82,18 @@ case class OnFhirNetworkClient(serverBaseUrl:String, interceptors:Seq[IHttpReque
   override def next[T <: FHIRPaginatedBundle](bundle: T): Future[T] = {
     val nextPageParams = Uri.apply(bundle.getNext()).query().toMultiMap
     val previousPageParams = bundle.request.request.queryParams
+    // Identify the pagination parameter by comparing the "next" link's parameters with the previous request's parameters
     val paginationParam =
       nextPageParams.find {
-        case (pn, pv) => !previousPageParams.contains(pn) || previousPageParams(pn).toSet != pv.toSet
-      }.getOrElse(throw FhirClientException(s"Problem in response no pagination param found in response!"))
+          case (pn, pv) =>
+            // Check if the parameter is either "_page" or "_skip"
+            (pn.contentEquals("_page") || pn.contentEquals("_skip")) &&
+              // Ensure that either the parameter does not exist in the previous request,
+              // or it has a different value compared to the "next" link's parameter
+              (!previousPageParams.contains(pn) || previousPageParams(pn).toSet != pv.toSet)
+        }
+        // If no pagination parameter is found, throw an exception indicating a problem with the FHIR client response
+        .getOrElse(throw FhirClientException(s"Problem in response no pagination param found in response!"))
 
     //Set the new page
     bundle.request match {
