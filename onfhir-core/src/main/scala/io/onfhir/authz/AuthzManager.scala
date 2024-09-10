@@ -26,8 +26,7 @@ class AuthzManager(fhirConfigurationManager: IFhirConfigurationManager) {
   //Logger
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
   val resourceChecker = new ResourceChecker(fhirConfigurationManager.fhirConfig)
-  val fhirServerUtil: FHIRServerUtil = fhirConfigurationManager.fhirServerUtil
-  val resourceManager: ResourceManager = fhirConfigurationManager.resourceManager
+
   /**
     * Our authorization directive
     * @param authzContext Authorization context if any resolved
@@ -191,10 +190,10 @@ class AuthzManager(fhirConfigurationManager: IFhirConfigurationManager) {
       //Only include the required parameter paths to minimize parsing, etc
       val includedElements =
         resourceRestrictions
-          .map(p=> fhirServerUtil.extractElementPaths(fhirRequest.resourceType.get, p))
+          .map(p=> fhirConfigurationManager.fhirServerUtil.extractElementPaths(fhirRequest.resourceType.get, p))
           .reduce((s1,s2) => s1 ++ s2)
       //Retrieve the mentioned document
-      resourceManager
+      fhirConfigurationManager.resourceManager
         .getResource(fhirRequest.resourceType.get, fhirRequest.resourceId.get, fhirRequest.versionId, includingOrExcludingFields = Some(true -> includedElements), excludeExtraFields = true)
         .map(_.forall(r => resourceChecker.checkIfResourceSatisfies(fhirRequest.resourceType.get, resourceRestrictions, r)))
 
