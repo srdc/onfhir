@@ -577,6 +577,8 @@ class FhirPathEvaluatorTest extends Specification {
       //length
       FhirPathEvaluator().evaluateNumerical("Observation.performer.display.length()", observation) mustEqual Seq(12)
       FhirPathEvaluator().evaluate("{}", observation) must empty
+      //encode
+      FhirPathEvaluator().evaluateString("Observation.status.encode()", observation).head mustEqual "ZmluYWw="
     }
     "evaluate paths with tree navigation functions" in {
       FhirPathEvaluator().evaluate("Questionnaire.children()", questionnaire).length mustEqual 12
