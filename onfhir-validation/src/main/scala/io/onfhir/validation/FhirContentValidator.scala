@@ -1467,7 +1467,7 @@ object FhirContentValidator {
   private val TIME_REGEX: Regex = """\A([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\.[0-9]+)?$""".r
   private val OID_REGEX: Regex = """\Aurn:oid:[0-2](\.[1-9]\d*)+$""".r
   private val UUID_REGEX: Regex = """\Aurn:uuid:[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$""".r
-  private val VERSION_REGEX: Regex = """\A[0-9]+(\.[0-9]+)*$""".r
+//  private val VERSION_REGEX: Regex = """\A[0-9]+(\.[0-9]+)*$""".r
 
   /**
    * Construction of the class
@@ -1505,7 +1505,7 @@ object FhirContentValidator {
       case FHIR_DATA_TYPES.CANONICAL => value.extract[String].split('|') match {
         case Array(url) => Try(new URI(url)).isSuccess
         case Array(url, version) =>
-          Try(new URI(url)).isSuccess && VERSION_REGEX.findFirstMatchIn(version).isDefined
+          Try(new URI(url)).isSuccess
         case _ => false
       }
       case FHIR_DATA_TYPES.BOOLEAN => value.isInstanceOf[JBool]
