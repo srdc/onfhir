@@ -69,7 +69,7 @@ class ProfileValidationTest extends Specification {
   ).map(sdParser.parseProfile)
 
 
-  fhirConfig.profileRestrictions = (resourceProfiles ++ dataTypeProfiles ++ otherProfiles ++ extensions ++ extraProfiles).map(p => p.url -> p).toMap
+  fhirConfig.profileRestrictions = (resourceProfiles ++ dataTypeProfiles ++ otherProfiles ++ extensions ++ extraProfiles).map(p => p.url -> Map("latest" -> p)).toMap
   fhirConfig.valueSetRestrictions = new TerminologyParser().parseValueSetBundle(valueSetsOrCodeSystems)
 
   //Make reference validation policy as enforced for DiagnosticReport

@@ -82,5 +82,9 @@ class FHIRUtilTest extends Specification {
       FHIRUtil.getParameterValueByPath(parameters, "match.concept").map(c => (c \ "code").extract[String]).toSet shouldEqual Set("309068002", "309068001")
       FHIRUtil.getParameterValueByPath(parameters, "match.other.x") shouldEqual Seq(JString("y"))
     }
+
+    "find latest FHIR version" in {
+      FHIRUtil.findLatestFhirVersion(Seq("2.1", "2.2", "1.9", "2.2.1")) shouldEqual Some("2.2.1")
+    }
   }
 }

@@ -85,13 +85,15 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
 
     logger.info("Parsing base FHIR foundation resources (base standard) ...")
     //Parsing base definitions
-    val baseResourceProfiles = baseResourceProfileResources.map(foundationResourceParser.parseStructureDefinition).map(p => p.url -> p).toMap
-    val baseDataTypeProfiles = baseDataTypeProfileResources.map(foundationResourceParser.parseStructureDefinition).map(p => p.url -> p).toMap
+    val baseResourceProfiles = parseStructureDefinitionsConvertToMap(foundationResourceParser, baseResourceProfileResources, includeElementMetadata = false)
+    val baseDataTypeProfiles = parseStructureDefinitionsConvertToMap(foundationResourceParser, baseDataTypeProfileResources, includeElementMetadata = false)
+
     val baseProfiles =
       baseResourceProfiles ++
         baseDataTypeProfiles.filter(_._1.split('/').last.head.isUpper) ++
-          baseOtherProfileResources.map(foundationResourceParser.parseStructureDefinition).map(p => p.url -> p).toMap ++
-            baseExtensionProfileResources.map(foundationResourceParser.parseStructureDefinition).map(p => p.url -> p).toMap
+        parseStructureDefinitionsConvertToMap(foundationResourceParser, baseOtherProfileResources, includeElementMetadata = false) ++
+        parseStructureDefinitionsConvertToMap(foundationResourceParser, baseExtensionProfileResources, includeElementMetadata = false)
+
     val baseSearchParameters = baseSearchParameterResources.map(foundationResourceParser.parseSearchParameter).map(s => s.url -> s).toMap
     val baseOperationDefinitions = baseOperationDefinitionResources.map(foundationResourceParser.parseOperationDefinition).map(p => p.url -> p).toMap
     val baseCompartmentDefinitions = baseCompartmentDefinitionResources.map(foundationResourceParser.parseCompartmentDefinition).map(c => c.url -> c).toMap
@@ -113,7 +115,7 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
     logger.info("Parsing given FHIR foundation resources ...")
     //Parsing the Conformance statement into our compact form
     val conformance = foundationResourceParser.parseCapabilityStatement(conformanceResource)
-    val profiles = profileResources.map(foundationResourceParser.parseStructureDefinition).map(p => p.url -> p).toMap
+    val profiles =  parseStructureDefinitionsConvertToMap(foundationResourceParser, profileResources, includeElementMetadata = false)
     val searchParameters = searchParameterResources.map(foundationResourceParser.parseSearchParameter).map(s => s.url -> s).toMap
     val operationDefs = operationDefResources.map(opDef => foundationResourceParser.parseOperationDefinition(opDef)).map(o => o.url -> o).toMap
     val compartments = compartmentDefResources.map(foundationResourceParser.parseCompartmentDefinition).map(c => c.url -> c).toMap
@@ -125,7 +127,7 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
     fhirConfig = validateAndConfigureProfiles(fhirConfig, conformance, profiles, baseProfiles)
 
     logger.info("Configuring supported FHIR search parameters for supported resources ...")
-    fhirConfig = validateAndConfigureSearchParameters(fhirConfig, conformance, searchParameters, baseSearchParameters, baseProfiles ++ profiles)
+    fhirConfig = validateAndConfigureSearchParameters(fhirConfig, conformance, searchParameters, baseSearchParameters)
 
     logger.info("Configuring supported FHIR operations ...")
     fhirConfig = validateAndConfigureOperations(fhirConfig, conformance, operationDefs, baseOperationDefinitions, fhirOperationImplms)
@@ -280,39 +282,41 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
    * @param baseProfiles          Base profiles given in standard bundle
    * @return
    */
-  protected def validateAndConfigureProfiles(fhirConfig: FhirServerConfig, conformance:FHIRCapabilityStatement, profiles:Map[String, ProfileRestrictions], baseProfiles:Map[String, ProfileRestrictions]):FhirServerConfig = {
+  protected def validateAndConfigureProfiles(fhirConfig: FhirServerConfig, conformance:FHIRCapabilityStatement, profiles:Map[String, Map[String, ProfileRestrictions]], baseProfiles:Map[String, Map[String, ProfileRestrictions]]):FhirServerConfig = {
     //Check if all base profiles mentioned in Conformance are given in profile configurations
-    var profileDefinitionsNotGiven = conformance.restResourceConf.flatMap(_.profile).filter(p => !profiles.contains(p) && !baseProfiles.contains(p))
+    var profileDefinitionsNotGiven =
+      conformance.restResourceConf.flatMap(_.profile).map(FHIRUtil.parseCanonicalValue).filter(p => FHIRUtil.getMentionedProfile(p, profiles ++ baseProfiles).isEmpty)
+
     if(profileDefinitionsNotGiven.nonEmpty)
-      throw new InitializationException(s"Missing StructureDefinition in profile configurations for some of the base profiles (${profileDefinitionsNotGiven.mkString(",")}) declared in CapabilityStatement (CapabilityStatement.rest.resource.profile)! ")
+      throw new InitializationException(s"Missing StructureDefinition in profile configurations for some of the base profiles (${profileDefinitionsNotGiven.map(p => s"${p._1}${p._2.map(v => s"|$v").getOrElse("")}").mkString(",")}) declared in CapabilityStatement (CapabilityStatement.rest.resource.profile)! ")
     //Check if all supported profiles mentioned in Conformance are given in profile configurations
-    profileDefinitionsNotGiven = conformance.restResourceConf.flatMap(_.supportedProfiles.toSeq).filter(p => !profiles.contains(p) && !baseProfiles.contains(p))
+    profileDefinitionsNotGiven = conformance.restResourceConf.flatMap(_.supportedProfiles.toSeq).map(FHIRUtil.parseCanonicalValue).filter(p => FHIRUtil.getMentionedProfile(p, profiles ++ baseProfiles).isEmpty)
     if(profileDefinitionsNotGiven.nonEmpty)
-      throw new InitializationException(s"Missing StructureDefinition in profile configurations for some of the supported profiles (${profileDefinitionsNotGiven.mkString(",")}) declared in CapabilityStatement (CapabilityStatement.rest.resource.supportedProfile)! ")
+      throw new InitializationException(s"Missing StructureDefinition in profile configurations for some of the supported profiles (${profileDefinitionsNotGiven.map(p => s"${p._1}${p._2.map(v => s"|$v").getOrElse("")}").mkString(",")}) declared in CapabilityStatement (CapabilityStatement.rest.resource.supportedProfile)! ")
 
     //Get the URLs of all used base profiles
     val baseProfilesUrlsUsed =
-      (conformance.restResourceConf.flatMap(_.profile).filter(baseProfiles.contains) ++
-       conformance.restResourceConf.flatMap(_.supportedProfiles.toSeq).filter(baseProfiles.contains)).toSet
+      (conformance.restResourceConf.flatMap(_.profile).map(FHIRUtil.parseCanonicalValue).filter(p => FHIRUtil.getMentionedProfile(p, baseProfiles).nonEmpty) ++
+       conformance.restResourceConf.flatMap(_.supportedProfiles.toSeq).map(FHIRUtil.parseCanonicalValue).filter(p => FHIRUtil.getMentionedProfile(p, baseProfiles).nonEmpty)).toSet
 
 
     //Check if all mentioned profiles within the given profiles also exist in profile set (Profile set is closed)
-    var allProfilesAndExtensionsMentionedInSomewhere = findMentionedProfiles(fhirConfig, profiles.values.toSeq)
-    profileDefinitionsNotGiven = allProfilesAndExtensionsMentionedInSomewhere.filter(p => !profiles.contains(p) && !baseProfiles.contains(p)).toSeq
+    var allProfilesAndExtensionsMentionedInSomewhere = findMentionedProfiles(fhirConfig, profiles.values.flatMap(_.values).toSeq)
+    profileDefinitionsNotGiven = allProfilesAndExtensionsMentionedInSomewhere.filter(p => FHIRUtil.getMentionedProfile(p, profiles ++ baseProfiles).isEmpty).toSeq
     if(profileDefinitionsNotGiven.nonEmpty)
-      throw new InitializationException(s"Missing StructureDefinition in o profile configurations for the referred profiles (${profileDefinitionsNotGiven.mkString(",")}) within the given profiles (e.g. as base profile 'StructureDefinition.baseDefinition', target profile for an element StructureDefinition.differential.element.type.profile or reference StructureDefinition.differential.element.type.targetProfile) ! All mentioned profiles should be given for validation!")
+      throw new InitializationException(s"Missing StructureDefinition in o profile configurations for the referred profiles (${profileDefinitionsNotGiven.map(p => s"${p._1}${p._2.map(v => s"|$v").getOrElse("")}").mkString(",")}) within the given profiles (e.g. as base profile 'StructureDefinition.baseDefinition', target profile for an element StructureDefinition.differential.element.type.profile or reference StructureDefinition.differential.element.type.targetProfile) ! All mentioned profiles should be given for validation!")
 
     allProfilesAndExtensionsMentionedInSomewhere =
-      allProfilesAndExtensionsMentionedInSomewhere.diff(profiles.keySet) ++
-        baseProfilesUrlsUsed ++
+      allProfilesAndExtensionsMentionedInSomewhere.filter(p => FHIRUtil.getMentionedProfile(p, profiles).isEmpty) ++ //Mentioned profiles that are not given in configured profile set
+        baseProfilesUrlsUsed ++ //Base FHIR standart definitions
         //Base profiles used in FHIR interactions
         Set(
-          s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/OperationOutcome",
-          s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/Bundle",
-          s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/Parameters",
+          s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/OperationOutcome" -> None,
+          s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/Bundle" -> None,
+          s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/Parameters" -> None,
         )
 
-    fhirConfig.supportedProfiles = conformance.restResourceConf.map(restConf => restConf.resource -> restConf.supportedProfiles).toMap
+    fhirConfig.supportedProfiles = conformance.restResourceConf.map(restConf => restConf.resource -> restConf.supportedProfiles.map(FHIRUtil.parseCanonicalValue).groupBy(_._1).map(g => g._1 -> g._2.flatMap(_._2))).toMap
     fhirConfig.resourceConfigurations = conformance.restResourceConf.map(restConf => restConf.resource -> restConf).toMap
 
     fhirConfig.profileRestrictions =
@@ -328,9 +332,9 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
    * @param baseProfiles              All base profiles provided in the standard
    * @return
    */
-  private def findClosureForBaseProfiles(fhirConfig: FhirServerConfig, mentionedBaseProfileUrls:Set[String], baseProfiles:Map[String, ProfileRestrictions]):Map[String, ProfileRestrictions] = {
-    val mentionedBaseProfiles = mentionedBaseProfileUrls.map(url => url -> baseProfiles.apply(url)).toMap
-    val deepMentionedBaseProfiles = findMentionedProfiles(fhirConfig, mentionedBaseProfiles.values.toSeq)
+  private def findClosureForBaseProfiles(fhirConfig: FhirServerConfig, mentionedBaseProfileUrls:Set[(String, Option[String])], baseProfiles:Map[String, Map[String, ProfileRestrictions]]):Map[String, Map[String, ProfileRestrictions]] = {
+    val mentionedBaseProfiles = mentionedBaseProfileUrls.map(p => p._1 -> Map(p._2.getOrElse("latest") -> FHIRUtil.getMentionedProfile(p, baseProfiles).get)).toMap
+    val deepMentionedBaseProfiles = findMentionedProfiles(fhirConfig, mentionedBaseProfiles.values.flatMap(_.values).toSeq)
     val newUrls = deepMentionedBaseProfiles.diff(mentionedBaseProfileUrls)
     if(newUrls.nonEmpty)
       findClosureForBaseProfiles(fhirConfig, mentionedBaseProfileUrls ++ newUrls, baseProfiles)
@@ -347,7 +351,7 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
    * @param allProfiles           All profiles both base and given
    * @return
    */
-  protected def validateAndConfigureSearchParameters(fhirConfig: FhirServerConfig, conformance:FHIRCapabilityStatement, searchParameters:Map[String, FHIRSearchParameter], baseSearchParameters:Map[String, FHIRSearchParameter], allProfiles:Map[String, ProfileRestrictions]) :FhirServerConfig = {
+  protected def validateAndConfigureSearchParameters(fhirConfig: FhirServerConfig, conformance:FHIRCapabilityStatement, searchParameters:Map[String, FHIRSearchParameter], baseSearchParameters:Map[String, FHIRSearchParameter]) :FhirServerConfig = {
     //Check if for all search parameters mentioned in the Conformance, a SearchParameter definition exist in base standard or given configuration
     val resourcesWithMissingSearchParameterDefs =
       conformance.restResourceConf

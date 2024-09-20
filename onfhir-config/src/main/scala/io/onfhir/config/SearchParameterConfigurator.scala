@@ -30,7 +30,7 @@ class SearchParameterConfigurator(
   // Find profile definition for base Resource type
   val baseProfileChain = fhirConfig.getBaseProfileChain(rtype)
   //Find profile chain for base profile specific for resource type
-  val profileChain = rtypeBaseProfile.map(url => fhirConfig.findProfileChain(url)).getOrElse(baseProfileChain)
+  val profileChain = rtypeBaseProfile.map(url => fhirConfig.findProfileChainByCanonical(url)).getOrElse(baseProfileChain)
 
 
   /**

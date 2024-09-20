@@ -47,7 +47,7 @@ case class TypeRestriction(dataTypesAndProfiles:Seq[(String, Seq[String])]) exte
         )
         //It should match with one of the profiles
         allProfiles.exists(profile =>
-          !Await.result(fhirContentValidator.validateComplexContentAgainstProfile(fhirContentValidator.fhirConfig.findProfileChain(profile),jobj, None), 1 minutes)
+          !Await.result(fhirContentValidator.validateComplexContentAgainstProfile(fhirContentValidator.fhirConfig.findProfileChainByCanonical(profile),jobj, None), 1 minutes)
               .exists(_.severity == FHIRResponse.SEVERITY_CODES.ERROR)
         )
       //Primitive

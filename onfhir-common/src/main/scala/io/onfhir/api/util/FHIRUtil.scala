@@ -3,6 +3,7 @@ package io.onfhir.api.util
 import akka.http.scaladsl.model._
 import io.onfhir.api._
 import io.onfhir.api.model._
+import io.onfhir.api.validation.ProfileRestrictions
 import io.onfhir.config.OnfhirConfig
 import io.onfhir.util.JsonFormatter.formats
 
@@ -963,5 +964,81 @@ object FHIRUtil {
 
         Math.pow(10, i) * 0.5
     }
+  }
+
+  /**
+   * Find the latest FHIR version among the given versions. If versions are not given in the correct format this returns None indicating it is impossible
+   * e.g. 2.1, 2.2, 2.3.1, 2.4 --> 2.4
+   * @param versions Given version strings
+   * @return
+   */
+  def findLatestFhirVersion(versions:Seq[String]):Option[String] = {
+    Try(
+      versions
+        .map(v => v.split('.').map(_.toInt)) //Try to parse the versions e.g. 1.2, 2.2.2, if not return None indicating we cannot deduce the latest version
+      )
+      .toOption
+      .getOrElse(Nil)
+      .sortWith((v1, v2) => isNewer(v1, v2))
+      .headOption
+      .map(v => v.mkString("."))
+  }
+
+  /**
+   * Check if the first FHIR version is greater than the second
+   * @param v1  First FHIR version
+   * @param v2  Second FHIR version
+   * @return
+   */
+  private def isNewer(v1:Array[Int], v2:Array[Int]):Boolean = {
+    val result =
+       v1
+        .zip(v2) //Zip the versions, if lengths are not equal remaining elements are dropped
+        .foldLeft[Option[Boolean]](None) {
+          case (None,(i1, i2)) if i1 == i2 => None //If both versions are equal, return None indicating not decided yet
+          case (None, (i1, i2)) => Some(i1 > i2) //If version1 is greater, return true
+          case (Some(true), _) => Some(true)  //If version1 is greater in earlier phase, continue with that
+          case (Some(false), _) => Some(false) //If version1 is smaller in earlier phase, continue with that
+        }
+
+    (v1.length, v2.length) match {
+      //If version 1's length equal or more and the comparison is equal e.g. 2.1.1 vs 2.1  --> assume 2.1.1 is newer
+      case (l1, l2) if l1 >= l2 => result.getOrElse(true)
+      //Otherwise e.g. 2.1 vs 2.1.1 --> return false as the second is newer
+      case _ => result.getOrElse(false)
+    }
+  }
+
+  /**
+   * Find the definition of a mentioned profile
+   * @param mentionedProfile  Mentioned profile URL and optional version
+   * @param profiles          All existing profiles
+   * @return
+   */
+  def getMentionedProfile(mentionedProfile:(String, Option[String]), profiles: Map[String, Map[String, ProfileRestrictions]]):Option[ProfileRestrictions] = {
+    profiles
+      .get(mentionedProfile._1)
+      .flatMap(foundVersions=>
+        mentionedProfile._2
+          //If a version is mentioned, try to get that
+          .flatMap(v =>
+            foundVersions.get(v)
+          )
+          //If a version is not mentioned
+          .orElse(
+            //If there is only one just return it
+            if (foundVersions.size == 1)
+              foundVersions.headOption.map(_._2)
+            else {
+              foundVersions
+                .get("latest")
+                .orElse(
+                  FHIRUtil
+                    .findLatestFhirVersion(foundVersions.keys.toSeq)
+                    .map(v => foundVersions(v))
+                )
+            }
+          )
+      )
   }
 }
