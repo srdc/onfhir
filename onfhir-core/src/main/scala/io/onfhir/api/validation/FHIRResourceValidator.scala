@@ -59,7 +59,7 @@ class FHIRResourceValidator(fhirConfigurationManager: IFhirConfigurationManager)
           //Known profiles among them
           val knownProfiles = profilesClaimedToConform.intersect(supportedProfiles)
           //We only validate against the base profile and known profiles
-          val profileChains = (Set(baseProfile) ++ knownProfiles).map(p => p -> fhirConfigurationManager.fhirConfig.findProfileChain(p))
+          val profileChains = (Set(baseProfile) ++ knownProfiles).map(p => p -> fhirConfigurationManager.fhirConfig.findProfileChainByCanonical(p))
           //Find inner profile urls in all profile chain
           val allInnerProfiles = profileChains.flatMap(_._2.drop(1).map(_.url))
           //Only validate against the one that does not exist in inner profiles (because this chain already includes others)

@@ -36,7 +36,7 @@ class XmlToJsonConvertor(fhirConfig: FhirServerConfig) extends BaseFhirProfileHa
         throw new UnprocessableEntityException(Seq(OutcomeIssue(FHIRResponse.SEVERITY_CODES.ERROR, FHIRResponse.OUTCOME_CODES.INVALID, None, Some(s"Invalid resource type ${parsedXml.label} in XML format!"), Seq("resourceType"))))
 
       val baseProfile: ProfileRestrictions = fhirConfig.getBaseProfile(parsedXml.label)
-      val baseProfileChain = fhirConfig.findProfileChain(baseProfile.url)
+      val baseProfileChain = fhirConfig.findProfileChain(baseProfile.url, baseProfile.version)
 
       val result = ("resourceType" -> parsedXml.label) ~
         convertNodeGroupToJson(parsedXml, baseProfileChain)

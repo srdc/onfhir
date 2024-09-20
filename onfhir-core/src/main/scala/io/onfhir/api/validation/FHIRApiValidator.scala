@@ -191,14 +191,15 @@ object FHIRApiValidator {
     */
   def validateResourceType(resource:Resource, _rtype:String):Seq[OutcomeIssue] = {
     validateResourceTypeMatching(resource, _rtype)
-
+    /** This is not needed
     //Base profile for resource
-    val profile = fhirConfig.resourceConfigurations.get(_rtype).flatMap(_.profile)
-    //All supported profiles for resource
-    val supportedProfiles = fhirConfig.supportedProfiles.getOrElse(_rtype, Set.empty)
+    val profile = fhirConfig.resourceConfigurations.get(_rtype).flatMap(_.profile.map(FHIRUtil.parseCanonicalValue))
+    //All supported profiles for resource type
+    val supportedProfiles = fhirConfig.supportedProfiles.getOrElse(_rtype, Map.empty)
+
     //If a base profile is defined for resource, then we expect resource contains some profile in meta (base profile or sub profiles)
-    if(profile.isDefined && !profile.get.startsWith(FHIR_ROOT_URL_FOR_DEFINITIONS)){
-      val resourceProfiles = FHIRUtil.extractProfilesFromBson(resource)
+    if(profile.exists(_._1.startsWith(FHIR_ROOT_URL_FOR_DEFINITIONS))){
+      val resourceProfiles = FHIRUtil.extractProfilesFromBson(resource).map(FHIRUtil.parseCanonicalValue)
       if(resourceProfiles.intersect(supportedProfiles ++ Set(profile.get)).isEmpty)
         throw new BadRequestException(Seq(
           OutcomeIssue(
@@ -213,7 +214,7 @@ object FHIRApiValidator {
             Seq(".meta.profile")
           )
         ))
-    }
+    }*/
     Nil
   }
 

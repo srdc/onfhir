@@ -107,26 +107,29 @@ class ValidationOperationHandler(fhirConfigurationManager:IFhirConfigurationMana
                 Nil))
               )
           )
-        case Some(resource) => {
+        case Some(resource) =>
           //Validate if resource type matches
           FHIRApiValidator.validateResourceTypeMatching(resource, resourceType)
-          val resultResource = if(profileOption.isDefined) {
-            //Check if we support profile, if not return not supported
-            if(!fhirConfigurationManager.fhirConfig.isProfileSupported(profileOption.get))
-              throw new MethodNotAllowedException(Seq(
-                OutcomeIssue(FHIRResponse.SEVERITY_CODES.ERROR,
-                  FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED,
-                  None,
-                  Some(s"Given profile is not supported in this server. See our Conformance statement from ${OnfhirConfig.fhirRootUrl}/metadata for all supported profiles ..."),
-                  Nil)))
-            //else Set the profile into the resource
-            FHIRUtil.setProfile(resource, profileOption.get)
-          } else resource
+          val resultResource =
+            profileOption
+              .map(FHIRUtil.parseCanonicalValue) match {
+                case Some(url -> version) if !fhirConfigurationManager.fhirConfig.isProfileSupported(url, version) =>
+                  throw new MethodNotAllowedException(Seq(
+                    OutcomeIssue(FHIRResponse.SEVERITY_CODES.ERROR,
+                      FHIRResponse.OUTCOME_CODES.NOT_SUPPORTED,
+                      None,
+                      Some(s"Given profile is not supported in this server. See our Conformance statement from ${OnfhirConfig.fhirRootUrl}/metadata for all supported profiles ..."),
+                      Nil)))
+                case Some(_) =>
+                  //else Set the profile into the resource
+                  FHIRUtil.setProfile(resource, profileOption.get)
+                case None =>
+                  resource
+              }
           validateContent(resultResource, resourceType, validationMode) map { issues =>
-            //Not error response, but we should return OperationOutcome so we use this
-            FHIRResponse.errorResponse(StatusCodes.OK, issues)
-          }
-        }
+              //Not error response, but we should return OperationOutcome so we use this
+              FHIRResponse.errorResponse(StatusCodes.OK, issues)
+            }
       }
   }
 

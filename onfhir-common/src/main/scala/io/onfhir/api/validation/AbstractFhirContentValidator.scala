@@ -21,7 +21,7 @@ abstract class AbstractFhirContentValidator(
                                              val terminologyValidator: IFhirTerminologyValidator
                                            ) {
   //Chain of profiles for this profile, where parents are on the right in hierarchy order e.g. MyObservation2 -> MyObservation -> Observation -> DomainResource -> Resource
-  val rootProfileChain: Seq[ProfileRestrictions] = fhirConfig.findProfileChain(profileUrl)
+  val rootProfileChain: Seq[ProfileRestrictions] = fhirConfig.findProfileChainByCanonical(profileUrl)
 
   //FHIR reference and expected target profiles to check for existence
   val referencesToCheck = new mutable.ListBuffer[(FhirReference, Set[String])]()

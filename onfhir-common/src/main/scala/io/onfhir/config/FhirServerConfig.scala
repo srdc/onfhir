@@ -13,8 +13,8 @@ class FhirServerConfig(version:String) extends BaseFhirConfig(version) {
   /***
     *  Dynamic configurations for this instance of FHIR repository
     */
-  /** List of supported resource types and profiles for each resource; resource-type -> Set(profile-url) */
-  var supportedProfiles:Map[String, Set[String]] = HashMap()
+  /** List of supported resource types and profiles for each resource; resource-type -> Map(profile-url -> Set(versions)) */
+  var supportedProfiles:Map[String, Map[String, Set[String]]] = HashMap()
   /** Rest configuration for each Resource*/
   var resourceConfigurations:Map[String, ResourceConf] = HashMap()
 
@@ -85,8 +85,10 @@ class FhirServerConfig(version:String) extends BaseFhirConfig(version) {
    * @param profileUrl Profile URL (StructureDefinition.url)
    * @return
    */
-  def isProfileSupported(profileUrl:String):Boolean = {
-    supportedProfiles.flatMap(_._2).exists(_.equals(profileUrl))
+  def isProfileSupported(profileUrl:String, version:Option[String] = None):Boolean = {
+    supportedProfiles.flatMap(_._2).exists(profiles =>
+      profiles._1 == profileUrl && version.forall(v => profiles._2.contains(v))
+    )
   }
 
   /**
@@ -149,8 +151,7 @@ class FhirServerConfig(version:String) extends BaseFhirConfig(version) {
    */
   def getSummaryElements(rtype:String):Set[String] = {
     val cProfile = resourceConfigurations(rtype).profile.getOrElse(s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/$rtype")
-
-    profileRestrictions(cProfile).summaryElements
+    findProfile(cProfile).map(_.summaryElements).getOrElse(Set.empty)
   }
 }
 

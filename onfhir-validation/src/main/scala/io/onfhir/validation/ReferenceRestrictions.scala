@@ -45,7 +45,7 @@ case class ReferenceRestrictions(targetProfiles:Seq[String], versioning:Option[B
               if(tp == "http://hl7.org/fhir/StructureDefinition/Resource")
                 "Resource" -> tp
               else {
-                val dt = fhirContentValidator.findResourceType(fhirContentValidator.fhirConfig.findProfileChain(tp)).get
+                val dt = fhirContentValidator.findResourceType(fhirContentValidator.fhirConfig.findProfileChainByCanonical(tp)).get
                 dt -> tp
               }
             })

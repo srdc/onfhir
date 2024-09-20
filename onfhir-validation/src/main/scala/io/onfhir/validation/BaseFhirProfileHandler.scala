@@ -177,7 +177,7 @@ abstract class BaseFhirProfileHandler(val fhirConfig: FhirServerConfig) {
             import scala.util.control.Breaks._
             breakable {
               for (i <- multipleProfiles._3.indices) {
-                fhirConfig.findProfileChain(multipleProfiles._3.apply(i)) match {
+                fhirConfig.findProfileChainByCanonical(multipleProfiles._3.apply(i)) match {
                   case Nil =>
                   //Nothing
                   case pc: Seq[ProfileRestrictions] if pc.nonEmpty =>

@@ -26,6 +26,7 @@ class StructureDefinitionParser(fhirComplexTypes: Set[String], fhirPrimitiveType
     if (rtype.apply(0).isLower) {
       ProfileRestrictions(
         url = FHIRUtil.extractValueOption[String](structureDef, "url").get,
+        version = FHIRUtil.extractValueOption[String](structureDef, "version"),
         id = FHIRUtil.extractValueOption[String](structureDef, "id"),
         baseUrl = None,
         resourceType = rtype,
@@ -55,14 +56,15 @@ class StructureDefinitionParser(fhirComplexTypes: Set[String], fhirPrimitiveType
       //Parse element definitions (without establishing child relationship)
       val elemDefs =
         elementDefs
-          .map(parseElementDef(_, rtype, if (profileUrl.startsWith(FHIR_ROOT_URL_FOR_DEFINITIONS)) None else Some(profileUrl), //Parse the element definitions
+          .map(parseElementDef(_, rtype, if (profileUrl.startsWith(FHIR_ROOT_URL_FOR_DEFINITIONS + "/StructureDefinition")) None else Some(profileUrl), //Parse the element definitions
             includeElementMetadata))
 
 
       ProfileRestrictions(
-        url = FHIRUtil.extractValueOption[String](structureDef, "url").get,
+        url = profileUrl,
+        version = FHIRUtil.extractValueOption[String](structureDef, "version"),
         id = FHIRUtil.extractValueOption[String](structureDef, "id"),
-        baseUrl = FHIRUtil.extractValueOption[String](structureDef, "baseDefinition"),
+        baseUrl = FHIRUtil.extractValueOption[String](structureDef, "baseDefinition").map(url => FHIRUtil.parseCanonicalValue(url)),
         resourceType = rtype,
         resourceName = FHIRUtil.extractValueOption[String](structureDef, "name"),
         resourceDescription = FHIRUtil.extractValueOption[String](structureDef, "description"),

@@ -504,7 +504,7 @@ class FhirContentValidator(
         //Find profile chain for each profile
         val profileChains =
           profileUrls
-            .map(fhirConfig.findProfileChain).sortWith((c1, c2) => c1.size >= c2.size)
+            .map(url => fhirConfig.findProfileChainByCanonical(url)).sortWith((c1, c2) => c1.size >= c2.size)
         //Get all urls
         var allUrls = profileChains.flatMap(_.map(_.url)).toSet
         val totalNumUrls = allUrls.size
@@ -823,10 +823,10 @@ class FhirContentValidator(
       afterResolvingPathItems match {
         //If there is no path, then just return the targeted profile chain
         case Nil =>
-          Right(fhirConfig.findProfileChain(referencedProfile))
+          Right(fhirConfig.findProfileChainByCanonical(referencedProfile))
         case _ =>
           //Otherwise Load the profile chain, and find the definition path for it
-          val subElementsOfReferenced = fhirConfig.findProfileChain(referencedProfile).map(_.elementRestrictions)
+          val subElementsOfReferenced = fhirConfig.findProfileChainByCanonical(referencedProfile).map(_.elementRestrictions)
           val (suffixElementDefPath, suffixElementActualPath) = findDefinitionAndActualPath(afterResolvingPathItems, subElementsOfReferenced)
 
           Left(
