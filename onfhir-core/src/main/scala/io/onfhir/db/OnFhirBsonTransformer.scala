@@ -227,9 +227,8 @@ object OnFhirBsonTransformer{
     */
   def dateToISODate(string:String) : BsonValue = {
     val timePrecision = string.count(_ == ':')
-    // Conversion condtions
+    // Conversion conditions
     if ((string.contains('Z') && timePrecision == 2) || timePrecision == 3) {
-
       if(!string.contains('.'))
       // ..HH:MM:SSZ|..HH:MM:SS+03:30 (All time indexes are converted to 0)
         BsonDateTime(dateTimeWSecFormat.parse(string).getTime)
@@ -237,13 +236,13 @@ object OnFhirBsonTransformer{
       // ..HH:MM:SS.SSSZ|..HH:MM:SS.SSS+03:30 (All time indexes are converted to 0)
         BsonDateTime(dateTimeWMiliFormat.parse(string).getTime)
     } else if (string.contains('Z') || string.contains('+') || string.count(_ == '-') == 3) {
-      // ..HH:MMZ|..HH:MM+..|Y-M-DTHH:MM-.. (Parsing automatically appends seconds, all time inedexes are converted to 0)
+      // ..HH:MMZ|..HH:MM+..|Y-M-DTHH:MM-.. (Parsing automatically appends seconds, all time indexes are converted to 0)
       BsonDateTime(dateTimeFormat.parse(string).getTime)
     } else if (!string.contains('Z') && timePrecision == 1) {
       // ..HH:MM (Parsing automatically appends seconds)
       BsonDateTime(dateTimeFormat.parse(string + "Z").getTime)
     } else {
-      throw new IllegalArgumentException
+      throw new IllegalArgumentException(s"Cannot convert the date to Mongo ISO date: $string")
     }
   }
 
