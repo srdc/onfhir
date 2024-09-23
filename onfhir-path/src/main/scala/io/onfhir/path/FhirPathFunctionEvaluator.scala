@@ -8,6 +8,7 @@ import org.json4s.JsonAST._
 
 import java.time._
 import java.time.temporal.Temporal
+import java.util.Base64
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 import scala.language.postfixOps
@@ -856,7 +857,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
 
 
   /**
-   * String manipulation functions ttp://hl7.org/fhirpath/#string-manipulation
+   * String manipulation functions http://hl7.org/fhirpath/#string-manipulation
    *
    * @return
    */
@@ -1013,6 +1014,13 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
   def length(): Seq[FhirPathResult] = {
     checkSingleString()
     current.headOption.map(c => Seq(FhirPathNumber(c.asInstanceOf[FhirPathString].s.length))).getOrElse(Nil)
+  }
+
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Encodes the input string to a Base64-encoded binary.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>\n```\nZmluYWw=\n``` \n\uD83D\uDCA1 **E.g.** 'final'.encode()",
+    insertText = "encode()", detail = "", label = "encode", kind = "Method", returnType = Seq("base64Binary"), inputType = Seq("string"))
+  def encode(): Seq[FhirPathResult] = {
+    checkSingleString()
+    current.headOption.map(c => Seq(FhirPathString(Base64.getEncoder.encodeToString(c.asInstanceOf[FhirPathString].s.getBytes("UTF-8"))))).getOrElse(Nil)
   }
 
   /**

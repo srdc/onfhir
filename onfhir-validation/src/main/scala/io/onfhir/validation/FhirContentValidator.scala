@@ -707,10 +707,10 @@ class FhirContentValidator(
             if(disc._2 == "url" && sliceRestriction.path.contains("extension")) {
               (sliceRestriction.restrictions.get(ConstraintKeys.DATATYPE) : @unchecked) match {
                 //If this is a restriction on resource profile that mentions an Extension profile, find the url of that extension profile
-                case Some(TypeRestriction(typs)) =>
+                case Some(TypeRestriction(typs)) if typs.head._2.nonEmpty =>
                   val extensionUrl = typs.head._2.head
                   Seq(Seq(disc._2 -> FixedOrPatternRestriction(JString(extensionUrl), isFixed = true)))
-                case None =>
+                case _ =>
                   //If there is no such type restriction, we are inside a restriction definition and there should be a element definition for url that has fixed value
                   sliceSubElements
                     .map(_.find(_._1 == "url")
@@ -1112,7 +1112,11 @@ class FhirContentValidator(
   private def evaluateDataTypeConstraint(dataType: String, value: JValue, elementRestrictions: Seq[ElementRestrictions]): Seq[ConstraintFailure] ={
     findFirstFhirRestriction(ConstraintKeys.DATATYPE, elementRestrictions) match {
       case Some(TypeRestriction(edataTypes)) =>
-        if(edataTypes.map(_._1).contains(dataType))
+        val dataTypes = edataTypes.map(_._1)
+        // Check if the expected data types contain the provided data type.
+        // Additionally, allow "string" as a valid data type if "uri" is present among the expected types,
+        // as "uri" can sometimes be represented as a string in certain cases such as deep extensions
+        if(dataTypes.contains(dataType) || (dataTypes.contains(FHIR_DATA_TYPES.URI) && dataType.contentEquals(FHIR_DATA_TYPES.STRING)))
           Nil
         else
           Seq(ConstraintFailure(s"Data type of element $dataType does not match with any expected data type ${edataTypes.map(_._1).mkString(", ")}!"))
@@ -1463,7 +1467,7 @@ object FhirContentValidator {
   private val TIME_REGEX: Regex = """\A([01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](\.[0-9]+)?$""".r
   private val OID_REGEX: Regex = """\Aurn:oid:[0-2](\.[1-9]\d*)+$""".r
   private val UUID_REGEX: Regex = """\Aurn:uuid:[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$""".r
-  private val VERSION_REGEX: Regex = """\A[0-9]+(\.[0-9]+)*$""".r
+//  private val VERSION_REGEX: Regex = """\A[0-9]+(\.[0-9]+)*$""".r
 
   /**
    * Construction of the class
@@ -1501,7 +1505,7 @@ object FhirContentValidator {
       case FHIR_DATA_TYPES.CANONICAL => value.extract[String].split('|') match {
         case Array(url) => Try(new URI(url)).isSuccess
         case Array(url, version) =>
-          Try(new URI(url)).isSuccess && VERSION_REGEX.findFirstMatchIn(version).isDefined
+          Try(new URI(url)).isSuccess
         case _ => false
       }
       case FHIR_DATA_TYPES.BOOLEAN => value.isInstanceOf[JBool]

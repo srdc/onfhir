@@ -16,6 +16,7 @@ import org.slf4j.{Logger, LoggerFactory}
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContextExecutor, Future}
 import scala.language.postfixOps
+import scala.util.Try
 
 /**
   * Created by tuncay on 11/15/2016.
@@ -128,9 +129,9 @@ class MongoDBInitializer(resourceManager: ResourceManager) extends BaseDBInitial
         //If it is conformance
         if(resources.length ==1 && FHIRUtil.extractValueOption[String](resources.head, FHIR_COMMON_FIELDS.ID).contains(SERVER_CONFORMANCE_STATEMENT_ID))  {
           Map(SERVER_CONFORMANCE_STATEMENT_ID -> (
-            FHIRUtil
+            Try(FHIRUtil
               .extractValueOptionByPath[String](resources.head, s"${FHIR_COMMON_FIELDS.META}.${FHIR_COMMON_FIELDS.VERSION_ID}")
-              .map(_.toLong).getOrElse(1L),
+              .map(_.toLong)).toOption.flatten.getOrElse(1L),
             resources.head
           ))
         } else {
@@ -141,9 +142,9 @@ class MongoDBInitializer(resourceManager: ResourceManager) extends BaseDBInitial
                 val rid = url.split('/').last
                 rid ->
                   (
-                    FHIRUtil
+                    Try(FHIRUtil
                       .extractValueOptionByPath[String](resource, s"${FHIR_COMMON_FIELDS.META}.${FHIR_COMMON_FIELDS.VERSION_ID}")
-                      .map(_.toLong).getOrElse(1L),
+                      .map(_.toLong)).toOption.flatten.getOrElse(1L),
                     FHIRUtil.setId(resource, rid)
                   )
             }
