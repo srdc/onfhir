@@ -21,7 +21,7 @@ object OnFhirBsonTransformer{
   private val dateTimeWSecFormat = FastDateFormat.getInstance("yyyy-MM-dd'T'HH:mm:ssXXX")
   private val dateTimeFormat = FastDateFormat.getInstance("yyyy-MM-dd'T'HH:mmXXX")
   // DateTime regular expression
-  private val dateTimeRegex = """-?[1-2]{1}[0|1|8|9][0-9]{2}(-(0[1-9]|1[0-2])(-(0[0-9]|[1-2][0-9]|3[0-1])(T([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?(\.[0-9]+)?(Z|(\+|-|\s)((0[0-9]|1[0-3]):[0-5][0-9]|14:00))?)?)?)?$""".r
+  private val dateTimeRegex = """-?[1-2]{1}[0|1|8|9][0-9]{2}(-(0[1-9]|1[0-2])(-(0[0-9]|[1-2][0-9]|3[0-1])(T([01][0-9]|2[0-3]):[0-5][0-9](:[0-5][0-9])?(\.[0-9]+)?(Z|(\+|-|\s)((0[0-9]|1[0-3]):[0-5][0-9]|14:00)))?)?)?$""".r
 
   /**
     * An implicit object that extends org.mongodb.scala.bson.BsonTransformer
