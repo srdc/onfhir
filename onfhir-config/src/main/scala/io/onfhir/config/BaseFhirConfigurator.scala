@@ -109,8 +109,18 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
     resources
       .map(foundationResourceParser.parseStructureDefinition(_, includeElementMetadata = includeElementMetadata))
       .map(s => (s.url, s.version, s))
-      .groupBy(_._1)
-      .map(g => g._1 -> g._2.map(s => s._2.getOrElse("latest") -> s._3).toMap)
+      .groupBy(_._1) // group by the URL
+      .map { case (url, defs) =>
+        val withoutVersion = defs.filter(_._2.isEmpty) // Find all StructureDefinitions without a version
+
+        // If there are multiple StructureDefinitions without a version, log a warning
+        if (withoutVersion.size > 1) {
+          logger.warn(s"Multiple StructureDefinitions without a version for URL: $url. Only the last one will be used.")
+        }
+
+        // Convert to the desired map structure: url -> (version -> StructureDefinition)
+        url -> defs.map(s => s._2.getOrElse("latest") -> s._3).toMap
+      }
   }
 
   /**
