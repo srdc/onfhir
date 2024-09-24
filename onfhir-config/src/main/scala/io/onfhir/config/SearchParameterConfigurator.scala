@@ -83,12 +83,29 @@ class SearchParameterConfigurator(
             //Handle Paths that are over some extensions
             val (extensionPaths, extensionTargetTypes) = getPathsForExtensions(par)
 
+            //If extension is defined on simple type, the path should be converted due to usage of _ as prefix to the extensions on simple type
+            //e.g. extension on Patient.address.line --> path should be Patient.address._line
+            val convertedExtensionPaths =
+              extensionPaths.map {
+                case (p, r) =>
+                  val pathParts = p.split('.')
+                  val pathToExtended = pathParts.takeWhile(_ != "extension[i]")
+
+                  findTargetTypeOfPath(pathToExtended.mkString(".").replace("[i]", ""), profileChain) match {
+                    case Seq((_, targetType, _, _)) if fhirConfig.FHIR_PRIMITIVE_TYPES.contains(targetType) =>
+                      val convertedPath = ((pathToExtended.dropRight(1) :+ ("_"+pathToExtended.last)) ++ pathParts.drop(pathToExtended.length)).mkString(".")
+                      convertedPath -> r
+                    case _ =>
+                      p -> r
+                  }
+              }
+
             //Handle other paths
             val nonExtensionPathDetails = par.filterNot(_._1.contains("extension[i]"))
             //Find out the target types for paths or target type for references
             val (nonExtensionPaths, nonExtensionTargetTypes, restrictions, targetReferencedProfiles) = transformPathsAndExtractTargetTypes(searchParameterDef.ptype, nonExtensionPathDetails)
 
-            val finalPaths = extensionPaths.map(_._1) ++ nonExtensionPaths
+            val finalPaths = convertedExtensionPaths.map(_._1) ++ nonExtensionPaths
             val finalTargetTypes = extensionTargetTypes ++ nonExtensionTargetTypes
 
             if (finalPaths.isEmpty || finalTargetTypes.isEmpty) {
@@ -99,7 +116,7 @@ class SearchParameterConfigurator(
                 searchParameterDef,
                 finalPaths, //Alternative Paths for the search parameter
                 finalTargetTypes, //Target type for each path
-                extensionPaths.map(_._2) ++ restrictions, //Set of restrictions for each path
+                convertedExtensionPaths.map(_._2) ++ restrictions, //Set of restrictions for each path
                 targetReferencedProfiles //If reference set of target profiles for each path
               )
               )

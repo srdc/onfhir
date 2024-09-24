@@ -134,6 +134,15 @@ object ResourceQueryBuilder {
     val queries = valuesArr.flatMap(value =>
       //For each common alternative path
       commonPathsAndTargetTypes.map { case (commonPath, targetType) =>
+        //Find the path to the last array field
+        val finalCommonPath =
+          //If the path goes over an array element, but the last path item of common path is not array, find this last array item and make it common path (mongodb $elemMatch works that way)
+          if(!commonPath.endsWith("[i]") && commonPath.contains("[i]")){
+            val i = commonPath.split(".").indexWhere(_.endsWith("[i]"))
+            commonPath.slice(0, i+1).mkString(".")
+          } else
+            commonPath
+
         //Construct query for each composite
         val queriesForEachCombParam =
           compositeParams.zipWithIndex.map { case (compParamName, i) =>
@@ -153,10 +162,10 @@ object ResourceQueryBuilder {
               case _ =>
                 compParamConf
                   .extractElementPathsAndTargetTypes(withArrayIndicators = true)
-                  .filter(p => p._1.startsWith(commonPath))
+                  .filter(p => p._1.startsWith(finalCommonPath))
                   .map(p =>
                     //Get rid of from common path
-                    (p._1.drop(commonPath.length) match {
+                    (p._1.drop(finalCommonPath.length) match {
                       case startWithDot if startWithDot.headOption.contains('.') => startWithDot.tail
                       case oth => oth
                     }) -> p._2
@@ -164,7 +173,7 @@ object ResourceQueryBuilder {
             }
             //Construct query for this param
             val queriesForCombParam =
-              subpathsAfterCommonPathAndTargetTypes.toSeq.map {
+              subpathsAfterCommonPathAndTargetTypes.map {
                 case (path, spTargetType) =>
                   //Run query for each path
                   SearchUtil
@@ -174,7 +183,8 @@ object ResourceQueryBuilder {
           }
         //Queries on all combined components should hold
         val mainQuery = and(queriesForEachCombParam:_*)
-        if(commonPath.endsWith("[i]"))
+
+        if(finalCommonPath.endsWith("[i]"))
           elemMatch(FHIRUtil.normalizeElementPath(commonPath), mainQuery)
         else
           mainQuery
