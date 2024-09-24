@@ -177,7 +177,7 @@ abstract class BaseFhirProfileHandler(val fhirConfig: FhirServerConfig) {
             import scala.util.control.Breaks._
             breakable {
               for (i <- multipleProfiles._3.indices) {
-                fhirConfig.findProfileChain(multipleProfiles._3.apply(i)) match {
+                fhirConfig.findProfileChainByCanonical(multipleProfiles._3.apply(i)) match {
                   case Nil =>
                   //Nothing
                   case pc: Seq[ProfileRestrictions] if pc.nonEmpty =>
@@ -203,8 +203,7 @@ abstract class BaseFhirProfileHandler(val fhirConfig: FhirServerConfig) {
    */
   def findPathCardinality(path:String, profiles:Seq[ProfileRestrictions]):Boolean = {
     //Search in the base profile defined in the standard for resource type
-    findElementRestrictionForPath(path, profiles.flatMap(_.elementRestrictions))
-    match {
+    findElementRestrictionForPath(path, profiles.flatMap(_.elementRestrictions)) match {
       case Some(er) => er._2.restrictions.get(ConstraintKeys.ARRAY).exists(_.asInstanceOf[ArrayRestriction].isArray)
       //If such a path not exist
       case None =>
@@ -214,6 +213,7 @@ abstract class BaseFhirProfileHandler(val fhirConfig: FhirServerConfig) {
           false
     }
   }
+
 
   /**
    * Check if path targets an array or not for given resource type according to the base profile specified for that resoure type
@@ -236,14 +236,24 @@ abstract class BaseFhirProfileHandler(val fhirConfig: FhirServerConfig) {
 
     //Split the path accordingly
     val pathToDataType = pathParts.slice(0, pathParts.length-i).mkString(".")
+    //val pathToDataType = pathParts.slice(0, i).mkString(".")
     val pathAfterDataType = pathParts.slice(pathParts.length-i, pathParts.length).mkString(".")
+    //val pathAfterDataType = pathParts.slice(i, pathParts.length).mkString(".")
 
     findTargetTypeOfPath(pathToDataType, profiles)
       .map(_._2) match {
         case Nil if i < pathParts.length - 1 => findPathCardinalityInSubpaths(pathParts, profiles, i+1)
         case foundTypes if foundTypes.nonEmpty=>
           val baseProfileChainForDataType = fhirConfig.getBaseProfileChain(foundTypes.head)
-          findPathCardinality(pathAfterDataType, baseProfileChainForDataType)
+          findElementRestrictionForPath(pathAfterDataType, baseProfileChainForDataType.flatMap(_.elementRestrictions)) match {
+            //If this element is not defined, continue with other splits
+            case None if i < pathParts.length - 1 => findPathCardinalityInSubpaths(pathParts, profiles, i+1)
+            case None =>
+              logger.warn(s"Problem while identifying cardinality of path ${pathParts.mkString(".")} in profiles ${profiles.map(_.url).mkString(", ")}!")
+              false
+            //If there is element restrictions, get the array restriction
+            case Some(er) => er._2.restrictions.get(ConstraintKeys.ARRAY).exists(_.asInstanceOf[ArrayRestriction].isArray)
+          }
         case _ =>
           logger.warn(s"Problem while identifying cardinality of path ${pathParts.mkString(".")} in profiles ${profiles.map(_.url).mkString(", ")}!")
           false

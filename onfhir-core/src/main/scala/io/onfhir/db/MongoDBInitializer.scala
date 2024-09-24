@@ -197,8 +197,7 @@ class MongoDBInitializer(resourceManager: ResourceManager) extends BaseDBInitial
           }
         ).recoverWith {
           case e =>
-            logger.error(s"Problem in storing $resourceType !!!")
-            logger.error(e.getMessage, e)
+            logger.error(s"Problem in storing $resourceType !!!", e)
             throw new InitializationException(s"Problem in storing $resourceType !!!")
         }
         Await.result(job, 60 seconds)

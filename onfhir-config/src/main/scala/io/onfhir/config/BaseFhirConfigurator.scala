@@ -2,6 +2,7 @@ package io.onfhir.config
 
 import io.onfhir.api.FHIR_FOUNDATION_RESOURCES.{FHIR_CODE_SYSTEM, FHIR_STRUCTURE_DEFINITION, FHIR_VALUE_SET}
 import io.onfhir.api.model.OutcomeIssue
+import io.onfhir.api.parsers.IFhirFoundationResourceParser
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.{ConstraintKeys, IReferenceResolver, ProfileRestrictions, SimpleReferenceResolver}
 import io.onfhir.api.{FHIR_ROOT_URL_FOR_DEFINITIONS, Resource}
@@ -64,19 +65,15 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
 
     logger.info("Parsing base FHIR foundation resources (base standard) ...")
     //Parsing base definitions
-    val baseResourceProfiles =
-      baseResourceProfileResources
-        .map(foundationResourceParser.parseStructureDefinition(_, includeElementMetadata = true))
-        .map(p => p.url -> p).toMap
-    val baseDataTypeProfiles =
-      baseDataTypeProfileResources
-        .map(foundationResourceParser.parseStructureDefinition(_, includeElementMetadata = true))
-        .map(p => p.url -> p).toMap
+    val baseResourceProfiles = parseStructureDefinitionsConvertToMap(foundationResourceParser, baseResourceProfileResources)
+
+    val baseDataTypeProfiles = parseStructureDefinitionsConvertToMap(foundationResourceParser, baseDataTypeProfileResources)
+
     val baseProfiles =
       baseResourceProfiles ++
-        baseDataTypeProfiles.filter(_._1.split('/').last.head.isUpper) ++
-        baseOtherProfileResources.map(foundationResourceParser.parseStructureDefinition(_, includeElementMetadata = true)).map(p => p.url -> p).toMap ++
-        baseExtensionProfileResources.map(foundationResourceParser.parseStructureDefinition(_, includeElementMetadata = true)).map(p => p.url -> p).toMap
+        baseDataTypeProfiles.filter(_._1.split('/').last.head.isUpper) ++ //Get only complex types
+        parseStructureDefinitionsConvertToMap(foundationResourceParser, baseOtherProfileResources) ++
+        parseStructureDefinitionsConvertToMap(foundationResourceParser, baseExtensionProfileResources)
 
     //Initialize fhir config with base profiles and value sets to prepare for validation
     fhirConfig.profileRestrictions = baseProfiles
@@ -87,7 +84,8 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
     validateGivenInfrastructureResources(fhirConfig, FHIR_CODE_SYSTEM, codeSystemResources)
     logger.info("Parsing given FHIR foundation resources ...")
     //Parsing the profiles and value sets into our compact form
-    val profiles = profileResources.map(foundationResourceParser.parseStructureDefinition(_, includeElementMetadata = true)).map(p => p.url -> p).toMap
+    val profiles =  parseStructureDefinitionsConvertToMap(foundationResourceParser, profileResources)
+
     //Parse all as bundle
     val valueSets = foundationResourceParser.parseValueSetAndCodeSystems(valueSetResources ++ codeSystemResources ++ baseValueSetsAndCodeSystems)
 
@@ -101,6 +99,29 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
     fhirConfig
   }
 
+  /**
+   * Parse StructureDefinition resources and make them Map of Map (url and version)
+   * @param foundationResourceParser  Resource parser
+   * @param resources                 StructureDefinition resources
+   * @return
+   */
+  protected def parseStructureDefinitionsConvertToMap(foundationResourceParser:IFhirFoundationResourceParser, resources:Seq[Resource], includeElementMetadata:Boolean = true):Map[String, Map[String, ProfileRestrictions]] = {
+    resources
+      .map(foundationResourceParser.parseStructureDefinition(_, includeElementMetadata = includeElementMetadata))
+      .map(s => (s.url, s.version, s))
+      .groupBy(_._1) // group by the URL
+      .map { case (url, defs) =>
+        val withoutVersion = defs.filter(_._2.isEmpty) // Find all StructureDefinitions without a version
+
+        // If there are multiple StructureDefinitions without a version, log a warning
+        if (withoutVersion.size > 1) {
+          logger.warn(s"Multiple StructureDefinitions without a version for URL: $url. Only the last one will be used.")
+        }
+
+        // Convert to the desired map structure: url -> (version -> StructureDefinition)
+        url -> defs.map(s => s._2.getOrElse("latest") -> s._3).toMap
+      }
+  }
 
   /**
    * Validate and handle profile configurations
@@ -111,11 +132,15 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
    * @return
    */
   private def validateAndConfigureProfiles(fhirConfig: BaseFhirConfig,
-                                           profiles: Map[String, ProfileRestrictions],
-                                           baseProfiles: Map[String, ProfileRestrictions]): BaseFhirConfig = {
+                                           profiles: Map[String, Map[String, ProfileRestrictions]],
+                                           baseProfiles: Map[String, Map[String, ProfileRestrictions]]): BaseFhirConfig = {
     //Check if all mentioned profiles within the given profiles also exist in profile set (Profile set is closed)
-    val allProfilesAndExtensionsMentionedInSomewhere = findMentionedProfiles(fhirConfig, profiles.values.toSeq)
-    val profileDefinitionsNotGiven = allProfilesAndExtensionsMentionedInSomewhere.filter(p => !profiles.contains(p) && !baseProfiles.contains(p)).toSeq
+    val allProfilesAndExtensionsMentionedInSomewhere = findMentionedProfiles(fhirConfig, profiles.values.flatMap(_.values).toSeq)
+    //Find those ones that the definitions are not given
+    val profileDefinitionsNotGiven =
+      allProfilesAndExtensionsMentionedInSomewhere
+        .filter(p => FHIRUtil.getMentionedProfile(p, profiles ++ baseProfiles).isEmpty)
+        .toSeq
     if (profileDefinitionsNotGiven.nonEmpty)
       throw new InitializationException(s"Missing StructureDefinition in profile configurations for the referred profiles (${profileDefinitionsNotGiven.mkString(",")}) within the given profiles (e.g. as base profile 'StructureDefinition.baseDefinition', target profile for an element StructureDefinition.differential.element.type.profile or reference StructureDefinition.differential.element.type.targetProfile) ! All mentioned profiles should be given for configuration of the application!")
 
@@ -131,27 +156,30 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
    * @param profiles All profile restrictions
    * @return
    */
-  protected def findMentionedProfiles(fhirConfig: BaseFhirConfig, profiles: Seq[ProfileRestrictions]): Set[String] = {
-    profiles.flatMap(p => {
-      val isBaseProfile = p.url.startsWith(FHIR_ROOT_URL_FOR_DEFINITIONS)
-      p.elementRestrictions.map(_._2)
-        .flatMap(e =>
-          e.restrictions.get(ConstraintKeys.DATATYPE).toSeq.map(_.asInstanceOf[TypeRestriction])
-            .flatMap(_.dataTypesAndProfiles.flatMap(dtp => dtp._2 match {
-              case Nil =>
-                if (isBaseProfile || fhirConfig.FHIR_COMPLEX_TYPES.contains(dtp._1))
-                  Seq(s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/${dtp._1}")
-                else
-                  Nil
-              case oth => oth
-            }).toSet) ++
-            e.restrictions.get(ConstraintKeys.REFERENCE_TARGET).toSeq.map(_.asInstanceOf[ReferenceRestrictions]).flatMap(_.targetProfiles).toSet) ++
-        p.baseUrl.toSeq
-    }).filterNot(p => {
-      val ns = s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/"
-      val arr = p.split(ns)
-      arr.length == 2 && Character.isLowerCase(arr(1).head)
-    }).toSet
+  protected def findMentionedProfiles(fhirConfig: BaseFhirConfig, profiles: Seq[ProfileRestrictions]): Set[(String, Option[String])] = {
+    profiles
+      .flatMap(p => {
+        val isBaseProfile = p.url.startsWith(FHIR_ROOT_URL_FOR_DEFINITIONS)
+        p.elementRestrictions.map(_._2)
+          .flatMap(e =>
+            e.restrictions.get(ConstraintKeys.DATATYPE).toSeq.map(_.asInstanceOf[TypeRestriction])
+              .flatMap(_.dataTypesAndProfiles.flatMap(dtp => dtp._2 match {
+                case Nil =>
+                  if (isBaseProfile || fhirConfig.FHIR_COMPLEX_TYPES.contains(dtp._1))
+                    Seq(s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/${dtp._1}")
+                  else
+                    Nil
+                case oth => oth
+              }).toSet) ++
+              e.restrictions.get(ConstraintKeys.REFERENCE_TARGET).toSeq.map(_.asInstanceOf[ReferenceRestrictions]).flatMap(_.targetProfiles).toSet
+          ).map(FHIRUtil.parseCanonicalValue) ++
+            p.baseUrl.toSeq
+      })
+      .filterNot(p => {
+        val ns = s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/"
+        p._1.startsWith(ns) && Character.isLowerCase(p._1.drop(ns.length).head)
+      })
+      .toSet
   }
 
   /**

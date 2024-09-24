@@ -1,6 +1,7 @@
 package io.onfhir.config
 
 import io.onfhir.api.FHIR_ROOT_URL_FOR_DEFINITIONS
+import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.{ProfileRestrictions, ValueSetRestrictions}
 
 /** *
@@ -14,8 +15,8 @@ class BaseFhirConfig(version:String) {
    */
   var fhirVersion: String = _
 
-  /** FHIR Profile definitions including the base profiles (For validation) Profile Url -> Definitions * */
-  var profileRestrictions: Map[String, ProfileRestrictions] = _
+  /** FHIR Profile definitions including the base profiles (For validation) Profile Url -> Map(version -> Definition) * */
+  var profileRestrictions: Map[String, Map[String, ProfileRestrictions]] = _
   /** Supported FHIR value set urls with this server (For validation) ValueSet Url -> Map(Version ->Definitions) */
   var valueSetRestrictions: Map[String, Map[String, ValueSetRestrictions]] = _
 
@@ -54,21 +55,34 @@ class BaseFhirConfig(version:String) {
    * @param profileUrl Profile URL (StructureDefinition.url)
    * @return
    */
-  def findProfile(profileUrl: String): Option[ProfileRestrictions] = {
-    profileRestrictions.get(profileUrl)
+  def findProfile(profileUrl: String, version:Option[String] = None): Option[ProfileRestrictions] = {
+    FHIRUtil.getMentionedProfile(profileUrl -> version, profileRestrictions)
   }
 
   /**
-   * Find a chain of parent profiles until the base FHIR specification profile
+   * Find a chain of parent profiles until the base FHIR specification profile from given url and optional version
    *
    * @param profileUrl Profile URL (StructureDefinition.url)
+   * @param version    Version of definition (StructureDefinition.version)
    * @return Profiles in order of evaluation (inner profile,..., base profile)
    */
-  def findProfileChain(profileUrl: String): Seq[ProfileRestrictions] = {
-    findProfile(profileUrl) match {
+  def findProfileChain(profileUrl: String, version:Option[String] = None): Seq[ProfileRestrictions] = {
+    findProfile(profileUrl, version) match {
       case None => Nil
-      case Some(profile) => findChain(profileRestrictions)(profile)
+      case Some(profile) => findChain(profile)
     }
+  }
+
+  /**
+   * Find a chain of parent profiles until the base FHIR specification profile from given Canonical reference to profile
+   * @param profileCanonicalRef Canonical reference
+   *                            e.g. http://onfhir.io/StructureDefinition/MyProfile
+   *                            e.g. http://onfhir.io/StructureDefinition/MyProfile|2.0
+   * @return
+   */
+  def findProfileChainByCanonical(profileCanonicalRef:String):Seq[ProfileRestrictions] = {
+    val (profileUrl, version) = FHIRUtil.parseCanonicalValue(profileCanonicalRef)
+    findProfileChain(profileUrl, version)
   }
 
   /**
@@ -83,17 +97,16 @@ class BaseFhirConfig(version:String) {
   /**
    * Supplementary method for profile chain finding
    *
-   * @param restrictions Profile restrictions for each profile
-   * @param profile  Profile URL (StructureDefinition.url)
+   * @param profile  Profile itself
    * @return
    */
-  private def findChain(restrictions: Map[String, ProfileRestrictions])(profile: ProfileRestrictions): Seq[ProfileRestrictions] = {
+  private def findChain(profile: ProfileRestrictions): Seq[ProfileRestrictions] = {
     profile
       .baseUrl
       .map(burl =>
-        restrictions
-          .get(burl)
-          .fold[Seq[ProfileRestrictions]](Seq(profile))(parent => profile +: findChain(restrictions)(parent))
+        findProfile(burl._1, burl._2)
+          .map(parent => profile +: findChain(parent))
+          .getOrElse(Nil)
       )
       .getOrElse(Seq(profile))
   }
