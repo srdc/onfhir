@@ -25,17 +25,21 @@ object ResourceQueryBuilder {
     * @return
     */
   def constructQueryForSimpleParameter(parameter:Parameter, searchParameterConf:SearchParameterConf):Bson = {
-    //If parameter is on a extension, we should handle it differently
-    /*if(searchParameterConf.onExtension) {
-      constructQueryForExtensionParameter(parameter, searchParameterConf)
-    } else {*/
       //This part handles search with simple query parameters
       val queries =
         parameter
           .valuePrefixList //Go over each value to OR them
           .map(pv => {
             //There exists either a prefix or modifier, not both
-            val modifierOrPrefix = if (parameter.suffix == "") pv._1 else parameter.suffix
+            val modifierOrPrefix =
+              parameter.suffix match {
+                //If there is no modifier, use the prefix
+                case "" => pv._1
+                //Not is handled specially, so no modifier or prefix
+                case FHIR_PREFIXES_MODIFIERS.NOT => ""
+                //Use other modifiers
+                case oth => oth
+              }
             //Handle common modifiers here
             modifierOrPrefix match {
               //Missing modifier is common
@@ -45,18 +49,19 @@ object ResourceQueryBuilder {
                 val paths = searchParameterConf.extractElementPaths(withArrayIndicators = true)
                 PrefixModifierHandler.missingHandler(paths.map(FHIRUtil.normalizeElementPath), parameter.valuePrefixList.head._2)
 
-              //Not modifier is common
-              //case FHIR_PREFIXES_MODIFIERS.NOT =>
-              //  not(constructQueryForSimple(pv._2, parameter.paramType, "", searchParameterConf))
-
               //Otherwise
               case _ =>
                 constructQueryForSimple(pv._2, parameter.paramType, modifierOrPrefix, searchParameterConf)
             }
           })
 
-      if (queries.length > 1) or(queries: _*) else queries.head
-   // }
+    parameter.suffix match {
+      //Handle the not modifier specially at the end
+      case FHIR_PREFIXES_MODIFIERS.NOT =>
+        if (queries.length > 1) nor(queries: _*) else not(queries.head)
+      case _ =>
+        if (queries.length > 1) or(queries: _*) else queries.head
+    }
   }
 
   /**
