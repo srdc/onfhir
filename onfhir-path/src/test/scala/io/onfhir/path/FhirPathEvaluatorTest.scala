@@ -1,6 +1,6 @@
 package io.onfhir.path
 
-import java.time.{LocalDate, LocalDateTime, LocalTime, Year, YearMonth, ZoneId, ZonedDateTime}
+import java.time.{Instant, LocalDate, LocalDateTime, LocalTime, Year, YearMonth, ZoneId, ZonedDateTime}
 import io.onfhir.api.Resource
 import io.onfhir.api.model.{FhirCanonicalReference, FhirLiteralReference, FhirReference}
 import io.onfhir.api.validation.IReferenceResolver
@@ -795,6 +795,33 @@ class FhirPathEvaluatorTest extends Specification {
 
       val fhirDate = evaluator.evaluateDateTime("'20120113'.utl:toFhirDateTime('yyyyMMdd' | 'yyyyMMdd.HH:mm:ss')", JNull)
       fhirDate.head mustEqual LocalDate.of(2012, 1, 13)
+      // epoch in seconds
+      val fhirDateTimeFromEpoch1 = evaluator.evaluateDateTime("1234567890.utl:epochToFhirDateTime('seconds')", JNull)
+      // February 13, 2009 11:31:30 PM
+      val dateTimeEpoch1 = LocalDateTime.from(fhirDateTimeFromEpoch1.head)
+      Instant.ofEpochSecond(1234567890L).atZone(ZoneId.systemDefault()).toLocalDateTime mustEqual dateTimeEpoch1
+      // epoch in milliseconds and with time zone
+      val fhirDateTimeFromEpoch2 = evaluator.evaluateDateTime("1727704800000.utl:epochToFhirDateTime('milliseconds', 'Europe/Istanbul')", JNull)
+      // September 30, 2024 2:00:00 PM GMT+03:00 --- epoch in milliseconds
+      val dateTimeEpoch2 = LocalDateTime.from(fhirDateTimeFromEpoch2.head)
+      Instant.ofEpochMilli(1727704800000L).atZone(ZoneId.of("Europe/Istanbul")).toLocalDateTime mustEqual dateTimeEpoch2
+      dateTimeEpoch2.getYear mustEqual 2024
+      dateTimeEpoch2.getDayOfMonth mustEqual 30
+      dateTimeEpoch2.getHour mustEqual 17
+      dateTimeEpoch2.getMinute mustEqual 0
+      // epoch in microseconds
+      val fhirDateTimeFromEpoch3 = evaluator.evaluateDateTime("1727704800000000.utl:epochToFhirDateTime('microseconds')", JNull)
+      // September 30, 2024 2:00:00 PM --- epoch in microseconds
+      val dateTimeEpoch3 = LocalDateTime.from(fhirDateTimeFromEpoch3.head)
+      Instant.ofEpochMilli(1727704800000L).atZone(ZoneId.systemDefault()).toLocalDateTime mustEqual dateTimeEpoch3
+      // epoch in nanoseconds
+      val fhirDateTimeFromEpoch4 = evaluator.evaluateDateTime("1234567890123456789.utl:epochToFhirDateTime('nanoseconds', 'Europe/Berlin')", JNull)
+      // September 30, 2024 2:00:00 PM --- epoch in nanoseconds
+      val dateTimeEpoch4 = LocalDateTime.from(fhirDateTimeFromEpoch4.head)
+      dateTimeEpoch4.getYear mustEqual 2009
+      dateTimeEpoch4.getDayOfMonth mustEqual 14
+      dateTimeEpoch4.getHour mustEqual 0
+      dateTimeEpoch4.getMinute mustEqual 31
     }
 
     "evaluate fixed bugs" in {

@@ -857,7 +857,78 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
             FhirPathDateTime(temporal)
         }
       case _ =>
-        throw FhirPathException(s"Invalid function call 'toFhirDateTime'. Datetime format of the expression is not recognized. Valid formats are: ${patternsToTry.mkString(",")} !")
+        throw FhirPathException(s"Invalid function call 'toFhirDateTime'. toFhirDateTime should be used on string values!")
+    }
+  }
+
+
+  /**
+   * Convert the current instant epoch time to FHIR DateTime format (ISO DATE TIME).
+   * Epoch time can be in seconds, milliseconds, microseconds or nanoseconds.
+   * Converted format will be in 'yyyy-MM-ddTHH:mm:ss+00:00' format.
+   * @param epochUnit Unit of the epoch time
+   * @return
+   */
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Converts the current instant epoch time to FHIR DateTime format (ISO DATE TIME) with the given unit. Epoch time can be in seconds, milliseconds, microseconds or nanoseconds. Converted date time format will be in 'yyyy-MM-ddTHH:mm:ss+00:00' format.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`epochUnit`**  \nThe unit of the epoch time. Valid values are:\n- seconds\n- milliseconds\n- microseconds\n- nanoseconds\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```jsonld\n\"2024-09-30T16:00:00+02:00\"\n```\n\n\uD83D\uDCA1 Example Usage\n```scala\n1727704800.utl:epochToFhirDateTime('seconds')\n```",
+    insertText = "utl:epochToFhirDateTime(<epochUnit>)", detail = "utl", label = "utl:epochToFhirDateTime", kind = "Method", returnType = Seq("dateTime"), inputType = Seq("number"))
+  def epochToFhirDateTime(epochUnit: ExpressionContext): Seq[FhirPathResult] = {
+    val unit = new FhirPathExpressionEvaluator(context, current).visit(epochUnit)
+    if (unit.length != 1 || !unit.head.isInstanceOf[FhirPathString]) {
+      throw FhirPathException("Invalid function call to 'epochToFhirDateTime'. The unit expression (the function parameter) should evaluate to a single string value.")
+    }
+    _epochToDateTime(unit.head.asInstanceOf[FhirPathString].s)
+  }
+
+  /**
+   * Convert the current instant epoch time to FHIR DateTime format (ISO DATE TIME) with the given time zone.
+   * Epoch time can be in seconds, milliseconds, microseconds or nanoseconds.
+   * Converted format will be in 'yyyy-MM-ddTHH:mm:ss+00:00' format.
+   * @param epochUnit Unit of the epoch time
+   * @param zoneId Java ZoneId representation e.g. Europe/Berlin
+   * @return
+   */
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Converts the current instant epoch time to FHIR DateTime format (ISO DATE TIME) with the given unit and time zone. Epoch time can be in seconds, milliseconds, microseconds or nanoseconds. Converted date time format will be in 'yyyy-MM-ddTHH:mm:ss+00:00' format.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`epochUnit`**  \nThe unit of the epoch time. Valid values are:\n- seconds\n- milliseconds\n- microseconds\n- nanoseconds\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`zoneId`**  \nThe Java ZoneId representation of the time zone to be applied to the date-time string. For example:\n- Europe/Berlin\n- America/New_York\n- Asia/Tokyo\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```jsonld\n\"2024-09-30T16:00:00+02:00\"\n```\n\n\uD83D\uDCA1 Example Usage\n```scala\n1727704800.utl:epochToFhirDateTime('seconds', 'Europe/Berlin')\n```",
+    insertText = "utl:epochToFhirDateTime(<epochUnit>, <zoneId>)", detail = "utl", label = "utl:epochToFhirDateTime", kind = "Method", returnType = Seq("dateTime"), inputType = Seq("number"))
+  def epochToFhirDateTime(epochUnit: ExpressionContext, zoneId: ExpressionContext): Seq[FhirPathResult] = {
+    val unit = new FhirPathExpressionEvaluator(context, current).visit(epochUnit)
+    if (unit.length != 1 || !unit.head.isInstanceOf[FhirPathString]) {
+      throw FhirPathException("Invalid function call to 'epochToFhirDateTime'. The unit expression (the function parameter) should evaluate to a single string value.")
+    }
+
+    val zoneIdStr = new FhirPathExpressionEvaluator(context, current).visit(zoneId)
+    if (zoneIdStr.length != 1 || !zoneIdStr.head.isInstanceOf[FhirPathString]) {
+      throw FhirPathException("Invalid function call to 'epochToFhirDateTime'. The zoneId expression (the function parameter) should evaluate to a single string value.")
+    }
+    Try(ZoneId.of(zoneIdStr.head.asInstanceOf[FhirPathString].s)).toOption match {
+      case None => throw FhirPathException("Invalid function call to 'epochToFhirDateTime'. The zoneId expression (the function parameter) should evaluate to a valid Java ZoneId string!")
+      case Some(zid) => _epochToDateTime(unit.head.asInstanceOf[FhirPathString].s, zid)
+    }
+  }
+
+  /**
+   * Handler for FHIR epoch time conversions
+   * @param epochUnit Unit of the epoch time
+   * @param zoneId Java ZoneId representation e.g. Europe/Berlin
+   * @return
+   */
+  private def _epochToDateTime(epochUnit: String, zoneId: ZoneId = ZoneId.systemDefault()): Seq[FhirPathResult] = {
+    current.map {
+      case FhirPathNumber(v) =>
+        try {
+          val instant = epochUnit match {
+            case TimeUnit.SECONDS => Instant.ofEpochSecond(v.toLong)
+            case TimeUnit.MILLISECONDS => Instant.ofEpochMilli(v.toLong)
+            // Convert microseconds to nanoseconds (since Java's Instant supports only seconds/nanoseconds)
+            case TimeUnit.MICROSECONDS => Instant.ofEpochSecond(0, v.toLong * 1_000L) // Convert microseconds to nanoseconds
+            case TimeUnit.NANOSECONDS => Instant.ofEpochSecond(0, v.toLong)
+            case _ => throw FhirPathException("Invalid function call 'epochToFhirDateTime'. Invalid epoch unit. Expected one of: seconds, milliseconds, microseconds, nanoseconds.")
+          }
+          FhirPathDateTime(ZonedDateTime.ofInstant(instant, zoneId))
+        } catch {
+          case e: Throwable =>
+            throw FhirPathException(s"Invalid function call 'epochToFhirDateTime'. The number value ${v} cannot be converted to a valid date time!", e)
+        }
+      case _ => throw FhirPathException("Invalid function call 'epochToFhirDateTime'. epochToFhirDateTime should be used on number values!")
     }
   }
 
@@ -913,6 +984,15 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
     Seq(FhirPathBoolean(codingMatch))
   }
 
+  /**
+   * Epoch timestampt units
+   */
+  private object TimeUnit {
+    val SECONDS = "seconds"
+    val MILLISECONDS = "milliseconds"
+    val MICROSECONDS = "microseconds"
+    val NANOSECONDS = "nanoseconds"
+  }
 }
 
 object FhirPathUtilFunctionsFactory extends IFhirPathFunctionLibraryFactory {
