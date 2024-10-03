@@ -7,7 +7,7 @@ import io.onfhir.api._
 import io.onfhir.api.model.{FHIRSearchResult, FhirCanonicalReference, FhirLiteralReference, FhirReference, Parameter}
 import io.onfhir.api.parsers.FHIRResultParameterResolver
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.config.{FhirServerConfig, OnfhirConfig}
+import io.onfhir.config.{FhirServerConfig, OnfhirConfig, ResourceConf}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.conversions.Bson
 import io.onfhir.db.OnFhirBsonTransformer._
@@ -525,9 +525,9 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
           .map(p => {
             p.paramCategory match {
               case FHIR_PARAMETER_CATEGORIES.NORMAL =>
-                ResourceQueryBuilder.constructQueryForNormal(p, validQueryParams.apply(p.name), validQueryParams)
+                getResourceQueryBuilder(rtype).constructQueryForNormal(p, validQueryParams.apply(p.name), validQueryParams)
               case FHIR_PARAMETER_CATEGORIES.COMPARTMENT =>
-                ResourceQueryBuilder.constructQueryForCompartment(rtype, p, validQueryParams)
+                getResourceQueryBuilder(rtype).constructQueryForCompartment(rtype, p, validQueryParams)
             }
           })
         DocumentManager.andQueries(normalQueries ++ otherQueries.flatten)
@@ -569,7 +569,7 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
       linkedResourcesAndParams.map {
         case (linkedResourceType, linkParam) =>
           val searchParameterConf = fhirConfig.findSupportedSearchParameter(linkedResourceType, linkParam).get
-          val query = ResourceQueryBuilder.constructQueryForRevInclude(matchedResourceReferences, searchParameterConf)
+          val query = getResourceQueryBuilder(linkedResourceType).constructQueryForRevInclude(matchedResourceReferences, searchParameterConf)
           DocumentManager
             .searchDocuments(linkedResourceType, Some(query))
             .map(_.map(_.fromBson))
@@ -717,7 +717,9 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
    * @return
    */
   private def resolveCanonicalReferences(rtype:String, canonicalRefs:Set[FhirCanonicalReference]):Future[Seq[Resource]] = {
-    val canonicalQuery = SearchUtil.canonicalRefQuery(canonicalRefs.map(cr => cr.getUrl() -> cr.version).toSeq)
+    val canonicalQuery =
+      ReferenceQueryBuilder.getQueryOnCanonicalRefs(canonicalRefs.map(cr => cr.getUrl() -> cr.version).toSeq)
+
     DocumentManager.searchDocuments(rtype, Some(canonicalQuery))
       .map(_.map(_.fromBson))
       .map(rs =>
@@ -848,7 +850,7 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
       specialParameters.map(p => p.name match {
         //Search with ids
         case FHIR_SEARCH_SPECIAL_PARAMETERS.ID =>
-          Future.apply(Some(ResourceQueryBuilder.constructQueryForIds(p)))
+          Future.apply(Some(getResourceQueryBuilder(rtype).constructQueryForIds(p)))
         //FHIR _list query
         case FHIR_SEARCH_SPECIAL_PARAMETERS.LIST =>
           handleListSearch(rtype, p)
@@ -901,7 +903,7 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
       throw new UnsupportedParameterException(s"Parameter ${parameter.name} is not supported on $rtypeToQuery within '_has' query!")
 
     //Construct the Query on the leaf of chain to find the resource references
-    val query = ResourceQueryBuilder.constructQueryForNormal(parameter, searchParameterConf.get, fhirConfig.getSupportedParameters(rtypeToQuery))
+    val query = getResourceQueryBuilder(rtypeToQuery).constructQueryForNormal(parameter, searchParameterConf.get, fhirConfig.getSupportedParameters(rtypeToQuery))
     //Find the path of reference
     val chainParameterConf = fhirConfig.findSupportedSearchParameter(rtypeToQuery, parameter.chain.last._2)
     if(chainParameterConf.isEmpty)
@@ -990,7 +992,7 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
       throw new UnsupportedParameterException(s"Parameter ${parameter.name} is not supported on $rtypeToQuery within chained query!")
 
     //Run the Query on the leaf of chain to find the resource references
-    val query = ResourceQueryBuilder.constructQueryForNormal(parameter, searchParameterConf.get, fhirConfig.getSupportedParameters(rtypeToQuery))
+    val query = getResourceQueryBuilder(rtypeToQuery).constructQueryForNormal(parameter, searchParameterConf.get, fhirConfig.getSupportedParameters(rtypeToQuery))
     var fresourceReferences =
       DocumentManager.searchDocumentsReturnIds(rtypeToQuery, query)
         .map(rids => rids.map(rid => s"$rtypeToQuery/$rid") ) //Only get ids and convert them to references
@@ -1022,7 +1024,7 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
     val searchParamConf = fhirConfig.findSupportedSearchParameter(rtype, pname)
     if(searchParamConf.isEmpty)
       throw new UnsupportedParameterException(s"Parameter $pname is not supported on $rtype within chained query!")
-    ResourceQueryBuilder.constructQueryForSimpleParameter(parameter, searchParamConf.get)
+    getResourceQueryBuilder(rtype).constructQueryForSimpleParameter(parameter, searchParamConf.get)
   }
 
   /**
@@ -1095,11 +1097,12 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
     * @param since FHIR time to query history
     * @return
     */
-  private def sinceQuery(since:String):Bson =
-    PrefixModifierHandler.dateRangePrefixHandler(
+  private def sinceQuery(since:String):Bson = {
+    DateQueryBuilder.getQueryForTimePoint(
       s"${FHIR_COMMON_FIELDS.META}.${FHIR_COMMON_FIELDS.LAST_UPDATED}",
       since,
       FHIR_PREFIXES_MODIFIERS.GREATER_THAN_EQUAL)
+  }
 
   /**
     * FHIR _at query on history
@@ -1107,7 +1110,7 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
     * @return
     */
   private def atQuery(atTime:String):Bson =
-    PrefixModifierHandler.dateRangePrefixHandler(
+    DateQueryBuilder.getQueryForTimePoint(
       s"${FHIR_COMMON_FIELDS.META}.${FHIR_COMMON_FIELDS.LAST_UPDATED}",
       atTime,
       FHIR_PREFIXES_MODIFIERS.LESS_THAN)
@@ -1275,7 +1278,7 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
     val populatedResource = FHIRUtil.populateResourceWithExtraFields(resourceWithMeta, FHIR_METHOD_NAMES.METHOD_PUT, if(previousVersion._1 > 0 && !wasDeleted) StatusCodes.OK else StatusCodes.Created)
 
     //3) Construct shard query if sharding is enabled and on a field other than id
-    val shardQueryOpt = ResourceQueryBuilder.constructShardingQuery(rtype, resource)
+    val shardQueryOpt = getResourceQueryBuilder(rtype).constructShardingQuery(resource)
 
     //4) Remove mongo id from old version
     val oldBsonDocument = previousVersion._2.toBson
@@ -1322,7 +1325,7 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
     //2) Add "current" field with value. (after serializing to json)
     val populatedResource = FHIRUtil.populateResourceWithExtraFields(resourceWithMeta, FHIR_METHOD_NAMES.METHOD_PUT, StatusCodes.OK)
     //3) Construct shard query if sharding is enabled and on a field other than id
-    val shardQueryOpt = ResourceQueryBuilder.constructShardingQuery(rtype, resource)
+    val shardQueryOpt = getResourceQueryBuilder(rtype).constructShardingQuery(resource)
     DocumentManager
       .replaceCurrent(rtype, rid, Document(populatedResource.toBson), shardQueryOpt)
       .map(_ =>
@@ -1386,7 +1389,7 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
     val lastModified = Instant.now()
 
     //2) Construct shard query if sharding is enabled and on a field other than id
-    val shardQueryOpt = ResourceQueryBuilder.constructShardingQuery(rtype, previousVersion._2)
+    val shardQueryOpt = getResourceQueryBuilder(rtype).constructShardingQuery(previousVersion._2)
 
     val fop =
       // 4) If resource type is versioned, insert this deleted version, and move old version to history
@@ -1422,7 +1425,7 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
     */
   def replaceResource(rtype:String, rid:String, resource:Resource):Future[Boolean] = {
     //2) Construct shard query if sharding is enabled and on a field other than id
-    val shardQueryOpt = ResourceQueryBuilder.constructShardingQuery(rtype, resource)
+    val shardQueryOpt = getResourceQueryBuilder(rtype).constructShardingQuery(resource)
 
     DocumentManager.replaceCurrent(rtype, rid, Document(resource.toBson), shardQueryOpt)
   }
@@ -1457,5 +1460,13 @@ class ResourceManager(fhirConfig:FhirServerConfig, fhirEventBus: IFhirEventBus =
     */
   private def resourceDeleted(rtype:String, rid:String, previous:Resource):Unit = {
     fhirEventBus.publish(ResourceDeleted(rtype, rid, previous))
+  }
+
+
+  private def getResourceQueryBuilder(rtype:String):ResourceQueryBuilder = {
+    new ResourceQueryBuilder(
+      fhirConfig
+        .resourceConfigurations.getOrElse(rtype, ResourceConf(rtype))
+    )
   }
 }

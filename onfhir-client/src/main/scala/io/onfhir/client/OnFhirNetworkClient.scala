@@ -87,7 +87,7 @@ case class OnFhirNetworkClient(serverBaseUrl:String, interceptors:Seq[IHttpReque
       nextPageParams.find {
           case (pn, pv) =>
             // Check if the parameter is either "_page" or "_skip"
-            (pn.contentEquals("_page") || pn.contentEquals("_skip")) &&
+            (pn.contentEquals("_page") || pn.contentEquals("_skip")) ||
               // Ensure that either the parameter does not exist in the previous request,
               // or it has a different value compared to the "next" link's parameter
               (!previousPageParams.contains(pn) || previousPageParams(pn).toSet != pv.toSet)

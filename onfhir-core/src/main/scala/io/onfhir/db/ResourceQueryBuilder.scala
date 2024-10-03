@@ -5,7 +5,7 @@ import io.onfhir.api.model.{FHIRResponse, OutcomeIssue, Parameter}
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
-import io.onfhir.config.{OnfhirConfig, SearchParameterConf}
+import io.onfhir.config.{OnfhirConfig, ResourceConf, SearchParameterConf}
 import io.onfhir.exception.{BadRequestException, InvalidParameterException}
 import org.mongodb.scala.bson.conversions.Bson
 import org.mongodb.scala.model.Filters
@@ -13,108 +13,159 @@ import org.mongodb.scala.model.Filters._
 import org.slf4j.{Logger, LoggerFactory}
 
 /**
-  * MongoDB query builder for FHIR search mechanisms
-  */
-object ResourceQueryBuilder {
+ * MongoDB query builder for FHIR search mechanisms for the given configuration of resource type
+ * @param resourceConf REST Configuration for research type
+ */
+class ResourceQueryBuilder(resourceConf: ResourceConf) extends IFhirQueryBuilder {
   protected val logger:Logger = LoggerFactory.getLogger(this.getClass)
 
   /**
-    * Construct query for Normal Category Search Parameters
-    * @param parameter Parsed search parameter
-    * @param searchParameterConf Configuration for the search parameter
-    * @return
-    */
+   * Construct query for normal search parameters (token, reference, quantity, etc)
+   *
+   * @param parameter           Parsed search parameter
+   * @param searchParameterConf Configuration for the search parameter
+   * @return
+   */
   def constructQueryForSimpleParameter(parameter:Parameter, searchParameterConf:SearchParameterConf):Bson = {
-      //This part handles search with simple query parameters
-      val queries =
-        parameter
-          .valuePrefixList //Go over each value to OR them
-          .map(pv => {
-            //There exists either a prefix or modifier, not both
-            val modifierOrPrefix =
-              parameter.suffix match {
-                //If there is no modifier, use the prefix
-                case "" => pv._1
-                //Not is handled specially, so no modifier or prefix
-                case FHIR_PREFIXES_MODIFIERS.NOT => ""
-                //Use other modifiers
-                case oth => oth
-              }
-            //Handle common modifiers here
-            modifierOrPrefix match {
-              //Missing modifier is common
-              case FHIR_PREFIXES_MODIFIERS.MISSING =>
-                if(searchParameterConf.ptype == FHIR_PARAMETER_TYPES.COMPOSITE)
-                  throw new InvalidParameterException(s"Missing modifier cannot be used with composite parameters!")
-                val paths = searchParameterConf.extractElementPaths(withArrayIndicators = true)
-                PrefixModifierHandler.missingHandler(paths.map(FHIRUtil.normalizeElementPath), parameter.valuePrefixList.head._2)
-
-              //Otherwise
-              case _ =>
-                constructQueryForSimple(pv._2, parameter.paramType, modifierOrPrefix, searchParameterConf)
-            }
-          })
-
     parameter.suffix match {
-      //Handle the not modifier specially at the end
-      case FHIR_PREFIXES_MODIFIERS.NOT =>
-        if (queries.length > 1) nor(queries: _*) else not(queries.head)
+      //Missing modifier is common, so handle it here
+      case FHIR_PREFIXES_MODIFIERS.MISSING =>
+        if (searchParameterConf.ptype == FHIR_PARAMETER_TYPES.COMPOSITE)
+          throw new InvalidParameterException(s"Missing modifier cannot be used with composite parameters!")
+        if(parameter.valuePrefixList.length != 1)
+          throw new InvalidParameterException("Invalid parameter value for :missing modifier, either true or false should be provided!")
+        val paths = searchParameterConf.extractElementPaths(withArrayIndicators = true)
+        constructQueryForMissingModifier(paths.map(FHIRUtil.normalizeElementPath), parameter.valuePrefixList.head._2)
+      //Any other modifier or no modifier
       case _ =>
-        if (queries.length > 1) or(queries: _*) else queries.head
+        //For each possible path, construct queries
+        val queries:Seq[Bson] =
+          searchParameterConf
+            .extractElementPathsTargetTypesAndRestrictions(withArrayIndicators = true)
+            .map {
+              case (path, targetType, Nil) =>
+                constructQueryForSimpleWithoutRestriction(parameter, searchParameterConf, path, targetType)
+              //If there is a restriction on the search or search on extension we assume it is a direct field match e.g phone parameter on Patient
+              //e.g. f:PlanDefinition/f:relatedArtifact[f:type/@value='depends-on']/f:resource -->  path = relatedArtifact[i].resource, restriction = @.type -->  (relatedArtifact[i], resource, type)
+              //e.g. f:OrganizationAffiliation/f:telecom[system/@value='email']  --> path => telecom[i] , restriction = system --> (telecom[i], "", system)
+              case (path, targetType, restrictions) =>
+                //Find the index in the path for given restrictions
+                val pathParts = path.split('.').toIndexedSeq
+                val indexOfRestrictions = FHIRUtil.findIndexOfRestrictionsOnPath(pathParts, restrictions)
+                constructQueryForSimpleWithRestrictions(parameter, searchParameterConf, pathParts, targetType, indexOfRestrictions)
+            }
+        //merge queries
+        mergeQueriesFromDifferentPaths(parameter.suffix, queries)
     }
   }
 
   /**
-    * Construct Query for simple search
-    * @param value Query value
-    * @param paramType Search type
-    * @param modifierOrPrefix Modifier or prefix
-    * @param searchParameterConf Search parameter configuration
-    * @return
-    */
-  private def constructQueryForSimple(value:String, paramType:String, modifierOrPrefix:String, searchParameterConf:SearchParameterConf) = {
-    //For each possible path, construct queries
-    val queries =
-      searchParameterConf
-        .extractElementPathsTargetTypesAndRestrictions(withArrayIndicators = true)
-        .map {
-          case (path, targetType, Nil) =>
-            SearchUtil
-              .typeHandlerFunction(paramType)(value, modifierOrPrefix, path, targetType, searchParameterConf.targets)
-          //If there is a restriction on the search we assume it is a direct field match e.g phone parameter on Patient
-          //e.g. f:PlanDefinition/f:relatedArtifact[f:type/@value='depends-on']/f:resource -->  path = relatedArtifact[i].resource, restriction = @.type -->  (relatedArtifact[i], resource, type)
-          //e.g. f:OrganizationAffiliation/f:telecom[system/@value='email']  --> path => telecom[i] , restriction = system --> (telecom[i], "", system)
-          case (path, targetType, restrictions) =>
-            val pathParts = path.split('.').toIndexedSeq
-            val indexOfRestrictions  = FHIRUtil.findIndexOfRestrictionsOnPath(pathParts, restrictions)
-            SearchUtil.queryWithRestrictions(pathParts, indexOfRestrictions, value, paramType, targetType, modifierOrPrefix, searchParameterConf.targets)
+   * Handles missing modifier
+   *
+   * @param pathList absolute path of the parameter
+   * @param bool     boolean value (:missing=  true | false)
+   * @return         BsonDocument for the query
+   */
+  def constructQueryForMissingModifier(pathList: Seq[String], bool: String): Bson = {
+    bool match {
+      case MISSING_MODIFIER_VALUES.STRING_TRUE =>
+        //All paths should be missing
+        pathList.map(path => Filters.exists(path, exists = false)) match {
+          case Seq(single) => single
+          case multiple => Filters.and(multiple:_*)
         }
-    //OR the queries for multiple paths
-    if(queries.size > 1) or(queries:_*) else queries.head
+      case MISSING_MODIFIER_VALUES.STRING_FALSE =>
+        //One of the path should exist
+        pathList.map(path => Filters.exists(path, exists = true)) match {
+          case Seq(single) => single
+          case multiple => Filters.or(multiple: _*)
+        }
+      case _ =>
+        throw new InvalidParameterException("Invalid parameter value for :missing modifier, either true or false should be provided!")
+    }
   }
-
 
   /**
-    * Construct query for Extension Category Search Parameters
-    * @param parameter Parsed search parameter
-    * @param searchParameterConf Configuration for the search parameter
-    * @return
-    */
-  private def constructQueryForExtensionParameter(parameter:Parameter, searchParameterConf:SearchParameterConf):Bson = {
-    val queries = parameter
-      .valuePrefixList //Go over each value to OR them
-      .flatMap(pv => {
-        //Extension path defined for search
-        val paths = searchParameterConf.paths.asInstanceOf[Seq[Seq[(String, String)]]]
-        paths.map(eachPath => {
-          SearchUtil.extensionQuery(pv._2, eachPath, searchParameterConf.ptype, pv._1, searchParameterConf.targets)
-        })
-      })
-
-    //OR the queries for multiple paths
-    if(queries.length > 1) or(queries:_*) else queries.head
+   * Construct MongoDB query for simple parameter
+   * @param parameter             Parsed parameter details
+   * @param searchParameterConf   Corresponding search parameter configuration
+   * @param path                  Path to the element to run the search
+   * @param targetType            Data type of target element
+   * @return
+   */
+  private def constructQueryForSimpleWithoutRestriction(parameter:Parameter, searchParameterConf:SearchParameterConf, path:String, targetType:String):Bson = {
+    parameter.paramType match {
+      case FHIR_PARAMETER_TYPES.NUMBER =>
+        NumberQueryBuilder.getQuery(parameter.valuePrefixList, path, targetType)
+      case FHIR_PARAMETER_TYPES.QUANTITY =>
+        QuantityQueryBuilder.getQuery(parameter.valuePrefixList, path, targetType)
+      case FHIR_PARAMETER_TYPES.DATE =>
+        DateQueryBuilder.getQuery(parameter.valuePrefixList, path, targetType)
+      case FHIR_PARAMETER_TYPES.TOKEN =>
+        TokenQueryBuilder.getQuery(parameter.valuePrefixList.map(_._2), parameter.suffix, path, targetType)
+      case FHIR_PARAMETER_TYPES.STRING =>
+        StringQueryBuilder.getQuery(parameter.valuePrefixList.map(_._2), parameter.suffix, path, targetType)
+      case FHIR_PARAMETER_TYPES.URI =>
+        UriQueryBuilder.getQuery(parameter.valuePrefixList.map(_._2), parameter.suffix, path, targetType)
+      case FHIR_PARAMETER_TYPES.REFERENCE =>
+        getReferenceQueryBuilder()
+          .getQuery(parameter.valuePrefixList.map(_._2), parameter.suffix, path, targetType, searchParameterConf.targets)
+    }
   }
 
+  /**
+   * Construct MongoDB query for simple parameter with extra restrictions
+   * e.g. Search parameters on extensions
+   * e.g. Search parameters like phone on Patient type --> Target path : Patient.telecom.where(system='phone')
+   * @param parameter               Parsed parameter details
+   * @param searchParameterConf     Corresponding search parameter configuration
+   * @param pathParts               Parsed path to the element to run the search
+   * @param targetType              Data type of target element
+   * @param indexOfRestrictions     Parsed and indexed restrictions e.g. 0 -> Seq(system -> phone)
+   * @return
+   */
+  def constructQueryForSimpleWithRestrictions(parameter:Parameter,
+                                              searchParameterConf:SearchParameterConf,
+                                              pathParts:Seq[String],
+                                              targetType:String,
+                                              indexOfRestrictions:Seq[(Int, Seq[(String, String)])]
+                                             ): Bson = {
+
+    //Get the next restriction in the path
+    val restriction = indexOfRestrictions.head
+    //Find the parent path to this element e.g. telecom[i]
+    val parentPath = pathParts.slice(0, restriction._1 + 1).mkString(".")
+    //Find child paths
+    val childPathParts = pathParts.drop(restriction._1 + 1)
+    //Split the parent path
+    val (elemMatchPath, queryPath) = FHIRUtil.splitElementPathIntoElemMatchAndQueryPaths(parentPath)
+    //If this is the last restriction, return the query by merging the actual query and query coming from restriction
+    if (indexOfRestrictions.tail.isEmpty) {
+      val childPath = childPathParts.mkString(".")
+      val mainQuery =
+        Filters.and(
+          (
+            //Restriction queries e.g. extension.where(url='')
+            restriction._2.map(r => Filters.eq(FHIRUtil.mergeElementPath(queryPath, r._1), r._2)) :+
+              //Actual query
+              constructQueryForSimpleWithoutRestriction(parameter, searchParameterConf,  FHIRUtil.mergeElementPath(queryPath, childPath), targetType)
+            ): _*
+        )
+      getFinalQuery(elemMatchPath, mainQuery)
+    }
+    //If there are still restrictions on child paths, continue applying restrictions
+    else {
+      val mainQuery =
+        and(
+          (
+            //Restriction queries
+            restriction._2.map(r => Filters.eq(FHIRUtil.mergeElementPath(queryPath, r._1), r._2)) :+
+              constructQueryForSimpleWithRestrictions(parameter, searchParameterConf, childPathParts, targetType, indexOfRestrictions.tail)
+            ): _*
+        )
+      elemMatch(elemMatchPath.get, mainQuery)
+    }
+  }
 
   /**
     * Builds query for composite parameters wrt to provided
@@ -180,11 +231,10 @@ object ResourceQueryBuilder {
             val queriesForCombParam =
               subpathsAfterCommonPathAndTargetTypes.map {
                 case (path, spTargetType) =>
-                  //Run query for each path
-                  SearchUtil
-                    .typeHandlerFunction(compParamConf.ptype)(queryPartValue, queryPartPrefix, path, spTargetType, compParamConf.targets) //Construct query for each path
+                  val childParam = Parameter(FHIR_PARAMETER_CATEGORIES.NORMAL, compParamConf.ptype, searchParamConf.pname, Seq(queryPartPrefix->queryPartValue), parameter.suffix)
+                  constructQueryForSimpleWithoutRestriction(childParam, searchParamConf, path, spTargetType)
               }
-            if(queriesForCombParam.length > 1) or(queriesForCombParam:_*) else queriesForCombParam.head
+            orQueries(queriesForCombParam)
           }
         //Queries on all combined components should hold
         val mainQuery = and(queriesForEachCombParam:_*)
@@ -197,7 +247,7 @@ object ResourceQueryBuilder {
     )
 
     //OR the queries for multiple values and multiple common paths
-    if(queries.length > 1) or(queries:_*) else queries.head
+    orQueries(queries)
   }
 
   /**
@@ -256,33 +306,26 @@ object ResourceQueryBuilder {
     * @return
     */
   def constructQueryForRevInclude(revIncludeReferences:Seq[(String, Option[String], Option[String])], parameterConf: SearchParameterConf):Bson = {
-    val queries = {
+    val queries =
       parameterConf.targetTypes.head match {
         case FHIR_DATA_TYPES.REFERENCE =>
           parameterConf.paths.map {
             case normalPath: String =>
-              val queries = revIncludeReferences.map(revIncludeRef =>
-                SearchUtil.typeHandlerFunction(FHIR_PARAMETER_TYPES.REFERENCE)(revIncludeRef._1, "", normalPath, FHIR_DATA_TYPES.REFERENCE, Nil)
-              )
-              if(queries.length > 1) or(queries:_*) else queries.head
+              getReferenceQueryBuilder().getQuery(revIncludeReferences.map(_._1), "", normalPath, FHIR_DATA_TYPES.REFERENCE, parameterConf.targets)
           }
         case FHIR_DATA_TYPES.CANONICAL =>
           parameterConf.paths.map {
             case normalPath: String =>
-              val queries =
+              val canonicalRefs =
                 revIncludeReferences
                   .filter(r => r._2.isDefined)
-                  .map(revIncludeRef => {
-                    val canonicalQuery = revIncludeRef._2.get + revIncludeRef._3.map(v => s"|$v").getOrElse("")
-                    SearchUtil.typeHandlerFunction(FHIR_PARAMETER_TYPES.REFERENCE)(canonicalQuery, "", normalPath, FHIR_DATA_TYPES.CANONICAL, Nil)
-                  })
-              if(queries.length > 1) or(queries:_*) else queries.head
+                  .map(r => s"${r._2.get}${r._3.map(v => s"|$v").getOrElse("")}")
+
+              ReferenceQueryBuilder.getQueryOnCanonicals(canonicalRefs, "", normalPath)
           }
       }
-    }
-
     //Merge queries with or (for multiple paths parameters)
-    if(queries.size > 1) or(queries:_*) else queries.head
+    orQueries(queries)
   }
 
   /**
@@ -291,16 +334,16 @@ object ResourceQueryBuilder {
     * @param resource   Resource content
     * @return
     */
-  def constructShardingQuery(rtype:String, resource: Resource):Option[Bson] = {
+  def constructShardingQuery(resource: Resource):Option[Bson] = {
     if(!OnfhirConfig.mongoShardingEnabled)
       None
     else
       fhirConfig.shardKeys
-        .get(rtype) //get shard key, if exist
+        .get(resourceConf.resource) //get shard key, if exist
         .flatMap(_.headOption) //Only take the first, as we support single shard key
         .filterNot(_ == FHIR_SEARCH_SPECIAL_PARAMETERS.ID) // if shard is on id, we don't need this query, id is already used
         .flatMap(shardParamName =>
-          fhirConfig.getSupportedParameters(rtype).get(shardParamName)//Try to find the param configuration
+          fhirConfig.getSupportedParameters(resourceConf.resource).get(shardParamName)//Try to find the param configuration
         )
         .flatMap(shardParam =>
           shardParam.ptype match {
@@ -316,7 +359,7 @@ object ResourceQueryBuilder {
                     FHIRResponse.SEVERITY_CODES.FATAL,
                     FHIRResponse.OUTCOME_CODES.INVALID,
                     None,
-                    Some(s"Collection for the resource type $rtype is sharded on path $elementPath! Therefore it is required, but the resource does not include the field! Please consult with the maintainer of the OnFhir repository."),
+                    Some(s"Collection for the resource type ${resourceConf.resource} is sharded on path $elementPath! Therefore it is required, but the resource does not include the field! Please consult with the maintainer of the OnFhir repository."),
                     Seq(elementPath)
                   )
                 ))
@@ -333,5 +376,14 @@ object ResourceQueryBuilder {
           }
        )
   }
+
+  /**
+   * Construct ReferenceQueryBuilder
+   * @return
+   */
+  private def getReferenceQueryBuilder(): ReferenceQueryBuilder = {
+    new ReferenceQueryBuilder(onlyLocalReferences = resourceConf.referencePolicies.contains("local"))
+  }
+
 }
 
