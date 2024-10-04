@@ -58,7 +58,7 @@ class FHIRCreateService(transactionSession: Option[TransactionSession] = None) e
     //2) User requested a conditional update, so check the search parameters in
     //   If-None-Exist header with the current version
     if(ifNoneExist.isDefined){
-      val parameters = Uri.Query(ifNoneExist.get).toMultiMap
+      val parameters = Uri.Query(ifNoneExist.get.replace(' ', '+')).toMultiMap
       //Parse the parameters
       val parsedParameters = fhirConfigurationManager.fhirSearchParameterValueParser.parseSearchParameters( _type, parameters, prefer)
       // Search the resources; only we need mandatory elements e.g. id, meta
