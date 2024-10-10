@@ -381,6 +381,20 @@ class FHIRSearchEndpointTest extends OnFhirTest with FHIREndpoint {
         val bundle = responseAs[Resource]
         checkSearchResult(bundle, "Patient", 2, Some(query))
       }
+      //multiple not
+      query = "?code:not=http://loinc.org|15074-8,http://loinc.org|718-7"
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, resourceType, 0, Some(query))
+      }
+      query = "?code:not=http://loinc.org|15074-8,http://loinc.org|748-7"
+      Get("/" + OnfhirConfig.baseUri + "/" + resourceType + query) ~> fhirRoute ~> check {
+        status === OK
+        val bundle = responseAs[Resource]
+        checkSearchResult(bundle, resourceType, 1, Some(query))
+        (bundle \ "entry" \ "resource" \ "id").extract[Seq[String]] must contain(obsHemoglobinId)
+      }
     }
 
     "handle modifier 'in' and 'not-in' for token type" in {

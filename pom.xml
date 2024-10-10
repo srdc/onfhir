@@ -53,6 +53,13 @@
             <organizationUrl>https://www.srdc.com.tr</organizationUrl>
         </developer>
         <developer>
+            <id>dogukan10</id>
+            <name>Dogukan Cavdaroglu</name>
+            <email>dogukan@srdc.com.tr</email>
+            <organization>SRDC Corp.</organization>
+            <organizationUrl>https://www.srdc.com.tr</organizationUrl>
+        </developer>
+        <developer>
             <id>ozankose1992</id>
             <name>Ozan Köse</name>
             <email>ozankose1992@gmail.com</email>
@@ -88,7 +95,7 @@
 
         <!-- This is a special placeholder to manage the version from a single property throughout the parent and child modules. No other property name can be used. -->
         <!-- https://maven.apache.org/maven-ci-friendly.html -->
-        <revision>3.3-SNAPSHOT</revision>
+        <revision>3.4-SNAPSHOT</revision>
 
         <!-- plugin versions -->
         <scala.maven.plugin.version>4.8.1</scala.maven.plugin.version>

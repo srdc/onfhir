@@ -405,6 +405,7 @@ package object api {
     val ABOVE = ":above"
     val BELOW = ":below"
     val TEXT = ":text"
+    val CODE_TEXT = ":code-text"
     val NOT = ":not"
     val TYPE = ":type"
     val IDENTIFIER = ":identifier"
