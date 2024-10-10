@@ -260,9 +260,10 @@ class FHIRSearchParameterValueParser(fhirConfig: FhirServerConfig) {
                 .getOrElse(Set.empty)
             possibleTargets.size match {
               case 1 =>  possibleTargets.head
-              case _ =>  throw new InvalidParameterException(s"Invalid usage of chained search '$nameExpr', need type discriminator for parameter '$pname'! Syntax is erroneous, please see https://build.fhir.org/search.html#chaining !")
+              case _ =>
+                throw new InvalidParameterException(s"Invalid usage of chained search '$nameExpr', need type discriminator for parameter '$pname'! Syntax is erroneous, please see https://build.fhir.org/search.html#chaining !")
             }
-          case 2 => chains.last.last
+          case 2 => c.last
           case _ => throw new InvalidParameterException(s"Invalid usage of chained search '$nameExpr'! Syntax is erroneous, please see https://build.fhir.org/search.html#chaining !")
         }
         (lastTempRType, pname)
