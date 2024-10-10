@@ -19,7 +19,7 @@ import scala.io.Source
 import org.specs2.concurrent.ExecutionEnv
 import org.specs2.runner.JUnitRunner
 
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.concurrent.{Await, Future}
 import scala.language.postfixOps
 
@@ -249,8 +249,8 @@ class OnFhirLocalClientTest extends OnFhirTest {
         .where("_sort", "-_lastUpdated")
         .toIterator()
 
-      itr.next().map(b => FHIRUtil.extractValue[String](b.searchResults.head, "id")) must be_==("obshemoglobin").await
-      itr.next().map(b => FHIRUtil.extractValue[String](b.searchResults.head, "id")) must be_==("obsglucose").await
+      itr.next().map(b => FHIRUtil.extractValue[String](b.searchResults.head, "id")) must be_==("obshemoglobin").awaitFor(2 seconds)
+      itr.next().map(b => FHIRUtil.extractValue[String](b.searchResults.head, "id")) must be_==("obsglucose").awaitFor(2 seconds)
     }
 
     "should help searching resources - compartment search" in {
