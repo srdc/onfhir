@@ -7,22 +7,26 @@ import com.fasterxml.jackson.databind.JsonMappingException
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, OutcomeIssue}
 import io.onfhir.exception._
 import io.onfhir.api.model.FHIRMarshallers._
+import io.onfhir.util.JsonFormatter.formats
+import org.json4s.{Extraction, JArray}
+import org.json4s.jackson.Serialization
 
 import scala.language.implicitConversions
 import org.slf4j.{Logger, LoggerFactory}
 object ErrorHandler {
-  val logger: Logger = LoggerFactory.getLogger(this.getClass.getName)
+  val logger: Logger = LoggerFactory.getLogger(this.getClass)
   /**
     * Exception Handler object
     * @return
     */
   implicit def fhirErrorHandler(fhirRequest:FHIRRequest): ExceptionHandler =
     ExceptionHandler {
-      case e:Throwable if fhirErrorHandlerToResponse.isDefinedAt(e) => Directives.complete{
-        val response = fhirErrorHandlerToResponse(e)
-        fhirRequest.setResponse(response)
-        response
-      }
+      case e:Throwable if fhirErrorHandlerToResponse.isDefinedAt(e) =>
+        Directives.complete{
+          val response = fhirErrorHandlerToResponse(e)
+          fhirRequest.setResponse(response)
+          response
+        }
     }
 
   /**

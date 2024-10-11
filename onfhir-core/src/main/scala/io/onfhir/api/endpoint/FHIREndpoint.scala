@@ -9,7 +9,7 @@ import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.util.{FHIRServerUtil, FHIRUtil}
 import io.onfhir.server.ErrorHandler.fhirErrorHandler
 import io.onfhir.server.FHIRRejectionHandler.fhirRejectionHandler
-import io.onfhir.audit.AuditManager
+import io.onfhir.audit.{AuditManager, RequestLogManager}
 import io.onfhir.authz.{AuthManager, AuthzConfigurationManager}
 import io.onfhir.config.{FhirConfigurationManager, OnfhirConfig}
 import io.onfhir.server.CORSHandler
@@ -76,22 +76,24 @@ trait FHIREndpoint
                                 ).setId(xRequestId) //Set the identifier of the request
                               //Resolve Token/Auth/Authz context
                               AuthManager.authenticate() { authContext =>
-                                //Audit the interaction when result is available
-                                AuditManager.audit(fhirRequest, authContext._1, authContext._2) {
-                                  //Handle any exception with our own directive (See details in ErrorHandler)
-                                  handleExceptions(fhirErrorHandler(fhirRequest)) {
-                                    //Handle any rejection with our own directive (See details in FHIRRejectionHandler)
-                                    handleRejections(fhirRejectionHandler(fhirRequest)) {
-                                      //Merge all routes, ORDER IS IMPORTANT among same HTTP methods as they are merged as OR !!!!
-                                      var routes =
-                                        createRoute(fhirRequest, authContext) ~ updateRoute(fhirRequest, authContext) ~ deleteRoute(fhirRequest, authContext) ~ historyRoute(fhirRequest, authContext) ~ readRoute(fhirRequest, authContext) ~ searchRoute(fhirRequest, authContext) ~ compartmentSearchRoute(fhirRequest, authContext) ~ patchRoute(fhirRequest, authContext) ~ batchRoute(fhirRequest, authContext) ~ operationRoute(fhirRequest, authContext)
-                                      //Add the external service routes
-                                      Onfhir.apply().externalRoutes.foreach(er => routes = routes ~ er(fhirRequest, authContext))
-                                      //Append the security route if our server is secure
-                                      if (OnfhirConfig.authzConfig.isSecure())
-                                        routes ~ securityRoute
-                                      else
-                                        routes
+                                RequestLogManager.logRequest(fhirRequest) {
+                                  //Audit the interaction when result is available
+                                  AuditManager.audit(fhirRequest, authContext._1, authContext._2) {
+                                    //Handle any exception with our own directive (See details in ErrorHandler)
+                                    handleExceptions(fhirErrorHandler(fhirRequest)) {
+                                      //Handle any rejection with our own directive (See details in FHIRRejectionHandler)
+                                      handleRejections(fhirRejectionHandler(fhirRequest)) {
+                                        //Merge all routes, ORDER IS IMPORTANT among same HTTP methods as they are merged as OR !!!!
+                                        var routes =
+                                          createRoute(fhirRequest, authContext) ~ updateRoute(fhirRequest, authContext) ~ deleteRoute(fhirRequest, authContext) ~ historyRoute(fhirRequest, authContext) ~ readRoute(fhirRequest, authContext) ~ searchRoute(fhirRequest, authContext) ~ compartmentSearchRoute(fhirRequest, authContext) ~ patchRoute(fhirRequest, authContext) ~ batchRoute(fhirRequest, authContext) ~ operationRoute(fhirRequest, authContext)
+                                        //Add the external service routes
+                                        Onfhir.apply().externalRoutes.foreach(er => routes = routes ~ er(fhirRequest, authContext))
+                                        //Append the security route if our server is secure
+                                        if (OnfhirConfig.authzConfig.isSecure())
+                                          routes ~ securityRoute
+                                        else
+                                          routes
+                                      }
                                     }
                                   }
                                 }

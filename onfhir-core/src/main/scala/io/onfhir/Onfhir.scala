@@ -8,7 +8,7 @@ import akka.http.scaladsl.server.Route
 import akka.http.scaladsl.settings.ServerSettings
 import io.onfhir.api.endpoint.{FHIREndpoint, OnFhirInternalEndpoint}
 import io.onfhir.api.model.FHIRRequest
-import io.onfhir.audit.AuditManager
+import io.onfhir.audit.{AuditManager, RequestLogManager}
 import io.onfhir.authz._
 import io.onfhir.config.{FhirConfigurationManager, IFhirServerConfigurator, OnfhirConfig, SSLConfig}
 import io.onfhir.db.{DBConflictManager, EmbeddedMongo}
@@ -64,6 +64,10 @@ class Onfhir(
       Some(Onfhir.actorSystem.actorOf(AuditManager.props(FhirConfigurationManager, customAuditHandler), AuditManager.ACTOR_NAME))
     else
       None
+
+  val requestLogManager =
+    Onfhir.actorSystem.actorOf(RequestLogManager.props(), "request-response-logger")
+
   //Create db conflict manager actor, if transaction is not enabled
   val dbConflictManager =
     if(!OnfhirConfig.mongoUseTransaction)

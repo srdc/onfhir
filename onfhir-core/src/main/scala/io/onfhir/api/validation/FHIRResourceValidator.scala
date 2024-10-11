@@ -5,10 +5,9 @@ import io.onfhir.api._
 import io.onfhir.Onfhir
 import io.onfhir.api.model.{FHIRResponse, OutcomeIssue}
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.config.{FhirServerConfig, IFhirConfigurationManager, OnfhirConfig}
+import io.onfhir.config.{IFhirConfigurationManager, OnfhirConfig}
 import io.onfhir.exception.BadRequestException
 import io.onfhir.validation.FhirContentValidator
-import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.Future
 
@@ -43,7 +42,6 @@ class FHIRResourceValidator(fhirConfigurationManager: IFhirConfigurationManager)
    * @return
    */
   def validateResourceAgainstProfile(resource: Resource, rtype:String, profile:Option[String], parentPath:Option[String] =None,  bundle:Option[(Option[String],Resource)] = None, silent:Boolean = false): Future[Seq[OutcomeIssue]] = {
-
       OnfhirConfig.fhirValidation match {
         case FHIR_VALIDATION_ALTERNATIVES.NONE => Future.apply(Nil) // Ignore validation, no issues
         case _ =>
@@ -81,8 +79,9 @@ class FHIRResourceValidator(fhirConfigurationManager: IFhirConfigurationManager)
            .map(issues => {
              val unknownProfileWarnings = unknownProfiles.map(up => OutcomeIssue(FHIRResponse.SEVERITY_CODES.WARNING, FHIRResponse.OUTCOME_CODES.INFORMATIONAL, None, Some(s"Profile with url '$up' is not known to this server! Therefore, validation is skipped for this profile!"), Seq("meta.profile")))
 
-             if (!silent && issues.exists(_.isError))
+             if (!silent && issues.exists(_.isError)) {
                throw new BadRequestException((issues ++ unknownProfileWarnings).toSeq)
+             }
 
              (issues ++ unknownProfileWarnings).toSeq
           })

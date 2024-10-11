@@ -179,6 +179,11 @@ object OnfhirConfig {
   lazy val authzConfig:AuthzConfig = new AuthzConfig(OnfhirConfig.config.getConfig("fhir.authorization"))
 
   /**
+   * Whether to log failed requests and issues related with them
+   */
+  lazy val logFailedRequests:Boolean = Try(config.getBoolean("fhir.failed-request-logging")).toOption.getOrElse(false)
+
+  /**
    * FHIR Subscription related configuration
    */
   //Enables sending FHIR subscription events to kafka so onfhir-subscription module can work

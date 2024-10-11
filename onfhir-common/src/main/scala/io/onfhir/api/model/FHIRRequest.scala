@@ -1,12 +1,12 @@
 package io.onfhir.api.model
 
 import java.time.Instant
-
 import akka.http.scaladsl.model.{ContentType, HttpMethod, Uri}
 import akka.http.scaladsl.model.headers.{`If-Match`, `If-Modified-Since`, `If-None-Match`, `X-Forwarded-For`, `X-Forwarded-Host`}
 import io.onfhir.api.Resource
 import io.onfhir.api._
 import io.onfhir.api.parsers.BundleRequestParser
+import io.onfhir.util.JsonFormatter
 import io.onfhir.util.JsonFormatter.formats
 
 /**
@@ -284,5 +284,24 @@ case class FHIRRequest(
     * Get Location of request in transaction (Used for identifiying erroneous requests within transactions/batchs)
     */
   def getRequestLocation():String = s"Request Id: ${id}, Request Url: ${requestUri}"
+
+  /**
+   * Get a log string summarizing the FHIR request
+   * @return
+   */
+  def getSummaryString():String = {
+    val attributes =
+      Seq(
+      "Interaction" -> interaction,
+      "Request Id" -> id,
+      "Request Url" -> requestUri
+      ) ++
+        resourceType.map(rtype => "ResourceType" -> rtype).toSeq ++
+        resourceId.map(rid => "ResourceId" -> rid).toSeq ++
+        resource.map(r => s"Resource" -> JsonFormatter.convertToJson(r).toJson) ++
+        (if(queryParams.nonEmpty) Some("Query" -> queryParams.flatMap(qp => qp._2.map(v => s"${qp._1}=${v}")).mkString("&")) else None).toSeq
+
+    attributes.map(a => s"${a._1}: ${a._2}").mkString(", ")
+  }
 }
 
