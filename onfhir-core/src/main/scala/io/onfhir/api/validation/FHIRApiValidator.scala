@@ -170,7 +170,16 @@ object FHIRApiValidator {
       batchOrTransactionRequest
         .childRequests
         .filter(rq => rq.resourceId.isDefined && Seq(FHIR_INTERACTIONS.UPDATE, FHIR_INTERACTIONS.DELETE, FHIR_INTERACTIONS.PATCH).contains(rq.interaction))
-        .map(rq => rq.resourceType.get + "/" + rq.resourceId.get)
+        .map(rq => {
+          // Extracting the identifier field from the resource
+          val identifier = (rq.resource.get \ "identifier") match {
+            case JString(id) => id
+            case _ => ""
+          }
+
+          // Constructing resource type and id string with identifier (ResourceType/ResourceId, Identifier)
+          (s"${rq.resourceType.get}/${rq.resourceId.get}" -> identifier)
+        })
     val resourcesReferredMultipleTimes = resourcesToBeChanged.groupBy(identity).filter(_._2.length > 1).keys.toSeq
     if (resourcesReferredMultipleTimes.nonEmpty)
       throw new BadRequestException(Seq(OutcomeIssue(
