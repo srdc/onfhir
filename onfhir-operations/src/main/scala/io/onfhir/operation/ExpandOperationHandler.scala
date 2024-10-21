@@ -168,6 +168,7 @@ class ExpandOperationHandler(fhirConfigurationManager:IFhirConfigurationManager)
     (input \ "code").extractOpt[String].foreach(c => {output = output ~ ("code" -> c)})
     (input \ "display").extractOpt[String].foreach(d => {output = output ~ ("display" -> d)})
     (input \ "extension").extractOpt[JArray].foreach(arr => {output = output ~ ("extension" -> arr)})
+    (input \ "designation").extractOpt[JArray].foreach(arr => {output = output ~ ("designation" -> arr)})
 
     // If there is a language filter, update the display attribute accordingly
     if (language.nonEmpty) {
