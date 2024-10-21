@@ -67,6 +67,11 @@ if [ ! -z "$AUDIT_SERVER_ROOT_URL" ]; then
     JAVA_CMD+="-Dfhir.auditing.is-secure=true "
 fi
 
+#Configure
+if [ ! -z "$FAILED_REQUEST_LOGGING" ]; then
+    JAVA_CMD+="-Dfhir.failed-request-logging=$FAILED_REQUEST_LOGGING "
+fi
+
 # Configure Authz Server URL
 if [ ! -z "$AUTHZ_SERVER_ROOT_URL" ]; then
     JAVA_CMD+="-Dfhir.authorization.authz-server-url=$AUTHZ_SERVER_ROOT_URL "
