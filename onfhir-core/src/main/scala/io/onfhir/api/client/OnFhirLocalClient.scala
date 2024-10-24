@@ -11,7 +11,7 @@ import io.onfhir.server.ErrorHandler
 object OnFhirLocalClient extends BaseFhirClient {
   implicit val executionContext: ExecutionContextExecutor = Onfhir.actorSystem.dispatcher
 
-  override def getBaseUrl(): String = OnfhirConfig.fhirRootUrl
+  override def getBaseUrl(): String = OnfhirConfig.fhirRootUrl.stripSuffix("/")
 
   /**
    * Execute a FHIR Request internally and return FHIR Response
