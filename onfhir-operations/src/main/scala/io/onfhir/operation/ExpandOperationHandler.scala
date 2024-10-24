@@ -31,6 +31,7 @@ class ExpandOperationHandler(fhirConfigurationManager:IFhirConfigurationManager)
   final val SEARCHPARAM_URL: String = "url"
   final val EXPAND_PARAM_FILTER: String = "filter"
   final val EXPAND_PARAM_LANGUAGE: String = "displayLanguage"
+  final val EXPAND_PARAM_INCLUDE_DESIGNATIONS: String = "includeDesignations"
 
   /**
     * Execute the operation and prepare the output parameters for the operation
@@ -114,6 +115,7 @@ class ExpandOperationHandler(fhirConfigurationManager:IFhirConfigurationManager)
 
     val filterKeys: Seq[String] = operationRequest.extractParamValue[String](EXPAND_PARAM_FILTER).getOrElse("").split(",").toIndexedSeq
     val language: Option[String] = operationRequest.extractParamValue[String](EXPAND_PARAM_LANGUAGE)
+    val includeDesignations: Boolean = operationRequest.extractParamValue[Boolean](EXPAND_PARAM_INCLUDE_DESIGNATIONS).getOrElse(false)
 
     // 1) First, filter all the matching concepts
     val matchingList:Seq[JObject] = compose \ "include" match {
@@ -128,6 +130,7 @@ class ExpandOperationHandler(fhirConfigurationManager:IFhirConfigurationManager)
                (filteredConcept.get \ "code").extractOpt[String].foreach(c => {matching = matching ~ ("code" -> c)})
                (filteredConcept.get \ "display").extractOpt[String].foreach(d => {matching = matching ~ ("display" -> d)})
                (filteredConcept.get \ "extension").extractOpt[JArray].foreach(arr => {matching = matching ~ ("extension" -> arr)})
+               if(includeDesignations) {(filteredConcept.get \ "designation").extractOpt[JArray].foreach(arr => {matching = matching ~ ("designation" -> arr)})}
                Some(matching)
              } else None
           })
@@ -165,6 +168,7 @@ class ExpandOperationHandler(fhirConfigurationManager:IFhirConfigurationManager)
     (input \ "code").extractOpt[String].foreach(c => {output = output ~ ("code" -> c)})
     (input \ "display").extractOpt[String].foreach(d => {output = output ~ ("display" -> d)})
     (input \ "extension").extractOpt[JArray].foreach(arr => {output = output ~ ("extension" -> arr)})
+    (input \ "designation").extractOpt[JArray].foreach(arr => {output = output ~ ("designation" -> arr)})
 
     // If there is a language filter, update the display attribute accordingly
     if (language.nonEmpty) {
