@@ -27,6 +27,8 @@ object UriQueryBuilder extends IFhirQueryBuilder {
     modifier match {
       //No modifier
       case "" => getQueryForUriEquality(values, path)
+      case FHIR_PREFIXES_MODIFIERS.NOT =>
+        Filters.not(getQueryForUriEquality(values, path))
       case FHIR_PREFIXES_MODIFIERS.ABOVE =>
         //if(values.length > 1)
         //  throw new InvalidParameterException(s"Only single url value should be provided when modifier ${FHIR_PREFIXES_MODIFIERS.ABOVE} is used for FHIR url type parameters!")
@@ -36,7 +38,7 @@ object UriQueryBuilder extends IFhirQueryBuilder {
         //  throw new InvalidParameterException(s"Only single url value should be provided when modifier ${FHIR_PREFIXES_MODIFIERS.BELOW} is used for FHIR url type parameters!")
         orQueries(values.map(v => getQueryForBelowModifier(v, path)))
       case oth =>
-        throw new InvalidParameterException(s"Modifier ${oth} is not valid or supported by onFhir.io for FHIR url type parameters!")
+        throw new InvalidParameterException(s"Modifier $oth is not valid or supported by onFhir.io for FHIR url type parameters!")
     }
   }
 
