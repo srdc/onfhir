@@ -703,7 +703,8 @@ package object api {
       "http://hl7.org/fhir/OperationDefinition/ValueSet-expand" -> "io.onfhir.operation.ExpandOperationHandler",
       "http://hl7.org/fhir/OperationDefinition/Composition-document" -> "io.onfhir.operation.DocumentOperationHandler",
       "http://hl7.org/fhir/OperationDefinition/Observation-lastn" -> "io.onfhir.operation.LastNObservationOperationHandler",
-      "http://onfhir.io/fhir/OperationDefinition/import" -> "io.onfhir.operation.BulkOperationHandler"
+      "http://onfhir.io/fhir/OperationDefinition/import" -> "io.onfhir.operation.BulkOperationHandler",
+      "http://hl7.org/fhir/OperationDefinition/Patient-everything" -> "io.onfhir.operation.PatientEverythingOperationHandler"
     )
 
 

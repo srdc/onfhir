@@ -329,7 +329,15 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
             Some(s"Cardinality of Parameter '${paramDef.name}' (${values.size}) is not matching with expected (${paramDef.max}) for the operation '${operationConf.name}', it cannot be given as a part of URL!"),
             Nil)))
         else {
-          val paramValue = values.map(FHIRApiValidator.parseAndValidatePrimitive(_, paramDef.pType.get).map(FHIRSimpleOperationParam))
+          val paramValue =
+            paramDef.pType.get match {
+              //Due to replacement of '+' sign in queries with empty space
+              case FHIR_DATA_TYPES.INSTANT | FHIR_DATA_TYPES.DATETIME =>
+                values.map(_.replace(' ', '+')).map(FHIRApiValidator.parseAndValidatePrimitive(_, paramDef.pType.get).map(FHIRSimpleOperationParam))
+              case _ =>
+                values.map(FHIRApiValidator.parseAndValidatePrimitive(_, paramDef.pType.get).map(FHIRSimpleOperationParam))
+            }
+
           if(paramValue.exists(_.isEmpty))
             Right(Seq(OutcomeIssue(
               FHIRResponse.SEVERITY_CODES.ERROR, //fatal
