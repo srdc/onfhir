@@ -1,10 +1,11 @@
 package io.onfhir.path
 
+import io.onfhir.api.FHIR_DATA_TYPES
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
 
 import java.lang.reflect.InvocationTargetException
-
 import io.onfhir.path.annotation.FhirPathFunction
+
 import scala.reflect.runtime.currentMirror
 import scala.reflect.runtime.universe._
 
@@ -44,6 +45,10 @@ abstract class AbstractFhirPathFunctionLibrary {
               args.collect({
                 // matches 'String's in the sequence
                 case Literal(Constant(s: String)) => s
+
+                case rest =>
+                  // matches 'FHIR_DATA_TYPES' fields
+                  getFhirDataTypeValue(rest.toString())
               })
           })
         // create an instance of FhirPathFunction
@@ -79,6 +84,32 @@ abstract class AbstractFhirPathFunctionLibrary {
           case fpe:FhirPathException => throw fpe
           case e:Throwable => throw FhirPathException.apply(s"Invalid FHIR Path function call $fname!", e)
         }
+    }
+  }
+
+  /**
+   * Retrieves the corresponding value of a FHIR data type from its string representation.
+   * This function uses reflection to access fields in the FHIR_DATA_TYPES class dynamically.
+   * Because the values of FHIR_DATA_TYPES that comes from ToFHIR's api usage are not accessible otherwise.
+   * @param fhirDataTypeString The string representation of the FHIR data type.
+   * @return An Option containing the string value of the FHIR data type if found, or None if not.
+   */
+  private def getFhirDataTypeValue(fhirDataTypeString: String): Option[String] = {
+    // Regular expression to extract the type name from a FHIR_DATA_TYPES reference
+    val pattern = """.*FHIR_DATA_TYPES\.(\w+)""".r
+    // Match the input string against the pattern to find a corresponding FHIR type
+    fhirDataTypeString match {
+      case pattern(typeName) =>
+        try {
+          // Use reflection to invoke the method corresponding to the type name
+          val value = FHIR_DATA_TYPES.getClass.getMethod(typeName).invoke(FHIR_DATA_TYPES)
+          Some(value.asInstanceOf[String]) // Return the value as an Option
+        } catch {
+          case e: Exception =>
+            None // Return None if any exception occurs during reflection
+        }
+      case _ =>
+        None // Return None if the input string does not match the pattern
     }
   }
 }
