@@ -1,8 +1,8 @@
 package io.onfhir.config
 
 import io.onfhir.api.FHIR_FOUNDATION_RESOURCES.FHIR_CONFORMANCE
-import io.onfhir.api.util.IOUtil
-import io.onfhir.api.{DEFAULT_RESOURCE_PATHS, FHIR_FOUNDATION_RESOURCES, Resource}
+import io.onfhir.api.util.{FHIRUtil, IOUtil}
+import io.onfhir.api.{DEFAULT_RESOURCE_PATHS, DEFAULT_ROOT_FOLDER, FHIR_FOUNDATION_RESOURCES, FOUNDATION_RESOURCES_FILE_SUFFIX, Resource}
 
 /**
  * FHIR configuration reader from file system
@@ -39,9 +39,9 @@ class FSConfigReader(
    */
   override def readStandardBundleFile(fileName: String, resourceTypeFilter: Set[String]): Seq[Resource] = {
     val baseDefinitionsFile = fhirVersion match {
-      case "R4" => DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4
-      case "R5" => DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R5
-      case _ => throw new IllegalArgumentException(s"Unknown FHIR version: $fhirVersion")
+      case "R4" | "4.0.1" => DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R4
+      case "R5" | "5.0.0" => DEFAULT_RESOURCE_PATHS.BASE_DEFINITONS_R5
+      case oth => FHIRUtil.mergeFilePath(DEFAULT_ROOT_FOLDER, s"definitions-${oth.toLowerCase}${FOUNDATION_RESOURCES_FILE_SUFFIX}.zip")
     }
     IOUtil
       .readStandardBundleFile(
@@ -79,9 +79,9 @@ class FSConfigReader(
 
   override def readCapabilityStatement(): Resource = {
     val conformanceFileDefaultPath = fhirVersion match {
-      case "R4" => DEFAULT_RESOURCE_PATHS.CONFORMANCE_PATH_R4
-      case "R5" => DEFAULT_RESOURCE_PATHS.CONFORMANCE_PATH_R5
-      case _ => throw new IllegalArgumentException(s"Unknown FHIR version: $fhirVersion")
+      case "R4" | "4.0.1" => DEFAULT_RESOURCE_PATHS.CONFORMANCE_PATH_R4
+      case "R5" | "5.0.0" => DEFAULT_RESOURCE_PATHS.CONFORMANCE_PATH_R5
+      case oth => FHIRUtil.mergeFilePath(DEFAULT_ROOT_FOLDER, s"conformance-statement-${oth.toLowerCase()}$FOUNDATION_RESOURCES_FILE_SUFFIX")
     }
     IOUtil.readResource(conformancePath, conformanceFileDefaultPath, FHIR_CONFORMANCE)
   }

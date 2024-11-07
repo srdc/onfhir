@@ -465,7 +465,8 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
     val dbIndexFileDefaultPath = fhirVersion match {
       case "R4" => DEFAULT_RESOURCE_PATHS.INDEX_CONF_PATH_R4
       case "R5" => DEFAULT_RESOURCE_PATHS.INDEX_CONF_PATH_R5
-      case _ => throw new IllegalArgumentException(s"Unknown FHIR version: $fhirVersion")
+      case oth =>
+        FHIRUtil.mergeFilePath(DEFAULT_ROOT_FOLDER,s"db-index-conf-${oth.toLowerCase}.json")
     }
     //Parse Index configurations, and set configured shard keys
     indexConfigurations = IndexConfigurator.parseIndexConfigurationFile(OnfhirConfig.dbIndexConfigurationPath, dbIndexFileDefaultPath, fhirConfig.compartmentRelations)
