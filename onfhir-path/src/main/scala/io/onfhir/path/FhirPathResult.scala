@@ -93,7 +93,7 @@ case class FhirPathNumber(v:BigDecimal) extends FhirPathResult with Ordered[Fhir
       case _ => false
     }
 
-  def isInteger():Boolean = v - v.toInt == 0
+  def isInteger():Boolean = v - v.toLong == 0
 
   def toJson:JValue = if(isInteger()) JLong(v.toLong) else JDecimal(v)
 }
