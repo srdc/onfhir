@@ -1,5 +1,6 @@
 package io.onfhir.path
 
+import io.onfhir.api.model.FhirLiteralReference
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.path.annotation.FhirPathFunction
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
@@ -76,7 +77,11 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
     insertText = "resolve()", detail = "", label = "resolve", kind = "Method", returnType = Seq(), inputType = Seq())
   def resolve(): Seq[FhirPathResult] = {
     val fhirReferences = current.map {
-      case FhirPathString(uri) => FHIRUtil.parseCanonicalReference(uri)
+      //TODO We cannot distinguish every case if it is string, so we may come up with a new reference type that may be both and resolve can handle that
+      case FhirPathString(uri) if uri.startsWith("http") => FHIRUtil.parseCanonicalReference(uri)
+      case FhirPathString(reference) =>
+        val parsedReference = FHIRUtil.parseReferenceValue(reference)
+        FhirLiteralReference(parsedReference._1, parsedReference._2, parsedReference._3, parsedReference._4)
       case FhirPathComplex(o) => FHIRUtil.parseReference(o)
       case _ => throw new FhirPathException("Invalid function call 'resolve', it should be called on a canonical value or FHIR reference!")
     }
