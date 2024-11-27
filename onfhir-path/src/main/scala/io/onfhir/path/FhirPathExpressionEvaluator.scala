@@ -100,12 +100,23 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
     *     */
   override def visitMemberInvocation(ctx: FhirPathExprParser.MemberInvocationContext):Seq[FhirPathResult] = {
     //Element path
-    val pathName = FhirPathLiteralEvaluator.parseIdentifier(ctx.identifier().getText) + targetType.getOrElse("") //if there is target type add it e.g. Observation.value as Quantity --> search for valueQuantity
+    var pathName = FhirPathLiteralEvaluator.parseIdentifier(ctx.identifier().getText) + targetType.getOrElse("") //if there is target type add it e.g. Observation.value as Quantity --> search for valueQuantity
 
     //Execute the path and return
     current
       .filter(_.isInstanceOf[FhirPathComplex]) //Only get the complex objects
       .flatMap(r => {
+        // Check if the current field is a complex type
+        val isComplex: Boolean = (r.asInstanceOf[FhirPathComplex].json \ pathName).isInstanceOf[FhirPathComplex]
+        if (!isComplex) {
+          // If the current field is not complex (i.e., it's a primitive type), check if the next token is an "extension"
+          if (isNextTokenExtension(ctx)) {
+            // If the next token is "extension", modify the path name to access the corresponding "_<field>" element
+            // This is necessary because FHIR stores extensions for primitive fields under a separate path prefixed with "_"
+            pathName = s"_$pathName"
+          }
+        }
+
         FhirPathValueTransformer.transform(r.asInstanceOf[FhirPathComplex].json \ pathName, context.isContentFhir) match { //Execute JSON path for each element
           //The field can be a multi valued so we should check if there is a field starting with the path
           case Nil if targetType.isEmpty && context.isContentFhir =>
@@ -503,4 +514,37 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
     }
   }
 
+  /**
+   * Checks if the next member in the FHIRPath expression chain after the given context
+   * is the "extension" function.
+   *
+   * This function traverses up the parse tree to locate the parent context that contains
+   * the entire expression and checks if the token following the current context is ".extension".
+   *
+   * @param ctx The current `MemberInvocationContext` representing the current member.
+   * @return `true` if the next token in the chain is "extension", `false` otherwise.
+   */
+  private def isNextTokenExtension(ctx: FhirPathExprParser.MemberInvocationContext): Boolean = {
+    // Cache the current context's text to avoid duplicate calls
+    val currentText = ctx.getText
+    // Start with the parent context to traverse the tree
+    var parent = ctx.getParent
+    while (parent != null) {
+      val parentText = parent.getText
+      // Check if the current context's text differs from the parent's text
+      if (!parentText.contentEquals(currentText)) {
+        // Extract the substring after the current context in the parent's text
+        val nextToken = parentText.substring(parentText.indexOf(currentText) + currentText.length)
+        // Check if the next token starts with ".extension"
+        if (nextToken.startsWith(".extension")) {
+          return true
+        }
+        // Return false if the next token is not ".extension"
+        return false
+      }
+      // Move to the next parent in the parse tree
+      parent = parent.getParent
+    }
+    false
+  }
 }
