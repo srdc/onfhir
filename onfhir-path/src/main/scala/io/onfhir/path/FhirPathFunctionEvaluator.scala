@@ -110,6 +110,43 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
     result
   }
 
+  /**
+   * Validates if the current element belongs to a specified FHIR value set.
+   *
+   * This function checks whether the `code` from the current context is a member of
+   * the value set specified by the provided `urlExp`.
+   *
+   * @param urlExp The URL expression representing the FHIR value set to validate against.
+   * @return A sequence containing a single `FhirPathBoolean` result:
+   *         - `true` if the code is a member of the specified value set.
+   *         - `false` otherwise.
+   * @throws FhirPathException if `urlExp` does not return a valid URL.
+   */
+  @FhirPathFunction(
+    documentation = "\uD83D\uDCDC Returns whether the current element is a member of a specific value set.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`urlExp`**  \nThe URL of the FHIR value set to validate against.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \nA boolean indicating if the code is valid within the specified value set:\n```json\ntrue | false\n```\n\n\uD83D\uDCA1 **E.g.**  \n`code.memberOf(\"http://example.org/fhir/ValueSet/my-value-set\")`",
+    insertText = "memberOf(<urlExp>)", detail = "Validate if the current element belongs to a FHIR value set.", label = "memberOf", kind = "Method",  returnType = Seq("boolean"), inputType = Seq("string")
+  )
+  def memberOf(urlExp: ExpressionContext): Seq[FhirPathResult] = {
+    // Evaluate the URL expression and ensure it resolves to a single valid URL string
+    val url = new FhirPathExpressionEvaluator(context, current).visit(urlExp)
+    if (url.length != 1 || !url.head.isInstanceOf[FhirPathString]) {
+      throw new FhirPathException(
+        s"Invalid function call 'memberOf': expression ${urlExp.getText} does not return a valid URL!"
+      )
+    }
+
+    // Retrieve the terminology validator and validate the code against the specified value set
+    val isValid = context.terminologyValidator.get
+      .validateCodeAgainstValueSet(
+        vsUrl = url.head.asInstanceOf[FhirPathString].s,  // Value set URL
+        code = current.head.asInstanceOf[FhirPathString].s,  // Current code to validate
+        version = None,
+        codeSystem = None
+      )
+
+    // Return the validation result as a FhirPathBoolean
+    Seq(FhirPathBoolean(isValid))
+  }
 
   /**
    * Type functions, for these basic casting or type checking are done before calling the function on the left expression

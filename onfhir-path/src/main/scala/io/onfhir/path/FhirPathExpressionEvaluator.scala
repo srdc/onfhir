@@ -107,7 +107,12 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
       .filter(_.isInstanceOf[FhirPathComplex]) //Only get the complex objects
       .flatMap(r => {
         // Check if the current field is a complex type
-        val isComplex: Boolean = (r.asInstanceOf[FhirPathComplex].json \ pathName).isInstanceOf[FhirPathComplex]
+        val jsonValue = r.asInstanceOf[FhirPathComplex].json \ pathName
+        val isComplex: Boolean = jsonValue match {
+          case _: JObject => true         // Complex type
+          case _: JArray  => true         // Consider arrays as complex types
+          case _          => false        // Any primitive type (e.g., JString, JNumber, JBool)
+        }
         if (!isComplex) {
           // If the current field is not complex (i.e., it's a primitive type), check if the next token is an "extension"
           if (isNextTokenExtension(ctx)) {

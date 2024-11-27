@@ -1,7 +1,7 @@
 package io.onfhir.path
 
 import io.onfhir.api.service.{IFhirIdentityService, IFhirTerminologyService}
-import io.onfhir.api.validation.IReferenceResolver
+import io.onfhir.api.validation.{IFhirTerminologyValidator, IReferenceResolver}
 
 import scala.collection.mutable
 import scala.util.matching.Regex
@@ -23,6 +23,7 @@ case class FhirPathEnvironment(
                                 val functionLibraries:Map[String, IFhirPathFunctionLibraryFactory] = Map.empty,
                                 val terminologyService:Option[IFhirTerminologyService] = None,
                                 val identityService:Option[IFhirIdentityService] = None,
+                                val terminologyValidator: Option[IFhirTerminologyValidator] = None,
                                 val _index:Int = 0,
                                 val _total:Option[FhirPathResult] = None,
                                 val isContentFhir:Boolean = true
