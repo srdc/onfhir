@@ -13,7 +13,7 @@ import org.json4s.JsonAST.JValue
  */
 case class ConstraintsRestriction(fhirConstraints: Seq[FhirConstraint]) extends FhirRestriction {
   override def evaluate(value: JValue, fhirContentValidator: AbstractFhirContentValidator): Seq[ConstraintFailure] = {
-    val fhirPathEvaluator = FhirPathEvaluator.apply(fhirContentValidator.referenceResolver)
+    val fhirPathEvaluator = FhirPathEvaluator.apply(referenceResolver = fhirContentValidator.referenceResolver, terminologyValidator = Some(fhirContentValidator.terminologyValidator))
     fhirConstraints.flatMap(_.evaluate(value, fhirPathEvaluator))
   }
 }
