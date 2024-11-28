@@ -469,5 +469,7 @@ object FhirPathEvaluator {
 
   def apply(environmentVariables:Map[String, JValue]): FhirPathEvaluator = new FhirPathEvaluator(None, environmentVariables)
 
+  def apply(referenceResolver: IReferenceResolver, terminologyValidator: IFhirTerminologyValidator) = new FhirPathEvaluator(Some(referenceResolver), terminologyValidator = Some(terminologyValidator))
+
   def apply(environmentVariables:Map[String, JValue], functionLibraries:Map[String, IFhirPathFunctionLibraryFactory], isContentFhir:Boolean):FhirPathEvaluator = new FhirPathEvaluator(None, environmentVariables, functionLibraries, isContentFhir = isContentFhir)
 }
