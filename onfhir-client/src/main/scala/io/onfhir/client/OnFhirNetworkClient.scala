@@ -96,14 +96,14 @@ case class OnFhirNetworkClient(serverBaseUrl: String, interceptors: Seq[IHttpReq
               // Ensure that either the parameter does not exist in the previous request,
               // or it has a different value compared to the "next" link's parameter
               (!previousPageParams.contains(pn) || previousPageParams(pn).toSet != pv.toSet)
-        }
-        // If no pagination parameter is found, throw an exception indicating a problem with the FHIR client response
-        .getOrElse(throw FhirClientException(s"Problem in response no pagination param found in response! Next page params: $nextPageParams"))
-
-    //Set the new page
-    bundle.request match {
-      case srb: FhirSearchRequestBuilder => srb.page = Some(paginationParam._1, paginationParam._2.head)
-      case hrb: FhirHistoryRequestBuilder => hrb.page = Some(paginationParam._1, paginationParam._2.head)
+        }.orNull
+    // If a pagination parameter is found, update the request to set the new page value.
+    if(paginationParam != null){
+      //Set the new page
+      bundle.request match {
+        case srb: FhirSearchRequestBuilder => srb.page = Some(paginationParam._1, paginationParam._2.head)
+        case hrb: FhirHistoryRequestBuilder => hrb.page = Some(paginationParam._1, paginationParam._2.head)
+      }
     }
 
 
