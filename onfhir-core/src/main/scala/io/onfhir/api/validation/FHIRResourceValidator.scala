@@ -50,6 +50,15 @@ class FHIRResourceValidator(fhirConfigurationManager: IFhirConfigurationManager)
 
           //profiles listed in Resource.meta.profile
           val profilesClaimedToConform = FHIRUtil.extractProfilesFromBson(resource)
+            .map(profile => {
+              // Check if the profile matches the current FHIR version-specific profile URL
+              if(profile.contentEquals(s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/$rtype|${fhirConfigurationManager.fhirConfig.fhirVersion}")) {
+                // If it matches, return the profile URL without the version suffix
+                s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/$rtype"
+              } else
+                profile
+            })
+
           //Supported profiles for resource type in CapabilityStatement.rest.resource.supportedProfiles
           val supportedProfiles = fhirConfigurationManager.fhirConfig.resourceConfigurations.get(rtype).map(_.supportedProfiles).getOrElse(Set.empty[String])
           //Unknow profiles among them
