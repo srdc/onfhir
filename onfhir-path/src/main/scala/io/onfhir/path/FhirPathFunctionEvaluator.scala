@@ -124,7 +124,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
    */
   @FhirPathFunction(
     documentation = "\uD83D\uDCDC Returns whether the current element is a member of a specific value set.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`urlExp`**  \nThe URL of the FHIR value set to validate against.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \nA boolean indicating if the code is valid within the specified value set:\n```json\ntrue | false\n```\n\n\uD83D\uDCA1 **E.g.**  \n`code.memberOf(\"http://example.org/fhir/ValueSet/my-value-set\")`",
-    insertText = "memberOf(<urlExp>)", detail = "Validate if the current element belongs to a FHIR value set.", label = "memberOf", kind = "Method",  returnType = Seq("boolean"), inputType = Seq("string")
+    insertText = "memberOf(<urlExp>)", detail = "", label = "memberOf", kind = "Method",  returnType = Seq("boolean"), inputType = Seq("string")
   )
   def memberOf(urlExp: ExpressionContext): Seq[FhirPathResult] = {
     // Evaluate the URL expression and ensure it resolves to a single valid URL string
