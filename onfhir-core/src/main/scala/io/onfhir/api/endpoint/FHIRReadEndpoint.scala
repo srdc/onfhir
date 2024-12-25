@@ -1,9 +1,9 @@
 package io.onfhir.api.endpoint
 
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity, HttpResponse, StatusCodes}
 import akka.http.scaladsl.model.headers.{`If-Modified-Since`, `If-None-Match`}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
-
 import io.onfhir.api.{FHIR_HTTP_OPTIONS, FHIR_SEARCH_RESULT_PARAMETERS}
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
@@ -11,10 +11,22 @@ import io.onfhir.api.service.FHIRReadService
 import io.onfhir.authz.{AuthContext, AuthzContext, AuthzManager}
 import io.onfhir.config.OnfhirConfig
 
+import scala.io.Source
+
 /**
   * FHIR Endpoint for Read interaction
   */
 trait FHIRReadEndpoint {
+
+  private val smartConfiguration = OnfhirConfig.authzConfig.smartConfigurationPath.map { filename =>
+    val source = Source.fromFile(filename)
+    try {
+      source.mkString
+    } finally {
+      source.close()
+    }
+  }
+
   /**
     * Paths for HL7 FHIR read and vread services
     * @param fhirRequest FHIR Request object
@@ -23,6 +35,23 @@ trait FHIRReadEndpoint {
     */
   def readRoute(fhirRequest: FHIRRequest, authContext:(AuthContext, Option[AuthzContext])): Route = {
     (get | head) {
+      pathPrefix(".well-known" / "smart-configuration") {
+        pathEndOrSingleSlash {
+          complete {
+            if (smartConfiguration.nonEmpty) {
+              HttpResponse(
+                status = StatusCodes.OK,
+                entity = HttpEntity(
+                  ContentTypes.`application/json`,
+                  smartConfiguration.get
+                )
+              )
+            } else {
+              HttpResponse(status = StatusCodes.NotFound)
+            }
+          }
+        }
+      } ~
       //GET [base]/metadata -> Return the conformance statement of the server configuration
       pathPrefix("metadata") {
         pathEndOrSingleSlash {

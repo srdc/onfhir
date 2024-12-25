@@ -105,7 +105,8 @@ class AuthzConfig(authzConfig:Config) {
   //Our default signing key id
   var protectedResourceCurrentSignerKeyId:String = _
 
-
+  // SMART-on-FHIR configuration JSON path
+  lazy val smartConfigurationPath = Try(authzConfig.getString("smart-configuration-path")).toOption
 
   /**
     * If our server will be secure or not
