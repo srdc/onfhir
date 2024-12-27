@@ -1,7 +1,8 @@
 package io.onfhir.path
 
+import io.onfhir.api.FHIR_DATA_TYPES
 import io.onfhir.api.service.IFhirIdentityService
-import io.onfhir.path.annotation.FhirPathFunction
+import io.onfhir.path.annotation.{FhirPathFunction, FhirPathFunctionDocumentation, FhirPathFunctionParameter, FhirPathFunctionReturn}
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
 
 import scala.concurrent.Await
@@ -20,8 +21,39 @@ class FhirPathIdentityServiceFunctions(context: FhirPathEnvironment) extends Abs
    * @param identifierValueExpr  Business identifier value (Identifier.value)
    * @return Identifier for the resource e.g. Patient/455435464698
    */
-  @FhirPathFunction(documentation = "\uD83D\uDCDC Resolves the given business identifier and return the FHIR Resource identifier (together with the resource type) by using the supplied identity service.  \n⚠\uFE0F To use this function, the mapping must be executed with a mapping job that includes a configured Identity Service.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`resourceType`**  \nThe FHIR resource type for which the business identifier is being resolved. This should be a valid FHIR resource type.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`identifierValue`**  \nThe value of the business identifier value (Identifier.value) that needs to be resolved.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \nThe method returns the identifier for the resource in the format `<resourceType>/<resourceId>`.\n```json\n\"Patient/455435464698\"\n``` \n\uD83D\uDCA1 **E.g.** idxs:resolveIdentifier('Patient', '12345')",
-    insertText = "idxs:resolveIdentifier(<resourceType>, <identifierValue>)",detail = "idxs", label = "idxs:resolveIdentifier", kind = "Function", returnType = Seq("string"), inputType = Seq())
+  @FhirPathFunction(
+    documentation = FhirPathFunctionDocumentation(
+      detail = "Resolves the given business identifier and returns the FHIR Resource identifier (together with the resource type) by using the supplied identity service.",
+      usageWarnings = Some(Seq("To use this function, the mapping must be executed with a mapping job that includes a configured Identity Service.")),
+      parameters = Some(Seq(
+        FhirPathFunctionParameter(
+          name = "resourceType",
+          detail = "The FHIR resource type for which the business identifier is being resolved. This should be a valid FHIR resource type.",
+          examples = None
+        ),
+        FhirPathFunctionParameter(
+          name = "identifierValue",
+          detail = "The value of the business identifier value (Identifier.value) that needs to be resolved.",
+          examples = None
+        )
+      )),
+      returnValue = FhirPathFunctionReturn(
+        detail = Some("The method returns the identifier for the resource in the format"),
+        examples = Seq(
+          "\"Patient/455435464698\""
+        )
+      ),
+      examples = Seq(
+        "idxs:resolveIdentifier('Patient', '12345')"
+      )
+    ),
+    insertText = "idxs:resolveIdentifier(<resourceType>, <identifierValue>)",
+    detail = "idxs",
+    label = "idxs:resolveIdentifier",
+    kind = "Function",
+    returnType = Seq(FHIR_DATA_TYPES.STRING),
+    inputType = Seq()
+  )
   def resolveIdentifier(resourceTypeExpr: ExpressionContext, identifierValueExpr: ExpressionContext): Seq[FhirPathResult] = resolveIdentifier(resourceTypeExpr, identifierValueExpr, None)
 
   /**
@@ -32,8 +64,44 @@ class FhirPathIdentityServiceFunctions(context: FhirPathEnvironment) extends Abs
    * @param identifierSystemExpr Business identifier system (Identifier.system)
    * @return Identifier for the resource e.g. Patient/455435464698
    */
-  @FhirPathFunction(documentation = "\uD83D\uDCDC Resolves the given business identifier+system and return the FHIR Resource identifier (together with the resource type) by using the supplied identity service.  \n⚠\uFE0F To use this function, the mapping must be executed with a mapping job that includes a configured Identity Service.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`resourceType`**  \nThe FHIR resource type for which the business identifier is being resolved. This should be a valid FHIR resource type.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`identifierValue`**  \nThe value of the business identifier value (Identifier.value) that needs to be resolved.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`identifierSystem`**  \nThe value of the business identifier system (Identifier.system) that needs to be resolved.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \nThe method returns the identifier for the resource in the format `<resourceType>/<resourceId>`.\n```json\n\"Patient/455435464698\"\n``` \n\uD83D\uDCA1 **E.g.** idxs:resolveIdentifier('Patient', '12345')",
-    insertText = "idxs:resolveIdentifier(<resourceType>, <identifierValue>, <identifierSystem>)",detail = "idxs", label = "idxs:resolveIdentifier", kind = "Function", returnType = Seq("string"), inputType = Seq())
+  @FhirPathFunction(
+    documentation = FhirPathFunctionDocumentation(
+      detail = "Resolves the given business identifier+system and returns the FHIR Resource identifier (together with the resource type) by using the supplied identity service.",
+      usageWarnings = Some(Seq("To use this function, the mapping must be executed with a mapping job that includes a configured Identity Service.")),
+      parameters = Some(Seq(
+        FhirPathFunctionParameter(
+          name = "resourceType",
+          detail = "The FHIR resource type for which the business identifier is being resolved. This should be a valid FHIR resource type.",
+          examples = None
+        ),
+        FhirPathFunctionParameter(
+          name = "identifierValue",
+          detail = "The value of the business identifier value (Identifier.value) that needs to be resolved.",
+          examples = None
+        ),
+        FhirPathFunctionParameter(
+          name = "identifierSystem",
+          detail = "The value of the business identifier system (Identifier.system) that needs to be resolved.",
+          examples = None
+        )
+      )),
+      returnValue = FhirPathFunctionReturn(
+        detail = Some("The method returns the identifier for the resource in the format"),
+        examples = Seq(
+          "\"Patient/455435464698\""
+        )
+      ),
+      examples = Seq(
+        "idxs:resolveIdentifier('Patient', '12345', 'http://example.com')"
+      )
+    ),
+    insertText = "idxs:resolveIdentifier(<resourceType>, <identifierValue>, <identifierSystem>)",
+    detail = "idxs",
+    label = "idxs:resolveIdentifier",
+    kind = "Function",
+    returnType = Seq(FHIR_DATA_TYPES.STRING),
+    inputType = Seq()
+  )
   def resolveIdentifier(resourceTypeExpr: ExpressionContext, identifierValueExpr: ExpressionContext, identifierSystemExpr: ExpressionContext): Seq[FhirPathResult] = resolveIdentifier(resourceTypeExpr,identifierValueExpr,Some(identifierSystemExpr))
 
   /**

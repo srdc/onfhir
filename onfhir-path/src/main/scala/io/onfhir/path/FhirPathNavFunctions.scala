@@ -1,6 +1,6 @@
 package io.onfhir.path
 
-import io.onfhir.path.annotation.FhirPathFunction
+import io.onfhir.path.annotation.{FhirPathFunction, FhirPathFunctionDocumentation, FhirPathFunctionParameter, FhirPathFunctionReturn}
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
 
 /**
@@ -15,8 +15,32 @@ class FhirPathNavFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @param elseExpr
    * @return
    */
-  @FhirPathFunction(documentation = "\uD83D\uDCDC If the current expression returns Nil, then evaluates the else expression from start, otherwise returns the current.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`elseExpr`**  \nThe else expression to be evaluated if the current expression returns Nil.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \nCurrent expression if it is not Nil, else expression otherwise.\n\n\uD83D\uDCA1 **E.g.** startTime.nav:orElse(plannedTime)",
-    insertText = "nav:orElse(<expression>)",detail = "nav", label = "nav:orElse", kind = "Method", returnType = Seq(), inputType = Seq())
+  @FhirPathFunction(
+    documentation = FhirPathFunctionDocumentation(
+      detail = "If the current expression returns Nil, then evaluates the else expression from start, otherwise returns the current.",
+      usageWarnings = None,
+      parameters = Some(Seq(
+        FhirPathFunctionParameter(
+          name = "elseExpr",
+          detail = "The else expression to be evaluated if the current expression returns Nil.",
+          examples = None
+        )
+      )),
+      returnValue = FhirPathFunctionReturn(
+        detail = None,
+        examples = Seq("Current expression if it is not Nil, else expression otherwise.")
+      ),
+      examples = Seq(
+        "startTime.nav:orElse(plannedTime)"
+      )
+    ),
+    insertText = "nav:orElse(<expression>)",
+    detail = "nav",
+    label = "nav:orElse",
+    kind = "Method",
+    returnType = Seq(),
+    inputType = Seq()
+  )
   def orElse(elseExpr:ExpressionContext):Seq[FhirPathResult] = {
     current match {
       case Nil =>
