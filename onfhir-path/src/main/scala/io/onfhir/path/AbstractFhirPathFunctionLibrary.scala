@@ -4,7 +4,7 @@ import io.onfhir.api.FHIR_DATA_TYPES
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
 
 import java.lang.reflect.InvocationTargetException
-import io.onfhir.path.annotation.FhirPathFunction
+import io.onfhir.path.annotation.{FhirPathFunction, FhirPathFunctionDocumentation, FhirPathFunctionParameter, FhirPathFunctionReturn}
 
 import scala.reflect.runtime.currentMirror
 import scala.reflect.runtime.universe._
@@ -25,7 +25,10 @@ abstract class AbstractFhirPathFunctionLibrary {
    *
    * @return a list of FhirPathFunction representing the documentation of functions
    * */
-  def getFunctionDocumentation():Seq[FhirPathFunction] = currentMirror.classSymbol(Class.forName(getClass.getName))
+  def getFunctionDocumentation():Seq[FhirPathFunction] = {
+    var document: FhirPathFunctionDocumentation = null;
+    currentMirror.classSymbol(Class.forName(getClass.getName))
+    // TODO: Change Class.forName("io.onfhir.path.FhirPathFunctionEvaluator") to test
       .toType
       .decls
       // filter the methods having FhirPathFunction annotation
@@ -38,6 +41,10 @@ abstract class AbstractFhirPathFunctionLibrary {
           .find(_.tree.tpe =:= typeOf[FhirPathFunction]).head
           .tree.children.tail
           .collect({
+            // Matches 'FhirPathFunctionDocumentation' fields
+            case field if field.tpe.toString.contains("FhirPathFunctionDocumentation") =>
+              document = getFhirPathDocumentation(field);
+
             // matches 'String' fields
             case Literal(Constant(s: String)) => s
             // matches 'Seq[String]' fields
@@ -52,7 +59,7 @@ abstract class AbstractFhirPathFunctionLibrary {
               })
           })
         // create an instance of FhirPathFunction
-        new FhirPathFunction(documentation = annotationFields.headOption.get.toString,
+        new FhirPathFunction(documentation = document,
           insertText = annotationFields.lift(1).get.toString,
           detail = annotationFields.lift(2).get.toString,
           label = annotationFields.lift(3).get.toString,
@@ -60,6 +67,7 @@ abstract class AbstractFhirPathFunctionLibrary {
           returnType = annotationFields.lift(5).get.asInstanceOf[Seq[String]],
           inputType = annotationFields.lift(6).get.asInstanceOf[Seq[String]])
       }).toSeq
+  }
 
   /**
    * Method that will be used to call a FHIR Path function from the function library
@@ -111,5 +119,59 @@ abstract class AbstractFhirPathFunctionLibrary {
       case _ =>
         None // Return None if the input string does not match the pattern
     }
+  }
+  def getFhirPathDocumentation(field: Tree): FhirPathFunctionDocumentation = {
+    // Initializing variables
+    var detail: String = ""
+    var warnings: Option[Seq[String]] = None
+    var parameters: Option[Seq[FhirPathFunctionParameter]] = None
+    var returnValue: FhirPathFunctionReturn = FhirPathFunctionReturn(None, Seq())
+    var examples: Seq[String] = Seq()
+
+    field match {
+      case Apply(_: Tree, args: List[Tree]) =>
+        // Extract the 'detail' field
+        args.lift(0).foreach {
+          case Literal(Constant(s: String)) => detail = s
+        }
+
+        // Extract the 'warnings' field
+        args.lift(1).foreach {
+          case Apply(_: Tree, warningsArgs: List[Tree]) =>
+            warnings = Some(warningsArgs.head.collect {
+              case Literal(Constant(warning: String)) => warning
+            }.toSeq)
+        }
+
+        // Extract the 'parameters' field
+        args.lift(2).foreach {
+          case Apply(_, parameterArgs) =>
+            // TODO: Implement this
+        }
+
+        // Extract the 'returnValue' field
+        args.lift(3).foreach {
+          case Apply(_, returnArgs) =>
+            // TODO: Implement this
+        }
+
+        // Extract 'examples' field
+        args.lift(4).foreach {
+          case Apply(_, exampleArgs) =>
+            examples = exampleArgs.collect {
+              case Literal(Constant(example: String)) => example
+            }
+        }
+
+      case _ => throw new IllegalArgumentException("Unexpected annotation structure")
+    }
+
+    FhirPathFunctionDocumentation(
+      detail = detail,
+      usageWarnings = warnings,
+      parameters = parameters,
+      returnValue = returnValue,
+      examples = examples
+    )
   }
 }
