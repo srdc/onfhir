@@ -187,7 +187,7 @@ class FHIRReadEndpointTest extends OnFhirTest with FHIREndpoint {
         //This is a summary parameter
         (resource \ "identifier") !== JNothing
 
-        resource.obj.length === 12
+        resource.obj.length === 13
       }
       Get("/" + OnfhirConfig.baseUri + "/" + resourceType + "/" + resourceId + "?_summary=data") ~> fhirRoute ~> check {
         status === OK
