@@ -4,8 +4,8 @@ import io.onfhir.api.FHIR_FOUNDATION_RESOURCES.{FHIR_CODE_SYSTEM, FHIR_STRUCTURE
 import io.onfhir.api.model.OutcomeIssue
 import io.onfhir.api.parsers.IFhirFoundationResourceParser
 import io.onfhir.api.util.FHIRUtil
-import io.onfhir.api.validation.{ConstraintKeys, IReferenceResolver, ProfileRestrictions, SimpleReferenceResolver}
-import io.onfhir.api.{FHIR_ROOT_URL_FOR_DEFINITIONS, Resource}
+import io.onfhir.api.validation.{ConstraintKeys, ElementRestrictions, IReferenceResolver, ProfileRestrictions, SimpleReferenceResolver}
+import io.onfhir.api.{FHIR_DATA_TYPES, FHIR_ROOT_URL_FOR_DEFINITIONS, Resource}
 import io.onfhir.exception.InitializationException
 import io.onfhir.util.JsonFormatter.formats
 import io.onfhir.validation.{FhirContentValidator, ReferenceRestrictions, TypeRestriction}
@@ -97,6 +97,81 @@ abstract class BaseFhirConfigurator extends IFhirVersionConfigurator {
     fhirConfig.valueSetRestrictions = valueSets
 
     fhirConfig
+  }
+
+  /**
+   * Reset the summary parameters for base resource profiles
+   * @param fhirConfig
+   * @param baseResourceProfiles
+   * @param dataTypeProfiles
+   */
+  protected def configureSummaryParametersForBaseResources(fhirConfig:BaseFhirConfig, baseResourceProfiles:Seq[ProfileRestrictions], dataTypeProfiles:Map[String, ProfileRestrictions]):Unit = {
+    baseResourceProfiles
+      .foreach(pr => {
+        val elemsAndTypes =
+          pr
+            .summaryElements
+            .flatMap(se => getElementsAndDataType(se, pr.elementRestrictions))
+
+        val finalSummaryElems:Set[String] =
+          elemsAndTypes
+            .flatMap {
+              case (el, FHIR_DATA_TYPES.BACKBONE) if elemsAndTypes.exists(_._1.startsWith(s"$el.")) => Set.empty
+              case (el, special) if fhirConfig.FHIR_SPECIAL_TYPES_FOR_SUMMARY.contains(special) =>
+                val subSummaryElems =
+                  dataTypeProfiles(s"$FHIR_ROOT_URL_FOR_DEFINITIONS/StructureDefinition/$special")
+                    .summaryElements
+
+                subSummaryElems.map(se => s"$el.$se")
+              case (oth, _) => Set(oth)
+            }
+
+        pr.summaryElements = finalSummaryElems
+      })
+    }
+
+  /**
+   * Find elements and their data types for path (only for base standard profiles)
+   * @param path                Path to the element e.g. status, value[x]
+   * @param elemRestrictions    All element restrictions for that base profile
+   * @return
+   */
+  private def getElementsAndDataType(path:String, elemRestrictions:Seq[(String, ElementRestrictions)]):Seq[(String, String)] = {
+    path match {
+      case choice if choice.endsWith("[x]") =>
+        elemRestrictions
+          .find(_._1 == path)
+          .map(_._2)
+          .flatMap(
+            _
+              .restrictions
+              .get(ConstraintKeys.DATATYPE)
+              .map(_.asInstanceOf[TypeRestriction])
+              .map(
+                _
+                  .dataTypesAndProfiles
+                  .map(_._1)
+                  .map(dt =>
+                    s"${path.dropRight(3)}${dt.capitalize}" -> dt
+                  )
+              )
+          )
+          .getOrElse(Nil)
+
+      case oth =>
+        elemRestrictions
+          .find(_._1 == path)
+          .map(_._2)
+          .flatMap(
+            _
+              .restrictions
+              .get(ConstraintKeys.DATATYPE)
+              .map(_.asInstanceOf[TypeRestriction])
+              .flatMap(_.dataTypesAndProfiles.headOption.map(_._1))
+          )
+          .map(dt => Seq(oth -> dt))
+          .getOrElse(Seq(oth -> "*")) //For recursive definitions
+    }
   }
 
   /**

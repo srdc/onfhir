@@ -53,10 +53,11 @@ class StructureDefinitionParser(fhirComplexTypes: Set[String], fhirPrimitiveType
       if (baseResourceElemDefinition.isDefined)
         elementDefs = elementDefs.drop(1)
 
+      val isBaseStandard = profileUrl.startsWith(FHIR_ROOT_URL_FOR_DEFINITIONS + "/StructureDefinition")
       //Parse element definitions (without establishing child relationship)
       val elemDefs =
         elementDefs
-          .map(parseElementDef(_, rtype, if (profileUrl.startsWith(FHIR_ROOT_URL_FOR_DEFINITIONS + "/StructureDefinition")) None else Some(profileUrl), //Parse the element definitions
+          .map(parseElementDef(_, rtype, if (isBaseStandard) None else Some(profileUrl), //Parse the element definitions
             includeElementMetadata))
 
 
@@ -69,7 +70,12 @@ class StructureDefinitionParser(fhirComplexTypes: Set[String], fhirPrimitiveType
         resourceName = FHIRUtil.extractValueOption[String](structureDef, "name"),
         resourceDescription = FHIRUtil.extractValueOption[String](structureDef, "description"),
         elementRestrictions = elemDefs.map(e => e._1.path -> e._1),
-        summaryElements = getSummaryElements(elemDefs), //elemDefs.filter(_._2).map(e => e._1.path).toSet,
+        summaryElements =
+          //The summary element definitions are from the base standard as extension of summary is not mentioned in FHIR profiling
+          if(isBaseStandard)
+            getSummaryElements(elemDefs)
+          else
+            Set.empty[String],
         constraints =
           baseResourceElemDefinition
             .flatMap(e =>
@@ -89,7 +95,7 @@ class StructureDefinitionParser(fhirComplexTypes: Set[String], fhirPrimitiveType
    * @param elemDefs
    * @return
    */
-  private def getSummaryElements(elemDefs: Seq[(ElementRestrictions, Boolean)]): Set[String] = {
+  protected def getSummaryElements(elemDefs: Seq[(ElementRestrictions, Boolean)]): Set[String] = {
     val elemsIndicatedAsSummary =
       elemDefs
         .filter(_._2)

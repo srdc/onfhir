@@ -126,6 +126,15 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
     logger.info("Configuring supported FHIR resources and profiles ...")
     fhirConfig = validateAndConfigureProfiles(fhirConfig, conformance, profiles, baseProfiles)
 
+    //Determine the actual summary parameters for each supported resource type
+    configureSummaryParametersForBaseResources(
+      fhirConfig,
+      baseResourceProfiles
+        .values.map(_.head._2).toSeq
+        .filter(rr => fhirConfig.resourceConfigurations.contains(rr.resourceType)), //We only need to configure the ones that are supported
+      baseDataTypeProfiles.map(bp => bp._1 -> bp._2.head._2)
+    )
+
     logger.info("Configuring supported FHIR search parameters for supported resources ...")
     fhirConfig = validateAndConfigureSearchParameters(fhirConfig, conformance, searchParameters, baseSearchParameters)
 

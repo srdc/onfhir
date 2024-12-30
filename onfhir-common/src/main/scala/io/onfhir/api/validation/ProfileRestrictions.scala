@@ -48,7 +48,7 @@ case class ProfileRestrictions(url: String,
                                resourceName: Option[String],
                                resourceDescription: Option[String],
                                elementRestrictions: Seq[(String, ElementRestrictions)],
-                               summaryElements: Set[String],
+                               var summaryElements: Set[String],
                                constraints: Option[FhirRestriction] = None,
                                isAbstract: Boolean = false) extends InternalEntity
 

@@ -1,6 +1,6 @@
 package io.onfhir.config
 
-import io.onfhir.api.FHIR_ROOT_URL_FOR_DEFINITIONS
+import io.onfhir.api.{FHIR_DATA_TYPES, FHIR_ROOT_URL_FOR_DEFINITIONS}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.{ProfileRestrictions, ValueSetRestrictions}
 
@@ -26,7 +26,10 @@ class BaseFhirConfig(version:String) {
   var FHIR_COMPLEX_TYPES: Set[String] = _
   /** Base FHIR primitive data types defined in the standard */
   var FHIR_PRIMITIVE_TYPES: Set[String] = _
-
+  /**
+   * Exception complex data types where all of its sub elements are not marked as _summary
+   */
+  var FHIR_SPECIAL_TYPES_FOR_SUMMARY:Set[String] = Set(FHIR_DATA_TYPES.ATTACHMENT, FHIR_DATA_TYPES.SAMPLED_DATA, FHIR_DATA_TYPES.SIGNATURE)
 
   /**
    * Return the base FHIR standard profile restrictions for the given FHIR resource type
