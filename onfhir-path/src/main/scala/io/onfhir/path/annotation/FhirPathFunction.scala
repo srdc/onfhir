@@ -32,6 +32,7 @@ class FhirPathFunction(val documentation: FhirPathFunctionDocumentation,
  * To add a JSON as an example, use the following syntax:
  * - Wrap your JSON in triple quotation marks with the "json" language identifier for proper formatting:
  *   """<JSON>[{"reference":"Observation/123"},{"reference":"Observation/456"}]"""
+ * - Note: JSON formatting is supported only for parameters and return value examples. <JSON> tag will not affect other fields.
  *
  * @param detail     A detailed explanation of the function, its behavior, or its purpose.
  * @param usageWarnings A collection of warnings or notes regarding the function's usage. These might include
