@@ -6,7 +6,7 @@ import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
 import java.time.{LocalTime, ZoneId}
 import java.time.temporal.Temporal
-import io.onfhir.api.validation.IReferenceResolver
+import io.onfhir.api.validation.{IFhirTerminologyValidator, IReferenceResolver}
 import io.onfhir.path.grammar.{FhirPathExprLexer, FhirPathExprParser}
 import org.antlr.v4.runtime.{CharStreams, CommonTokenStream}
 import org.json4s.JsonAST.{JArray, JBool, JValue}
@@ -25,6 +25,7 @@ case class FhirPathEvaluator (
                                functionLibraries:Map[String, IFhirPathFunctionLibraryFactory] = Map.empty,
                                terminologyService:Option[IFhirTerminologyService] = None,
                                identityService:Option[IFhirIdentityService] = None,
+                               terminologyValidator: Option[IFhirTerminologyValidator] = None,
                                isContentFhir:Boolean = true
                              ) {
   private val logger: Logger = LoggerFactory.getLogger(this.getClass)
@@ -103,7 +104,8 @@ case class FhirPathEvaluator (
         functionLibraries,
         terminologyService,
         identityService,
-        isContentFhir = isContentFhir
+        isContentFhir = isContentFhir,
+        terminologyValidator = terminologyValidator
       )
     val evaluator = new FhirPathExpressionEvaluator(environment, resource)
     evaluator.visit(expr)
@@ -466,6 +468,8 @@ object FhirPathEvaluator {
   def apply(referenceResolver: IReferenceResolver, environmentVariables:Map[String, JValue]) = new FhirPathEvaluator(Some(referenceResolver), environmentVariables)
 
   def apply(environmentVariables:Map[String, JValue]): FhirPathEvaluator = new FhirPathEvaluator(None, environmentVariables)
+
+  def apply(referenceResolver: IReferenceResolver, terminologyValidator: IFhirTerminologyValidator) = new FhirPathEvaluator(Some(referenceResolver), terminologyValidator = Some(terminologyValidator))
 
   def apply(environmentVariables:Map[String, JValue], functionLibraries:Map[String, IFhirPathFunctionLibraryFactory], isContentFhir:Boolean):FhirPathEvaluator = new FhirPathEvaluator(None, environmentVariables, functionLibraries, isContentFhir = isContentFhir)
 }

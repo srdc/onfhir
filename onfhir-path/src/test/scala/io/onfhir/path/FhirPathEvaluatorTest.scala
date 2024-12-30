@@ -33,6 +33,8 @@ class FhirPathEvaluatorTest extends Specification {
 
   val encounter = Source.fromInputStream(getClass.getResourceAsStream("/encounter.json")).mkString.parseJson
 
+  val patient = Source.fromInputStream(getClass.getResourceAsStream("/patient2.json")).mkString.parseJson
+
   val emptyBundle = Source.fromInputStream(getClass.getResourceAsStream("/emptybundle.json")).mkString.parseJson
 
   val medicationAdministration = Source.fromInputStream(getClass.getResourceAsStream("/med-adm.json")).mkString.parseJson
@@ -659,6 +661,19 @@ class FhirPathEvaluatorTest extends Specification {
 
       results2 = evaluator.evaluateNumerical("groupBy($this.notexist, max($this.valueQuantity.value))[0].agg", JArray(Seq(observation, observation2).toList))
       results2 mustEqual Seq(10)
+    }
+
+    "evaluate primitive extensions" in {
+      val evaluator = FhirPathEvaluator().withDefaultFunctionLibraries()
+
+      val result = evaluator.evaluateBoolean("gender.extension('http://fhir.de/StructureDefinition/gender-amtlich-de').exists()", patient).head
+      result mustEqual true
+      val result2 = evaluator.evaluateBoolean("birthDate.extension('http://fhir.de/StructureDefinition/birthdate').exists()", patient).head
+      result2 mustEqual false
+      val result3 = evaluator.evaluateBoolean("address[0].extension('http://example.org/fhir/StructureDefinition/address-verified').exists()", patient).head
+      result3 mustEqual true
+      val result4 = evaluator.evaluateBoolean("identifier[0].assigner.identifier.extension('http://example.org/fhir/StructureDefinition/identifier-verified').exists()", patient).head
+      result4 mustEqual true
     }
 
     "evaluate new constraints in FHIR 4.0.1" in {
