@@ -20,9 +20,10 @@ object IOUtil {
 
   /**
    * Read a FHIR resource from given path or default path (within project resources)
-   * @param resourcePath    Given file path
-   * @param defaultPath     Default resource path (within project resources)
-   * @param rtype           Resource type
+   *
+   * @param resourcePath Given file path
+   * @param defaultPath  Default resource path (within project resources)
+   * @param rtype        Resource type
    * @return
    */
   def readResource(resourcePath: Option[String], defaultPath: String, rtype: String): Resource = {
@@ -43,7 +44,8 @@ object IOUtil {
 
   /**
    * Read a FHIR resource from given File path
-   * @param filePath  File path
+   *
+   * @param filePath File path
    * @return
    */
   def readResource(filePath: String): Resource = {
@@ -52,7 +54,8 @@ object IOUtil {
 
   /**
    * Read a FHIR resource from project resources with a path
-   * @param resourcePath  Resource path
+   *
+   * @param resourcePath Resource path
    * @return
    */
   def readInnerResource(resourcePath: String): Resource = {
@@ -93,7 +96,7 @@ object IOUtil {
           if (!givenFile.isDirectory)
             throw new InitializationException(s"Given path '$path' is not a folder or zip file ...")
           //Given as folder
-          getFilesFromFolder(folder = givenFile, withExtension = None, recursively = Some(true))
+          getFilesFromFolder(folder = givenFile, recursively = true, ignoreHidden = true, withExtension = None)
             .map(file => {
               try {
                 parseResource(new InputStreamReader(BOMInputStream.builder.setInputStream(new FileInputStream(file)).get()), file.getAbsolutePath)
@@ -120,19 +123,30 @@ object IOUtil {
    * Get the list of files from the given folder.
    *
    * @param folder        The folder to retrieve the files from.
+   * @param recursively   If true, the folder will be searched recursively to retrieve all files within.
+   * @param ignoreHidden  If true, hidden files and directories will be excluded from the result.
    * @param withExtension An optional extension (e.g., .json) if the files need to be filtered.
-   * @param recursively   If exists and true, the folder will be searched recursively to retrieve all files within.
-   * @return
+   * @return A sequence of files matching the criteria.
    */
-  def getFilesFromFolder(folder: File, withExtension: Option[String], recursively: Option[Boolean]): Seq[File] = {
+  def getFilesFromFolder(
+                          folder: File,
+                          recursively: Boolean,
+                          ignoreHidden: Boolean,
+                          withExtension: Option[String]
+                        ): Seq[File] = {
     if (folder.exists && folder.isDirectory) {
       val files = folder.listFiles().toSeq // List all available files in the given folder
+
+      // Filter hidden files if ignoreHidden is true
+      val nonHiddenFiles = if (ignoreHidden) files.filterNot(f => f.isHidden || f.getName.startsWith(".")) else files
+
       val filteredFiles = withExtension
-        .map(ext => files.filter(_.getName.endsWith(ext))).getOrElse(files)
+        .map(ext => nonHiddenFiles.filter(_.getName.endsWith(ext))).getOrElse(nonHiddenFiles)
         .filterNot(_.isDirectory)
-      if (recursively.contains(true)) {
-        val subFolders = files.filter(_.isDirectory)
-        filteredFiles ++ subFolders.flatMap(f => getFilesFromFolder(f, withExtension, recursively))
+
+      if (recursively) {
+        val subFolders = nonHiddenFiles.filter(_.isDirectory)
+        filteredFiles ++ subFolders.flatMap(f => getFilesFromFolder(f, recursively, ignoreHidden, withExtension))
       } else {
         filteredFiles
       }
@@ -141,8 +155,10 @@ object IOUtil {
     }
   }
 
+
   /**
    * Given a filename, removes its extension if an extension exists (e.g., admissions.json -> admissions)
+   *
    * @param fileName
    * @return
    */
@@ -254,8 +270,9 @@ object IOUtil {
 
   /**
    * Parse a JSON resource
-   * @param reader  Reader
-   * @param path  File path it is read from
+   *
+   * @param reader Reader
+   * @param path   File path it is read from
    * @return
    */
   private def parseResource(reader: Reader, path: String): Resource = {
