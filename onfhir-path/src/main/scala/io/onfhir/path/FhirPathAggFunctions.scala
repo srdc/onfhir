@@ -142,7 +142,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
       .flatMap(c => {
         val result = new FhirPathExpressionEvaluator(context, Seq(c)).visit(expr)
         if (result.length > 1)
-          throw new FhirPathException(s"Invalid function call 'min', the expression ${expr.getText} does not return a single value or Nil!")
+          throw new FhirPathException(s"Invalid function call 'max', the expression ${expr.getText} does not return a single value or Nil!")
         result.headOption
       })
 

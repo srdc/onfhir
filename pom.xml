@@ -113,7 +113,7 @@
         <akka.version>2.8.5</akka.version>
         <!--mongodb.scala.version>4.11.1</mongodb.scala.version-->
         <mongodb.scala.version>5.1.3</mongodb.scala.version>
-        <mongo.embedded.version>4.12.0</mongo.embedded.version>
+        <mongo.embedded.version>4.18.1</mongo.embedded.version>
         <json4s.version>3.7.0-M11</json4s.version>
         <scala.xml.version>2.2.0</scala.xml.version>
         <logback.version>1.4.14</logback.version>
@@ -122,9 +122,9 @@
         <specs2.version>4.20.4</specs2.version>
         <nimbus-jose.version>9.37.3</nimbus-jose.version>
         <nimbus-oidc.version>11.9.1</nimbus-oidc.version>
-        <apache-commons-lang.version>3.14.0</apache-commons-lang.version>
-        <apache-commons-io.version>2.15.1</apache-commons-io.version>
-        <apache-commons-text.version>1.11.0</apache-commons-text.version>
+        <apache-commons-lang.version>3.17.0</apache-commons-lang.version>
+        <apache-commons-io.version>2.18.0</apache-commons-io.version>
+        <apache-commons-text.version>1.13.0</apache-commons-text.version>
         <reflections.version>0.10.2</reflections.version>
 
         <!-- release plugin versions -->

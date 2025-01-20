@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 
-JAVA_CMD="java -Xms256m -Xmx3g -jar "
+# Set default Java options
+DEFAULT_JAVA_OPTIONS="-Xms256m -Xmx3g"
+
+# Use environment variable if provided, otherwise use default value
+JAVA_OPTIONS="${JAVA_OPTIONS:-$DEFAULT_JAVA_OPTIONS}"
+
+# Construct JAVA_CMD with Java options
+JAVA_CMD="java $JAVA_OPTIONS -jar "
 
 # Configure application.conf path
 if [ ! -z "$APP_CONF_FILE" ]; then

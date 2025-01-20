@@ -136,7 +136,7 @@ class Onfhir(
               logger.info("OnFhir server is gracefully terminated...")
             case Failure(exception) => logger.error("Problem while gracefully terminating OnFhir server!", exception)
           }
-          logger.info("OnFhir FHIR server started on host {} and port {}", OnfhirConfig.serverHost, OnfhirConfig.serverPort)
+          logger.info("onFHIR FHIR server started on host {} and port {}", OnfhirConfig.serverHost, OnfhirConfig.serverPort)
           //Wait for a shutdown signal
           Await.ready(waitForShutdownSignal(), Duration.Inf)
           fhirServerBinding.terminate(FiniteDuration.apply(60L, TimeUnit.SECONDS))
