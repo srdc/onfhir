@@ -198,18 +198,11 @@ class StructureDefinitionParser(fhirComplexTypes: Set[String], fhirPrimitiveType
             }),
           ConstraintKeys.REFERENCE_TARGET ->
             dataTypeAndProfile
-              .find(_._1 == FHIR_DATA_TYPES.REFERENCE)
-              .map(dt => (dt._3, dt._4, dt._5))
-              .map {
-                case (targetProfiles, versioning, aggregation) =>
-                  ReferenceRestrictions(targetProfiles,
-                    versioning.map {
-                      case "specific" => true
-                      case "independent" => false
-                    },
-                    aggregation
-                  )
-              }
+              .find(dtp =>
+                Set(FHIR_DATA_TYPES.REFERENCE, FHIR_DATA_TYPES.CODEABLE_REFERENCE, FHIR_DATA_TYPES.CANONICAL)
+                  .contains(dtp._1)
+              )
+              .map(dt => ReferenceRestrictions(Set(dt._1), dt._3.toSet, dt._4, dt._5.toSet))
         )
           .filter(_._2.isDefined).map(r => r._1 -> r._2.get)
           .toMap,

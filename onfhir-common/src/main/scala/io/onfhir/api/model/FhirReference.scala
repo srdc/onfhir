@@ -35,7 +35,7 @@ case class FhirLogicalReference(rtype:Option[String], system:Option[String], ide
  * @param version   Version
  * @param fragment  Fragment
  */
-case class FhirCanonicalReference(url:String, rtype:String, rid:String, version:Option[String], fragment:Option[String])extends FhirReference {
+case class FhirCanonicalReference(url:String, rtype:String, rid:String, version:Option[String], fragment:Option[String]) extends FhirReference {
   def getReference():String = s"$url/$rtype/$rid${version.map(v => "|"+v).getOrElse("")}${fragment.map(f => "#" + f).getOrElse("")}"
 
   def getUrl():String = s"$url/$rtype/$rid"

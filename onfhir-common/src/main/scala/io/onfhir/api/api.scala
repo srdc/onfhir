@@ -336,6 +336,7 @@ package object api {
     val MONEY = "Money"
     val SIMPLE_QUANTITY = "SimpleQuantity"
     val MONEY_QUANTITY = "MoneyQuantity"
+    val CODEABLE_REFERENCE = "CodeableReference"
   }
 
   /**

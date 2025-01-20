@@ -1217,7 +1217,7 @@ class FhirContentValidator(
    * @return
    */
   private def evaluateReferenceConstraint(dataType: String, value: JValue, elementRestrictions: Seq[ElementRestrictions]): Seq[ConstraintFailure] = {
-    if (dataType == FHIR_DATA_TYPES.REFERENCE) {
+    if (dataType == FHIR_DATA_TYPES.REFERENCE || dataType == FHIR_DATA_TYPES.CODEABLE_REFERENCE) {
       getAllRestrictions(ConstraintKeys.REFERENCE_TARGET, elementRestrictions) match {
         case Nil => Nil
         case Seq(r) => r.evaluate(value, this)
@@ -1226,6 +1226,7 @@ class FhirContentValidator(
             .map(_.asInstanceOf[ReferenceRestrictions])
             .reduceRight[ReferenceRestrictions]((r1,r2) =>
               ReferenceRestrictions(
+                r1.referenceDataTypes ++ r2.referenceDataTypes,
                 if(r1.targetProfiles.nonEmpty) r1.targetProfiles else r2.targetProfiles,
                 if(r1.versioning.isDefined) r1.versioning else r2.versioning,
                 if(r1.aggregationMode.nonEmpty) r1.aggregationMode else r2.aggregationMode
