@@ -85,11 +85,13 @@ case class ReferenceRestrictions(referenceDataTypes:Set[String],
           case _ =>
         }
 
+
         //Try to find out resource type that each target profile is based on
         val targetDataTypeAndProfiles = findResourceTypesForProfiles(fhirContentValidator)
-        //Target referenced resource type checking
-        checkReferencedResourceType(rtype, targetDataTypeAndProfiles)
-          .foreach(cf => issues = issues :+ cf)
+        if(targetProfiles.nonEmpty)
+          //Target referenced resource type checking
+          checkReferencedResourceType(rtype, targetDataTypeAndProfiles)
+            .foreach(cf => issues = issues :+ cf)
 
         if(issues.exists(!_.isWarning))
           issues
@@ -107,7 +109,7 @@ case class ReferenceRestrictions(referenceDataTypes:Set[String],
                 if (resourceConf.referencePolicies.contains("local") && url.exists(!_.startsWith(OnfhirConfig.fhirRootUrl)))
                   issues = issues :+ ConstraintFailure(s"Element uses referencing to a resource in a remote repository (with Reference.reference) while it is not allowed for resource '$resourceType'! ")
                 //If enforced, add it to list to check together with related target profiles
-                if (resourceConf.referencePolicies.contains("enforced")) {
+                if (resourceConf.referencePolicies.contains("enforced") && targetProfiles.nonEmpty) {
                   //Find target profiles specified for given referenced resource type
                   val targetProfiles = targetDataTypeAndProfiles.filter(_._2.contains(rtype)).map(_._1)
                   fhirContentValidator

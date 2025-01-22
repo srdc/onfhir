@@ -202,6 +202,7 @@ class StructureDefinitionParser(fhirComplexTypes: Set[String], fhirPrimitiveType
                 Set(FHIR_DATA_TYPES.REFERENCE, FHIR_DATA_TYPES.CODEABLE_REFERENCE, FHIR_DATA_TYPES.CANONICAL)
                   .contains(dtp._1)
               )
+              .filter(dtp => dtp._3.nonEmpty || dtp._4.nonEmpty || dtp._5.nonEmpty)
               .map(dt => ReferenceRestrictions(Set(dt._1), dt._3.toSet, dt._4, dt._5.toSet))
         )
           .filter(_._2.isDefined).map(r => r._1 -> r._2.get)
