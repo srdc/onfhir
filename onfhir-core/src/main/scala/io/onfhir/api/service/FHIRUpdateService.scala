@@ -8,9 +8,8 @@ import io.onfhir.config.FhirConfigurationManager.fhirConfig
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
-
 import io.onfhir.db.{ResourceManager, TransactionSession}
-import io.onfhir.exception.{BadRequestException, PreconditionFailedException}
+import io.onfhir.exception.{BadRequestException, ConflictException, PreconditionFailedException}
 
 import scala.concurrent.Future
 import scala.util.Try
@@ -127,17 +126,17 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
                 if(FHIRUtil.isDeleted(foundResource)) {
                   val oldVersion = FHIRUtil.extractVersionFromResource(foundResource)
                   performUpdate(resource, _type, Some(rid), prefer, testUpdate, Some(oldVersion -> foundResource), wasDeleted = true)
-                }else { //Otherwise it is problematic
-                  logger.debug("Supplied resource id matches another FHIR resource which does not satisfy the given query!")
-                  throw new BadRequestException(Seq(
+                } else { //Otherwise it is problematic
+                  logger.debug("Resource already exists with given id but does not satisfy the given query!")
+                  throw new ConflictException(
                     OutcomeIssue(
                       FHIRResponse.SEVERITY_CODES.ERROR,
                       FHIRResponse.OUTCOME_CODES.INVALID,
                       None,
-                      Some(s"Supplied resource id matches another FHIR resource which does not satisfy the given query!"),
+                      Some(s"Resource already exists with given id but does not satisfy the given queryy!"),
                       Nil
                     )
-                  ))
+                  )
                 }
             }
         }
