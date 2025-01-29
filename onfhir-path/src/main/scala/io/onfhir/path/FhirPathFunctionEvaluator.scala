@@ -1077,6 +1077,20 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
       .flatMap(pc => pc.json.obj.map(_._2).flatMap(i => FhirPathValueTransformer.transform(i, context.isContentFhir)))
   }
 
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns the input string with all characters converted to upper case.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>\n```\nABCDEFG\n``` \n\uD83D\uDCA1 **E.g.** ''abcdefg'.upper()",
+    insertText = "upper()", detail = "", label = "upper", kind = "Method", returnType = Seq("string"), inputType = Seq("string"))
+  def upper(): Seq[FhirPathResult] = {
+    checkSingleString()
+    current.headOption.map(c => Seq(FhirPathString(c.asInstanceOf[FhirPathString].s.toUpperCase))).getOrElse(Nil)
+  }
+
+  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns the input string with all characters converted to lower case.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>\n```\nabcdefg\n``` \n\uD83D\uDCA1 **E.g.** ''ABCDEFG'.lower()",
+    insertText = "lower()", detail = "", label = "lower", kind = "Method", returnType = Seq("string"), inputType = Seq("string"))
+  def lower(): Seq[FhirPathResult] = {
+    checkSingleString()
+    current.headOption.map(c => Seq(FhirPathString(c.asInstanceOf[FhirPathString].s.toLowerCase))).getOrElse(Nil)
+  }
+
   @FhirPathFunction(documentation = "\uD83D\uDCDC Returns a collection with all descendant nodes of all items in the input collection.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>\n```json\n[\n  {\n    \"linkId\": \"1\",\n    \"text\": \"Do you have allergies?\",\n    \"type\": \"boolean\"\n  },\n  {\n    \"linkId\": \"2\",\n    \"text\": \"General health questions\",\n    \"type\": \"group\"\n  },\n  {\n    \"linkId\": \"2.1\",\n    \"text\": \"Do you have any chronic diseases?\",\n    \"type\": \"boolean\"\n  }\n]\n``` \n\uD83D\uDCA1 **E.g.** Questionnaire.descendants().select(item)",
     insertText = "descendants()", detail = "", label = "descendants", kind = "Method", returnType = Seq(), inputType = Seq())
   def descendants(): Seq[FhirPathResult] = {
