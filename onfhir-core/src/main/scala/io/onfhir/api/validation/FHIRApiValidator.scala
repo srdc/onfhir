@@ -166,20 +166,27 @@ object FHIRApiValidator {
    */
   def validateResourceIdentityOverlapping(batchOrTransactionRequest: FHIRRequest) = {
     //Validate if resource is referred only once within transaction/batch for update/delete/patch
-    val resourcesToBeChanged =
-      batchOrTransactionRequest
-        .childRequests
-        .filter(rq => rq.resourceId.isDefined && Seq(FHIR_INTERACTIONS.UPDATE, FHIR_INTERACTIONS.DELETE, FHIR_INTERACTIONS.PATCH).contains(rq.interaction))
-        .map(rq => rq.resourceType.get + "/" + rq.resourceId.get)
-    val resourcesReferredMultipleTimes = resourcesToBeChanged.groupBy(identity).filter(_._2.length > 1).keys.toSeq
-    if (resourcesReferredMultipleTimes.nonEmpty)
-      throw new BadRequestException(Seq(OutcomeIssue(
+    val indexedRequests = batchOrTransactionRequest.childRequests.zipWithIndex
+
+    val resourcesToBeChanged = indexedRequests.collect {
+      case (rq, index) if rq.resourceId.isDefined && Seq(FHIR_INTERACTIONS.UPDATE, FHIR_INTERACTIONS.DELETE, FHIR_INTERACTIONS.PATCH).contains(rq.interaction) =>
+        (s"${rq.resourceType.get}/${rq.resourceId.get}", index)
+    }
+
+    val resourcesReferredMultipleTimes = resourcesToBeChanged.groupBy(_._1).filter(_._2.length > 1)
+
+    if (resourcesReferredMultipleTimes.nonEmpty) {
+      val outcomeIssues = resourcesReferredMultipleTimes.values.flatten.map { case (rq, index) => OutcomeIssue(
         FHIRResponse.SEVERITY_CODES.ERROR,
         FHIRResponse.OUTCOME_CODES.INVALID,
         None,
-        Some(s"Resource identity overlapping! Resources ${resourcesReferredMultipleTimes.mkString(", ")} are referred multiple times within update/patch/delete requests. Batch/transaction can not be performed ..."),
-        Nil
-      )))
+        Some(s"Resource identity overlapping! Resources ${rq} are referred multiple times within update/patch/delete requests. Batch/transaction cannot be performed."),
+        Seq(s"Bundle.entry[$index]")
+      )
+      }.toSeq
+
+      throw new BadRequestException(outcomeIssues)
+    }
   }
 
   /**
