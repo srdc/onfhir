@@ -17931,6 +17931,10 @@
     {
         "name" : "lastn",
         "definition" : "http://hl7.org/fhir/OperationDefinition/Observation-lastn"
+    },
+    {
+        "name": "health-cards-issue",
+        "definition": "http://hl7.org/fhir/uv/smart-health-cards-and-links/OperationDefinition/patient-i-health-cards-issue"
     }
     ],
     "compartment": [

@@ -189,21 +189,20 @@ object AuthzConfigurationManager {
       val prInformation = JSONObjectUtils.parse(metadata.mkString)
 
       //Handle the JWKSet creation or loading, if we will need it
+      val jwksFile = new File(authzConfig.protectedResourceJWKSPath.getOrElse("./" + DEFAULT_PROTECTED_RESOURCE_JWKS_FILE_NAME))
+      if (jwksFile.exists()) {
+        authzConfig.protectedResourceJWKSet = JWKSet.load(jwksFile) //if the file exists load it
+      }
       if(needJWKSetCreation(prInformation)) {
-        val jwksFile = new File(authzConfig.protectedResourceJWKSPath.getOrElse("./" + DEFAULT_PROTECTED_RESOURCE_JWKS_FILE_NAME))
-        val fhirServerJWKSet = if (jwksFile.exists())
-          JWKSet.load(jwksFile) //if the file exists load it
-        else
-          createAndStoreJWKSet(jwksFile.getPath) //Or create it
-        //Cache our own JWKSet
-        authzConfig.protectedResourceJWKSet = fhirServerJWKSet
+        if (!jwksFile.exists())
+          authzConfig.protectedResourceJWKSet = createAndStoreJWKSet(jwksFile.getPath) //Or create it
 
         //Check if we can find a signing key
         val signingKeys = new JWKSelector(new JWKMatcher.Builder()
           .keyType(KeyType.RSA)
           .keyUse(KeyUse.SIGNATURE)
           .build())
-          .select(fhirServerJWKSet)
+          .select(authzConfig.protectedResourceJWKSet)
         if (signingKeys.size() == 0)
           throw new InitializationException("Signing key not found in JWKSet for resource provider!")
         authzConfig.protectedResourceCurrentSignerKeyId = signingKeys.asScala.head.getKeyID

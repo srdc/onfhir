@@ -674,7 +674,8 @@ package object api {
       "http://hl7.org/fhir/OperationDefinition/Resource-validate" -> "io.onfhir.operation.ValidationOperationHandler",
       "http://hl7.org/fhir/OperationDefinition/ValueSet-expand" -> "io.onfhir.operation.ExpandOperationHandler",
       "http://hl7.org/fhir/OperationDefinition/Composition-document" -> "io.onfhir.operation.DocumentOperationHandler",
-      "http://hl7.org/fhir/OperationDefinition/Observation-lastn" -> "io.onfhir.operation.LastNObservationOperationHandler"
+      "http://hl7.org/fhir/OperationDefinition/Observation-lastn" -> "io.onfhir.operation.LastNObservationOperationHandler",
+      "http://hl7.org/fhir/uv/smart-health-cards-and-links/OperationDefinition/patient-i-health-cards-issue" -> "io.onfhir.operation.HealthCardIssueOperationHandler"
     )
 
 
