@@ -1,6 +1,6 @@
 package io.onfhir.path
 
-import io.onfhir.api.FHIR_DATA_TYPES
+import io.onfhir.api.{FHIR_DATA_TYPES, FHIR_PARAMETER_TYPES}
 import io.onfhir.path.annotation.{FhirPathFunction, FhirPathFunctionDocumentation, FhirPathFunctionParameter, FhirPathFunctionReturn}
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
 import org.json4s.JsonAST.JObject
@@ -35,8 +35,8 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
     detail = "agg",
     label = "agg:sum",
     kind = "Method",
-    returnType = Seq("number"),
-    inputType = Seq("number")
+    returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER),
+    inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER)
   )
   def sum():Seq[FhirPathResult] = {
     if(current.exists(!_.isInstanceOf[FhirPathNumber]))
@@ -83,7 +83,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
     detail = "agg",
     label = "agg:sum",
     kind = "Function",
-    returnType = Seq("number"),
+    returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER),
     inputType = Seq()
   )
   def sum(expr:ExpressionContext):Seq[FhirPathResult] = {
@@ -130,7 +130,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
     detail = "agg",
     label = "agg:avg",
     kind = "Function",
-    returnType = Seq("number"),
+    returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER),
     inputType = Seq()
   )
   def avg(expr:ExpressionContext):Seq[FhirPathResult] = {
@@ -163,8 +163,8 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
     detail = "agg",
     label = "agg:avg",
     kind = "Method",
-    returnType = Seq("number"),
-    inputType = Seq("number")
+    returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER),
+    inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER)
   )
   def avg():Seq[FhirPathResult] = {
     if(current.exists(!_.isInstanceOf[FhirPathNumber]))
@@ -200,8 +200,8 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
     detail = "agg",
     label = "agg:min",
     kind = "Method",
-    returnType = Seq(FHIR_DATA_TYPES.STRING, "number", FHIR_DATA_TYPES.DATETIME, FHIR_DATA_TYPES.TIME, "quantity"),
-    inputType = Seq(FHIR_DATA_TYPES.STRING, "number", FHIR_DATA_TYPES.DATETIME, FHIR_DATA_TYPES.TIME, "quantity")
+    returnType = Seq(FHIR_DATA_TYPES.STRING, FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.DATETIME, FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.QUANTITY),
+    inputType = Seq(FHIR_DATA_TYPES.STRING, FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.DATETIME, FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.QUANTITY)
   )
   def min():Seq[FhirPathResult] = {
     if(current.exists(c => c.isInstanceOf[FhirPathComplex] || c.isInstanceOf[FhirPathBoolean]))
@@ -248,7 +248,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
     detail = "agg",
     label = "agg:min",
     kind = "Function",
-    returnType = Seq(FHIR_DATA_TYPES.STRING, "number", FHIR_DATA_TYPES.DATETIME, FHIR_DATA_TYPES.TIME, "quantity"),
+    returnType = Seq(FHIR_DATA_TYPES.STRING, FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.DATETIME, FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.QUANTITY),
     inputType = Seq()
   )
   def min(expr:ExpressionContext):Seq[FhirPathResult] = {
@@ -299,7 +299,7 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
     detail = "agg",
     label = "agg:max",
     kind = "Function",
-    returnType = Seq(FHIR_DATA_TYPES.STRING, "number", FHIR_DATA_TYPES.DATETIME, FHIR_DATA_TYPES.TIME, "quantity"),
+    returnType = Seq(FHIR_DATA_TYPES.STRING, FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.DATETIME, FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.QUANTITY),
     inputType = Seq()
   )
   def max(expr:ExpressionContext):Seq[FhirPathResult] = {
@@ -342,8 +342,8 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
     detail = "agg",
     label = "agg:max",
     kind = "Method",
-    returnType = Seq(FHIR_DATA_TYPES.STRING, "number", FHIR_DATA_TYPES.DATETIME, FHIR_DATA_TYPES.TIME, "quantity"),
-    inputType = Seq(FHIR_DATA_TYPES.STRING, "number", FHIR_DATA_TYPES.DATETIME, FHIR_DATA_TYPES.TIME, "quantity")
+    returnType = Seq(FHIR_DATA_TYPES.STRING, FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.DATETIME, FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.QUANTITY),
+    inputType = Seq(FHIR_DATA_TYPES.STRING, FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.DATETIME, FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.QUANTITY)
   )
   def max():Seq[FhirPathResult] = {
     if(current.exists(c => c.isInstanceOf[FhirPathComplex] || c.isInstanceOf[FhirPathBoolean]))

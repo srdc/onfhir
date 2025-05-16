@@ -1,6 +1,6 @@
 package io.onfhir.path
 
-import io.onfhir.api.FHIR_DATA_TYPES
+import io.onfhir.api.{FHIR_DATA_TYPES, FHIR_PARAMETER_TYPES}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.path.annotation.{FhirPathFunction, FhirPathFunctionDocumentation, FhirPathFunctionParameter, FhirPathFunctionReturn}
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
@@ -538,7 +538,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
     label = "utl:isFhirQuantityExpression",
     kind = "Method",
     returnType = Seq(FHIR_DATA_TYPES.BOOLEAN),
-    inputType = Seq(FHIR_DATA_TYPES.DATETIME, "number", FHIR_DATA_TYPES.STRING)
+    inputType = Seq(FHIR_DATA_TYPES.DATETIME, FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.STRING)
   )
   def isFhirQuantityExpression(): Seq[FhirPathResult] = {
     current match {
@@ -1151,7 +1151,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
     detail = "utl",
     label = "utl:getPeriod",
     kind = "Method",
-    returnType = Seq("number"),
+    returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER),
     inputType = Seq(FHIR_DATA_TYPES.DATETIME)
   )
   def getPeriod(fromDate: ExpressionContext, toDate: ExpressionContext, period: ExpressionContext): Seq[FhirPathResult] = {

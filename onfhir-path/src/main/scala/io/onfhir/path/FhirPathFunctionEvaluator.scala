@@ -1,6 +1,6 @@
 package io.onfhir.path
 
-import io.onfhir.api.FHIR_DATA_TYPES
+import io.onfhir.api.{FHIR_DATA_TYPES, FHIR_PARAMETER_TYPES}
 import io.onfhir.api.model.FhirLiteralReference
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.path.annotation.{FhirPathFunction, FhirPathFunctionDocumentation, FhirPathFunctionParameter, FhirPathFunctionReturn}
@@ -486,7 +486,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
    */
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Returns the absolute value of the input. When taking the absolute value of a quantity, the unit is unchanged. If the input collection is empty, the result is empty. If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.", usageWarnings = None, parameters = None, returnValue = FhirPathFunctionReturn(detail = None, examples = Seq("3, 3.5, etc.")), examples = Seq("3.abs()")),
-    insertText = "abs()", detail = "", label = "abs", kind = "Method", returnType = Seq("number", "quantity"), inputType = Seq("number", "quantity")
+    insertText = "abs()", detail = "", label = "abs", kind = "Method", returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY), inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY)
   )
   def abs(): Seq[FhirPathResult] = {
     current match {
@@ -506,7 +506,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
    */
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Returns the first integer greater than or equal to the input. If the input collection is empty, the result is empty. If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.", usageWarnings = None, parameters = None, returnValue = FhirPathFunctionReturn(detail = None, examples = Seq("3, 5, etc.")), examples = Seq("2.5.ceiling()")),
-    insertText = "ceiling()", detail = "", label = "ceiling", kind = "Method", returnType = Seq("number", "quantity"), inputType = Seq("number", "quantity")
+    insertText = "ceiling()", detail = "", label = "ceiling", kind = "Method", returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY), inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY)
   )
   def ceiling(): Seq[FhirPathResult] = {
     current match {
@@ -527,7 +527,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
    */
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Returns e raised to the power of the input. If the input collection contains an Integer, it will be implicitly converted to a Decimal and the result will be a Decimal. If the input collection is empty, the result is empty. If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.", usageWarnings = None, parameters = None, returnValue = FhirPathFunctionReturn(detail = None, examples = Seq("7.38905609893065")), examples = Seq("2.exp()")),
-    insertText = "exp()", detail = "", label = "exp", kind = "Method", returnType = Seq("number", "quantity"), inputType = Seq("number", "quantity")
+    insertText = "exp()", detail = "", label = "exp", kind = "Method", returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY), inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY)
   )
   def exp(): Seq[FhirPathResult] = {
     current match {
@@ -547,7 +547,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
    */
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Returns the first integer less than or equal to the input. If the input collection is empty, the result is empty. If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.", usageWarnings = None, parameters = None, returnValue = FhirPathFunctionReturn(detail = None, examples = Seq("3", "5")), examples = Seq("3.5.floor()")),
-    insertText = "floor()", detail = "", label = "floor", kind = "Method", returnType = Seq("number", "quantity"), inputType = Seq("number", "quantity")
+    insertText = "floor()", detail = "", label = "floor", kind = "Method", returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY), inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY)
   )
   def floor(): Seq[FhirPathResult] = {
     current match {
@@ -568,7 +568,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
    */
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Returns the natural logarithm of the input (i.e. the logarithm base e). When used with an Integer, it will be implicitly converted to a Decimal. If the input collection is empty, the result is empty. If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.", usageWarnings = None, parameters = None, returnValue = FhirPathFunctionReturn(detail = None, examples = Seq("2.302585092994046")), examples = Seq("10.ln()")),
-    insertText = "ln()", detail = "", label = "ln", kind = "Method", returnType = Seq("number", "quantity"), inputType = Seq("number", "quantity")
+    insertText = "ln()", detail = "", label = "ln", kind = "Method", returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY), inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY)
   )
   def ln(): Seq[FhirPathResult] = {
     current match {
@@ -591,7 +591,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
    */
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Returns the logarithm base \"base\" of the input number. When used with Integers, the arguments will be implicitly converted to Decimal. If base is empty, the result is empty. If the input collection is empty, the result is empty. If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.", usageWarnings = None, parameters = Some(Seq(FhirPathFunctionParameter(name = "baseExp", detail = "The base expression.", examples = None))), returnValue = FhirPathFunctionReturn(detail = None, examples = Seq("0.301029995663981")), examples = Seq("2.log(10)")),
-    insertText = "log(<baseExp>)", detail = "", label = "log", kind = "Method", returnType = Seq("number", "quantity"), inputType = Seq("number", "quantity")
+    insertText = "log(<baseExp>)", detail = "", label = "log", kind = "Method", returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY), inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY)
   )
   def log(baseExp: ExpressionContext): Seq[FhirPathResult] = {
     val baseResult = new FhirPathExpressionEvaluator(context, current).visit(baseExp)
@@ -617,7 +617,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
    */
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Raises a number to the exponent power. If this function is used with Integers, the result is an Integer. If the function is used with Decimals, the result is a Decimal. If the function is used with a mixture of Integer and Decimal, the Integer is implicitly converted to a Decimal and the result is a Decimal. If the power cannot be represented (such as -1 raised to 0.5), the result is empty. If the input is empty, or exponent is empty, the result is empty. If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.", usageWarnings = None, parameters = Some(Seq(FhirPathFunctionParameter(name = "exponentExpr", detail = "The exponent expression.", examples = None))), returnValue = FhirPathFunctionReturn(detail = None, examples = Seq("8", "1.414213562373095")), examples = Seq("2.power(3)", "2.power(0.5)")),
-    insertText = "power(<exponentExpr>)", detail = "", label = "power", kind = "Method", returnType = Seq("number", "quantity"), inputType = Seq("number", "quantity")
+    insertText = "power(<exponentExpr>)", detail = "", label = "power", kind = "Method", returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY), inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY)
   )
   def power(exponentExpr: ExpressionContext): Seq[FhirPathResult] = {
     val exponentResult = new FhirPathExpressionEvaluator(context, current).visit(exponentExpr)
@@ -641,7 +641,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
    */
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Rounds the decimal to the nearest whole number using a traditional round (i.e. 0.5 or higher will round to 1). If the input collection is empty, the result is empty. If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.", usageWarnings = None, parameters = None, returnValue = FhirPathFunctionReturn(detail = None, examples = Seq("3", "5")), examples = Seq("2.9.round()")),
-    insertText = "round()", detail = "", label = "round", kind = "Method", returnType = Seq("number", "quantity"), inputType = Seq("number", "quantity")
+    insertText = "round()", detail = "", label = "round", kind = "Method", returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY), inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY)
   )
   def round(): Seq[FhirPathResult] = {
     current match {
@@ -663,7 +663,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
    */
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Rounds the decimal in a way that the precision argument determines the decimal place at which the rounding will occur. The number of digits of precision must be >= 0 or the evaluation will end and signal an error to the calling environment. If the input collection is empty, the result is empty. If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.", usageWarnings = None, parameters = Some(Seq(FhirPathFunctionParameter(name = "precisionExpr", detail = "The precision expression.", examples = None))), returnValue = FhirPathFunctionReturn(detail = None, examples = Seq("3.33")), examples = Seq("3.3333.round(2)")),
-    insertText = "round(<precisionExpr>)", detail = "", label = "round", kind = "Method", returnType = Seq("number", "quantity"), inputType = Seq("number", "quantity")
+    insertText = "round(<precisionExpr>)", detail = "", label = "round", kind = "Method", returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY), inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY)
   )
   def round(precisionExpr: ExpressionContext): Seq[FhirPathResult] = {
     val precisionResult = new FhirPathExpressionEvaluator(context, current).visit(precisionExpr)
@@ -691,7 +691,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
    */
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Returns the square root of the input number as a Decimal. If the square root cannot be represented (such as the square root of -1), the result is empty. If the input collection is empty, the result is empty. If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.", usageWarnings = None, parameters = None, returnValue = FhirPathFunctionReturn(detail = None, examples = Seq("1.414213562373095")), examples = Seq("2.sqrt()")),
-    insertText = "sqrt()", detail = "", label = "sqrt", kind = "Method", returnType = Seq("number", "quantity"), inputType = Seq("number", "quantity")
+    insertText = "sqrt()", detail = "", label = "sqrt", kind = "Method", returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY), inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY)
   )
   def sqrt(): Seq[FhirPathResult] = {
     current match {
@@ -721,7 +721,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
    */
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Returns the integer portion of the input. If the input collection is empty, the result is empty. If the input collection contains multiple items, the evaluation of the expression will end and signal an error to the calling environment.", usageWarnings = None, parameters = None, returnValue = FhirPathFunctionReturn(detail = None, examples = Seq("3, 5, etc.")), examples = Seq("3.9.truncate()")),
-    insertText = "truncate()", detail = "", label = "truncate", kind = "Method", returnType = Seq("number", "quantity"), inputType = Seq("number", "quantity")
+    insertText = "truncate()", detail = "", label = "truncate", kind = "Method", returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY), inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY)
   )
   def truncate(): Seq[FhirPathResult] = {
     current match {
@@ -808,7 +808,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
    */
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Converts the input to a decimal.", usageWarnings = None, parameters = None, returnValue = FhirPathFunctionReturn(detail = Some("The method returns the decimal representation of the input."), examples = Seq("3.5", "5.8")), examples = Seq("'3.5'.toDecimal()")),
-    insertText = "toDecimal()", detail = "", label = "toDecimal", kind = "Method", returnType = Seq(FHIR_DATA_TYPES.DECIMAL), inputType = Seq(FHIR_DATA_TYPES.DATETIME, "number", FHIR_DATA_TYPES.STRING, FHIR_DATA_TYPES.BOOLEAN)
+    insertText = "toDecimal()", detail = "", label = "toDecimal", kind = "Method", returnType = Seq(FHIR_DATA_TYPES.DECIMAL), inputType = Seq(FHIR_DATA_TYPES.DATETIME, FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.STRING, FHIR_DATA_TYPES.BOOLEAN)
   )
   def toDecimal(): Seq[FhirPathResult] = {
     current match {
@@ -833,7 +833,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
    */
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Checks if the current item can be converted to a decimal. If so, returns true. Otherwise, returns false.", usageWarnings = None, parameters = None, returnValue = FhirPathFunctionReturn(detail = None, examples = Seq("true or false")), examples = Seq("'3.5'.convertsToDecimal()")),
-    insertText = "convertsToDecimal()", detail = "", label = "convertsToDecimal", kind = "Method", returnType = Seq(FHIR_DATA_TYPES.BOOLEAN), inputType = Seq(FHIR_DATA_TYPES.DATETIME, "number", FHIR_DATA_TYPES.BOOLEAN, FHIR_DATA_TYPES.STRING)
+    insertText = "convertsToDecimal()", detail = "", label = "convertsToDecimal", kind = "Method", returnType = Seq(FHIR_DATA_TYPES.BOOLEAN), inputType = Seq(FHIR_DATA_TYPES.DATETIME, FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.BOOLEAN, FHIR_DATA_TYPES.STRING)
   )
   def convertsToDecimal(): Seq[FhirPathResult] = {
     current match {
@@ -858,7 +858,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
    */
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Converts the input to a boolean.", usageWarnings = None, parameters = None, returnValue = FhirPathFunctionReturn(detail = None, examples = Seq("true or false")), examples = Seq("'true'.toBoolean()")),
-    insertText = "toBoolean()", detail = "", label = "toBoolean", kind = "Method", returnType = Seq(FHIR_DATA_TYPES.BOOLEAN), inputType = Seq("number", FHIR_DATA_TYPES.STRING, FHIR_DATA_TYPES.BOOLEAN)
+    insertText = "toBoolean()", detail = "", label = "toBoolean", kind = "Method", returnType = Seq(FHIR_DATA_TYPES.BOOLEAN), inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.STRING, FHIR_DATA_TYPES.BOOLEAN)
   )
   def toBoolean(): Seq[FhirPathResult] = {
     current match {
@@ -936,7 +936,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
 
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Converts the input to a quantity.", usageWarnings = None, parameters = None, returnValue = FhirPathFunctionReturn(detail = None, examples = Seq("""<JSON>{"value": 3, "unit": 1}""")), examples = Seq("'3'.toQuantity()")),
-    insertText = "toQuantity()", detail = "", label = "toQuantity", kind = "Method", returnType = Seq("quantity"), inputType = Seq("number", "quantity", FHIR_DATA_TYPES.STRING, FHIR_DATA_TYPES.BOOLEAN)
+    insertText = "toQuantity()", detail = "", label = "toQuantity", kind = "Method", returnType = Seq(FHIR_DATA_TYPES.QUANTITY), inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY, FHIR_DATA_TYPES.STRING, FHIR_DATA_TYPES.BOOLEAN)
   )
   def toQuantity(): Seq[FhirPathResult] = {
     current match {
@@ -954,7 +954,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
 
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Converts the input to a quantity with the given unit.", usageWarnings = None, parameters = Some(Seq(FhirPathFunctionParameter(name = "unitExpr", detail = "The unit expression.", examples = None))), returnValue = FhirPathFunctionReturn(detail = Some("The method returns a quantity object with value and unit."), examples = Seq("""<JSON>{"value": 3, "unit": "mg"}""")), examples = Seq("'3'.toQuantity('mg')")),
-    insertText = "toQuantity(<unitExpr>)", detail = "", label = "toQuantity", kind = "Method", returnType = Seq("quantity"), inputType = Seq("number", "quantity", FHIR_DATA_TYPES.STRING, FHIR_DATA_TYPES.BOOLEAN)
+    insertText = "toQuantity(<unitExpr>)", detail = "", label = "toQuantity", kind = "Method", returnType = Seq(FHIR_DATA_TYPES.QUANTITY), inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.QUANTITY, FHIR_DATA_TYPES.STRING, FHIR_DATA_TYPES.BOOLEAN)
   )
   def toQuantity(unitExpr: ExpressionContext): Seq[FhirPathResult] = {
     val unitValue = new FhirPathExpressionEvaluator(context, current).visit(unitExpr)
@@ -981,7 +981,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
    */
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Converts the input to a string.", usageWarnings = None, parameters = None, returnValue = FhirPathFunctionReturn(detail = None, examples = Seq("\"3\"")), examples = Seq("3.toString()")),
-    insertText = "toString()", detail = "", label = "toString", kind = "Method", returnType = Seq(FHIR_DATA_TYPES.STRING), inputType = Seq("number", FHIR_DATA_TYPES.STRING, FHIR_DATA_TYPES.DATETIME, FHIR_DATA_TYPES.TIME, "quantity", FHIR_DATA_TYPES.BOOLEAN)
+    insertText = "toString()", detail = "", label = "toString", kind = "Method", returnType = Seq(FHIR_DATA_TYPES.STRING), inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.STRING, FHIR_DATA_TYPES.DATETIME, FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.QUANTITY, FHIR_DATA_TYPES.BOOLEAN)
   )
   def _toString(): Seq[FhirPathResult] = {
     current match {
@@ -1000,7 +1000,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
 
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Converts a quantity to a FHIR Path Object type (JSON).", usageWarnings = None, parameters = None, returnValue = FhirPathFunctionReturn(detail = Some("The method returns a FHIR Path Object (JSON) representing the quantity with value and unit."), examples = Seq("""<JSON>{"value": 3,"unit": "mg"}""")), examples = Seq("{'value': 3, 'unit': 'mg'}.toComplex()")),
-    insertText = "toComplex()", detail = "", label = "toComplex", kind = "Method", returnType = Seq(), inputType = Seq("quantity")
+    insertText = "toComplex()", detail = "", label = "toComplex", kind = "Method", returnType = Seq(), inputType = Seq(FHIR_DATA_TYPES.QUANTITY)
   )
   def toComplex(): Seq[FhirPathResult] = {
     current match {
@@ -1138,7 +1138,7 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
 
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Returns true if the input value matches the given regular expression.", usageWarnings = None, parameters = Some(Seq(FhirPathFunctionParameter(name = "regexExpr", detail = "The regular expression.", examples = None))), returnValue = FhirPathFunctionReturn(detail = None, examples = Seq("true or false")), examples = Seq("'abcdefg'.matches('a.c.e.g')")),
-    insertText = "matches(<regexExpr>)", detail = "", label = "matches", kind = "Method", returnType = Seq(FHIR_DATA_TYPES.BOOLEAN), inputType = Seq(FHIR_DATA_TYPES.STRING, FHIR_DATA_TYPES.DATETIME, "number")
+    insertText = "matches(<regexExpr>)", detail = "", label = "matches", kind = "Method", returnType = Seq(FHIR_DATA_TYPES.BOOLEAN), inputType = Seq(FHIR_DATA_TYPES.STRING, FHIR_DATA_TYPES.DATETIME, FHIR_PARAMETER_TYPES.NUMBER)
   )
   def matches(regexExpr: ExpressionContext): Seq[FhirPathResult] = {
     current.headOption.map(c => {
@@ -1272,25 +1272,25 @@ class FhirPathFunctionEvaluator(context: FhirPathEnvironment, current: Seq[FhirP
 
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Returns the low boundary of the input that this function is called upon. The input can be a decimal number, time or dateTime.", usageWarnings = None, parameters = None, returnValue = FhirPathFunctionReturn(detail = None, examples = Seq("2.38550, 2015-01-01T00:00:00, etc.")), examples = Seq("2.386.lowBoundary(), 2015.utl:toFhirDateTime('yyyy').lowBoundary(), etc.")),
-    insertText = "lowBoundary()", detail = "", label = "lowBoundary", kind = "Method", returnType = Seq("number", FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.DATE, FHIR_DATA_TYPES.DATETIME), inputType = Seq("number", FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.DATE, FHIR_DATA_TYPES.DATETIME)
+    insertText = "lowBoundary()", detail = "", label = "lowBoundary", kind = "Method", returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.DATE, FHIR_DATA_TYPES.DATETIME), inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.DATE, FHIR_DATA_TYPES.DATETIME)
   )
   def lowBoundary(): Seq[FhirPathResult] = lowBoundary(None)
 
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Returns the low boundary of the input that this function is called upon by optionally accepting a precision for boundary calculation. The input can be a decimal number, time or dateTime.", usageWarnings = None, parameters = Some(Seq(FhirPathFunctionParameter(name = "precisionExpr", detail = "The precision expression.", examples = None))), returnValue = FhirPathFunctionReturn(detail = None, examples = Seq("2.3855000, 2018-01, etc.")), examples = Seq("2.386.lowBoundary(7), '2018'.utl:toFhirDateTime('yyyy').lowBoundary(6), etc.")),
-    insertText = "lowBoundary(<precision>)", detail = "", label = "lowBoundary", kind = "Method", returnType = Seq("number", FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.DATE, FHIR_DATA_TYPES.DATETIME), inputType = Seq("number", FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.DATE, FHIR_DATA_TYPES.DATETIME)
+    insertText = "lowBoundary(<precision>)", detail = "", label = "lowBoundary", kind = "Method", returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.DATE, FHIR_DATA_TYPES.DATETIME), inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.DATE, FHIR_DATA_TYPES.DATETIME)
   )
   def lowBoundary(precisionExpr: ExpressionContext): Seq[FhirPathResult] = lowBoundary(Some(precisionExpr))
 
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Returns the high boundary of the input that this function is called upon. The input can be a decimal number, time or dateTime.", usageWarnings = None, parameters = None, returnValue = FhirPathFunctionReturn(detail = None, examples = Seq("2.38650, 2015-12-31T23:59:59, etc.")), examples = Seq("2.386.highBoundary(), 2015.utl:toFhirDateTime('yyyy').highBoundary(), etc.")),
-    insertText = "highBoundary()", detail = "", label = "highBoundary", kind = "Method", returnType = Seq("number", FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.DATE, FHIR_DATA_TYPES.DATETIME), inputType = Seq("number", FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.DATE, FHIR_DATA_TYPES.DATETIME)
+    insertText = "highBoundary()", detail = "", label = "highBoundary", kind = "Method", returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.DATE, FHIR_DATA_TYPES.DATETIME), inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.DATE, FHIR_DATA_TYPES.DATETIME)
   )
   def highBoundary(): Seq[FhirPathResult] = highBoundary(None)
 
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(detail = "Returns the high boundary of the input that this function is called upon by optionally accepting a precision for boundary calculation. The input can be a decimal number, time, or dateTime.", usageWarnings = None, parameters = Some(Seq(FhirPathFunctionParameter(name = "precisionExpr", detail = "The precision expression.", examples = None))), returnValue = FhirPathFunctionReturn(detail = None, examples = Seq("2.3865000, 2018-12, etc.")), examples = Seq("2.386.highBoundary(7), '2018'.utl:toFhirDateTime('yyyy').highBoundary(6), etc.")),
-    insertText = "highBoundary(<precision>)", detail = "", label = "highBoundary", kind = "Method", returnType = Seq("number", FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.DATE, FHIR_DATA_TYPES.DATETIME), inputType = Seq("number", FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.DATE, FHIR_DATA_TYPES.DATETIME)
+    insertText = "highBoundary(<precision>)", detail = "", label = "highBoundary", kind = "Method", returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.DATE, FHIR_DATA_TYPES.DATETIME), inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.DATE, FHIR_DATA_TYPES.DATETIME)
   )
   def highBoundary(precisionExpr: ExpressionContext): Seq[FhirPathResult] = highBoundary(Some(precisionExpr))
 

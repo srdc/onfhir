@@ -355,7 +355,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
     detail = "trms",
     label = "trms:lookupDisplay",
     kind = "Function",
-    returnType = Seq("string"),
+    returnType = Seq(FHIR_DATA_TYPES.STRING),
     inputType = Seq()
   )
   def lookupDisplay(codeExpr:ExpressionContext, systemExpr:ExpressionContext, displayLanguageExpr:ExpressionContext):Seq[FhirPathResult] = {
