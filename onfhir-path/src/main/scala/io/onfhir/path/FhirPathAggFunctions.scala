@@ -1,6 +1,7 @@
 package io.onfhir.path
 
-import io.onfhir.path.annotation.FhirPathFunction
+import io.onfhir.api.{FHIR_DATA_TYPES, FHIR_PARAMETER_TYPES}
+import io.onfhir.path.annotation.{FhirPathFunction, FhirPathFunctionDocumentation, FhirPathFunctionParameter, FhirPathFunctionReturn}
 import io.onfhir.path.grammar.FhirPathExprParser.ExpressionContext
 import org.json4s.JsonAST.JObject
 
@@ -15,8 +16,28 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * Sum of the input numeric values, 0 if input list is empty
    * @return
    */
-  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns the sum of the input numeric values. If the input list is empty, returns 0.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n9, 9.5, etc.\n``` \n\n\uD83D\uDCA1 **E.g.** valueQuantity.value.agg:sum()",
-    insertText = "agg:sum()",detail = "agg", label = "agg:sum", kind = "Method", returnType = Seq("number"), inputType = Seq("number"))
+  @FhirPathFunction(
+    documentation = FhirPathFunctionDocumentation(
+      detail = "Returns the sum of the input numeric values. If the input list is empty, returns 0.",
+      usageWarnings = None,
+      parameters = None,
+      returnValue = FhirPathFunctionReturn(
+        detail = None,
+        examples = Seq(
+          "9, 9.5, etc."
+        )
+      ),
+      examples = Seq(
+        "valueQuantity.value.agg:sum()"
+      )
+    ),
+    insertText = "agg:sum()",
+    detail = "agg",
+    label = "agg:sum",
+    kind = "Method",
+    returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER),
+    inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER)
+  )
   def sum():Seq[FhirPathResult] = {
     if(current.exists(!_.isInstanceOf[FhirPathNumber]))
       throw new FhirPathException(s"Invalid function call 'sum', one of the input values is not a numeric value!")
@@ -37,8 +58,34 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @param expr Expression to calculate the sum
    * @return
    */
-  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns the sum of the numeric values in the given expression.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`expr`**  \nThe expression of which the sum will be calculated.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n9, 9.5, etc.\n``` \n\n\uD83D\uDCA1 **E.g.** agg:sum(valueQuantity.value)",
-    insertText = "agg:sum(<expr>)",detail = "agg", label = "agg:sum", kind = "Function", returnType = Seq("number"), inputType = Seq())
+  @FhirPathFunction(
+    documentation = FhirPathFunctionDocumentation(
+      detail = "Returns the sum of the numeric values in the given expression.",
+      usageWarnings = None,
+      parameters = Some(Seq(
+        FhirPathFunctionParameter(
+          name = "expr",
+          detail = "The expression of which the sum will be calculated.",
+          examples = None
+        )
+      )),
+      returnValue = FhirPathFunctionReturn(
+        detail = None,
+        examples = Seq(
+          "9, 9.5, etc."
+        )
+      ),
+      examples = Seq(
+        "agg:sum(valueQuantity.value)"
+      )
+    ),
+    insertText = "agg:sum(<expr>)",
+    detail = "agg",
+    label = "agg:sum",
+    kind = "Function",
+    returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER),
+    inputType = Seq()
+  )
   def sum(expr:ExpressionContext):Seq[FhirPathResult] = {
     val results = current.map(c => {
       val result = new FhirPathExpressionEvaluator(context, Seq(c)).visit(expr)
@@ -58,8 +105,34 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @param expr  Expression to compute the average
    * @return
    */
-  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns the average of the numeric values in the given expression.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`expr`**  \nThe expression of which the average will be calculated.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n5, 5.5, etc.\n``` \n\n\uD83D\uDCA1 **E.g.** agg:avg($this.valueQuantity.value)",
-    insertText = "agg:avg(<expr>)",detail = "agg", label = "agg:avg", kind = "Function", returnType = Seq("number"), inputType = Seq())
+  @FhirPathFunction(
+    documentation = FhirPathFunctionDocumentation(
+      detail = "Returns the average of the numeric values in the given expression.",
+      usageWarnings = None,
+      parameters = Some(Seq(
+        FhirPathFunctionParameter(
+          name = "expr",
+          detail = "The expression of which the average will be calculated.",
+          examples = None
+        )
+      )),
+      returnValue = FhirPathFunctionReturn(
+        detail = None,
+        examples = Seq(
+          "5, 5.5, etc."
+        )
+      ),
+      examples = Seq(
+        "agg:avg($this.valueQuantity.value)"
+      )
+    ),
+    insertText = "agg:avg(<expr>)",
+    detail = "agg",
+    label = "agg:avg",
+    kind = "Function",
+    returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER),
+    inputType = Seq()
+  )
   def avg(expr:ExpressionContext):Seq[FhirPathResult] = {
     if(current.isEmpty)
       Nil
@@ -71,8 +144,28 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * Average of the input numeric values
    * @return
    */
-  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns the average of the input numeric values.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n5, 5.5, etc.\n``` \n\n\uD83D\uDCA1 **E.g.** valueQuantity.value.agg:avg()",
-    insertText = "agg:avg()",detail = "agg", label = "agg:avg", kind = "Method", returnType = Seq("number"), inputType = Seq("number"))
+  @FhirPathFunction(
+    documentation = FhirPathFunctionDocumentation(
+      detail = "Returns the average of the input numeric values.",
+      usageWarnings = None,
+      parameters = None,
+      returnValue = FhirPathFunctionReturn(
+        detail = None,
+        examples = Seq(
+          "5, 5.5, etc."
+        )
+      ),
+      examples = Seq(
+        "valueQuantity.value.agg:avg()"
+      )
+    ),
+    insertText = "agg:avg()",
+    detail = "agg",
+    label = "agg:avg",
+    kind = "Method",
+    returnType = Seq(FHIR_PARAMETER_TYPES.NUMBER),
+    inputType = Seq(FHIR_PARAMETER_TYPES.NUMBER)
+  )
   def avg():Seq[FhirPathResult] = {
     if(current.exists(!_.isInstanceOf[FhirPathNumber]))
       throw new FhirPathException(s"Invalid function call 'avg' on non numeric content!")
@@ -88,8 +181,28 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * Get the minimum of the input comparable values (numeric, dateTime
    * @return
    */
-  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns the minimum of the input comparable values.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n1, 1.5, etc.\n``` \n\n\uD83D\uDCA1 **E.g.** valueQuantity.value.agg:min()",
-    insertText = "agg:min()",detail = "agg", label = "agg:min", kind = "Method", returnType = Seq("string","number","dateTime","time","quantity"), inputType = Seq("string","number","dateTime","time","quantity"))
+  @FhirPathFunction(
+    documentation = FhirPathFunctionDocumentation(
+      detail = "Returns the minimum of the input comparable values.",
+      usageWarnings = None,
+      parameters = None,
+      returnValue = FhirPathFunctionReturn(
+        detail = None,
+        examples = Seq(
+          "1, 1.5, etc."
+        )
+      ),
+      examples = Seq(
+        "valueQuantity.value.agg:min()"
+      )
+    ),
+    insertText = "agg:min()",
+    detail = "agg",
+    label = "agg:min",
+    kind = "Method",
+    returnType = Seq(FHIR_DATA_TYPES.STRING, FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.DATETIME, FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.QUANTITY),
+    inputType = Seq(FHIR_DATA_TYPES.STRING, FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.DATETIME, FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.QUANTITY)
+  )
   def min():Seq[FhirPathResult] = {
     if(current.exists(c => c.isInstanceOf[FhirPathComplex] || c.isInstanceOf[FhirPathBoolean]))
       throw new FhirPathException(s"Invalid function call 'min' on non comparable values!")
@@ -110,8 +223,34 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @param expr  Expression to calculate
    * @return
    */
-  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns the minimum of the comparable values in the given expression.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`expr`**  \nThe expression of which the minimum will be found.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n1, 1.5, etc.\n``` \n\n\uD83D\uDCA1 **E.g.** agg:min($this.valueQuantity.value)",
-    insertText = "agg:min(<expr>)",detail = "agg", label = "agg:min", kind = "Function", returnType = Seq("string","number","dateTime","time","quantity"), inputType = Seq())
+  @FhirPathFunction(
+    documentation = FhirPathFunctionDocumentation(
+      detail = "Returns the minimum of the comparable values in the given expression.",
+      usageWarnings = None,
+      parameters = Some(Seq(
+        FhirPathFunctionParameter(
+          name = "expr",
+          detail = "The expression of which the minimum will be found.",
+          examples = None
+        )
+      )),
+      returnValue = FhirPathFunctionReturn(
+        detail = None,
+        examples = Seq(
+          "1, 1.5, etc."
+        )
+      ),
+      examples = Seq(
+        "agg:min($this.valueQuantity.value)"
+      )
+    ),
+    insertText = "agg:min(<expr>)",
+    detail = "agg",
+    label = "agg:min",
+    kind = "Function",
+    returnType = Seq(FHIR_DATA_TYPES.STRING, FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.DATETIME, FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.QUANTITY),
+    inputType = Seq()
+  )
   def min(expr:ExpressionContext):Seq[FhirPathResult] = {
     val results =
       current
@@ -135,8 +274,34 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @param expr  Expression to calculate
    * @return
    */
-  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns the maximum of the comparable values in the given expression.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`expr`**  \nThe expression of which the maximum will be found.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n8, 8.5, etc.\n``` \n\n\uD83D\uDCA1 **E.g.** agg:max($this.valueQuantity.value)",
-    insertText = "agg:max(<expr>)",detail = "agg", label = "agg:max", kind = "Function", returnType = Seq("string","number","dateTime","time","quantity"), inputType = Seq())
+  @FhirPathFunction(
+    documentation = FhirPathFunctionDocumentation(
+      detail = "Returns the maximum of the comparable values in the given expression.",
+      usageWarnings = None,
+      parameters = Some(Seq(
+        FhirPathFunctionParameter(
+          name = "expr",
+          detail = "The expression of which the maximum will be found.",
+          examples = None
+        )
+      )),
+      returnValue = FhirPathFunctionReturn(
+        detail = None,
+        examples = Seq(
+          "8, 8.5, etc."
+        )
+      ),
+      examples = Seq(
+        "agg:max($this.valueQuantity.value)"
+      )
+    ),
+    insertText = "agg:max(<expr>)",
+    detail = "agg",
+    label = "agg:max",
+    kind = "Function",
+    returnType = Seq(FHIR_DATA_TYPES.STRING, FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.DATETIME, FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.QUANTITY),
+    inputType = Seq()
+  )
   def max(expr:ExpressionContext):Seq[FhirPathResult] = {
     val results = current
       .flatMap(c => {
@@ -158,8 +323,28 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * Getting the maximum of given input values
    * @return
    */
-  @FhirPathFunction(documentation = "\uD83D\uDCDC Returns the maximum of the input comparable values.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```\n8, 8.5, etc.\n``` \n\n\uD83D\uDCA1 **E.g.** valueQuantity.value.agg:max()",
-    insertText = "agg:max()",detail = "agg", label = "agg:max", kind = "Method", returnType = Seq("string","number","dateTime","time","quantity"), inputType = Seq("string","number","dateTime","time","quantity"))
+  @FhirPathFunction(
+    documentation = FhirPathFunctionDocumentation(
+      detail = "Returns the maximum of the input comparable values.",
+      usageWarnings = None,
+      parameters = None,
+      returnValue = FhirPathFunctionReturn(
+        detail = None,
+        examples = Seq(
+          "8, 8.5, etc."
+        )
+      ),
+      examples = Seq(
+        "valueQuantity.value.agg:max()"
+      )
+    ),
+    insertText = "agg:max()",
+    detail = "agg",
+    label = "agg:max",
+    kind = "Method",
+    returnType = Seq(FHIR_DATA_TYPES.STRING, FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.DATETIME, FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.QUANTITY),
+    inputType = Seq(FHIR_DATA_TYPES.STRING, FHIR_PARAMETER_TYPES.NUMBER, FHIR_DATA_TYPES.DATETIME, FHIR_DATA_TYPES.TIME, FHIR_DATA_TYPES.QUANTITY)
+  )
   def max():Seq[FhirPathResult] = {
     if(current.exists(c => c.isInstanceOf[FhirPathComplex] || c.isInstanceOf[FhirPathBoolean]))
       throw new FhirPathException(s"Invalid function call 'max' on non comparable values!")
@@ -180,8 +365,39 @@ class FhirPathAggFunctions(context:FhirPathEnvironment, current:Seq[FhirPathResu
    * @param aggregateExpr   Aggregation expression
    * @return                A list of special JSON Objects with field 'bucket' indicating the key for the bucket and 'agg' indicating the resulting aggregated value
    */
-  @FhirPathFunction(documentation = "\uD83D\uDCDC Groups the values based on some expression returning a key and applies the aggregation expression to each of these groups.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`groupByExpr`**  \nAn expression to determine the key for grouping.\n\n\uD83D\uDCDD <span style=\"color:#ff0000;\">_@param_</span> **`aggregateExpr`**  \nThe aggregation expression to apply to each group.\n\n\uD83D\uDD19 <span style=\"color:#ff0000;\">_@return_</span>  \n```json\n[\n  {\n    \"bucket\": \"123\",\n    \"agg\": \"2\"\n  },\n  {\n    \"bucket\": \"456\",\n    \"agg\": \"3\"\n  },\n  {\n    \"bucket\": \"789\",\n    \"agg\": \"1\"\n  }\n]\n``` \n\uD83D\uDCA1 **E.g.** agg:groupBy(Condition.subject.reference.substring(8),count())",
-    insertText = "agg:groupBy(<groupByExpr>,<aggregateExpr>)",detail = "agg", label = "agg:groupBy", kind = "Function", returnType = Seq(), inputType = Seq())
+  @FhirPathFunction(
+    documentation = FhirPathFunctionDocumentation(
+      detail = "Groups the values based on some expression returning a key and applies the aggregation expression to each of these groups.",
+      usageWarnings = None,
+      parameters = Some(Seq(
+        FhirPathFunctionParameter(
+          name = "groupByExpr",
+          detail = "An expression to determine the key for grouping.",
+          examples = None
+        ),
+        FhirPathFunctionParameter(
+          name = "aggregateExpr",
+          detail = "The aggregation expression to apply to each group.",
+          examples = None
+        )
+      )),
+      returnValue = FhirPathFunctionReturn(
+        detail = None,
+        examples = Seq(
+          """<JSON>[{"bucket": "123","agg": "2"},{"bucket": "456","agg": "3"},{"bucket": "789","agg": "1"}]"""
+        )
+      ),
+      examples = Seq(
+        "agg:groupBy(Condition.subject.reference.substring(8), count())"
+      )
+    ),
+    insertText = "agg:groupBy(<groupByExpr>, <aggregateExpr>)",
+    detail = "agg",
+    label = "agg:groupBy",
+    kind = "Function",
+    returnType = Seq(),
+    inputType = Seq()
+  )
   def groupBy(groupByExpr:ExpressionContext, aggregateExpr:ExpressionContext):Seq[FhirPathResult] = {
     if(!current.forall(_.isInstanceOf[FhirPathComplex]))
       throw new FhirPathException("Invalid function call 'groupBy' on current value! The data type for current value should be complex object!")
