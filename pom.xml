@@ -122,7 +122,7 @@
         <specs2.version>4.20.4</specs2.version>
         <nimbus-jose.version>9.37.3</nimbus-jose.version>
         <nimbus-oidc.version>11.9.1</nimbus-oidc.version>
-        <apache-commons-lang.version>3.17.0</apache-commons-lang.version>
+        <apache-commons-lang.version>3.18.0</apache-commons-lang.version>
         <apache-commons-io.version>2.18.0</apache-commons-io.version>
         <apache-commons-text.version>1.13.0</apache-commons-text.version>
         <reflections.version>0.10.2</reflections.version>
