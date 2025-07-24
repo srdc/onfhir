@@ -9,7 +9,7 @@ import io.onfhir.api.model.InternalEntity
  * @param profile           Base profile for all uses of resource
  * @param supportedProfiles Profiles for use cases supported
  * @param interactions      FHIR interactions supported
- * @param searchParams      Urls of SearchParameter definitions for supported search parameters
+ * @param searchParams      Names and Urls of SearchParameter definitions for supported search parameters
  * @param versioning        Supported versioning code i.e no-version, versioned, versioned-update
  * @param readHistory       Whether vRead can return past versions
  * @param updateCreate      If update can create a new resource
@@ -25,7 +25,7 @@ case class ResourceConf(resource:String,
                         profile:Option[String] = None,
                         supportedProfiles:Set[String] = Set.empty,
                         interactions:Set[String] =Set.empty,
-                        searchParams:Set[String] = Set.empty,
+                        searchParams:Set[(String, String)] = Set.empty,
                         versioning:String = "no-version",
                         readHistory:Boolean = false,
                         updateCreate:Boolean = false,

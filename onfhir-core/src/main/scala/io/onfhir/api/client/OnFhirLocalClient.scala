@@ -35,11 +35,16 @@ object OnFhirLocalClient extends BaseFhirClient {
   override def next[T<:FHIRPaginatedBundle](bundle: T):Future[T] = {
     bundle match {
       case s:FHIRSearchSetBundle =>
-        val baseRequest = s.request
-        val paginationParam = baseRequest.page.map(_._1).getOrElse("_page")
-        val nextPage = bundle.getNextPage(paginationParam).get
-        baseRequest.page = Some(paginationParam -> nextPage)
-        baseRequest.executeAndReturnBundle().map(_.asInstanceOf[T])
+        s.request match {
+          case baseRequest:FhirSearchRequestBuilder =>
+            val paginationParam = baseRequest.page.map(_._1).getOrElse("_page")
+            val nextPage = bundle.getNextPage(paginationParam).get
+            baseRequest.page = Some(paginationParam -> nextPage)
+            baseRequest.executeAndReturnBundle().map(_.asInstanceOf[T])
+          case _:FhirGetSearchPageRequestBuilder =>
+            this.getSearchPage(bundle.getNext()).executeAndReturnBundle().map(_.asInstanceOf[T])
+        }
+
       case h:FHIRHistoryBundle =>
         val baseRequest = h.request
         val paginationParam = baseRequest.page.map(_._1).getOrElse("_page")

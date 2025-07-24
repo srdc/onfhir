@@ -275,7 +275,7 @@ class MongoDBInitializer(resourceManager: ResourceManager) extends BaseDBInitial
         val searchParamConfs =
           indexDef.parameters.map {
             //MongoDb _id parameter
-            case "__id" => Some(SearchParameterConf("__id", FHIR_PARAMETER_TYPES.TOKEN, Seq("_id"), targetTypes = Seq("id")))
+            case "__id" => Some(SearchParameterConf("__id", "__id", FHIR_PARAMETER_TYPES.TOKEN, Seq("_id"), targetTypes = Seq("id")))
             //FHIR search parameter
             case p =>  searchParameterConfigurations.find(_.pname == p)
           }

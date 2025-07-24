@@ -72,7 +72,7 @@ abstract class FHIRPaginatedBundle(bundle:Resource, val request:FhirRequestBuild
  * FHIR Bundle that represents a search set
  * @param bundle
  */
-class FHIRSearchSetBundle(bundle:Resource, override val request:FhirSearchRequestBuilder) extends FHIRPaginatedBundle(bundle, request) {
+class FHIRSearchSetBundle(bundle:Resource, override val request:FHIRSearchSetReturningRequestBuilder) extends FHIRPaginatedBundle(bundle, request) {
 
   /**
    * Search results

@@ -19,7 +19,7 @@ import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.language.postfixOps
 
 object OnFhirNetworkClientTest extends Specification {
-  val baseUrl = "http://localhost:8080/fhir"
+  val baseUrl = "http://127.0.0.1:8080/fhir"
   val patientWithoutId: Resource =  Source.fromInputStream(getClass.getResourceAsStream("/patient-without-id.json")).mkString.parseJson
   val obsGlucose: Resource = Source.fromInputStream(getClass.getResourceAsStream("/observation-glucose.json")).mkString.parseJson
   implicit val actorSystem: ActorSystem = ActorSystem("OnFhirClientTest")
@@ -156,6 +156,21 @@ object OnFhirNetworkClientTest extends Specification {
 
       itr.next().map(_.searchResults.length) must be_==(2).await
       itr.next().map(_.searchResults.length) must be_==(1).await
+    }
+
+    "should help retrieving a searchset page from the link" in {
+       var bundle:FHIRSearchSetBundle =
+          Await.result(onFhirClient.getSearchPage("/Patient?gender=male&_count=2"), 5 seconds)
+      bundle.searchResults.length mustEqual 2
+      bundle.hasNext() mustEqual true
+
+      bundle = Await.result(onFhirClient.next(bundle), 5 seconds)
+      bundle.searchResults.length mustEqual 1
+      bundle.hasNext() mustEqual false
+
+      bundle = Await.result(onFhirClient.getSearchPage("http://127.0.0.1:8080/fhir/Patient?gender=male&_count=2"), 5 seconds)
+      bundle.searchResults.length mustEqual 2
+      bundle.hasNext() mustEqual true
     }
 
     "should help searching resources - starting from a page" in {

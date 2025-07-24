@@ -29,7 +29,16 @@ class STU3Parser(complexTypes:Set[String], primitiveTypes:Set[String]) extends R
           profile = (resourceDef \ "profile" \ "reference").extractOpt[String],
           supportedProfiles = Set.empty[String], //TODO
           interactions = (resourceDef \ "interaction" \ "code").extractOrElse[Seq[String]](Nil).toSet,
-          searchParams = (resourceDef \ "searchParam" \ "definition").extractOrElse[Seq[String]](Nil).toSet,
+          searchParams =
+            (resourceDef \ "searchParam") match {
+              case JArray(arr) =>
+                arr
+                  .map(sp => (sp \ "name").extract[String] -> (sp \ "definition").extractOpt[String])
+                  .filter(_._2.isDefined)
+                  .map(sp => sp._1 -> sp._2.get)
+                  .toSet
+              case _ => Set.empty
+            },
           versioning = (resourceDef \ "versioning").extractOrElse[String](OnfhirConfig.fhirDefaultVersioning),
           readHistory = (resourceDef \ "readHistory").extractOrElse[Boolean](OnfhirConfig.fhirDefaultReadHistory),
           updateCreate = (resourceDef \ "updateCreate").extractOrElse[Boolean](OnfhirConfig.fhirDefaultUpdateCreate),

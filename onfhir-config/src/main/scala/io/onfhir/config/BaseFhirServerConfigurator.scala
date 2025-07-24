@@ -341,7 +341,7 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
    * @param baseProfiles              All base profiles provided in the standard
    * @return
    */
-  private def findClosureForBaseProfiles(fhirConfig: FhirServerConfig, mentionedBaseProfileUrls:Set[(String, Option[String])], baseProfiles:Map[String, Map[String, ProfileRestrictions]]):Map[String, Map[String, ProfileRestrictions]] = {
+  protected def findClosureForBaseProfiles(fhirConfig: FhirServerConfig, mentionedBaseProfileUrls:Set[(String, Option[String])], baseProfiles:Map[String, Map[String, ProfileRestrictions]]):Map[String, Map[String, ProfileRestrictions]] = {
     val mentionedBaseProfiles = mentionedBaseProfileUrls.map(p => p._1 -> Map(p._2.getOrElse("latest") -> FHIRUtil.getMentionedProfile(p, baseProfiles).get)).toMap
     val deepMentionedBaseProfiles = findMentionedProfiles(fhirConfig, mentionedBaseProfiles.values.flatMap(_.values).toSeq)
     val newUrls = deepMentionedBaseProfiles.diff(mentionedBaseProfileUrls)
@@ -364,7 +364,7 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
     //Check if for all search parameters mentioned in the Conformance, a SearchParameter definition exist in base standard or given configuration
     val resourcesWithMissingSearchParameterDefs =
       conformance.restResourceConf
-        .map(r => r.resource -> r.searchParams.filter(sp => !(searchParameters ++ baseSearchParameters).contains(sp) || (searchParameters ++ baseSearchParameters).get(sp).exists(spd => !spd.base.contains("Resource") && !spd.base.contains(r.resource))))
+        .map(r => r.resource -> r.searchParams.filter(sp => !(searchParameters ++ baseSearchParameters).contains(sp._2) || (searchParameters ++ baseSearchParameters).get(sp._2).exists(spd => !spd.base.contains("Resource") && !spd.base.contains(r.resource))))
         .filter(_._2.nonEmpty)
 
     if(resourcesWithMissingSearchParameterDefs.nonEmpty)
@@ -374,12 +374,12 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
       fhirConfig.resourceConfigurations
         .map(r => {
           //Construct search parameter configurator by giving required information
-          val searchParamsMap = r._2.searchParams.map(url => url -> searchParameters.getOrElse(url, baseSearchParameters(url)).name).toMap
+          val searchParamsMap = r._2.searchParams.map(sp => sp._2 -> searchParameters.getOrElse(sp._2, baseSearchParameters(sp._2)).name).toMap
           val spConfigurator = new SearchParameterConfigurator(r._1, r._2.profile, fhirConfig, searchParamsMap)
           r._1 ->
             (
               r._2.searchParams.map(sp => {
-                val searchParamDef:FHIRSearchParameter = searchParameters.getOrElse(sp, baseSearchParameters(sp))
+                val searchParamDef:FHIRSearchParameter = searchParameters.getOrElse(sp._2, baseSearchParameters(sp._2))
                 spConfigurator.createSearchParameterConf(searchParamDef)
               }).filter(_.isDefined).map(_.get)
                 .map(spc => spc.pname -> spc).toMap

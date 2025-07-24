@@ -6,7 +6,8 @@ import io.onfhir.api.model.InternalEntity
 /**
   * onFHIR configuration for a Search Parameter
  *
- * @param pname          Name of the parameter
+ *  @param url            Definition url for the search parameter
+ *  @param pname          Name of the parameter
   * @param ptype          FHIR search parameter type (number, date, string, token, etc)
   * @param paths          Extracted element paths for the parameters  e.g. subject, compose.include.concept.code
   * @param targets        Target types or composite parameter names;
@@ -23,7 +24,8 @@ import io.onfhir.api.model.InternalEntity
   * @param multipleAnd    If and on parameter is supported
   * @param comparators    Supported comparators for parameter
   */
-case class SearchParameterConf(pname:String,
+case class SearchParameterConf(url:String,
+                               pname:String,
                                ptype:String,
                                paths:Seq[String],
                                targets:Seq[String] = Nil,

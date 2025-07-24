@@ -179,6 +179,9 @@ abstract class BaseFhirClient extends IOnFhirClient {
   def transaction():FhirBatchTransactionRequestBuilder = {
     new FhirBatchTransactionRequestBuilder(this, isBatch = false)
   }
+
+  def getSearchPage(link:String):FhirGetSearchPageRequestBuilder =
+    new FhirGetSearchPageRequestBuilder(this, link)
 }
 
 object FhirClientUtil {

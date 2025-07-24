@@ -2,7 +2,8 @@ package io.onfhir.client
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.{HttpRequest, HttpResponse, Uri}
+import akka.http.scaladsl.model.headers.{Accept, RawHeader}
+import akka.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse, MediaRange, MediaType, Uri}
 import akka.stream.Materializer
 import com.typesafe.config.Config
 import io.onfhir.api.client._
@@ -11,6 +12,7 @@ import io.onfhir.client.intrcp.{BasicAuthenticationInterceptor, BearerTokenInter
 import io.onfhir.client.parsers.{FHIRRequestMarshaller, FHIRResponseUnmarshaller}
 import org.slf4j.{Logger, LoggerFactory}
 
+import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
@@ -85,7 +87,7 @@ case class OnFhirNetworkClient(serverBaseUrl: String, interceptors: Seq[IHttpReq
    * @return
    */
   override def next[T <: FHIRPaginatedBundle](bundle: T): Future[T] = {
-    val nextPageParams = Uri.apply(bundle.getNext()).query().toMultiMap
+    /*val nextPageParams = Uri.apply(bundle.getNext()).query().toMultiMap
     val previousPageParams = bundle.request.request.queryParams
     // Identify the pagination parameter by comparing the "next" link's parameters with the previous request's parameters
     val paginationParam =
@@ -104,17 +106,46 @@ case class OnFhirNetworkClient(serverBaseUrl: String, interceptors: Seq[IHttpReq
         case srb: FhirSearchRequestBuilder => srb.page = Some(paginationParam._1, paginationParam._2.head)
         case hrb: FhirHistoryRequestBuilder => hrb.page = Some(paginationParam._1, paginationParam._2.head)
       }
+    }*/
+
+
+    def findNextPage(paramName:String):Option[String] = {
+      val nextPageParams = Uri.apply(bundle.getNext()).query().toMultiMap
+      nextPageParams.get(paramName).map(_.head)
     }
 
+    val withPaginationParam =
+      bundle.request match {
+        case srb: FhirSearchRequestBuilder if srb.page.isDefined =>
+          findNextPage(srb.page.get._1).foreach(pv =>
+            srb.page = Some(srb.page.get._1, pv)
+          )
+          true
+        case hrb: FhirHistoryRequestBuilder if hrb.page.isDefined =>
+          findNextPage(hrb.page.get._1).foreach(pv =>
+            hrb.page = Some(hrb.page.get._1, pv)
+          )
+          true
+        case _ => false
+      }
 
+    val httpRequest =
+      if(withPaginationParam)
+        FHIRRequestMarshaller
+          .marshallRequest(bundle.request.compileRequest(), getBaseUrl())
+      else
+        FHIRRequestMarshaller
+          .marshallRequest(getSearchPage(bundle.getNext()).compileRequest(), getBaseUrl())
+
+    /*
     FHIRRequestMarshaller
       .marshallRequest(bundle.request.compileRequest(), getBaseUrl())
-      .flatMap(httpRequest => executeHttpRequest(httpRequest))
-      //.marshallRequest(bundle.request.request, serverBaseUrl)
-      /*.flatMap(httpRequest =>
-        executeHttpRequest(httpRequest.withUri(Uri.apply(bundle.getNext())))
-      )*/
-      .flatMap(httpResponse => FHIRResponseUnmarshaller.unmarshallResponse(httpResponse))
+      .flatMap(httpRequest => executeHttpRequest(httpRequest))*/
+    httpRequest
+      .flatMap(executeHttpRequest)
+      .flatMap(httpResponse =>
+        FHIRResponseUnmarshaller.unmarshallResponse(httpResponse)
+      )
       .recover {
         case t: Throwable =>
           logger.error(s"Problem while executing FHIR request '${bundle.getNext()}'!", t)

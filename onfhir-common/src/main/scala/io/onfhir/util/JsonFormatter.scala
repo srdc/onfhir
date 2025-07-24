@@ -11,7 +11,12 @@ import org.json4s.jackson.Serialization
 import scala.language.implicitConversions
 
 object JsonFormatter{
-  implicit lazy val formats: Formats = Serialization.formats(NoTypeHints)
+  implicit lazy val formats: Formats =
+    new DefaultFormats {
+      override val strictMapExtraction: Boolean = true
+    }
+
+    Serialization.formats(NoTypeHints)
 
 
   class JsonParsable2(reader:io.Reader){

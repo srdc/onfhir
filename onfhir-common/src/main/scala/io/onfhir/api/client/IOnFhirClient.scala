@@ -171,6 +171,12 @@ trait IOnFhirClient {
    */
   def search(rtype:String, count:Int):FhirSearchRequestBuilder
 
+  /**
+   * Return the builder for getting the FHIR search page from the given link
+   * @param link
+   * @return
+   */
+  def getSearchPage(link:String):FhirGetSearchPageRequestBuilder
 
   /**
    * Return builder for FHIR operation

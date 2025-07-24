@@ -79,7 +79,7 @@ class ProfileValidationTest extends Specification {
       profile = None,
       supportedProfiles = Set.empty[String],
       interactions = Set.empty[String],
-      searchParams = Set.empty[String],
+      searchParams = Set.empty,
       versioning = "no-version",
       readHistory = true,
       updateCreate = true,

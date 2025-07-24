@@ -43,7 +43,7 @@ class SearchParameterConfigurator(
     searchParameterDef.ptype match {
       //We never use special parameter definitions, just create it to set we are supporting it
       case FHIR_PARAMETER_CATEGORIES.SPECIAL =>
-        Some(SearchParameterConf(searchParameterDef.name, searchParameterDef.ptype, Seq(searchParameterDef.xpath.getOrElse("")), Nil, searchParameterDef.modifiers, Nil))
+        Some(SearchParameterConf(searchParameterDef.url, searchParameterDef.name, searchParameterDef.ptype, Seq(searchParameterDef.xpath.getOrElse("")), Nil, searchParameterDef.modifiers, Nil))
       //If parameter is composite
       case FHIR_PARAMETER_TYPES.COMPOSITE =>
         if (searchParameterDef.expression.nonEmpty && searchParameterDef.components.nonEmpty)
@@ -192,6 +192,7 @@ class SearchParameterConfigurator(
    */
   private def constructConfFromDef(searchParameterDef: FHIRSearchParameter, finalPaths: Seq[String], finalTargetTypes: Seq[String], restrictions: Seq[Seq[(String, String)]], targetReferences: Seq[Set[String]] = Nil, onExtension: Boolean = false): SearchParameterConf = {
     SearchParameterConf(
+      url = searchParameterDef.url,
       pname = searchParameterDef.name,
       ptype = searchParameterDef.ptype,
       paths = finalPaths,

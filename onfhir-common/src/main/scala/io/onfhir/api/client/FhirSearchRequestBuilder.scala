@@ -12,17 +12,22 @@ import scala.util.{Failure, Success}
 /**
  * Request builder for FHIR search-type interaction
  *
- * @param onFhirClient
- * @param rtype
- * @param count
+ * @param onFhirClient  OnFhir client instance
+ * @param rtype         FHIR resource type
+ * @param count         Number of resources to return per page
  */
 class FhirSearchRequestBuilder(onFhirClient: IOnFhirClient, rtype: String, count: Option[Int] = None)
-  extends FhirSearchLikeRequestBuilder(onFhirClient, FHIRRequest(interaction = FHIR_INTERACTIONS.SEARCH, requestUri = s"${onFhirClient.getBaseUrl()}/$rtype", resourceType = Some(rtype)))
-    with IFhirBundleReturningRequestBuilder {
+  extends FHIRSearchSetReturningRequestBuilder(onFhirClient,
+      FHIRRequest(
+        interaction = FHIR_INTERACTIONS.SEARCH,
+        requestUri = s"${onFhirClient.getBaseUrl()}/$rtype",
+        resourceType = Some(rtype))) {
   type This = FhirSearchRequestBuilder
   // Sort parameters where true indicate descending sort
   protected val sortParams: mutable.ListBuffer[(String, Boolean)] = new ListBuffer[(String, Boolean)]
-  //Page to get
+  /**
+   * Pagination parameter explicitly set
+   */
   var page:Option[(String, String)] = None
   /**
    * Use HTTP Post for the search
@@ -115,100 +120,5 @@ class FhirSearchRequestBuilder(onFhirClient: IOnFhirClient, rtype: String, count
     if (count.isDefined)
       request.queryParams = request.queryParams ++ Map("_count" -> List(s"${count.get}"))
   }
-
-  /**
-   * Send the FHIR search request and return the FHIR Bundle returned in the response parsed as FHIRSearchSetBundle if successfull, otherwise throw FhirClientException
-   * @param executionContext  Execution context
-   * @return
-   */
-  @throws[FhirClientException]
-  def executeAndReturnBundle()(implicit executionContext: ExecutionContext): Future[FHIRSearchSetBundle] = {
-    execute()
-      .map(r => {
-        if (r.httpStatus.isFailure() || r.responseBody.isEmpty)
-          throw FhirClientException("Problem in FHIR search!", Some(r))
-        constructBundle(r)
-      })
-  }
-
-  /**
-   * Returns Scala iterator where you can iterate over search results page by page
-   * @param executionContext Execution context
-   * @return
-   */
-  def toIterator()(implicit executionContext: ExecutionContext): Iterator[Future[FHIRSearchSetBundle]] = {
-    new SearchSetIterator(this)
-  }
-
-  /**
-   * Send the FHIR request and paginate over the whole result set by retrieving next page until there is no further and merge them into FHIRSearchSetBundle
-   * @param executionContext
-   * @return
-   */
-  def executeAndMergeBundle()(implicit executionContext: ExecutionContext): Future[FHIRSearchSetBundle] = {
-    getMergedBundle(executeAndReturnBundle())
-  }
-
-  /**
-   *
-   * @param bundle
-   * @param ec
-   * @return
-   */
-  private def getMergedBundle(bundle: Future[FHIRSearchSetBundle])(implicit ec: ExecutionContext): Future[FHIRSearchSetBundle] = {
-    bundle.flatMap {
-      case r if r.hasNext() =>
-        getMergedBundle(onFhirClient.next(r))
-          .map(r2 =>
-            r2.mergeResults(r)
-          )
-      case r =>
-        Future.apply(r)
-    }
-  }
-
-  /**
-   *
-   * @param fhirResponse
-   * @return
-   */
-  override def constructBundle(fhirResponse: FHIRResponse): FHIRSearchSetBundle = {
-    try {
-      new FHIRSearchSetBundle(fhirResponse.responseBody.get, this)
-    } catch {
-      case e: Throwable =>
-        throw FhirClientException("Invalid search result bundle!", Some(fhirResponse))
-    }
-  }
-
 }
 
-/**
- *
- * @param rb
- * @param executionContext
- */
-class SearchSetIterator(rb: FhirSearchRequestBuilder)(implicit executionContext: ExecutionContext) extends Iterator[Future[FHIRSearchSetBundle]] {
-  var latestBundle: Option[FHIRSearchSetBundle] = None
-
-  override def hasNext: Boolean = latestBundle.forall(_.hasNext())
-
-  override def next(): Future[FHIRSearchSetBundle] = {
-    latestBundle match {
-      case None =>
-        val temp = rb.executeAndReturnBundle()
-        temp onComplete {
-          case Success(v) => latestBundle = Some(v)
-          case Failure(exception) =>
-        }
-        temp
-      case Some(b) =>
-        val temp = rb.onFhirClient.next(b)
-        temp onComplete {
-          case Success(v) => latestBundle = Some(v)
-          case Failure(exception) =>
-        }
-        temp
-    }
-  }
-}

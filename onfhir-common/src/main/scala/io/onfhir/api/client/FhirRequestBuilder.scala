@@ -21,7 +21,7 @@ object FhirRequestBuilder {
       .executeAndReturnResourceOption()
   }
 
-  implicit def toExecutionReturnBundle(fhirSearchRequestBuilder: FhirSearchRequestBuilder)(implicit ex:ExecutionContext):Future[FHIRSearchSetBundle] = {
+  implicit def toExecutionReturnBundle(fhirSearchRequestBuilder: FHIRSearchSetReturningRequestBuilder)(implicit ex:ExecutionContext):Future[FHIRSearchSetBundle] = {
     fhirSearchRequestBuilder
       .executeAndReturnBundle()
   }

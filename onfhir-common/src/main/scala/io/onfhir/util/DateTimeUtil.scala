@@ -218,6 +218,22 @@ object DateTimeUtil {
     //DateTimeFormatter.ISO_INSTANT.format(instant)
   }
 
+  /**
+   * Serialize a java Temporal for FHIR serialization
+   * @param temporal
+   * @return
+   */
+  def serializeTemporal(temporal: Temporal):String = {
+    temporal match {
+      case ld:LocalDate => ld.toString
+      case ym: YearMonth => ym.toString
+      case y:Year => y.toString
+      case ldt:LocalDateTime => serializeInstant(ldt.atZone(ZoneId.systemDefault()).toInstant)
+      case zdt:ZonedDateTime => serializeInstant(zdt.toInstant)
+      case i:Instant => serializeInstant(i)
+    }
+  }
+
 
   def parseFhirDateTimeOrInstant(value:String):Instant = {
     if(value.contains('.'))

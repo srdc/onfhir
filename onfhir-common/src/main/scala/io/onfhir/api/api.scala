@@ -625,6 +625,8 @@ package object api {
     val TRANSACTION = "transaction"
     val BATCH = "batch"
     val UNKNOWN = "unknown"
+    // Getting FHIR Search page via the given next or previous link in search-set bundle
+    val GET_SEARCH_PAGE = "get-search-pages"
     //OnFhir specific interactions
     val BULK_UPSERT = "bulk-upsert"
   }

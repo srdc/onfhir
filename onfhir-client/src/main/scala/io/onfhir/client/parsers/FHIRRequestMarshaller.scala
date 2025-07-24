@@ -167,7 +167,8 @@ object FHIRRequestMarshaller {
            FHIR_INTERACTIONS.HISTORY_TYPE |
            FHIR_INTERACTIONS.HISTORY_SYSTEM |
            FHIR_INTERACTIONS.SEARCH |
-           FHIR_INTERACTIONS.CAPABILITIES =>
+           FHIR_INTERACTIONS.CAPABILITIES |
+           FHIR_INTERACTIONS.GET_SEARCH_PAGE =>
 
         fhirRequest.httpMethod.getOrElse(HttpMethods.GET)
 
@@ -244,6 +245,11 @@ object FHIRRequestMarshaller {
 
           temp -> (if (method == HttpMethods.GET) getQuery(fhirRequest.queryParams) else None)
 
+        case FHIR_INTERACTIONS.GET_SEARCH_PAGE =>
+          fhirRequest.requestUri.split('?') match {
+            case Array(p, query) => (basePath ++ Uri.Path(p)) -> Some(Uri.Query(query))
+            case Array(p) => basePath ++ Uri.Path(p) -> None
+          }
         case opr if opr.startsWith("$") =>
           var temp = basePath
           fhirRequest.resourceType.foreach(rt => temp = temp./(rt))
