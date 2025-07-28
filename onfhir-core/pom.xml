@@ -11,6 +11,8 @@
     </parent>
 
     <artifactId>onfhir-core_2.13</artifactId>
+    <name>Core functionality of onFHIR</name>
+    
     <packaging>jar</packaging>
 
     <build>

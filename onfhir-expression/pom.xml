@@ -11,6 +11,8 @@
     </parent>
 
     <artifactId>onfhir-expression_2.13</artifactId>
+    <name>Module to handle FHIR expressions.</name>
+
     <packaging>jar</packaging>
 
     <build>

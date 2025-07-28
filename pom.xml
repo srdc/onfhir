@@ -10,7 +10,7 @@
 
     <packaging>pom</packaging>
 
-    <name>OnFHIR Secure FHIR Repository</name>
+    <name>onFHIR Secure FHIR Repository</name>
     <description>onFHIR is an HL7 FHIR compliant secure, high-performance and scalable health data repository that can
         be used as the central data service for HL7 FHIR compliant healthcare applications.
     </description>
@@ -129,8 +129,8 @@
 
         <!-- release plugin versions -->
         <version.plugin.source>3.2.1</version.plugin.source>
-        <version.plugin.gpg>3.2.4</version.plugin.gpg>
-        <version.plugin.nexus-staging>1.7.0</version.plugin.nexus-staging>
+        <version.plugin.gpg>3.2.8</version.plugin.gpg>
+        <version.plugin.sonatype.publishing>0.8.0</version.plugin.sonatype.publishing>
     </properties>
 
     <build>
@@ -211,9 +211,9 @@
                     <version>${version.plugin.gpg}</version>
                 </plugin>
                 <plugin>
-                    <groupId>org.sonatype.plugins</groupId>
-                    <artifactId>nexus-staging-maven-plugin</artifactId>
-                    <version>${version.plugin.nexus-staging}</version>
+                    <groupId>org.sonatype.central</groupId>
+                    <artifactId>central-publishing-maven-plugin</artifactId>
+                    <version>${version.plugin.sonatype.publishing}</version>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -224,6 +224,9 @@
                 <artifactId>flatten-maven-plugin</artifactId>
                 <version>${flatten.plugin.version}</version>
                 <configuration>
+                    <!-- So that the child modules keep all metadata coming from parent pom.
+                    Sonatype maven central requires it. -->
+                    <flattenMode>oss</flattenMode>
                 </configuration>
                 <executions>
                     <execution>
@@ -231,6 +234,12 @@
                         <phase>process-resources</phase>
                         <goals>
                             <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten.clean</id>
+                        <goals>
+                            <goal>clean</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -289,13 +298,13 @@
                         </executions>
                     </plugin>
                     <plugin>
-                        <groupId>org.sonatype.plugins</groupId>
-                        <artifactId>nexus-staging-maven-plugin</artifactId>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
                         <extensions>true</extensions>
                         <configuration>
-                            <serverId>ossrh</serverId>
-                            <nexusUrl>https://oss.sonatype.org/</nexusUrl>
-                            <autoReleaseAfterClose>false</autoReleaseAfterClose>
+                            <publishingServerId>central</publishingServerId>
+                            <autoPublish>true</autoPublish>
+                            <waitUntil>published</waitUntil>
                         </configuration>
                     </plugin>
                 </plugins>
@@ -599,26 +608,13 @@
 
     </dependencyManagement>
 
-    <distributionManagement>
-        <snapshotRepository>
-            <id>ossrh</id>
-            <name>Sonatype Nexus Snapshots</name>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-        </snapshotRepository>
-        <repository>
-            <id>ossrh</id>
-            <name>Nexus Release Repository</name>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
-        </repository>
-    </distributionManagement>
-
     <!--distributionManagement>
         <snapshotRepository>
-            <id>maven-snapshots</id>
+            <id>srdc-maven-snapshots</id>
             <url>https://nexus.srdc.com.tr/repository/maven-snapshots/</url>
         </snapshotRepository>
         <repository>
-            <id>maven-releases</id>
+            <id>srdc-maven-releases</id>
             <url>https://nexus.srdc.com.tr/repository/maven-releases/</url>
         </repository>
     </distributionManagement-->

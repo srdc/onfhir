@@ -11,6 +11,8 @@
     </parent>
 
     <artifactId>onfhir-operations_2.13</artifactId>
+    <name>onFHIR operations</name>
+
     <packaging>jar</packaging>
 
     <build>

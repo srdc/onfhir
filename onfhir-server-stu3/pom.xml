@@ -11,6 +11,7 @@
     </parent>
 
     <artifactId>onfhir-server-stu3_2.13</artifactId>
+    <name>Server for FHIR STU3</name>
     <packaging>jar</packaging>
 
     <build>

@@ -10,6 +10,10 @@
     </parent>
 
     <artifactId>onfhir-client_2.13</artifactId>
+    <name>FHIR Client Library</name>
+    <description>This module a provides a Scala library that you can use as a FHIR client to construct and send FHIR
+        requests (search, CRUD, operations) to a configured FHIR server (similar Firely .Net FHIR client) over HTTP.
+    </description>
 
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>

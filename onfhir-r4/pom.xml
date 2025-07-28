@@ -11,6 +11,8 @@
     </parent>
 
     <artifactId>onfhir-r4_2.13</artifactId>
+    <name>FHIR R4 implementation</name>
+
     <packaging>jar</packaging>
 
     <build>

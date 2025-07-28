@@ -10,6 +10,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>onfhir-validation_2.13</artifactId>
+    <name>Module for FHIR validation</name>
 
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>

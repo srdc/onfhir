@@ -11,6 +11,8 @@
     </parent>
 
     <artifactId>onfhir-path_2.13</artifactId>
+    <name>FHIRPath evaluation module</name>
+
     <packaging>jar</packaging>
 
     <build>
@@ -71,12 +73,18 @@
                      to validate FhirPath libraries -->
                     <execution>
                         <id>run</id>
-                        <phase>install</phase>
+                        <!-- I changed this from install to verify because gpg plugin runs at verify phase and if this runs
+                         after gpg, sonatype central does not accept it (because it cannot verify) -->
+                        <phase>verify</phase>
                         <goals>
                             <goal>run</goal>
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
             </plugin>
             <!-- Generates an executable jar with Maven, containing all dependencies. -->
             <plugin>

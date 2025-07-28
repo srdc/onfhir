@@ -11,6 +11,8 @@
     </parent>
 
     <artifactId>onfhir-server-r5_2.13</artifactId>
+    <name>Server for FHIR R5</name>
+
     <packaging>jar</packaging>
 
     <build>

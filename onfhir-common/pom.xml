@@ -11,6 +11,8 @@
     </parent>
 
     <artifactId>onfhir-common_2.13</artifactId>
+    <name>Common classes across onFHIR</name>
+
     <packaging>jar</packaging>
 
     <build>

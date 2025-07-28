@@ -11,6 +11,8 @@
     </parent>
 
     <artifactId>onfhir-kafka_2.13</artifactId>
+    <name>Module to handle Kafka interactions</name>
+
     <packaging>jar</packaging>
 
     <build>

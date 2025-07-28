@@ -11,6 +11,7 @@
     </parent>
 
     <artifactId>onfhir-config_2.13</artifactId>
+    <name>Module for advanced configuration of onFHIR</name>
 
     <build>
         <sourceDirectory>src/main/scala</sourceDirectory>
