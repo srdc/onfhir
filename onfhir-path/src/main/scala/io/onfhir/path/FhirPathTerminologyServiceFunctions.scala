@@ -323,7 +323,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(
       detail = "Return the display string in preferred language for the given code. If code or system cannot be found, or displayLanguage does not match with available ones, return empty. If code, system, or displayLanguage does not evaluate to a single string, throws an error.",
-      usageWarnings = Some(Seq("A code system with the specified URL **must** be available in the terminology service, and the mapping job must be configured to use this terminology service to use this function.")),
+      usageWarnings = Some(Seq("A code system with the specified URL <strong>must</strong> be available in the terminology service, and the mapping job must be configured to use this terminology service to use this function.")),
       parameters = Some(Seq(
         FhirPathFunctionParameter(
           name = "source_code",
@@ -391,7 +391,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(
       detail = "Translates the given Coding or CodeableConcept object according to the given conceptMap from the terminology service and returns a list of Coding objects. Translates the given code+system according to the given conceptMap from the terminology service and returns a list of Coding objects.",
-      usageWarnings = Some(Seq("A concept map with the specified URL **must** be available in the terminology service, and the mapping job must be configured to use this terminology service to use this function.")),
+      usageWarnings = Some(Seq("A concept map with the specified URL <strong>must</strong> be available in the terminology service, and the mapping job must be configured to use this terminology service to use this function.")),
       parameters = Some(Seq(
         FhirPathFunctionParameter(
           name = "codeExpr",
@@ -451,7 +451,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(
       detail = "Translates the given code+system according to the given conceptMap from terminology service and returns a list of Coding objects.",
-      usageWarnings = Some(Seq("A concept map with the specified URL **must** be available in the terminology service, and the mapping job must be configured to use this terminology service to use this function.")),
+      usageWarnings = Some(Seq("A concept map with the specified URL <strong>must</strong> be available in the terminology service, and the mapping job must be configured to use this terminology service to use this function.")),
       parameters = Some(Seq(
         FhirPathFunctionParameter(
           name = "codeExpr",
@@ -518,7 +518,7 @@ class FhirPathTerminologyServiceFunctions(context:FhirPathEnvironment) extends A
   @FhirPathFunction(
     documentation = FhirPathFunctionDocumentation(
       detail = "Translates the given code+system according to the given source value set and optional target value set from terminology service and returns a list of Coding objects.",
-      usageWarnings = Some(Seq("A concept map with the specified URL **must** be available in the terminology service, and the mapping job must be configured to use this terminology service to use this function.")),
+      usageWarnings = Some(Seq("A concept map with the specified URL <strong>must</strong> be available in the terminology service, and the mapping job must be configured to use this terminology service to use this function.")),
       parameters = Some(Seq(
         FhirPathFunctionParameter(
           name = "codeExpr",
