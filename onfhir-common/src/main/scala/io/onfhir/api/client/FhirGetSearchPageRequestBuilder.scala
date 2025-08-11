@@ -20,13 +20,20 @@ class FhirGetSearchPageRequestBuilder(onFhirClient: IOnFhirClient, link:String)
   extends FHIRSearchSetReturningRequestBuilder(onFhirClient,
     FHIRRequest(
       interaction = FHIR_INTERACTIONS.GET_SEARCH_PAGE,
-      requestUri =
-        if(link.startsWith(onFhirClient.getBaseUrl()))
+      requestUri = {
+        def normalizeUrl(url: String): String = url.replace("localhost", "127.0.0.1")
+        //
+        val normalizedBaseUrl = normalizeUrl(onFhirClient.getBaseUrl())
+        val normalizedLink = normalizeUrl(link)
+        if (normalizedLink.startsWith(normalizedBaseUrl))
           link.drop(onFhirClient.getBaseUrl().length)
-        else if(link.head == '/' || link.head == '?')
+        else if (link.head == '/' || link.head == '?')
           link
         else
-          throw new IllegalArgumentException("The link for the search page should be either whole link starting with target FHIR server base url or partial link starting as path '/' or directly with query '?'")
+          throw new IllegalArgumentException(
+            s"The link for the search page should be either whole link starting with target FHIR server base url or partial link starting as path '/' or directly with query '?'. Link: $link"
+          )
+      }
     )) {
 
 
