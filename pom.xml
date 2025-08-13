@@ -120,7 +120,7 @@
         <kafka.version>3.6.1</kafka.version>
         <config.version>1.4.3</config.version>
         <specs2.version>4.20.4</specs2.version>
-        <nimbus-jose.version>9.37.3</nimbus-jose.version>
+        <nimbus-jose.version>9.37.4</nimbus-jose.version>
         <nimbus-oidc.version>11.9.1</nimbus-oidc.version>
         <apache-commons-lang.version>3.17.0</apache-commons-lang.version>
         <apache-commons-io.version>2.18.0</apache-commons-io.version>
