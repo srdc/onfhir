@@ -6,7 +6,11 @@ import io.onfhir.api.validation.{IFhirResourceValidator, IFhirTerminologyValidat
 import io.onfhir.audit.IFhirAuditCreator
 import io.onfhir.authz.AuthzManager
 import io.onfhir.db.ResourceManager
+import io.onfhir.operation.IFhirOperationLibrary
 
+/**
+ * Interface for onfhir.io configuration manager
+ */
 trait IFhirConfigurationManager {
   //FHIR capabilities configurations
   var fhirConfig: FhirServerConfig
@@ -20,6 +24,8 @@ trait IFhirConfigurationManager {
   var authzManager: AuthzManager
   //Resource manager
   var resourceManager:ResourceManager
+  //All factories/libraries providing the FHIR Operation Handler service implementations
+  var fhirOperationImplLibraries:Seq[IFhirOperationLibrary]
   //Other utilities
   var fhirSearchParameterValueParser: FHIRSearchParameterValueParser
   var fhirResultParameterResolver: FHIRResultParameterResolver

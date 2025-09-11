@@ -14,6 +14,7 @@ import io.onfhir.config.{FhirConfigurationManager, IFhirServerConfigurator, Onfh
 import io.onfhir.db.{DBConflictManager, EmbeddedMongo}
 import io.onfhir.event.kafka.KafkaEventProducer
 import io.onfhir.event.{FhirDataEvent, FhirEventSubscription}
+import io.onfhir.operation.IFhirOperationLibrary
 import org.slf4j.{Logger, LoggerFactory}
 
 import java.util.concurrent.TimeUnit
@@ -27,7 +28,7 @@ import scala.util.{Failure, Success}
   * Instance of an OnFhir server
   *
   * @param fhirConfigurator      Module that will configure the FHIR capabilities of the server based on the base FHIR version
-  * @param fhirOperationImplms   Map for FHIR operation implementations; URL of FHIR Operation -> Class path for the implementation of operation
+  * @param fhirOperationLibraries Libaries (factories) that provides the FHIR operation implementations configured within the onfhir
   * @param customAuthorizer      Module to handle authorization with a custom protocol
   * @param customTokenResolver   Module to handle access token resolution with a custom way
   * @param customAuditHandler    Module to handle auditing with a custom strategy
@@ -36,7 +37,7 @@ import scala.util.{Failure, Success}
   */
 class Onfhir(
               val fhirConfigurator:IFhirServerConfigurator,
-              val fhirOperationImplms:Map[String, String],
+              val fhirOperationLibraries:Seq[IFhirOperationLibrary],
               val customAuthorizer:Option[IAuthorizer],
               val customTokenResolver:Option[ITokenResolver],
               val customAuditHandler:Option[ICustomAuditHandler],
@@ -53,7 +54,7 @@ class Onfhir(
   private var internalOnFhirServerBinding:Http.ServerBinding = _
 
   /* Setup or Configure the platform and prepare it for running */
-  FhirConfigurationManager.initialize(fhirConfigurator, fhirOperationImplms)
+  FhirConfigurationManager.initialize(fhirConfigurator, fhirOperationLibraries)
 
   /* Setup the authorization module and prepare it for running */
   AuthzConfigurationManager.initialize(customAuthorizer, customTokenResolver)
@@ -218,7 +219,7 @@ object Onfhir {
     */
   def apply(
              fhirConfigurator:IFhirServerConfigurator,
-             fhirOperationImplms:Map[String, String] = Map.empty[String, String],
+             fhirOperationLibraries:Seq[IFhirOperationLibrary] = Nil,
              customAuthorizer:Option[IAuthorizer] = None,
              customTokenResolver:Option[ITokenResolver] = None,
              customAuditHandler:Option[ICustomAuditHandler] = None,
@@ -227,7 +228,7 @@ object Onfhir {
            ): Onfhir = {
 
     if(_instance == null)
-      _instance = new Onfhir(fhirConfigurator, fhirOperationImplms, customAuthorizer, customTokenResolver,customAuditHandler,externalRoutes, cdsRoute)
+      _instance = new Onfhir(fhirConfigurator, fhirOperationLibraries, customAuthorizer, customTokenResolver,customAuditHandler,externalRoutes, cdsRoute)
     _instance
   }
 }

@@ -30,10 +30,10 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
   /**
    * Initialize the platform by preparing a FHIR configuration from the given FHIR Foundation resources and base standard
    * @param configReader          Reader for configuration files
-   * @param fhirOperationImplms   FHIR Operation implementations (URL -> Classpath)
+   * @param fhirOperationsImplemented   URLs of FHIR Operation implementations that an implementation is provided
    * @return
    */
-  override def initializeServerPlatform(configReader: IFhirConfigReader, fhirOperationImplms:Map[String, String]):FhirServerConfig = {
+  override def initializeServerPlatform(configReader: IFhirConfigReader, fhirOperationsImplemented:Set[String]):FhirServerConfig = {
     logger.info("Reading base FHIR foundation resources (base standard) to start configuration of onFhir server ...")
     //Read base resource profiles defined in the standard
     val baseResourceProfileResources = configReader.readStandardBundleFile(PROFILES_RESOURCES_BUNDLE_FILE_NAME, Set(FHIR_STRUCTURE_DEFINITION))
@@ -139,7 +139,7 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
     fhirConfig = validateAndConfigureSearchParameters(fhirConfig, conformance, searchParameters, baseSearchParameters)
 
     logger.info("Configuring supported FHIR operations ...")
-    fhirConfig = validateAndConfigureOperations(fhirConfig, conformance, operationDefs, baseOperationDefinitions, fhirOperationImplms)
+    fhirConfig = validateAndConfigureOperations(fhirConfig, conformance, operationDefs, baseOperationDefinitions, fhirOperationsImplemented)
 
     logger.info("Configuring supported FHIR compartments ...")
     fhirConfig = validateAndConfigureCompartments(fhirConfig, conformance, compartments, baseCompartmentDefinitions)
@@ -410,34 +410,30 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
    * @param conformance               Conformance configurations
    * @param operationDefs             OperationDefinitions given in configuration
    * @param baseOperationDefinitions  Base OperationDefinitions given in standard bundle
+   * @param fhirOperationsImplemented URLs of FHIR Operations that implementation is provided
    * @return
    */
-  protected def validateAndConfigureOperations(fhirConfig: FhirServerConfig, conformance:FHIRCapabilityStatement, operationDefs:Map[String, OperationConf], baseOperationDefinitions:Map[String, OperationConf], fhirOperationImplms:Map[String, String]): FhirServerConfig = {
+  protected def validateAndConfigureOperations(fhirConfig: FhirServerConfig,
+                                               conformance:FHIRCapabilityStatement,
+                                               operationDefs:Map[String, OperationConf],
+                                               baseOperationDefinitions:Map[String, OperationConf],
+                                               fhirOperationsImplemented:Set[String]): FhirServerConfig = {
     //Check if all operations mentioned in Conformance are given in operation definition configurations
     val operationDefinitionsNotGiven = conformance.operationDefUrls.diff(operationDefs.keySet ++ baseOperationDefinitions.keySet)
     if(operationDefinitionsNotGiven.nonEmpty)
       throw new InitializationException(s"Missing OperationDefinition in operation definition configurations for the operation definitions (${operationDefinitionsNotGiven.mkString(",")}) declared in CapabilityStatement (CapabilityStatement.rest.resource.operation | CapabilityStatement.rest.operation)! ")
 
-    val operationImplementationsNotExist = conformance.operationDefUrls.diff(fhirOperationImplms.keySet)
+    val operationImplementationsNotExist = conformance.operationDefUrls.diff(fhirOperationsImplemented)
     if(operationImplementationsNotExist.nonEmpty)
       throw new InitializationException(s"Missing implementations for FHIR operations ${operationImplementationsNotExist.mkString(",")}! Please provide class path of the implementation for each FHIR operation declared in CapabilityStatement.")
 
-    val operationsWithInvalidClassPaths =
-      fhirOperationImplms
-        .view
-        .filterKeys(conformance.operationDefUrls.contains)
-        .filter(opImpl => FHIRUtil.loadFhirOperationClass(opImpl._2).isEmpty)
-
-     if(operationsWithInvalidClassPaths.nonEmpty)
-       throw new InitializationException(s"Invalid class paths ${operationsWithInvalidClassPaths.values.mkString(",")} for FHIR operation implementations!")
-
     fhirConfig.supportedOperations =
-      conformance.operationDefUrls.map(opDefUrl => {
-        val opDef = operationDefs.getOrElse(opDefUrl, baseOperationDefinitions.apply(opDefUrl))
-        opDef.classPath = fhirOperationImplms(opDefUrl)
-        opDef
-      }).toSeq
-
+      conformance
+        .operationDefUrls
+        .map(opDefUrl =>
+          operationDefs.getOrElse(opDefUrl, baseOperationDefinitions.apply(opDefUrl))
+        )
+        .toSeq
     fhirConfig
   }
 

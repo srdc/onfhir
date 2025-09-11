@@ -7,7 +7,7 @@ import io.onfhir.api.model._
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.validation.FHIRApiValidator
 import io.onfhir.authz.AuthzContext
-import io.onfhir.config.{FhirConfigurationManager, IFhirConfigurationManager, OperationConf, OperationParamDef}
+import io.onfhir.config.{FhirConfigurationManager, OperationConf, OperationParamDef}
 import io.onfhir.db.{ResourceManager, TransactionSession}
 import io.onfhir.exception.{BadRequestException, InternalServerException, NotFoundException}
 import io.onfhir.util.JsonFormatter._
@@ -407,6 +407,8 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
     * @return FHIR response
     */
   def validateAndCompleteOperation(fhirRequest: FHIRRequest, operationConf:OperationConf):Future[FHIROperationResponse] = {
+    //Get level of interaction (instance | type | system)
+    val level = fhirRequest.levelOfInteraction
     //Validate the Operation request body first
     validateRequestBody(fhirRequest).flatMap( _ =>
       //If the operation is on a resource instance, check existence of that resource
@@ -421,7 +423,7 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
             Nil)))
         else {
               //Check if there is any inconsistency in providing the parameters within the request body (if the resource is given in body, there should be only one parameter of that type to match)
-              if(operationConf.inputParams.count(p => p.pType.exists(_.head.isUpper)) > 1 && fhirRequest.resource.exists(requestBody =>
+              if(operationConf.getInputParams(level).count(p => p.pType.exists(_.head.isUpper)) > 1 && fhirRequest.resource.exists(requestBody =>
                 FHIRUtil.extractValueOption[String](requestBody, FHIR_COMMON_FIELDS.RESOURCE_TYPE) match {
                   case None | Some(FHIR_DATA_TYPES.PARAMETERS) => false
                   case Some(rt) => true
@@ -439,7 +441,7 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
           //Check all defined parameters, if there is error set issues, otherwise set parameter value(s)
           val fresults:Future[Seq[(String, Either[Seq[FHIROperationParam], Seq[OutcomeIssue]])]] =
             Future.sequence(
-                operationConf.inputParams.map(paramDef => {
+                operationConf.getInputParams(level).map(paramDef => {
                   (
                     fhirRequest.queryParams.get(paramDef.name) match {
                       //If parameter is not given in the URL (primitive parameter), given in the body; either Parameters resource or whole resource itself
@@ -460,7 +462,13 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
             //Filter the ones with a value
             val parameterValues = results.filter(_._2.isLeft).map(p => p._1 -> p._2.left.getOrElse(Nil))
             //Load the Operation Service
-            val operationService = getOperationServiceImpl(operationConf)
+            val operationService =
+              FhirConfigurationManager
+                .fhirOperationImplLibraries
+                .find(_.listSupportedOperations().contains(operationConf.url))
+                .map(l =>l.getOperationHandler(operationConf.url)(FhirConfigurationManager))
+                .getOrElse(throw new InternalServerException(s"Operation implementation not found for ${operationConf.url}!"))
+              //getOperationServiceImpl(operationConf)
 
             //If there are query parameters apart from operation parameters, we should parse them and pass to the operation
             val operationParamSet = parameterValues.map(_._1).toSet
@@ -481,7 +489,7 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
               .executeOperation(operationConf.name, operationRequest, fhirRequest.resourceType, fhirRequest.resourceId)
               .flatMap(operationResponse => {
                 //Validate output
-                val foutputIssues = Future.sequence(operationConf.outputParams.map(opParamDef => {
+                val foutputIssues = Future.sequence(operationConf.getOutputParams(level).map(opParamDef => {
                   val paramValues = operationResponse.getOutputParams.filter(_._1 == opParamDef.name).map(_._2)
                   validateOperationParameter(operationConf.name, paramValues, opParamDef)
                 }))
@@ -491,7 +499,7 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
                     throw new InternalServerException("Operation implementation generates non-conformant output!", issues.flatten)
                   else
                   //Construct the FHIR response
-                    constuctFHIRResponse(operationConf, operationResponse)
+                    constructFHIRResponse(operationConf, operationResponse, level)
                 )
               })
           }
@@ -506,15 +514,18 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
     * @param operationResponse  FHIR Operation response
     * @return
     */
-  private def constuctFHIRResponse(operationConf: OperationConf, operationResponse:FHIROperationResponse):FHIROperationResponse = {
+  private def constructFHIRResponse(operationConf: OperationConf, operationResponse:FHIROperationResponse, level:String):FHIROperationResponse = {
     if(
-      operationConf.outputParams.length == 1 &&
-        operationConf.outputParams.head.name == "return" &&
-          !(fhirConfigurationManager.fhirConfig.FHIR_COMPLEX_TYPES ++ fhirConfigurationManager.fhirConfig.FHIR_PRIMITIVE_TYPES)
-              .contains(operationConf.outputParams.head.pType.getOrElse(""))) {
+      operationConf
+        .getOutputParams(level)
+        .count(p =>
+          p.name == "return" &&
+            !(fhirConfigurationManager.fhirConfig.FHIR_COMPLEX_TYPES ++ fhirConfigurationManager.fhirConfig.FHIR_PRIMITIVE_TYPES).contains(p.pType.getOrElse(""))
+        ) == 1
+      ) {
       operationResponse.responseBody = Some(operationResponse.getOutputParams.head._2.asInstanceOf[FHIRSimpleOperationParam].extractValue[Resource]())
       operationResponse
-    } else if(operationConf.outputParams.isEmpty){
+    } else if(operationConf.getOutputParams(level).isEmpty){
       operationResponse
     } else {
       operationResponse.responseBody = Some(constuctParametersResource(operationConf, operationResponse))
@@ -560,26 +571,4 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
           )
     }
   }
-
-  /**
-   * Get the operation service implementation from Class path
-   *
-   * @param operationConf Operation configuration
-   * @return
-   */
-  private def getOperationServiceImpl(operationConf: OperationConf): FHIROperationHandlerService = {
-    val serviceImpl =
-      FHIRUtil.loadFhirOperationClass(operationConf.classPath)
-        .map(opClass => opClass.getConstructor(classOf[IFhirConfigurationManager]).newInstance(FhirConfigurationManager).asInstanceOf[FHIROperationHandlerService])
-
-    if (serviceImpl.isDefined)
-      serviceImpl.get
-    else {
-      logger.error(s"Operation service not available from class path ${operationConf.classPath} or it is not implementing the FHIROperationService interface !!!")
-      throw new InternalServerException("Operation service not available!!!")
-    }
-  }
-
-
-
 }

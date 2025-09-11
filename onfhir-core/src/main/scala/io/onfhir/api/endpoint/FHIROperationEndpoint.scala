@@ -25,7 +25,7 @@ trait FHIROperationEndpoint {
     //Construct all routes for supported operations
     val supportedOperationRoutes:Seq[Route] = fhirConfig.supportedOperations.flatMap(operationConf => {
       //Find out allowed operation method
-      val operationMethod:Directive0 = if(operationConf.isHttpGetAllowed()) (post | get) else post
+      val operationMethod:Directive0 = if(operationConf.isHttpGetAllowed(fhirRequest.levelOfInteraction)) (post | get) else post
       //Construct all routes for the supported operation for each level
       val operationRoutes:Seq[Route] = operationConf.levels.toSeq.map( level => {
         val operationLevelRoute:Route = level match {

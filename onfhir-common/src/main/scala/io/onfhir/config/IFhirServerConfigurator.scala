@@ -81,10 +81,10 @@ trait IFhirServerConfigurator extends IFhirVersionConfigurator {
   /**
    * Parse the base FHIR standard bundle and supplied FHIR foundation resources and provide a configuration for the server
    * @param configReader        Reader for configuration files (FHIR standard, Foundation resources)
-   * @param fhirOperationImplms FHIR Operation implementations (URL for OperationDefinition -> Classpath of the implementation)
+   * @param fhirOperationsImplemented   URLs of FHIR Operation implementations that an implementation is provided
    * @return
    */
-  def initializeServerPlatform(configReader: IFhirConfigReader, fhirOperationImplms: Map[String, String]): FhirServerConfig
+  def initializeServerPlatform(configReader: IFhirConfigReader,  fhirOperationsImplemented:Set[String]): FhirServerConfig
 
 
   /**

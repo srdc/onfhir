@@ -175,6 +175,7 @@ class R4Parser(
         max = (paramDef \ "max").extract[String],
         pType = (paramDef \ "type").extractOpt[String],
         pProfile = (paramDef \ "targetProfile").extractOrElse[Seq[String]](Nil),
+        scopes = (paramDef \ "scope").extractOrElse[Seq[String]](Nil), //Even this does not exist in R4 we add it as it exists in future versions
         pSearchType = (paramDef \ "searchType").extractOpt[String],
         parts = (paramDef \ "part") match {
           case JArray(arr) => arr.map(p => parseOperationParamDefinition(p.asInstanceOf[JObject])._2)

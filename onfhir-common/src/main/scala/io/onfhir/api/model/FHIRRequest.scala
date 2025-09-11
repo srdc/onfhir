@@ -303,5 +303,18 @@ case class FHIRRequest(
 
     attributes.map(a => s"${a._1}: ${a._2}").mkString(", ")
   }
+
+  /**
+   * Get level of interaction
+   * @return
+   */
+  def levelOfInteraction =
+    resourceType match {
+      case Some(_) => resourceId match {
+        case Some(_) => "instance"
+        case None => "type"
+      }
+      case None => "system"
+    }
 }
 

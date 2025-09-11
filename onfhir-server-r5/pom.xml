@@ -92,7 +92,19 @@
         </dependency>
         <dependency>
             <groupId>io.onfhir</groupId>
-            <artifactId>onfhir-server-r4_${scala.binary.version}</artifactId>
+            <artifactId>onfhir-common_${scala.binary.version}</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.onfhir</groupId>
+            <artifactId>onfhir-core_${scala.binary.version}</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.onfhir</groupId>
+            <artifactId>onfhir-r4_${scala.binary.version}</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.onfhir</groupId>
+            <artifactId>onfhir-validation_${scala.binary.version}</artifactId>
         </dependency>
     </dependencies>
 </project>
