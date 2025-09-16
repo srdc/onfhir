@@ -423,7 +423,7 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
     if(operationDefinitionsNotGiven.nonEmpty)
       throw new InitializationException(s"Missing OperationDefinition in operation definition configurations for the operation definitions (${operationDefinitionsNotGiven.mkString(",")}) declared in CapabilityStatement (CapabilityStatement.rest.resource.operation | CapabilityStatement.rest.operation)! ")
 
-    val operationImplementationsNotExist = conformance.operationDefUrls.diff(fhirOperationsImplemented)
+    val operationImplementationsNotExist = conformance.operationDefUrls.diff(fhirOperationsImplemented ++ baseOperationDefinitions.keySet)
     if(operationImplementationsNotExist.nonEmpty)
       throw new InitializationException(s"Missing implementations for FHIR operations ${operationImplementationsNotExist.mkString(",")}! Please provide class path of the implementation for each FHIR operation declared in CapabilityStatement.")
 

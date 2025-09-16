@@ -139,8 +139,8 @@ class AuthzManager(fhirConfigurationManager: IFhirConfigurationManager) {
   private def authorizeForSimpleInteraction(fhirRequest:FHIRRequest, authzResult: AuthzResult):Future[AuthzResult] = {
     if(authzResult.result == AuthzResult.FILTERING && authzResult.resourceRestrictions.nonEmpty ) {
       //One of the restriction set should be satifided
-      authorizeAgainstGivenContent(fhirRequest, authzResult.resourceRestrictions).flatMap {
-          case true => authorizeAgainstResourceContent(fhirRequest, authzResult.resourceRestrictions).map {
+      authorizeAgainstGivenContent(fhirRequest, authzResult.resourceRestrictions.get).flatMap {
+          case true => authorizeAgainstResourceContent(fhirRequest, authzResult.resourceRestrictions.get).map {
             case true => authzResult
             case false => AuthzResult.failureInsufficientScope("User is not authorized to execute the interaction on this resource instance")
           }
@@ -157,12 +157,15 @@ class AuthzManager(fhirConfigurationManager: IFhirConfigurationManager) {
     * @param resourceRestrictions Resource restrictions coming from authorization
     * @return
     */
-  private def authorizeAgainstGivenContent(fhirRequest:FHIRRequest, resourceRestrictions:List[Parameter]):Future[Boolean] = {
+  private def authorizeAgainstGivenContent(fhirRequest:FHIRRequest, authzConstraints: AuthzConstraints):Future[Boolean] = {
     Future.apply {
       fhirRequest.interaction match {
         //If we have the resource content for the interaction, we check it if it is OK with resource restrictions
         case FHIR_INTERACTIONS.CREATE | FHIR_INTERACTIONS.UPDATE =>
-          resourceChecker.checkIfResourceSatisfies(fhirRequest.resourceType.get, resourceRestrictions, fhirRequest.resource.get)
+          authzConstraints.filters.exists(query =>
+            resourceChecker.checkIfResourceSatisfies(fhirRequest.resourceType.get, query, fhirRequest.resource.get)
+          ) //TODO && authzConstraints.contentConstraints.forall(fhirPath => run FHIR Path)
+
         //TODO Check patch items if the given values satisfies resource restrictions
         case  FHIR_INTERACTIONS.PATCH => true
         //For all other resources including the operations we don't care (For operations, detailed authorization should be done on content within the implementations)
@@ -177,7 +180,7 @@ class AuthzManager(fhirConfigurationManager: IFhirConfigurationManager) {
     * @param resourceRestrictions Resource restrictions coming from authorization
     * @return
     */
-  private def authorizeAgainstResourceContent(fhirRequest:FHIRRequest, resourceRestrictions:List[Parameter]):Future[Boolean] = {
+  private def authorizeAgainstResourceContent(fhirRequest:FHIRRequest, authzConstraints: AuthzConstraints):Future[Boolean] = {
     //If this is an instance interaction
     //           FHIR_INTERACTIONS.READ |
     //           FHIR_INTERACTIONS.UPDATE |
@@ -189,20 +192,26 @@ class AuthzManager(fhirConfigurationManager: IFhirConfigurationManager) {
     if (fhirRequest.resourceId.isDefined) {
       //Only include the required parameter paths to minimize parsing, etc
       val includedElements =
-        resourceRestrictions
+        authzConstraints.filters.flatten
           .map(p=> fhirConfigurationManager.fhirServerUtil.extractElementPaths(fhirRequest.resourceType.get, p))
           .reduce((s1,s2) => s1 ++ s2)
       //Retrieve the mentioned document
       fhirConfigurationManager.resourceManager
         .getResource(fhirRequest.resourceType.get, fhirRequest.resourceId.get, fhirRequest.versionId, includingOrExcludingFields = Some(true -> includedElements), excludeExtraFields = true)
-        .map(_.forall(r => resourceChecker.checkIfResourceSatisfies(fhirRequest.resourceType.get, resourceRestrictions, r)))
-
+        .map(_.forall(r =>
+          authzConstraints.filters.exists(q =>
+            resourceChecker.checkIfResourceSatisfies(fhirRequest.resourceType.get, q, r)
+          )
+        ))
     }
     else if(fhirRequest.resourceType.isDefined){
       fhirRequest.interaction match {
         //Search like operations (conditional update, delete)
         case FHIR_INTERACTIONS.UPDATE | FHIR_INTERACTIONS.DELETE | FHIR_INTERACTIONS.SEARCH | FHIR_INTERACTIONS.HISTORY_TYPE =>
-          authorizeAgainstCompartmentSearch(fhirRequest, resourceRestrictions) match {
+          if(authzConstraints.filters.length > 1)
+            throw new AuthorizationFailedException(AuthzResult.undecided("Multiple result set constraints in authorization layer is not supported currently"))
+
+          authorizeAgainstCompartmentSearch(fhirRequest, authzConstraints.filters.head) match {
             case (false, _) => Future.apply(false)
             case (true, filteredResourceRestrictions) =>
               fhirRequest.addParsedQueryParams(filteredResourceRestrictions)

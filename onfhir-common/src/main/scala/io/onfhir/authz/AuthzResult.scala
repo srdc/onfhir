@@ -7,9 +7,21 @@ import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 /**
   * Created by tuncay on 3/3/2017.
   */
+
+/**
+ * Authorization result created by authorizer
+ * @param result                    The code indicating the result of Authorization (AUTHORIZED, UNAUTHORIZED, FILTERING)
+ *                                  - AUTHORIZED:   Request is authorized (no need to change anything)
+ *                                  - UNAUTHORIZED: Request is unauthorized
+ *                                  - FILTERING:    Partial authorization (need to comply or result set should be restricted with the given restrictions)
+ *                                  - UNDECIDED:    Authorization cannot be decided e.g. scopes conflict, unresolvable
+ * @param resourceRestrictions      Restrictions
+ * @param errorCode                 Error code if authorization failed
+ * @param errorDesc                 Description of authorization failure
+ */
 case class AuthzResult(
                         result:String, //Result of Authorization (AUTHORIZED, UNAUTHORIZED, FILTERING)
-                        resourceRestrictions:List[Parameter] = List.empty, //List of List of Search parameters to define alternative resource restrictions for authorization (OR the results of the restrictions)
+                        resourceRestrictions:Option[AuthzConstraints] = None,
                         errorCode:Option[String] = None, //Error code if authorization failed
                         errorDesc:Option[String] = None) { //Description of error
   //If the authorization is ongoing still we should continue
@@ -30,6 +42,19 @@ case class AuthzResult(
       ))
     else None
 }
+
+/**
+ * Constraints to apply for partial authorization results
+ * @param filters             Filtering constraints given with parsed query statements (one of them should be satisfied to access/update the result)
+ *                            e.g. Patient level smart scopes
+ *                            patient/Observation.rs with patient=1234 --> patient=Patient/1234
+ *                            patient/Observation.rs?category=laboratory --> patient=Patient/1234&category=laboratory
+ *
+ * @param contentConstraints  FHIR Path statements to be satisfied for the supplied content for FHIR create, update, etc
+ *                            e.g. User can only create observations authored by himself
+ *                            Observation.practitioner.reference = 'Practitioner/' & %claims.sub
+ */
+case class AuthzConstraints(filters:Seq[List[Parameter]] = Nil, contentConstraints:Seq[String] = Nil)
 
 /**
   *
@@ -65,29 +90,11 @@ object AuthzResult{
 
   /**
     * Create a conditional authorization result which means authorize if the given restrictions are satisfied
-    * @param rtype Related resource type
-    * @param authorizationFilterParams Restrictions indicated as FHIR query (additionally restrictions indicated as Compartment query e.g. records that belong to a specific Patient -->  (Patient -> 356589)
+    * @param constraints Constraints for filtering
     * @return
     */
-  def filtering(rtype:String,
-                authorizationFilterParams: List[(String, String)],
-                searchParameterValueParser:FHIRSearchParameterValueParser
-               ):AuthzResult = {
-    def isCompartment(pname:String):Boolean = pname.head.isLetter && pname.head.isUpper
-
-    new AuthzResult(
-      FILTERING,
-      //Parse the compartment search
-      authorizationFilterParams
-        .filter(p => isCompartment(p._1))
-        .map(cf => searchParameterValueParser.constructCompartmentSearchParameter(cf._1, cf._2, rtype)) ++
-        //Parse the other search parameters strictly
-        searchParameterValueParser
-          .parseSearchParameters(
-            rtype,
-            authorizationFilterParams.filterNot( p=> isCompartment(p._1)).groupBy(_._1).map(g => g._1 -> g._2.map(_._2)),
-            Some(FHIR_HTTP_OPTIONS.FHIR_SEARCH_STRICT))
-    )
+  def filtering(constraints:AuthzConstraints):AuthzResult = {
+    new AuthzResult(FILTERING, Some(constraints))
   }
 
 

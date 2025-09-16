@@ -5,7 +5,6 @@ import java.net.{URI, URISyntaxException, URL}
 import java.security.KeyPairGenerator
 import java.security.interfaces.{RSAPrivateKey, RSAPublicKey}
 import java.util.UUID
-
 import com.nimbusds.jose.JWSAlgorithm
 import com.nimbusds.jose.JWSAlgorithm.Family
 import com.nimbusds.jose.jwk._
@@ -15,13 +14,12 @@ import com.nimbusds.oauth2.sdk.http.HTTPRequest
 import com.nimbusds.oauth2.sdk.util.JSONObjectUtils
 import com.nimbusds.oauth2.sdk.{GrantType, Scope}
 import com.nimbusds.openid.connect.sdk.op.OIDCProviderMetadata
-import io.onfhir.config.OnfhirConfig
+import io.onfhir.config.{FhirConfigurationManager, OnfhirConfig}
 import io.onfhir.config.OnfhirConfig.authzConfig
 import io.onfhir.api._
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.exception.InitializationException
 import io.onfhir.util.JsonFormatter._
-
 import net.minidev.json.JSONObject
 import org.json4s.JsonAST.JObject
 import org.slf4j.{Logger, LoggerFactory}
@@ -81,7 +79,7 @@ object AuthzConfigurationManager {
       //Set authorization handler
       this.authorizationHandler = customAuthorizer.getOrElse(
         authzConfig.authorizationMethod match {
-          case AUTHZ_METHOD_FHIR_ON_SMART => new SmartAuthorizer()
+          case AUTHZ_METHOD_FHIR_ON_SMART => new SmartAuthorizer(FhirConfigurationManager)
           case AUTHZ_METHOD_BASIC => new BasicAuthorizer()
           case _ => throw new InitializationException(s"Unknown default authorization method ${authzConfig.authorizationMethod}!")
         }

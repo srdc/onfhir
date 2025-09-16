@@ -1,36 +1,38 @@
 package io.onfhir.authz
 
 
-import io.onfhir.api.FHIR_INTERACTIONS
+import akka.http.scaladsl.model.Uri
+import io.onfhir.api.{FHIR_INTERACTIONS, FHIR_PARAMETER_CATEGORIES, FHIR_PARAMETER_TYPES}
+import io.onfhir.api.model.Parameter
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
-import io.onfhir.config.{FhirConfigurationManager, OnfhirConfig}
-import io.onfhir.config.FhirConfigurationManager.fhirConfig
+import io.onfhir.authz.SmartAuthorizer._
+import io.onfhir.config.IFhirConfigurationManager
+import io.onfhir.exception.{InitializationException, InvalidParameterException}
+import org.slf4j.LoggerFactory
+
+import scala.util.{Failure, Success, Try}
 /**
   * Created by tuncay on 2/27/2017.
   */
-class SmartAuthorizer extends IAuthorizer {
-  val fhirSearchParameterValueParser = new FHIRSearchParameterValueParser(FhirConfigurationManager.fhirConfig)
-  final val PERMISSION_TYPE_PATIENT = "patient"
-  final val PERMISSION_TYPE_USER = "user"
-  final val PERMISSION_TYPE_CONFIDENTIALITY = "conf"
-  final val PERMISSION_TYPE_SENSITIVITY = "sens"
-  //Parameter name for patientId parameter defined in Smart on FHIR specs
-  final val PARAM_PATIENT_ID = "patient"
-  //Scope scheme defined by WG Heart specification (extended for FHIR operations e.g. patient/Patient.$everything)
-  //See http://openid.net/specs/openid-heart-fhir-oauth2-1_0-2017-05-31.html
-  case class WGHeartScope(
-                           ptype:String, //Scope type patient|user|conf|sens
-                           rtype:String, //Resource type or Confidentiality/Sensitivity
-                           read:Boolean = false, // Permission for read operation
-                           write: Boolean = false, //Permission for write operation
-                           operations:Set[String] = Set.empty[String] //Permissions for operations on the resource type
-                         )
+class SmartAuthorizer(fhirConfigurationManager: IFhirConfigurationManager) extends IAuthorizer {
+  val fhirSearchParameterValueParser = new FHIRSearchParameterValueParser(fhirConfigurationManager.fhirConfig)
 
-  //Further Authorization Context parameters for tokens (JWT Token, Introspection response)
-  override def furtherParamsInAuthzContext = List(PARAM_PATIENT_ID)
+  /**
+   * Further Authorization Context parameters for tokens (JWT Token, Introspection response)
+   *  @return
+   */
+  override def furtherParamsInAuthzContext:List[String] = List(PARAM_PATIENT_ID)
 
-  //Nothing is public
-  def authorizeForPublic(interaction:String, resourceType:Option[String], resourceId:Option[String]):AuthzResult = AuthzResult.failureInvalidRequest("")
+  /**
+   * Nothing is public
+   * @param interaction Name of FHIR  interaction (all fhir interactions + custom or fhir operations as $...
+   * @param resourceType Type of the resource to be accessed for FHIR type and instance base interactions
+   * @param resourceId Id of the resource to be accessed for FHIR instance base interactions
+   * @return
+   */
+  def authorizeForPublic(interaction:String, resourceType:Option[String], resourceId:Option[String]):AuthzResult =
+    AuthzResult.failureInvalidRequest("")
+
   /**
     * Decide on authorization of interaction on resource type based on Smart Heart WG specifications
     * @param authzContext resolved Authorization Context
@@ -41,171 +43,279 @@ class SmartAuthorizer extends IAuthorizer {
     */
   override def authorize(authzContext: AuthzContext, interaction:String, resourceType:Option[String], resourceId:Option[String]):AuthzResult = {
     //Parse the scopes, if scope is not understood just skip it
-    val scopes:Seq[WGHeartScope] = authzContext.scopes.map(parseScope).filter(_.isDefined).map(_.get)
-    //Check resourceType is given as Smart only deals with resource specific interactions
-    if(resourceType.isEmpty) {
-      AuthzResult.undecided("Smart Authorization only authorizes FHIR type and instance interactions!")
-    } else {
-      // Get only the related scopes with the resource type
-      val relatedScopes:Seq[WGHeartScope] =
-        scopes
-          .filter(s => s.rtype == PERMISSION_TYPE_CONFIDENTIALITY || s.rtype == PERMISSION_TYPE_SENSITIVITY || s.rtype.equals(resourceType.get) || s.rtype.equals("*"))
+    val scopes:Seq[WGHeartScope] =
+      authzContext
+        .scopes
+        .map(s => SmartAuthorizer.parse(s, fhirSearchParameterValueParser))
+        .filter(_.isDefined)
+        .map(_.get)
 
-      //Validate the context according to requirements of Smart on FHIR
-      if(!isAuthzContextValid(authzContext, relatedScopes))
-        AuthzResult.failureInsufficientScope("Information is missing in token related with the given scopes")
-      else {
-        relatedScopes match {
-          //If no matching scope, return failure
-          case Nil => AuthzResult.failureInsufficientScope(s"Not authorized for the FHIR interaction '$interaction' on resource type '${resourceType.get}'!")
-          //If there is some related scope
-          case _ =>
-            val (patientOrUserRightsOpt, confOrSensRightsOpt) = resolveTargetAccessRight(relatedScopes, resourceType.get, interaction)
-            val baseResourceRestrictions: List[(String, String)] =
-              patientOrUserRightsOpt
-                .filter(accessRight => isAuthorizedForInteraction(accessRight, interaction)) //Go on if it is authorized for the interaction
-                .map(accessRight => accessRight.ptype match { //Resolve the resource restriction queries
-                  case PERMISSION_TYPE_PATIENT => resolveResourceRestrictionsForPatientTypeScope(authzContext, resourceType.get)
-                  case PERMISSION_TYPE_USER => resolveResourceRestrictionsForUserTypeScope(authzContext, resourceType.get)
-                }).getOrElse(List.empty)
+    //Validate the context according to requirements of Smart on FHIR
+    if (!isAuthzContextValid(authzContext, scopes))
+      AuthzResult.failureInsufficientScope("Invalid Smart-on-Fhir token: Information (e.g. patient parameter) is missing in token related with the given scopes!")
 
-
-            val otherResourceRestrictions =
-              confOrSensRightsOpt
-                .map(resolveResourceRestrictionsForConfSensTypeScope)
-                .getOrElse(List.empty)
-
-            val resourceRestrictions = baseResourceRestrictions ++ otherResourceRestrictions
-
-            if (resourceRestrictions.isEmpty)
-              AuthzResult.failureInsufficientScope(s"Not authorized for the FHIR interaction '$interaction' on resource type '${resourceType.get}'!")
-            //If all restrictions allow full access
-            else if(resourceRestrictions.forall(_._2 == "*"))
-              AuthzResult.success()
-            else
-              AuthzResult.filtering(resourceType.get, resourceRestrictions.filterNot(_._2 == "*"), fhirSearchParameterValueParser)
+    resourceType match {
+      //If this is a system level FHIR interaction
+      case None =>
+        AuthzResult.undecided("Smart Authorization only authorizes FHIR type and instance interactions!")
+      //Type level interaction
+      case Some(rtype) =>
+        // Get only the related scopes with the resource type
+        val relatedScopes: Seq[WGHeartScope] =
+          scopes
+            .filter(s => s.checkForResourceType(rtype))
+        //Resolve effective scopes for the given FHIR interaction and resource type (combining scopes if possible)
+        resolveEffectiveScopes(relatedScopes, resourceType.get, interaction) match {
+          //If there is no effective scopes
+          case (Nil, Nil) =>
+            AuthzResult.failureInsufficientScope(s"Not authorized for the FHIR interaction '$interaction' on resource type '${resourceType.get}'!")
+          //If only main scopes
+          case (mainEffectiveScopes, Nil) =>
+            getConstraintsForMainScopes(mainEffectiveScopes, authzContext)
+              .map(AuthzResult.filtering) //If there is any constraint, partial authorization
+              .getOrElse(AuthzResult.success()) //Otherwise success
+          //If only supportive scopes
+          case (Nil, supportiveScopes) =>
+            supportiveScopes
+              .flatMap(s => resolveRestrictionParamForConfSensTypeScope(s)) match {
+                case Nil => AuthzResult.success()
+                case oth => AuthzResult.filtering(AuthzConstraints(Seq(oth.toList)))
+              }
+          //If both exists
+          case (mainEffectiveScopes, supportiveScopes) =>
+            val extraParams = supportiveScopes.flatMap(s => resolveRestrictionParamForConfSensTypeScope(s))
+            getConstraintsForMainScopes(mainEffectiveScopes, authzContext)
+              .map(ac =>
+                AuthzResult.filtering(ac.copy(filters = ac.filters.map(query => query ++ extraParams)))
+              )
+              .getOrElse(
+                extraParams match {
+                  case Nil => AuthzResult.success()
+                  case oth => AuthzResult.filtering(AuthzConstraints(Seq(oth.toList)))
+                }
+              )
         }
-      }
     }
   }
 
   /**
-    * Resolve the resource restriction queries for access with patient type scope e.g. patient/Observation.read
-    * @param authzContext Authorization context
-    * @param resourceType resource type
-    * @return search parameter -> parameter value
-    */
-  private def resolveResourceRestrictionsForPatientTypeScope(authzContext: AuthzContext, resourceType:String):List[(String,String)] = {
-    //Extract patient ids from authz context
-    val authorizedPatients = getPatientId(authzContext)
-    List("Patient" -> authorizedPatients.mkString(","))
-  }
-
-  /**
-    * Resolve the resource restriction queries for access with user type scope e.g. user/Observation.read
-    * @param authzContext Authorization context
-    * @param resourceType resource type
-    * @return search parameter -> parameter value
-    */
-  private def resolveResourceRestrictionsForUserTypeScope(authzContext: AuthzContext, resourceType:String):List[(String,String)] = {
-    //TODO We don't have any restriction for user scopes for now
-    List("Practitioner" -> "*")
-    /*
-    //Extract user id from authz context
-    val authorizedUser= authzContext.sub.get
-
-    List(
-      "Practitioner" -> authorizedUser,
-      "RelatedPerson" -> authorizedUser
-    )*/
-  }
-
-  /**
-    *
-    * @param scope
-    * @return
-    */
-  private def resolveResourceRestrictionsForConfSensTypeScope(scope:WGHeartScope):List[(String, String)] = {
-    val expectedSecurityTagCodes = scope.rtype.split(",")
-     val systemUrl = scope.ptype match {
-       case PERMISSION_TYPE_CONFIDENTIALITY => "http://hl7.org/fhir/v3/Confidentiality"
-       case PERMISSION_TYPE_SENSITIVITY => "http://hl7.org/fhir/v3/ActCode"
-     }
-
-    val queryValue = expectedSecurityTagCodes.map(c => systemUrl + "|" + c).mkString(",")
-    List("_security" -> queryValue)
-  }
-
-
-  /**
-    * Parse the scope string, and extract the scope definition according to WG Heart Specification See https://openid.bitbucket.io/HEART/openid-heart-fhir-oauth2.html
-    * If scope can not be parsed, return None
-    * @param scope scope to parse
-    * @return
-    */
-  private def parseScope(scope:String):Option[WGHeartScope] = {
-    val scopeElems = scope.split('/')
-
-    //Check if permission is one of the Smart permissions
-    if(!Set(PERMISSION_TYPE_PATIENT, PERMISSION_TYPE_USER, PERMISSION_TYPE_SENSITIVITY, PERMISSION_TYPE_CONFIDENTIALITY).contains(scopeElems(0)))
-      None
-    else {
-      val remElems = scopeElems(1).split('.')
-      remElems(1) match {
-        //Permission for read interactions
-        case "read" =>  Some(WGHeartScope(scopeElems.apply(0), remElems.apply(0), read=true, write=false))
-        //Permission for write interactions
-        case "write" =>   Some(WGHeartScope(scopeElems.apply(0), remElems.apply(0), read=true, write=true))
-        //Permission for all interactions
-        case "*" =>  Some(WGHeartScope(scopeElems.apply(0), remElems.apply(0), read=true, write=true))
-        //Permission for FHIR operation
-        case op  => Some(WGHeartScope(scopeElems.apply(0),  remElems.apply(0), read=false, write=false, operations = Set(op)))
-      }
+   * Return authorization constraints if the given scopes causes partial authorization, None if complete authorization (no constraints)
+   * @param scopes          All effective main scopes
+   * @param authzContext    Authorization context resolved
+   * @return
+   */
+  private def getConstraintsForMainScopes(scopes:Seq[WGHeartScope], authzContext: AuthzContext):Option[AuthzConstraints] = {
+    //As all the scopes are same type
+    scopes.head.ptype match {
+      case PERMISSION_TYPE_SYSTEM => getConstraintsForSystemLevelScopes(scopes, authzContext)
+      case PERMISSION_TYPE_USER => getConstraintsForUserLevelScopes(scopes, authzContext)
+      case PERMISSION_TYPE_PATIENT => getConstraintsForPatientLevelScopes(scopes, authzContext)
     }
   }
 
   /**
-    * Resolve the target scopes related with the requested resourceType
-    * @param scopes scopes
-    * @param resourceType resource type
+   * Construct constraints for patient level scopes
+   * @param scopes        All effective patient level scopes related with resource type and interaction
+   * @param authzContext  Authorization context resolved
+   * @return
+   */
+  private def getConstraintsForPatientLevelScopes(scopes:Seq[WGHeartScope], authzContext: AuthzContext):Option[AuthzConstraints] = {
+    //Get the patient identifier from patient parameter in the given token
+    val pid = getPatientId(authzContext)
+    val filteringConstraints =
+      scopes map {
+        //If there is a single effective scope with no further query part, it is authorized so no further restriction
+        //e.g. patient/Observation
+        case WGHeartScope(_, rtype, _, None) =>
+          List(fhirSearchParameterValueParser.constructCompartmentSearchParameter("Patient", pid, rtype))
+        case WGHeartScope(_, rtype, _, Some(queryParams)) =>
+          fhirSearchParameterValueParser.constructCompartmentSearchParameter("Patient", pid, rtype) +: queryParams
+      }
+    //Get permission c,u,d,r,s,$<op>
+    //val permission = scopes.head.permissions.head
+    //TODO decide extra content constraints based on configurations and interaction/permission
+    //e.g. for cu --> check if Observation.practitioner is same with user
+    if(filteringConstraints.isEmpty) None else Some(AuthzConstraints(filteringConstraints))
+  }
+
+  /**
+   * Get constraints for user level scopes
+   * @param scopes           All effective user level scopes related with resource type and interaction
+   * @param authzContext     Authorization context resolved
+   * @return
+   */
+  private def getConstraintsForUserLevelScopes(scopes:Seq[WGHeartScope], authzContext: AuthzContext) : Option[AuthzConstraints] = {
+    //Currently user level scopes are implemented to access all patients (like system level scopes)
+
+    //TODO Read from configuration how user level scopes are handled per resource type
+    //e.g. Compartment based authorization --> User will be restricted to Practitioner or RelatedPerson compartments
+    //e.g. CareTeam based authorization --> User will be restricted with patients that user is in the care team of
+    //e.g. More dynamic Fine-grained authorization --> Read restrictions from config files like we do in Kroniq (restrictions defined as FHIR queries and FHIR Path statements)
+
+    val filteringConstraints =
+      scopes flatMap  {
+        //If there is a single effective scope with no further query part, it is authorized so no further restriction
+        //e.g. patient/Observation
+        case WGHeartScope(_, _, _, None) => None
+        case WGHeartScope(_, _, _, Some(queryParams)) => Some(queryParams)
+      }
+
+    //TODO decide extra content constraints based on configurations and interaction/permission
+    if(filteringConstraints.isEmpty) None else Some(AuthzConstraints(filteringConstraints))
+  }
+
+  /**
+   * Get constraints for system level scopes
+   * @param scopes        All effective system level scopes related with resource type and interaction
+   * @param authzContext  Authorization context resolved
+   * @return
+   */
+  private def getConstraintsForSystemLevelScopes(scopes: Seq[WGHeartScope], authzContext: AuthzContext): Option[AuthzConstraints] = {
+    val filteringConstraints =
+      scopes flatMap {
+        //If there is a single effective scope with no further query part, it is authorized so no further restriction
+        //e.g. patient/Observation
+        case WGHeartScope(_, _, _, None) => None
+        case WGHeartScope(_, _, _, Some(queryParams)) => Some(queryParams)
+      }
+
+    //TODO decide extra content constraints based on configurations and interaction/permission
+    if (filteringConstraints.isEmpty) None else Some(AuthzConstraints(filteringConstraints))
+  }
+
+
+  /**
+    * Resolve the search parameter to restrict the access to certain resources with tagged confidentiality or sensitivity
+    * @param scope  Parsed scope
     * @return
     */
-  private def resolveTargetAccessRight(scopes:Seq[WGHeartScope], resourceType:String, fhirInteraction:String):(Option[WGHeartScope], Option[WGHeartScope]) = {
-    //Group the scopes according to the type
-    val groupedScopes =
+  private def resolveRestrictionParamForConfSensTypeScope(scope:WGHeartScope):Option[Parameter] = {
+    scope match {
+      //If all confidentiality or sensitivity are accessible return None (no constraint)
+      case WGHeartScope(_, "*", _, _) => None
+      //Otherwise restrict the access to resources tagged with given confidentiality codes
+      case WGHeartScope(PERMISSION_TYPE_CONFIDENTIALITY, confidentiality, _, _) =>
+        Some(Parameter(
+          paramCategory = FHIR_PARAMETER_CATEGORIES.NORMAL,
+          paramType = FHIR_PARAMETER_TYPES.TOKEN,
+          name = "_security",
+          valuePrefixList = confidentiality.split(",").map(c => "http://hl7.org/fhir/v3/Confidentiality|" + c).map(v => "" -> v)
+        ))
+      //Otherwise restrict the access to resources tagged with given sensitivity codes
+      case WGHeartScope(PERMISSION_TYPE_SENSITIVITY, sensitivities, _, _) =>
+        Some(Parameter(
+          paramCategory = FHIR_PARAMETER_CATEGORIES.NORMAL,
+          paramType = FHIR_PARAMETER_TYPES.TOKEN,
+          name = "_security",
+          valuePrefixList = sensitivities.split(",").map(c => "http://hl7.org/fhir/v3/ActCode|" + c).map(v => "" -> v)
+        ))
+    }
+  }
+
+
+
+  /**
+    * Resolve the target main (patient | user | system) and supportive (conf | sens) Smart scopes related with the requested resourceType
+    * @param scopes           All scopes from the authorization context
+    * @param resourceType     FHIR resource type interaction is on
+    * @param fhirInteraction  FHIR interaction (create | upated | ...) See [[FHIR_INTERACTIONS]]
+    * @return
+    */
+  private def resolveEffectiveScopes(scopes:Seq[WGHeartScope], resourceType:String, fhirInteraction:String):(Seq[WGHeartScope], Seq[WGHeartScope]) = {
+    //Filter the scopes related with the given FHIR interaction
+    val interactionRelatedScopes =
       scopes
-        .groupBy[String](_.ptype)
+        .filter(_.checkForInteraction(fhirInteraction))
+        .map(s =>
+          s.copy(permissions = Set(getPermissionForInteraction(fhirInteraction)))
+        )
+    //Extract effective patient based scopes
+    val effectivePatientBasedScopes:Seq[WGHeartScope] =
+      getEffectiveScopes(
+        interactionRelatedScopes
+          .filter(_.ptype == PERMISSION_TYPE_PATIENT)
+          .map(s => s.copy(rtype = resourceType))
+      )
 
-    //Extract User or patient scope if exists
-    val mainScope =
-      //If there is a related patient scope, that we can resolve from Patient compartment (Patient compartment should be enabled in orde to use patient scopes)
-      if(
-          groupedScopes.get(PERMISSION_TYPE_PATIENT)
-            .exists(_.exists(s => isAuthorizedForInteraction(s, fhirInteraction))) &&
-          fhirConfig.compartmentRelations.get("Patient").exists(_.isDefinedAt(resourceType))){
-        Some(groupedScopes(PERMISSION_TYPE_PATIENT).fold(WGHeartScope(PERMISSION_TYPE_PATIENT, resourceType, read=false, write=false))((s1, s2) => WGHeartScope(PERMISSION_TYPE_PATIENT, resourceType, s1.read || s2.read, s1.write || s2.write, s1.operations ++ s2.operations)))
-      }
-      // Otherwise search if there is a related user scope, that we can resolve from Practitioner or RelatedPerson compartments
-      // IMPORTANT We loosen this dependency to Practitioner or Related Person compartment
-      else if(
-        groupedScopes.get(PERMISSION_TYPE_USER)
-          .exists(_.exists(s => isAuthorizedForInteraction(s, fhirInteraction)))
-      /*&& fhirConfig.compartmentRelations.filter(c => c._1 == "Practitioner" || c._1 == "RelatedPerson").exists(_._2.isDefinedAt(resourceType))*/){
-        Some(groupedScopes(PERMISSION_TYPE_USER).fold(WGHeartScope(PERMISSION_TYPE_USER, resourceType, read=false, write=false))((s1, s2) => WGHeartScope(PERMISSION_TYPE_USER, resourceType, s1.read || s2.read, s1.write || s2.write, s1.operations ++ s2.operations)))
-      } else
-        None
+    //If there is at least one patient based scope but FHIR Patient compartment is not configured for resource type
+    if(effectivePatientBasedScopes.nonEmpty &&
+        !fhirConfigurationManager.fhirConfig.compartmentRelations.get("Patient").exists(_.isDefinedAt(resourceType)))
+      throw new InitializationException(s"FHIR Patient compartment for resource type $resourceType should be configured in order to authorize based on Smart patient based scopes")
+
+    var mainScopes = effectivePatientBasedScopes
+    //If there is no patient based scopes, check user level scopes
+    if(mainScopes.isEmpty) {
+      mainScopes =
+        getEffectiveScopes(
+          interactionRelatedScopes
+            .filter(_.ptype == PERMISSION_TYPE_USER)
+            .map(s => s.copy(rtype = resourceType))
+        )
+    }
+
+    //If there is no user level scope, check system level scopes
+    if(mainScopes.isEmpty){
+      mainScopes =
+        getEffectiveScopes(
+          interactionRelatedScopes
+            .filter(_.ptype == PERMISSION_TYPE_SYSTEM)
+            .map(s => s.copy(rtype = resourceType))
+        )
+    }
 
     //Extract confidentiality or sensitivity scope if exists
-    val supportiveScope =
-      //If there is a confidentiality scope
-      if(groupedScopes.isDefinedAt(PERMISSION_TYPE_CONFIDENTIALITY))
-        Some(WGHeartScope(PERMISSION_TYPE_CONFIDENTIALITY, groupedScopes(PERMISSION_TYPE_CONFIDENTIALITY).map(_.rtype).mkString(",")))
-      else if(groupedScopes.isDefinedAt(PERMISSION_TYPE_SENSITIVITY))
-        Some(WGHeartScope(PERMISSION_TYPE_SENSITIVITY, groupedScopes(PERMISSION_TYPE_SENSITIVITY).map(_.rtype).mkString(",")))
-      else
-        None
+    val supportiveScopes =
+      (interactionRelatedScopes
+        .filter(s => s.ptype == PERMISSION_TYPE_CONFIDENTIALITY) match {
+          case Nil => Nil
+          case Seq(single) => Seq(single)
+          case multiple if multiple.exists(_.rtype == "*") => multiple.find(_.rtype == "*").toSeq
+          case multiple => Seq(multiple.head.copy(rtype = multiple.map(_.rtype).mkString(",")))
+        }) ++
+      (interactionRelatedScopes
+        .filter(s => s.ptype == PERMISSION_TYPE_SENSITIVITY) match {
+          case Nil => Nil
+          case Seq(single) => Seq(single)
+          case multiple if multiple.exists(_.rtype == "*") => multiple.find(_.rtype == "*").toSeq
+          case multiple => Seq(multiple.head.copy(rtype = multiple.map(_.rtype).mkString(",")))
+      })
+    mainScopes -> supportiveScopes
+  }
 
-    mainScope -> supportiveScope
+  /**
+   * Get the effective scopes by trying to combine the scopes
+   * @param scopes  Smart scopes
+   * @return
+   */
+  private def getEffectiveScopes(scopes: Seq[WGHeartScope]): Seq[WGHeartScope] = {
+    scopes match {
+      case Nil => Nil
+      //If there is a single related scope regarding the resource type and interaction, use it
+      case Seq(single) => Seq(single)
+      //If there are multiple ones, try to combine them if possible
+      case multiple =>
+        multiple.foldLeft[Seq[WGHeartScope]](Nil) {
+          //First query
+          case (Nil, s) => Seq(s)
+          case (acc, s) =>
+            //Try to find a combination with one of the already combined set
+            val (combined, rest) =
+              acc.foldLeft[(Option[WGHeartScope], Seq[WGHeartScope])](None -> Nil) {
+                case ((None, others), ms) =>
+                  tryCombiningScopes(ms, s) match {
+                    case Some(comb) => Some(comb) -> others
+                    case None => (None, ms +: others)
+                  }
+                case ((some, others), ms) => (some, ms +: others)
+              }
+            combined match {
+              //If a combination found
+              case Some(newQ) => newQ +: rest // replace with merged query
+              //Otherwise extend the acc
+              case None => s +: acc // could not merge, keep as is
+            }
+        }
+    }
   }
 
   /**
@@ -216,7 +326,7 @@ class SmartAuthorizer extends IAuthorizer {
     */
   private def isAuthzContextValid(authzContext: AuthzContext, scopes:Seq[WGHeartScope]):Boolean = {
     //If it includes patient scope and does not include patientId
-    !(scopes.exists(s => s.ptype.equals(PERMISSION_TYPE_PATIENT)) && authzContext.furtherParams.get(PARAM_PATIENT_ID).isEmpty) &&
+    !(scopes.exists(s => s.ptype.equals(PERMISSION_TYPE_PATIENT)) && !authzContext.furtherParams.contains(PARAM_PATIENT_ID)) &&
     //If it includes user scope and does not include user id
     !(scopes.exists(s => s.ptype.equals(PERMISSION_TYPE_USER)) && authzContext.sub.isEmpty)
   }
@@ -226,31 +336,271 @@ class SmartAuthorizer extends IAuthorizer {
     * @param authzContext authorization context
     * @return
     */
-  private def getPatientId(authzContext:AuthzContext):Set[String] = {
-    authzContext.getListParam[String](PARAM_PATIENT_ID).get.toSet
+  private def getPatientId(authzContext:AuthzContext):String = {
+    authzContext.getSimpleParam[String](PARAM_PATIENT_ID).get
+  }
+}
+
+
+/**
+ * Scope scheme defined by WG Heart specification (extended for FHIR operations e.g. patient/Patient.$everything)
+ * See
+ *   - Smart v1 : https://openid.net/specs/openid-heart-fhir-oauth2-1_0-2017-05-31.html
+ *   - Smart v2:  https://openid.net/specs/openid-heart-fhir-oauth2-1_0.html or
+ *     https://build.fhir.org/ig/HL7/smart-app-launch/scopes-and-launch-context.html#scopes-for-requesting-fhir-resources
+ *
+ * @param ptype       Scope type patient|user|conf|sens
+ * @param rtype       Resource type or Confidentiality/Sensitivity
+ * @param permissions Set of permissions on resource
+ *                    e.g. .cruds -> [c, r, u, d, s]
+ *                    e.g. .read -> [r, s]
+ *                    e.g. .write -> [c, u, d]
+ * @param query       For fine-grained Smart scopes, the query part
+ *                    e.g. patient/Observation.rs?category=http://terminology.hl7.org/CodeSystem/observation-category|laboratory ->
+ *                    category=http://terminology.hl7.org/CodeSystem/observation-category|laboratory
+ */
+case class WGHeartScope(
+                         ptype: String, //Scope type patient|user|conf|sens
+                         rtype: String, //Resource type or Confidentiality/Sensitivity
+                         permissions: Set[String], //Permissions on resource e.g. .cruds ->
+                         query: Option[List[Parameter]] = None
+                       ) {
+  /**
+   * Check if scope is related with FHIR resource type
+   * @param resourceType  FHIR resource type
+   * @return
+   */
+  def checkForResourceType(resourceType:String):Boolean = {
+    Set("*", PERMISSION_TYPE_CONFIDENTIALITY, PERMISSION_TYPE_SENSITIVITY).contains(rtype) ||
+      rtype.equalsIgnoreCase(resourceType)
   }
 
   /**
-    * Check if the scope indicates an authorization for the interaction
-    * @param accessRight Patient or User access right resolved
-    * @param interaction FHIR interaction type
-    * @return
-    */
-  private def isAuthorizedForInteraction(accessRight:WGHeartScope, interaction: String):Boolean = {
-    interaction match {
-      case FHIR_INTERACTIONS.CREATE
-           | FHIR_INTERACTIONS.UPDATE
-           | FHIR_INTERACTIONS.DELETE
-           | FHIR_INTERACTIONS.PATCH => accessRight.write
-      case FHIR_INTERACTIONS.READ
-           | FHIR_INTERACTIONS.VREAD
-           | FHIR_INTERACTIONS.HISTORY_INSTANCE
-           | FHIR_INTERACTIONS.SEARCH
-           | FHIR_INTERACTIONS.HISTORY_TYPE => accessRight.read
-      //FHIR Operations
-      case operation if operation.startsWith("$") => accessRight.operations.contains(operation.drop(1))
-      //Otherwise false
-      case _ => false
+   * Check if given FHIR interaction is related with the scope
+   * @param fhirInteraction FHIR interaction
+   * @return
+   */
+  def checkForInteraction(fhirInteraction:String):Boolean = {
+    permissions.contains("*") ||
+      (fhirInteraction match {
+        case FHIR_INTERACTIONS.CREATE => permissions.contains("c")
+        case FHIR_INTERACTIONS.UPDATE | FHIR_INTERACTIONS.PATCH  => permissions.contains("u")
+        case FHIR_INTERACTIONS.DELETE => permissions.contains("d")
+        case FHIR_INTERACTIONS.READ | FHIR_INTERACTIONS.VREAD => permissions.contains("r")
+        case FHIR_INTERACTIONS.HISTORY_INSTANCE
+             | FHIR_INTERACTIONS.SEARCH
+             | FHIR_INTERACTIONS.HISTORY_TYPE => permissions.contains("s")
+        //FHIR Operations
+        case operation if operation.startsWith("$") => permissions.contains(operation)
+        //Otherwise false
+        case _ => false
+      })
+  }
+}
+
+object SmartAuthorizer {
+  private val logger = LoggerFactory.getLogger("SmartAuthorizer")
+  private val ScopeRegex = """^(patient|user|system|sens|conf)\/(\w+|\*)\.(read|write|\*|[cruds]+|\$[a-zA-Z0-9_.-]+)(\?.+)?$""".r
+
+  //Permission types
+  final val PERMISSION_TYPE_PATIENT = "patient"
+  final val PERMISSION_TYPE_USER = "user"
+  final val PERMISSION_TYPE_SYSTEM = "system"
+  final val PERMISSION_TYPE_CONFIDENTIALITY = "conf"
+  final val PERMISSION_TYPE_SENSITIVITY = "sens"
+  //Parameter name for patientId parameter defined in Smart on FHIR specs
+  final val PARAM_PATIENT_ID = "patient"
+  /**
+   * Parse a Smart-on-FHIR v1 or v2 scope string
+   * e.g. patient/Observation.rs
+   * e.g. user/Condition.read
+   * @param scope Scope string
+   * @param fhirSearchParameterValueParser
+   * @return
+   */
+  def parse(scope: String, fhirSearchParameterValueParser:FHIRSearchParameterValueParser): Option[WGHeartScope] = scope match {
+    //If query part exists, try to parse it
+    case ScopeRegex(ptype, rtype, perms, q) if Option(q).isDefined =>
+      Try(parseAndValidateFhirQueryPartForSmartScope(rtype, q, fhirSearchParameterValueParser)) match {
+        case Success(parsedParams) =>
+          Some(WGHeartScope(
+                ptype = ptype,
+                rtype = rtype,
+                permissions = normalizePermissions(perms),
+                query = Some(parsedParams)
+              ))
+        case Failure(ex) =>
+          logger.warn(s"The query part of Smart scope $scope cannot be parsed, ignoring the scope!", ex)
+          None
+       }
+    case ScopeRegex(ptype, rtype, perms, q) =>
+      Some(WGHeartScope(
+        ptype = ptype,
+        rtype = rtype,
+        permissions = normalizePermissions(perms),
+        query = None
+      ))
+    case _ =>
+      logger.debug("Ignoring scope as it is not a smart compliant scope!")
+      None
+  }
+
+  def parse(scope: String): Option[WGHeartScope] = scope match {
+    case ScopeRegex(ptype, rtype, perms, q) =>
+      Some(WGHeartScope(
+        ptype = ptype,
+        rtype = rtype,
+        permissions = normalizePermissions(perms),
+        query =
+          Option(q)
+            .map(q =>
+              throw new IllegalArgumentException("Smart scopes with query parts should be parsed with supplied search statement parser!")
+            )
+      ))
+    case _ =>
+      logger.debug("Ignoring scope as it is not a smart compliant scope!")
+      None
+  }
+
+  /**
+   *
+   * @param queryPart
+   * @return
+   */
+  private def parseAndValidateFhirQueryPartForSmartScope(rtype:String, queryPart:String, fhirSearchParameterValueParser:FHIRSearchParameterValueParser):List[Parameter] = {
+    val filters = fhirSearchParameterValueParser.parseSearchParameters(rtype, Uri.Query(queryPart.drop(1)).toMultiMap)
+    if(!filters
+        .forall(p =>
+          p.paramCategory == FHIR_PARAMETER_CATEGORIES.NORMAL &&
+            Set(FHIR_PARAMETER_TYPES.TOKEN, FHIR_PARAMETER_TYPES.REFERENCE, FHIR_PARAMETER_TYPES.URI, FHIR_PARAMETER_TYPES.STRING).contains(p.paramType)
+        )
+    )
+      throw new IllegalArgumentException(s"Currently only normal search parameters with reference,token,uri and string are supported within Smart scopes!")
+    //If a parameter is used more than once with or without different suffixes/prefixes/values, throw exception
+    if(filters.map(_.name).toSet.size != filters.map(_.name).length)
+      throw new IllegalArgumentException(s"The query part should include a search parameter only once in Smart scopes!")
+
+    filters
+  }
+
+  /**
+   *
+   * @param perms
+   * @return
+   */
+  private def normalizePermissions(perms: String): Set[String] = perms match {
+    case "*" => Set("*")
+    case "read" => Set("r", "s")
+    case "write" => Set("c", "u", "d")
+    case op if op.head == '$' => Set(op)
+    case letters => letters.toSet.map(c =>  "" + c)
+  }
+
+  def getPermissionForInteraction(fhirInteraction:String):String = {
+        fhirInteraction match {
+          case FHIR_INTERACTIONS.CREATE => "c"
+          case FHIR_INTERACTIONS.UPDATE | FHIR_INTERACTIONS.PATCH => "u"
+          case FHIR_INTERACTIONS.DELETE => "d"
+          case FHIR_INTERACTIONS.READ | FHIR_INTERACTIONS.VREAD => "r"
+          case FHIR_INTERACTIONS.HISTORY_INSTANCE
+               | FHIR_INTERACTIONS.SEARCH
+               | FHIR_INTERACTIONS.HISTORY_TYPE => "s"
+          //FHIR Operations
+          case operation if operation.startsWith("$") => operation
+        }
+  }
+
+  /**
+   * Try combining Smart scopes (only reference,token,uri,string type parameters are assumed to exist in Smart scopes)
+   * This is only called for scopes that are targeting the same resource type and permission
+   * If merge is possible, return the combined parameters
+   * Otherwise return None
+   * @param scope1  Smart scope 1 (on the same resource type and permission)
+   * @param scope2  Smart Scope 2 (on the same resource type and permission)
+   * @return
+   */
+  def tryCombiningScopes(scope1:WGHeartScope, scope2:WGHeartScope):Option[WGHeartScope] = {
+    if (scope1.query.isEmpty)
+      Some(scope1)
+    else if (scope2.query.isEmpty)
+      Some(scope2)
+    else {
+      val q1 = scope1.query.getOrElse(List.empty).map(p => (p.name -> p.suffix) -> p.valuePrefixList.map(_._2).toSet).toMap
+      val q2 = scope2.query.getOrElse(List.empty).map(p => (p.name -> p.suffix) -> p.valuePrefixList.map(_._2).toSet).toMap
+      //If both queries are on the same parameters
+      if (q1.keySet == q2.keySet) {
+        val paramSetsForQ1 =
+          q1
+            .keySet
+            .map(k =>
+              k -> (q1(k).diff(q2(k)), q1(k).intersect(q2(k)), q2(k).diff(q1(k)))
+            )
+
+        //Result set 1 includes the result set 2
+        //e.g. ?category=lab,vitalsign vs ?category=lab
+        if (paramSetsForQ1.forall(_._2._3.isEmpty))
+          Some(scope1)
+        //If result set 2 includes the result set 1
+        //e.g. ?category=lab vs ?category=lab,vitalsign
+        else if (paramSetsForQ1.forall(_._2._1.isEmpty))
+          Some(scope2)
+        //Otherwise
+        else {
+          paramSetsForQ1.filterNot(ps => ps._2._1.isEmpty && ps._2._3.isEmpty).toSeq match {
+            //If they are completely exclusive in terms of values only on a single parameter, merge them
+            //e.g.  ?category=lab vs ?category=vitalsign
+            //e.g. ?category=lab,symptom vs ?category=vitalsign,symptom
+            case Seq(k -> _) =>
+              Some(
+                scope1.copy(query = Some(
+                  scope1.query.get.filterNot(p => p.name == k._1 && p.suffix == k._2) :+
+                    scope1.query.get.find(p => p.name == k._1 && p.suffix == k._2).get.copy(valuePrefixList = q1(k).union(q2(k)).map(v => "" -> v).toSeq)
+                ))
+              )
+            //Otherwise contradictory
+            //e.g. ?category=lab,symptom&status=final  vs ?category=lab,vitalsign&status=final,draft
+            case _ => None
+          }
+        }
+      }
+      //If query1 is subset of query2 in terms of parameters and suffixes
+      //e.g. ?category=lab vs ?category=lab&status=final    --> ?category=lab
+      else if (q1.keySet.subsetOf(q2.keySet)) {
+        val paramSetsForQ1 =
+          q1
+            .keySet
+            .map(k =>
+              k -> (q1(k).diff(q2(k)), q1(k).intersect(q2(k)), q2(k).diff(q1(k)))
+            )
+
+        //Result set 1 includes the result set 2
+        //e.g. ?category=lab vs ?category=lab&status=final
+        //e.g. ?category=lab,vitalsign vs ?category=lab&status=final
+        if (paramSetsForQ1.forall(ps => ps._2._3.isEmpty))
+          Some(scope1)
+        else
+          None
+      } else if (q2.keySet.subsetOf(q1.keySet)) {
+        val paramSetsForQ2 =
+          q2
+            .keySet
+            .map(k =>
+              k -> (q1(k).diff(q2(k)), q1(k).intersect(q2(k)), q2(k).diff(q1(k)))
+            )
+
+        //Result set 1 includes the result set 2
+        //e.g. ?category=lab vs ?category=lab&status=final
+        //e.g. ?category=lab,vitalsign vs ?category=lab&status=final
+        if (paramSetsForQ2.forall(ps => ps._2._1.isEmpty))
+          Some(scope2)
+        else
+          None
+      }
+      //If queries are on different set of parameters, no merge
+      //e.g. ?category=lab vs code=...
+      else {
+        None
+      }
     }
   }
 }
