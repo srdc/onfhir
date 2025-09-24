@@ -1,4 +1,4 @@
-FROM openjdk:11-jre-slim
+FROM eclipse-temurin:11-jre
 
 # We need curl for healthcheck
 RUN apt -y update; apt -y install curl
