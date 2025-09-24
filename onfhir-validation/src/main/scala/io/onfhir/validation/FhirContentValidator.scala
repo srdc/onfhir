@@ -149,7 +149,7 @@ class FhirContentValidator(
                   //Add the field to validated fields
                   validatedFields += fieldName
                   //Find all restrictions chain defined for the field (in priority order)
-                  val elementRestrictions = findElementRestrictionsChain(fieldName, allRestrictions)
+                  val elementRestrictions = findElementRestrictionsChain(fieldName, dataType, allRestrictions)
                   //Possible primitive extension
                   val possiblePrimitiveExtension = possiblePrimitiveExtensions.get(field)
                   //Validate element
@@ -178,7 +178,7 @@ class FhirContentValidator(
                 case Some((fieldName, dataType)) if fhirConfig.FHIR_PRIMITIVE_TYPES.contains(dataType) =>
                   validatedFields += fieldName
                   //Find all restrictions chain defined for the field (in priority order)
-                  val elementRestrictions = findElementRestrictionsChain(fieldName, allRestrictions)
+                  val elementRestrictions = findElementRestrictionsChain(fieldName, dataType, allRestrictions)
                   val cardinalityIssues = evaluateCardinalityAndTypeConstraints(dataType, fieldValue, elementRestrictions.flatMap(_._1))
                   if(cardinalityIssues.nonEmpty)
                     Future.apply(FhirContentValidator.convertToOutcomeIssue(FHIRUtil.mergeElementPath(parentPath, s"_$field"), cardinalityIssues))
@@ -248,7 +248,7 @@ class FhirContentValidator(
         furtherValidateSlicedElement(allSlicingDefs, path, fieldName, dataType, value, elementRestrictions)
       } else {
         //Normalize paths for sub elements
-        val normalDefinitions = normalizePathsForSubElements(fieldName, elementRestrictions)
+        val normalDefinitions = normalizePathsForSubElements(fieldName, dataType, elementRestrictions)
         value match {
           case JArray(arr) =>
             // if extension of primitive exists, it should also be an array
@@ -331,7 +331,7 @@ class FhirContentValidator(
         .sortWith((i1, i2) => i1._1.map(_._2).getOrElse(Integer.MAX_VALUE) < i2._1.map(_._2).getOrElse(Integer.MAX_VALUE)) //Sort them according to their index
 
     //Normalize paths for sub elements
-    val normalDefinitions = normalizePathsForSubElements(fieldName, elementRestrictions)
+    val normalDefinitions = normalizePathsForSubElements(fieldName, dataType, elementRestrictions)
 
     var arrIndex = -1
     val slicingErrors = slicesValuesMatchings
@@ -1059,13 +1059,20 @@ class FhirContentValidator(
    * @param parentField         Parent field name
    * @param elementRestrictions Element and sub element restriction chain
    */
-  private def normalizePathsForSubElements(parentField: String, elementRestrictions: Seq[(Option[ElementRestrictions], Seq[(String, ElementRestrictions)])], slice:Option[String] = None): Seq[(Option[ElementRestrictions], Seq[(String, ElementRestrictions)])] = {
+  private def normalizePathsForSubElements(parentField: String, parentDataType:String, elementRestrictions: Seq[(Option[ElementRestrictions], Seq[(String, ElementRestrictions)])], slice:Option[String] = None): Seq[(Option[ElementRestrictions], Seq[(String, ElementRestrictions)])] = {
     elementRestrictions
       .map(e => e._1 ->
         e._2
-          .filter(e => e._1.startsWith(parentField + ".")) // Only get child elements
-          .map(e => e._1.replace(parentField + ".", "") -> e._2)
-      ).filter(e => e._1.isDefined || e._2.nonEmpty)
+          .filter(e => isSubRestriction(parentField, parentDataType, e)) // Only get child elements
+          .map(e => {
+            if(parentField.endsWith("[x]") && !e._1.startsWith(parentField + "."))
+              e._1.replace(parentField.dropRight(3) + parentDataType.capitalize + ".", "") -> e._2
+            else
+              e._1.replace(parentField + ".", "") -> e._2
+
+          })
+      )
+      .filter(e => e._1.isDefined || e._2.nonEmpty)
   }
 
 
@@ -1374,16 +1381,17 @@ class FhirContentValidator(
   /**
    * Find a chain of ElementRestrictions and sub element restrictions under that element for a given field in priority order of profiles
    *
-   * @param field               Field name
+   * @param field               Field name e.g. value[x], status, code
+   * @param dataType            FHIR data type resolved
    * @param elementRestrictions All possibly related element restrictions chain
    * @return Element restrictions in order of evaluation
    */
-  private def findElementRestrictionsChain(field: String, elementRestrictions: Seq[Seq[(String, ElementRestrictions)]]): Seq[(Option[ElementRestrictions], Seq[(String, ElementRestrictions)])] = {
+  private def findElementRestrictionsChain(field: String, dataType:String, elementRestrictions: Seq[Seq[(String, ElementRestrictions)]]): Seq[(Option[ElementRestrictions], Seq[(String, ElementRestrictions)])] = {
     //Restrictions defined in the Resource profiles are first in that order, Then the data type profile chain (Or root elements in resource profile)
     elementRestrictions
       .map(rr => {
         //find the restriction for the field if exist in each set of element definitions coming from a profile
-        val er = findElementRestriction(field, rr)
+        val er = findElementRestriction(field, dataType, rr)
         //if this refers another element, get the restrictions and sub restrictions from that element
         if(er.exists(_.contentReference.isDefined)){
           val (refEr, refErSubElements) = findWithinRootChain(er.get.contentReference.get)
@@ -1398,8 +1406,10 @@ class FhirContentValidator(
               )
           ) -> // Get the sub element definitions
             refErSubElements.map(e => e._1.replace(refEr.head.path, field) -> e._2.copy(path = e._2.path.replace(refEr.head.path, er.head.path)))
-        } else
-          er -> rr.filter(p => p._1.startsWith(field + ".") || p._1.startsWith(field + ":")) //find child definitions in each set of element defs coming from a profile
+        } else {
+          //If this is normal, find the child restrictions
+          er -> rr.filter(p => isSubRestrictionOrSlice(field, dataType, p)) //find child definitions in each set of element defs coming from a profile
+        }
       })
       .filter(e => e._1.isDefined || e._2.nonEmpty)
   }
@@ -1454,6 +1464,59 @@ class FhirContentValidator(
    */
   def findElementRestriction(field: String, elementRestrictions: Seq[(String, ElementRestrictions)]): Option[ElementRestrictions] = {
     elementRestrictions.find(_._1 == field).map(_._2)
+  }
+
+  /**
+   *
+   * @param field
+   * @param dataType
+   * @param elementRestrictions
+   * @return
+   */
+  def findElementRestriction(field: String, dataType:String, elementRestrictions: Seq[(String, ElementRestrictions)]): Option[ElementRestrictions] = {
+    if(field.endsWith("[x]")){
+      val fieldName = field.dropRight(3) + dataType.capitalize
+      elementRestrictions.find(r => r._1 == field).toSeq ++ elementRestrictions.find(r =>  r._1 == fieldName).toSeq match {
+        case Nil => None
+        case Seq(single) => Some(single._2)
+        //Merge if there are two restrictions e.g. value[x], valueCodeableConcept
+        case multiple =>
+          Some(multiple.map(_._2).reduce[ElementRestrictions] {
+            case (r1, r2) =>
+              r1
+                .copy(restrictions = r1.restrictions ++ r2.restrictions)
+          })
+      }
+    } else {
+      elementRestrictions.find(_._1 == field).map(_._2)
+    }
+  }
+
+  /**
+   * Check if given restriction is a restriction on sub path for given field
+   * @param field       Field name e.g. value[x], code
+   * @param dataType    Data type resolved for that field
+   * @param restriction Restriction to check
+   * @return
+   */
+  def isSubRestrictionOrSlice(field:String, dataType:String, restriction:(String, ElementRestrictions)):Boolean = {
+    if(field.endsWith("[x]")){
+      val fieldName = field.dropRight(3) + dataType.capitalize
+      (restriction._1.startsWith(field + ".") || restriction._1.startsWith(field + ":")) ||  //Either restriction should be defined on multiple path
+        (restriction._1.startsWith(fieldName + ".") || restriction._1.startsWith(fieldName + ":")) //Or a specific type
+    } else {
+      restriction._1.startsWith(field + ".") || restriction._1.startsWith(field + ":")
+    }
+  }
+
+  def isSubRestriction(field: String, dataType: String, restriction: (String, ElementRestrictions)): Boolean = {
+    if (field.endsWith("[x]")) {
+      val fieldName = field.dropRight(3) + dataType.capitalize
+      restriction._1.startsWith(field + ".") || //Either restriction should be defined on multiple path
+        restriction._1.startsWith(fieldName + ".")  //Or a specific type
+    } else {
+      restriction._1.startsWith(field + ".")
+    }
   }
 }
 

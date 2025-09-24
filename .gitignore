@@ -25,4 +25,3 @@ buildNumber.properties
 logs/
 out/
 *.emb.mongo
-.flattened-pom.xml
