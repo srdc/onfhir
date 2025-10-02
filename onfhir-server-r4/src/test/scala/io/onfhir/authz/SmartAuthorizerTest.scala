@@ -1,12 +1,15 @@
 package io.onfhir.authz
 
+import com.typesafe.config.ConfigFactory
 import io.onfhir.api.{FHIR_INTERACTIONS, FHIR_PARAMETER_CATEGORIES, FHIR_PARAMETER_TYPES}
-import io.onfhir.api.model.Parameter
+import io.onfhir.api.model.{FHIRRequest, Parameter}
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.config.{FSConfigReader, FhirConfigurationManager}
 import io.onfhir.r4.config.FhirR4Configurator
 import org.specs2.mutable.Specification
 import io.onfhir.authz.AuthzResult
+import org.json4s.JsonAST.JString
+
 import scala.language.postfixOps
 
 class SmartAuthorizerTest extends Specification {
@@ -22,7 +25,10 @@ class SmartAuthorizerTest extends Specification {
   FhirConfigurationManager.fhirConfig = serverConfig
   val fhirSearchParameterValueParser = new FHIRSearchParameterValueParser(serverConfig)
   FhirConfigurationManager.fhirSearchParameterValueParser = fhirSearchParameterValueParser
-  val smartAuthorizer = new SmartAuthorizer(FhirConfigurationManager)
+  val smartAuthorizer = new SmartAuthorizer(None, FhirConfigurationManager)
+
+  val smartAuthorizationConf = ConfigFactory.load("smart-authorization.conf")
+  val smartAuthorizer2 = new SmartAuthorizer(Some(smartAuthorizationConf), FhirConfigurationManager)
 
   /**
    * Tests on companion object common methods
@@ -138,12 +144,12 @@ class SmartAuthorizerTest extends Specification {
               "ignored" //Unknown scopes are ignored
             )
         )
-        smartAuthorizer.authorize(authzContext, FHIR_INTERACTIONS.CREATE, Some("Patient"), None) === AuthzResult.success()
-        smartAuthorizer.authorize(authzContext, FHIR_INTERACTIONS.UPDATE, Some("Patient"), None) === AuthzResult.success()
-        smartAuthorizer.authorize(authzContext, FHIR_INTERACTIONS.SEARCH, Some("Patient"), None).isAuthorized === false
+        smartAuthorizer.authorize(authzContext, FHIRRequest(requestUri = "", interaction = FHIR_INTERACTIONS.CREATE, resourceType = Some("Patient"))) === AuthzResult.success()
+        smartAuthorizer.authorize(authzContext, FHIRRequest(requestUri = "", interaction = FHIR_INTERACTIONS.UPDATE, resourceType = Some("Patient"))) === AuthzResult.success()
+        smartAuthorizer.authorize(authzContext, FHIRRequest(requestUri = "", interaction = FHIR_INTERACTIONS.SEARCH, resourceType = Some("Patient"))).isAuthorized === false
 
         //Check permission specific scope merging
-        smartAuthorizer.authorize(authzContext, FHIR_INTERACTIONS.SEARCH, Some("Observation"), None) ===
+        smartAuthorizer.authorize(authzContext, FHIRRequest(requestUri = "", interaction = FHIR_INTERACTIONS.SEARCH, resourceType = Some("Observation"))) ===
           AuthzResult.filtering(
             AuthzConstraints(
               filters = Seq(
@@ -151,7 +157,7 @@ class SmartAuthorizerTest extends Specification {
               )
             )
           )
-        smartAuthorizer.authorize(authzContext, FHIR_INTERACTIONS.READ, Some("Observation"), None) ===
+        smartAuthorizer.authorize(authzContext, FHIRRequest(requestUri = "", interaction = FHIR_INTERACTIONS.READ, resourceType = Some("Observation"))) ===
           AuthzResult.filtering(
             AuthzConstraints(
               filters = Seq(
@@ -159,7 +165,7 @@ class SmartAuthorizerTest extends Specification {
               )
             )
           )
-        smartAuthorizer.authorize(authzContext, FHIR_INTERACTIONS.UPDATE, Some("Observation"), None) ===
+        smartAuthorizer.authorize(authzContext, FHIRRequest(requestUri = "", interaction = FHIR_INTERACTIONS.UPDATE, resourceType = Some("Observation"))) ===
           AuthzResult.filtering(
             AuthzConstraints(
               filters = Seq(
@@ -169,10 +175,10 @@ class SmartAuthorizerTest extends Specification {
             )
           )
 
-      smartAuthorizer.authorize(authzContext, FHIR_INTERACTIONS.SEARCH, Some("RiskAssessment"), None) === AuthzResult.success()
-      smartAuthorizer.authorize(authzContext, FHIR_INTERACTIONS.CREATE, Some("RiskAssessment"), None).isAuthorized === false
+      smartAuthorizer.authorize(authzContext, FHIRRequest(requestUri = "", interaction = FHIR_INTERACTIONS.SEARCH, resourceType = Some("RiskAssessment"))) === AuthzResult.success()
+      smartAuthorizer.authorize(authzContext, FHIRRequest(requestUri = "", interaction = FHIR_INTERACTIONS.CREATE, resourceType = Some("RiskAssessment"))).isAuthorized === false
 
-      smartAuthorizer.authorize(authzContext, FHIR_INTERACTIONS.SEARCH, Some("Goal"), None) ===
+      smartAuthorizer.authorize(authzContext, FHIRRequest(requestUri = "", interaction = FHIR_INTERACTIONS.SEARCH, resourceType = Some("Goal"))) ===
         AuthzResult.filtering(
           AuthzConstraints(
             filters = Seq(
@@ -199,10 +205,10 @@ class SmartAuthorizerTest extends Specification {
               "patient/Goal.xxx", //Invalid permissions
               "ignored" //Unknown scopes are ignored
             ),
-          furtherParams = Map("patient" -> "123")
+          furtherParams = Map("patient" -> JString("123"))
         )
 
-      smartAuthorizer.authorize(authzContext, FHIR_INTERACTIONS.CREATE, Some("Condition"), None) ===
+      smartAuthorizer.authorize(authzContext, FHIRRequest(requestUri = "", interaction = FHIR_INTERACTIONS.CREATE, resourceType = Some("Condition"))) ===
         AuthzResult.filtering(
           AuthzConstraints.apply(
             filters = Seq(List(
@@ -210,11 +216,11 @@ class SmartAuthorizerTest extends Specification {
             ))
           )
         )
-      smartAuthorizer.authorize(authzContext, FHIR_INTERACTIONS.SEARCH, Some("Condition"), None).isAuthorized === false
-      smartAuthorizer.authorize(authzContext, FHIR_INTERACTIONS.SEARCH, Some("RiskAssessment"), None).isAuthorized === false
-      smartAuthorizer.authorize(authzContext, FHIR_INTERACTIONS.SEARCH, Some("Goal"), None).isAuthorized === false
+      smartAuthorizer.authorize(authzContext, FHIRRequest(requestUri = "", interaction = FHIR_INTERACTIONS.SEARCH, resourceType = Some("Condition"))).isAuthorized === false
+      smartAuthorizer.authorize(authzContext, FHIRRequest(requestUri = "", interaction = FHIR_INTERACTIONS.SEARCH, resourceType = Some("RiskAssessment"))).isAuthorized === false
+      smartAuthorizer.authorize(authzContext, FHIRRequest(requestUri = "", interaction = FHIR_INTERACTIONS.SEARCH, resourceType = Some("Goal"))).isAuthorized === false
 
-      smartAuthorizer.authorize(authzContext, FHIR_INTERACTIONS.CREATE, Some("Observation"), None) ===
+      smartAuthorizer.authorize(authzContext, FHIRRequest(requestUri = "", interaction = FHIR_INTERACTIONS.CREATE, resourceType = Some("Observation"))) ===
         AuthzResult.filtering(
           AuthzConstraints.apply(
             filters = Seq(List(
@@ -223,6 +229,40 @@ class SmartAuthorizerTest extends Specification {
             ))
           )
         )
+    }
+
+    "authorize for default scopes" in {
+      val authzContext =
+        AuthzContext(isActive = true,
+          scopes =
+            Seq(
+              "patient/Observation.cud?category=laboratory"
+            ),
+          furtherParams = Map("patient" -> JString("123"))
+        )
+      smartAuthorizer2.authorize(authzContext, FHIRRequest(requestUri = "", interaction = FHIR_INTERACTIONS.SEARCH, resourceType = Some("ValueSet"))) === AuthzResult.success()
+      smartAuthorizer2.authorize(authzContext, FHIRRequest(requestUri = "", interaction = FHIR_INTERACTIONS.SEARCH, resourceType = Some("CodeSystem"))).isAuthorized === false
+    }
+
+    "authorize with further restrictions" in {
+      val authzContext =
+        AuthzContext(isActive = true,
+          scopes =
+            Seq(
+              "patient/Observation.cud?category=laboratory"
+            ),
+          furtherParams = Map("patient" -> JString("123"), "fhirUser" -> JString("Practitioner/135131"))
+        )
+      smartAuthorizer2.authorize(authzContext, FHIRRequest(requestUri = "", interaction = FHIR_INTERACTIONS.CREATE, resourceType = Some("Observation"))) ===
+        AuthzResult.filtering(AuthzConstraints(
+          filters = Seq(List(
+            Parameter(paramCategory = FHIR_PARAMETER_CATEGORIES.COMPARTMENT, paramType = FHIR_PARAMETER_TYPES.REFERENCE, name = "", valuePrefixList = Seq("Patient" -> "123"), chain = Seq("" -> "subject", "" -> "performer")),
+            Parameter(paramCategory = FHIR_PARAMETER_CATEGORIES.NORMAL, paramType = FHIR_PARAMETER_TYPES.TOKEN, name = "category", valuePrefixList = Seq("" -> "laboratory"))
+          )),
+          contentConstraints = Seq(
+            "performer.reference.exists($this = %claims.fhirUser)"
+          )
+        ))
     }
   }
 }

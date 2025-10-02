@@ -38,7 +38,7 @@ class FHIRDeleteService(transactionSession: Option[TransactionSession] = None) e
     */
   override def completeInteraction(fhirRequest: FHIRRequest, authzContext: Option[AuthzContext] = None, isTesting: Boolean): Future[FHIRResponse] = {
     if(fhirRequest.resourceId.isDefined)
-      deleteResource(fhirRequest.resourceType.get, fhirRequest.resourceId.get, isTesting)
+      deleteResource(fhirRequest.getResolvedTargetResource, fhirRequest.resourceType.get, fhirRequest.resourceId.get, isTesting)
     else
       conditionalDeleteResource(fhirRequest.resourceType.get, fhirRequest.getParsedQueryParams(), isTesting)
   }
@@ -123,14 +123,15 @@ class FHIRDeleteService(transactionSession: Option[TransactionSession] = None) e
 
   /**
     * Delete the resource by id
+    * @param oldResourceContent   Content resolved for the target resource
     * @param _type Resource type
     * @param _id Identifier of resource
     * @return
     */
-  private def deleteResource(_type:String, _id:String, testDelete:Boolean) : Future[FHIRResponse] = {
+  private def deleteResource(oldResourceContent:Option[Resource],  _type:String, _id:String, testDelete:Boolean) : Future[FHIRResponse] = {
     logger.debug(s"requesting a 'delete' on ${_type} with id ${_id}...")
     //1) check if resource already exists
-    fhirConfigurationManager.resourceManager.getResource(_type, _id).flatMap {
+    oldResourceContent match {
       case None =>
         logger.debug("no document with given identifier, return 204 - No Content...")
         Future(FHIRResponse(StatusCodes.NoContent))

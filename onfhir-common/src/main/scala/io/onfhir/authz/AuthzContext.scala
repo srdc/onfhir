@@ -1,8 +1,10 @@
 package io.onfhir.authz
 
-import java.util.Date
+import io.onfhir.util.JsonFormatter.formats
 
+import java.util.Date
 import net.minidev.json.JSONArray
+import org.json4s.JValue
 
 /**
   * Created by tuncay on 2/27/2017.
@@ -25,7 +27,7 @@ case class AuthzContext(
                          expirationTime:Option[Date]=None, //
                          aud:Seq[String]=Seq.empty, //
                          sub:Option[String]=None, //
-                         furtherParams:Map[String, Any] = Map.empty, //
+                         furtherParams:Map[String, JValue] = Map.empty, //
                          username:Option[String] = None, //
                          reasonNotActive:Option[String] = None) {
 
@@ -44,8 +46,8 @@ case class AuthzContext(
     * @tparam T     Type of parameter
     * @return
     */
-  def getSimpleParam[T](pname:String):Option[T] = {
-      furtherParams.get(pname).map(_.asInstanceOf[T])
+  def getSimpleParam[T](pname:String)(implicit mf:Manifest[T]):Option[T] = {
+      furtherParams.get(pname).map(_.extract[T])
   }
 
   /**
@@ -54,12 +56,13 @@ case class AuthzContext(
     * @tparam T     Type of parameter
     * @return
     */
-  def getListParam[T](pname:String):Option[List[T]] = {
-    furtherParams.get(pname).map {
+  def getListParam[T](pname:String)(implicit mf:Manifest[T]):Option[List[T]] = {
+    furtherParams.get(pname).map(_.extract[List[T]])
+    /*furtherParams.get(pname).map {
       case jsonArray:JSONArray => jsonArray.toArray.toList.asInstanceOf[List[T]]
       case listOfT:List[Any] => listOfT.asInstanceOf[List[T]]
       case t:Any => List(t.asInstanceOf[T])
       case _ => List.empty
-    }
+    }*/
   }
 }

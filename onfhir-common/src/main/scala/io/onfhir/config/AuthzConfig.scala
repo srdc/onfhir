@@ -121,4 +121,6 @@ class AuthzConfig(authzConfig:Config) {
     * @return
     */
   def isSecure():Boolean = ! authorizationMethod.equals(AUTHZ_METHOD_NONE)
+
+  def getConfig(path:String):Option[Config] = Try(authzConfig.getConfig(path)).toOption
 }

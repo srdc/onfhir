@@ -44,7 +44,7 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
     */
   override def completeInteraction(fhirRequest: FHIRRequest, authzContext: Option[AuthzContext] = None, isTesting: Boolean): Future[FHIRResponse] = {
     if(fhirRequest.resourceId.isDefined)
-      updateResource(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.resourceId.get, fhirRequest.ifMatch, fhirRequest.prefer, isTesting)
+      updateResource(fhirRequest.resource.get, fhirRequest.getResolvedTargetResource, fhirRequest.resourceType.get, fhirRequest.resourceId.get, fhirRequest.ifMatch, fhirRequest.prefer, isTesting)
     else
       conditionalUpdateResource(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.getParsedQueryParams(), fhirRequest.ifMatch, fhirRequest.prefer, isTesting)
   }
@@ -177,6 +177,8 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
 
   /**
     * Update the resource with the provided content (See https://www.hl7.org/fhir/http.html#update)
+    * @param resource New content for the resource
+    * @param oldTargetResource  Old content if resolved
     * @param _type Resource type
     * @param _id The id of resource to be updated
     * @param ifMatch If-Match header
@@ -184,14 +186,19 @@ class FHIRUpdateService(transactionSession: Option[TransactionSession] = None) e
     * @param testUpdate - Indicates if it is the real update operation
     * @return
     */
-  def updateResource(resource: Resource, _type:String, _id:String, ifMatch:Option[`If-Match`], prefer:Option[String], testUpdate:Boolean = false) : Future[FHIRResponse] = {
+  def updateResource(resource: Resource,
+                     oldTargetResource:Option[Resource],
+                     _type:String,
+                     _id:String,
+                     ifMatch:Option[`If-Match`],
+                     prefer:Option[String],
+                     testUpdate:Boolean = false) : Future[FHIRResponse] = {
     logger.debug(s"requesting 'update' for ${_type} with ${_id}...")
 
     if(fhirConfig.isResourceTypeVersioned(_type)) {
       //1) check if resource already exists
-      fhirConfigurationManager.resourceManager.getResource(_type, _id) flatMap {
+      oldTargetResource match {
         case None =>
-
           //1.a) Check if user requested a version aware update
           FHIRApiValidator.validateIfMatch(ifMatch, 0L)
           performUpdate(resource, _type, Some(_id), prefer, testUpdate)

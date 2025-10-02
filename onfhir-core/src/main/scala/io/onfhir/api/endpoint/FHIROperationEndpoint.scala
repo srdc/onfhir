@@ -5,9 +5,9 @@ import akka.http.scaladsl.server.{Directive0, Route}
 import io.onfhir.api.{RESOURCE_TYPE_REGEX, Resource}
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
-import io.onfhir.api.service.FHIROperationHandler
+import io.onfhir.api.service.{FHIROperationHandler, TargetResourceResolver}
 import io.onfhir.authz.{AuthContext, AuthzContext, AuthzManager}
-import io.onfhir.config.FhirConfigurationManager.{authzManager, fhirConfig}
+import io.onfhir.config.FhirConfigurationManager.{authzManager, fhirConfig, targetResourceResolver}
 import io.onfhir.config.{OnfhirConfig, OperationConf}
 /**
   * Created by tuncay on 10/2/2017.
@@ -122,9 +122,12 @@ trait FHIROperationEndpoint {
           entity(as[Resource]) { resource =>
             //Initialize operation body
             fhirRequest.resource = if (resource.obj.isEmpty) None else Some(resource)
-            authzManager.authorize(authContext._2, fhirRequest) {
-              complete {
-                new FHIROperationHandler().validateAndCompleteOperation(fhirRequest, operationConf)
+            //Try to resolve target FHIR resource
+            targetResourceResolver.resolveTargetResource(fhirRequest) {
+              authzManager.authorize(authContext._2, fhirRequest) {
+                complete {
+                  new FHIROperationHandler().validateAndCompleteOperation(fhirRequest, operationConf, authContext._2)
+                }
               }
             }
           }

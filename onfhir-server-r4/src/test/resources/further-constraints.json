@@ -1,0 +1,11 @@
+[
+  {
+    "description": "User should set the performer as himself/herself to create Observation",
+    "resourceType": ["Observation"],
+    "fhirAction": ["create", "update"],
+    "precondition": "%claims.fhirUser.exists($this.startsWith('Patient') or $this.startsWith('Practitioner') or $this.startsWith('RelatedPerson'))",
+    "contentConstraint": [
+      "performer.reference.exists($this = %claims.fhirUser)"
+    ]
+  }
+]

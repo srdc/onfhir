@@ -4,10 +4,14 @@ import java.text.ParseException
 import com.nimbusds.jose.JWSAlgorithm.Family
 import com.nimbusds.jose.jwk.source.{ImmutableSecret, JWKSourceBuilder, RemoteJWKSet}
 import com.nimbusds.jose.proc.{BadJOSEException, JWSVerificationKeySelector, SecurityContext}
+import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.jose.{JOSEException, JWSAlgorithm}
 import com.nimbusds.jwt.proc.{ConfigurableJWTProcessor, DefaultJWTProcessor}
 import io.onfhir.Onfhir
 import io.onfhir.config.AuthzConfig
+import io.onfhir.util.JsonFormatter
+import org.json4s.jackson.JsonMethods
+import org.json4s.{JNothing, JNull, JObject, JValue}
 
 import scala.jdk.CollectionConverters._
 import scala.concurrent.{ExecutionContextExecutor, Future}
@@ -46,10 +50,11 @@ class JWTResolver(authzConfig: AuthzConfig) extends ITokenResolver {
     Future.apply {
       try {
         val claimSet = jwtProcessor.process(accessToken, null)
+
         val aud = claimSet.getAudience.asScala
         //Check if it is valid (other checks like expiration are done in process)
         if (
-          aud.exists(_.equals(authzConfig.protectedResourceInformation.getID.getValue)) && //If our(resource-server's) client id is within the audience
+          (aud.isEmpty || aud.exists(_.equals(authzConfig.protectedResourceInformation.getID.getValue))) && //If our(resource-server's) client id is within the audience
             claimSet.getIssuer.equals(authzConfig.authzServerMetadata.issuer) // If the issuer of the token is our Authorization Server
         ) {
           AuthzContext(
@@ -60,7 +65,10 @@ class JWTResolver(authzConfig: AuthzConfig) extends ITokenResolver {
             aud = aud.toSeq,
             sub = Option(claimSet.getSubject),
             username = Try(Option(claimSet.getStringClaim("username"))).toOption.flatten,
-            furtherParams = furtherParams.map(pname => pname -> claimSet.getClaim(pname)).toMap
+            furtherParams =
+              JsonFormatter
+                .parseFromJson(JSONObjectUtils.toJSONString(claimSet.getClaims.asScala.filter(c => furtherParams.contains(c._1)).asJava))
+                .parseJson.obj.toMap
           )
         } else {
           AuthzContext(isActive = false, reasonNotActive = Some("Token is not valid, wrong issuer id or target aud !")) //Return if not valid

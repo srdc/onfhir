@@ -4,12 +4,14 @@ import akka.dispatch.MessageDispatcher
 
 import java.util.Date
 import com.nimbusds.jose.jwk.RSAKey
+import com.nimbusds.jose.util.JSONObjectUtils
 import com.nimbusds.oauth2.sdk._
 import com.nimbusds.oauth2.sdk.auth.{ClientAuthentication, ClientAuthenticationMethod, ClientSecretBasic, PrivateKeyJWT}
 import com.nimbusds.oauth2.sdk.token.BearerAccessToken
 import io.onfhir.Onfhir
 import io.onfhir.config.AuthzConfig
 import io.onfhir.exception.InternalServerException
+import io.onfhir.util.JsonFormatter
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.jdk.CollectionConverters._
@@ -84,7 +86,10 @@ class ResolverWithTokenIntrospection(authzConfig: AuthzConfig) extends ITokenRes
               Option(s.getExpirationTime), //expiration time
               Try(s.getAudience.asScala.toList.map(_.getValue)).toOption.getOrElse(Nil), //audience
               Try(s.getSubject.getValue).toOption, //subject
-              furtherParams.map(pn => pn -> paramObject.get(pn)).toMap, //further parameters (additional to Oauth2 by other specs)
+              JsonFormatter
+                .parseFromJson(paramObject.toJSONString)
+                .parseJson.obj.toMap
+                .filter(p => furtherParams.contains(p._1)), //further parameters (additional to Oauth2 by other specs)
               Option(s.getUsername) //Username
             )
           } else

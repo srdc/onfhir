@@ -6,9 +6,9 @@ import io.onfhir.api.{FHIR_HTTP_OPTIONS, FHIR_INTERACTIONS, RESOURCE_ID_REGEX, R
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
-import io.onfhir.api.service.FHIRHistoryService
+import io.onfhir.api.service.{FHIRHistoryService, TargetResourceResolver}
 import io.onfhir.authz.{AuthContext, AuthzContext}
-import io.onfhir.config.FhirConfigurationManager.authzManager
+import io.onfhir.config.FhirConfigurationManager.{authzManager, targetResourceResolver}
 import io.onfhir.config.OnfhirConfig
 
 /**
@@ -32,10 +32,13 @@ trait FHIRHistoryEndpoint {
             Directives.parameterMultiMap { searchParameters =>
               //Put the parameters into the FHIR Request
               fhirRequest.queryParams = searchParameters
-              //Enforce authorization, add the authorization filter params to search params
-              authzManager.authorize(authContext._2, fhirRequest) {
-                complete {
-                  new FHIRHistoryService().executeInteraction(fhirRequest)
+              //Try to resolve target FHIR resource
+              targetResourceResolver.resolveTargetResource(fhirRequest) {
+                //Enforce authorization, add the authorization filter params to search params
+                authzManager.authorize(authContext._2, fhirRequest) {
+                  complete {
+                    new FHIRHistoryService().executeInteraction(fhirRequest)
+                  }
                 }
               }
             }

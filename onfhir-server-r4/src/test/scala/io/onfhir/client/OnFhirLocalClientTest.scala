@@ -94,7 +94,13 @@ class OnFhirLocalClientTest extends OnFhirTest {
 
     "should help updating a resource"  in {
       val createdResource:Future[Resource]  = OnFhirLocalClient.create(patientWithoutId)
-      val response = createdResource.flatMap(r => OnFhirLocalClient.update(r.mapField(f => f._1 -> (if(f._1 == "gender") JString("female") else f._2)).asInstanceOf[JObject]).execute())
+      val response =
+        createdResource
+          .flatMap(r =>
+            OnFhirLocalClient
+              .update(r.mapField(f => f._1 -> (if(f._1 == "gender") JString("female") else f._2)).asInstanceOf[JObject])
+              .execute()
+          )
       response.map(_.httpStatus) must be_==(StatusCodes.OK).await
       response.map(r => FHIRUtil.extractValue[String](r.responseBody.getOrElse(JObject()), "gender")) must be_==("female").await
     }

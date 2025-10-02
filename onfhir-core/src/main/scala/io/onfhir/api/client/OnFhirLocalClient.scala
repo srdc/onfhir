@@ -5,7 +5,7 @@ import io.onfhir.api.model.{FHIRRequest, FHIRResponse}
 import io.onfhir.api.service.FHIRServiceFactory
 
 import scala.concurrent.{ExecutionContext, ExecutionContextExecutor, Future}
-import io.onfhir.config.OnfhirConfig
+import io.onfhir.config.{FhirConfigurationManager, OnfhirConfig}
 import io.onfhir.server.ErrorHandler
 
 object OnFhirLocalClient extends BaseFhirClient {
@@ -21,9 +21,10 @@ object OnFhirLocalClient extends BaseFhirClient {
   override def execute(fhirRequest: FHIRRequest): Future[FHIRResponse] = {
 
     val service = FHIRServiceFactory.getFHIRService(fhirRequest, None)
-
-    service
-      .executeInteraction(fhirRequest)
+    FhirConfigurationManager
+      .targetResourceResolver
+      .resolveTargetResourceUpdateRequest(fhirRequest)
+      .flatMap(_ => service.executeInteraction(fhirRequest))
       .recover[FHIRResponse](ErrorHandler.fhirErrorHandlerToResponse)
   }
 

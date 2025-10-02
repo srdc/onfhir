@@ -84,7 +84,7 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
     //Find operation configuration
     val operationConf = fhirConfigurationManager.fhirConfig.supportedOperations.find(_.name == operation.drop(1)).get
     //Validate and complete operation
-    validateAndCompleteOperation(fhirRequest, operationConf)
+    validateAndCompleteOperation(fhirRequest, operationConf, authzContext)
   }
 
   /**
@@ -394,7 +394,7 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
 
   private def checkResourceExistence(fhirRequest: FHIRRequest):Future[Boolean] = {
     if(fhirRequest.resourceType.isDefined && fhirRequest.resourceId.isDefined)
-      fhirConfigurationManager.resourceManager.isResourceExist(fhirRequest.resourceType.get, fhirRequest.resourceId.get)
+      Future.apply(fhirRequest.getResolvedTargetResource.nonEmpty)
     else
       Future.apply(true)
   }
@@ -406,7 +406,7 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
     * @param operationConf The operation definition configurations
     * @return FHIR response
     */
-  def validateAndCompleteOperation(fhirRequest: FHIRRequest, operationConf:OperationConf):Future[FHIROperationResponse] = {
+  def validateAndCompleteOperation(fhirRequest: FHIRRequest, operationConf:OperationConf, authzContext:Option[AuthzContext]):Future[FHIROperationResponse] = {
     //Get level of interaction (instance | type | system)
     val level = fhirRequest.levelOfInteraction
     //Validate the Operation request body first
@@ -482,7 +482,9 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
             val operationRequest =
               new FHIROperationRequest(
                 operationParams = parameterValues.flatMap(p => p._2.map(pv => p._1 -> pv)),
-                queryParams = parsedQueryParams
+                queryParams = parsedQueryParams,
+                targetResource = fhirRequest.getResolvedTargetResource,
+                authzContext = authzContext
               )
             //Execute the operation
             operationService

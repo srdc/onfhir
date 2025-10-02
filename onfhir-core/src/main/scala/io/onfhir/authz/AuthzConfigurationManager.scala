@@ -79,7 +79,7 @@ object AuthzConfigurationManager {
       //Set authorization handler
       this.authorizationHandler = customAuthorizer.getOrElse(
         authzConfig.authorizationMethod match {
-          case AUTHZ_METHOD_FHIR_ON_SMART => new SmartAuthorizer(FhirConfigurationManager)
+          case AUTHZ_METHOD_FHIR_ON_SMART => new SmartAuthorizer(authzConfig.getConfig(AUTHZ_METHOD_FHIR_ON_SMART), FhirConfigurationManager)
           case AUTHZ_METHOD_BASIC => new BasicAuthorizer()
           case _ => throw new InitializationException(s"Unknown default authorization method ${authzConfig.authorizationMethod}!")
         }

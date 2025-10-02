@@ -50,7 +50,7 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
     */
   override def completeInteraction(fhirRequest: FHIRRequest, authzContext: Option[AuthzContext] = None, isTesting: Boolean): Future[FHIRResponse] = {
     if(fhirRequest.resourceId.isDefined)
-      patchResource(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.resourceId.get, fhirRequest.ifMatch, fhirRequest.prefer, isTesting)
+      patchResource(fhirRequest.resource.get, fhirRequest.getResolvedTargetResource, fhirRequest.resourceType.get, fhirRequest.resourceId.get, fhirRequest.ifMatch, fhirRequest.prefer, isTesting)
     else {
       conditionalPatchResource(fhirRequest.resource.get, fhirRequest.resourceType.get, fhirRequest.getParsedQueryParams(), fhirRequest.ifMatch, fhirRequest.prefer, isTesting)
 
@@ -84,20 +84,30 @@ class FHIRPatchService(transactionSession: Option[TransactionSession] = None) ex
 
   /**
     * Patch a resource
-    * @param patch    Patch content
+    * @param patch              Patch content
+    * @param oldResourceContent Old resource content
     * @param _type    Resource type
     * @param _id      Resource id
     * @param ifMatch  IfMatch header
     * @param prefer   Prefer header
     * @return
     */
-  private def patchResource(patch: Resource, _type:String, _id:String, ifMatch:Option[`If-Match`], prefer:Option[String], isTesting:Boolean) : Future[FHIRResponse] = {
+  private def patchResource(patch: Resource, oldResourceContent:Option[Resource], _type:String, _id:String, ifMatch:Option[`If-Match`], prefer:Option[String], isTesting:Boolean) : Future[FHIRResponse] = {
     logger.debug(s"requesting 'patch' for ${_type} with ${_id}...")
 
     //2) check if resource already exists
-    fhirConfigurationManager.resourceManager.getResource(_type, _id).flatMap {
-      //If no such document, return No content
-      case None => Future(FHIRResponse(StatusCodes.NoContent))
+    oldResourceContent match {
+      //If no such document, return Not found
+      case None =>
+        throw new NotFoundException(Seq(
+          OutcomeIssue(
+            FHIRResponse.SEVERITY_CODES.INFORMATION,
+            FHIRResponse.OUTCOME_CODES.INFORMATIONAL,
+            None,
+            Some(s"Resource with type (${_type}), id (${_id}) not found..."),
+            Nil
+          )
+        ))
       //Otherwise
       case Some(foundResource) =>
         val wasDeleted = FHIRUtil.isDeleted(foundResource)

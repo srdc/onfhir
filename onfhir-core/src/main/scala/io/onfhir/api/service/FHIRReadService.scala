@@ -123,7 +123,6 @@ class FHIRReadService(transactionSession: Option[TransactionSession] = None) ext
               Nil
             )),
             Some(currentVersion))
-
         } else {
           //2.1.2.1) check If-None-Match and If-Modified-Since HTTP headers
           FHIRApiValidator.validateIfNoneMatch(ifNoneMatch, currentVersion)

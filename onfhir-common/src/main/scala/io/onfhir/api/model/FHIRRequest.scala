@@ -61,11 +61,36 @@ case class FHIRRequest(
                       ) extends InternalEntity {
   // Parsed query parameters for the resource type
   private var parsedQueryParams:Either[List[Parameter], Map[String, List[Parameter]]] = Left(List.empty)
+  //For all instance level interactions, the resolved FHIR resource in the execution logic
+  //e.g. for FHIR update, the previous resource content
+  private var resolvedTargetResource:Option[Resource] = None
 
+  /**
+   * Return the target resolved resource
+   * @return
+   */
+  def getResolvedTargetResource:Option[Resource] = resolvedTargetResource
+  /**
+   * Set target resolved resource //e.g. for FHIR update, the previous resource content
+   * @param resource Target resolved resource
+   */
+  def setResolvedTargetResource(resource:Resource):Unit = {
+    resolvedTargetResource = Some(resource)
+  }
+
+  /**
+   * Populate with parsed query parameters
+   * @param params  Parsed parameters
+   */
   def addParsedQueryParams(params:List[Parameter]):Unit = {
     parsedQueryParams = Left(parsedQueryParams.left.getOrElse(List.empty[Parameter]) ++ params)
   }
 
+  /**
+   * Populate with parsed query parameters for given resource type (for system level search)
+   * @param rtype     FHIR resource type
+   * @param params    Parsed parameters
+   */
   def addParsedQueryParams(rtype:String, params:List[Parameter]):Unit = {
     val tempMap =
       parsedQueryParams
@@ -82,11 +107,23 @@ case class FHIRRequest(
     )
   }
 
+  /**
+   * Get populated parsed parameters for normal interactions
+   * @return
+   */
   def getParsedQueryParams():List[Parameter] = parsedQueryParams.left.getOrElse(List.empty[Parameter])
 
+  /**
+   * Get populated parsed parameters for system level search
+   * @return
+   */
   def getAllParsedQueryParams():Map[String, List[Parameter]] = parsedQueryParams.swap.left.getOrElse(Map.empty[String, List[Parameter]])
 
-  //Set id for the request externally
+  /**
+   * Set id for the request externally
+   * @param id Request identifier
+   * @return
+   */
   def setId(id:Option[String]):FHIRRequest = {
     if(id.isDefined) {
       this.id = id.get
@@ -95,7 +132,10 @@ case class FHIRRequest(
     this
   }
 
-  //Set FHIR response to this request
+  /**
+   * Set FHIR response to this request
+   * @param resp FHIR response
+   */
   def setResponse(resp:FHIRResponse): Unit ={
     response = Some(resp)
     responseTime = Some(Instant.now())

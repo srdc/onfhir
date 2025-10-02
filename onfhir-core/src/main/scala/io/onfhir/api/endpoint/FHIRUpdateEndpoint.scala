@@ -3,12 +3,12 @@ package io.onfhir.api.endpoint
 import akka.http.scaladsl.model.headers.`If-Match`
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.{Directives, Route}
-import io.onfhir.api.{FHIR_HTTP_OPTIONS, RESOURCE_TYPE_REGEX, RESOURCE_ID_REGEX, Resource}
+import io.onfhir.api.{FHIR_HTTP_OPTIONS, RESOURCE_ID_REGEX, RESOURCE_TYPE_REGEX, Resource}
 import io.onfhir.api.model.FHIRRequest
 import io.onfhir.api.model.FHIRMarshallers._
-import io.onfhir.api.service.FHIRUpdateService
+import io.onfhir.api.service.{FHIRUpdateService, TargetResourceResolver}
 import io.onfhir.authz.{AuthContext, AuthzContext}
-import io.onfhir.config.FhirConfigurationManager.authzManager
+import io.onfhir.config.FhirConfigurationManager.{authzManager, targetResourceResolver}
 
 
 trait FHIRUpdateEndpoint {
@@ -31,11 +31,14 @@ trait FHIRUpdateEndpoint {
               entity(as[Resource]) { resource =>
                 //Put the content into the FHIR Request
                 fhirRequest.resource = Some(resource)
-                //Check authorization
-                authzManager.authorize(authContext._2, fhirRequest) {
-                  //Complete the request
-                  complete {
+                //Try to resolve target FHIR resource and set it to FHIR request
+                targetResourceResolver.resolveTargetResource(fhirRequest) {
+                  //Check authorization
+                  authzManager.authorize(authContext._2, fhirRequest) {
+                    //Complete the request
+                    complete {
                       new FHIRUpdateService().executeInteraction(fhirRequest)
+                    }
                   }
                 }
               }

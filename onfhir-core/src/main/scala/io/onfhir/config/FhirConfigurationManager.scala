@@ -3,6 +3,7 @@ package io.onfhir.config
 import io.onfhir.Onfhir
 import io.onfhir.api.DEFAULT_IMPLEMENTED_FHIR_OPERATIONS
 import io.onfhir.api.parsers.{FHIRResultParameterResolver, FHIRSearchParameterValueParser}
+import io.onfhir.api.service.TargetResourceResolver
 import io.onfhir.api.util.FHIRServerUtil
 import io.onfhir.api.validation.{FHIRResourceValidator, IFhirResourceValidator, IFhirTerminologyValidator}
 import io.onfhir.audit.IFhirAuditCreator
@@ -33,6 +34,7 @@ object FhirConfigurationManager extends IFhirConfigurationManager {
   var fhirAuditCreator: IFhirAuditCreator = _
   //Authorization manager
   var authzManager:AuthzManager = _
+  var targetResourceResolver:TargetResourceResolver = _
   //FHIR resource manager
   var resourceManager:ResourceManager = _
   //FHIR event manager
@@ -89,6 +91,7 @@ object FhirConfigurationManager extends IFhirConfigurationManager {
         }
 
     authzManager = new AuthzManager(this)
+    targetResourceResolver = new TargetResourceResolver(this)
     eventManager = new FhirEventBus(fhirConfig)
     resourceManager = new ResourceManager(fhirConfig,eventManager)
     //If it is the first setup or update of the platform (definition of new profile, etc), apply the setups
