@@ -2,22 +2,20 @@ package io.onfhir.authz
 
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directive0
-import akka.http.scaladsl.server.directives.FutureDirectives.onComplete
 import akka.http.scaladsl.server.directives.{BasicDirectives, RouteDirectives}
 import io.onfhir.Onfhir
 import io.onfhir.api.model.{FHIRRequest, FHIRResponse, Parameter}
-import io.onfhir.api.util.{FHIRServerUtil, FHIRUtil, ResourceChecker}
-import io.onfhir.api.{FHIR_INTERACTIONS, FHIR_OPERATIONS, FHIR_PARAMETER_CATEGORIES, FHIR_PARAMETER_TYPES}
+import io.onfhir.api.util.{FHIRUtil, ResourceChecker}
+import io.onfhir.api.{FHIR_HTTP_OPTIONS, FHIR_INTERACTIONS, FHIR_OPERATIONS, FHIR_PARAMETER_CATEGORIES, FHIR_PARAMETER_TYPES}
 import io.onfhir.config.{IFhirConfigurationManager, OnfhirConfig}
-import io.onfhir.db.ResourceManager
 import io.onfhir.exception.{AuthorizationFailedException, AuthorizationFailedRejection}
 import io.onfhir.path.FhirPathEvaluator
 import org.json4s.{JArray, JNull, JObject, JString}
 import org.json4s.JsonAST.JValue
 import org.slf4j.{Logger, LoggerFactory}
 
-import scala.concurrent.{ExecutionContextExecutor, Future}
-import scala.util.{Success, Try}
+import scala.concurrent.ExecutionContextExecutor
+import scala.util.Try
 
 /**
   * Created by tuncay on 19/12/2018.
@@ -193,7 +191,9 @@ class AuthzManager(fhirConfigurationManager: IFhirConfigurationManager) {
         case op if op.startsWith("$") =>
           authzConstraints
             .contentConstraints
-            .forall(fhirPathConstraint => fhirPathEvaluator.satisfies(fhirPathConstraint, fhirRequest.resource.get))
+            .forall(fhirPathConstraint =>
+              fhirPathEvaluator.satisfies(fhirPathConstraint, fhirRequest.resource.get)
+            )
 
         //For all other resources including the operations we don't care (For operations, detailed authorization should be done on content within the implementations)
         case _ => true
@@ -242,7 +242,7 @@ class AuthzManager(fhirConfigurationManager: IFhirConfigurationManager) {
 
   /**
    * Handle authorization enforcement for search and searh like FHIR interactions
-   * @param fhiRequest          FHIR request details
+   * @param fhirRequest          FHIR request details
    * @param authzConstraints    Authorization constraints
    * @return
    */
@@ -259,6 +259,12 @@ class AuthzManager(fhirConfigurationManager: IFhirConfigurationManager) {
       case Nil => true
       //If the request is compartment search, and the compartment constraint is not satisfied just return false
       case Seq(constraint) if fhirRequest.compartmentType.nonEmpty && constraint.exists(_.paramCategory == FHIR_PARAMETER_CATEGORIES.COMPARTMENT) => false
+      //If the request is not a compartment search, and there is an uncovered compartment constraint and
+      // strict-compartment-authorization is set, we reject i.e enforcing user to search only for the specific entities
+      case Seq(constraint) if
+        OnfhirConfig.authzConfig.strictCompartmentAuthorizationEnforcement &&
+          constraint.exists(_.paramCategory == FHIR_PARAMETER_CATEGORIES.COMPARTMENT) => false
+      //Otherwise if there are other constraints, add them to query to filter the results further according to what user is authorized for
       case Seq(constraint) =>
         //Add the constraint to request to filter further and return authorized
         fhirRequest.addParsedQueryParams(constraint)
@@ -295,8 +301,7 @@ class AuthzManager(fhirConfigurationManager: IFhirConfigurationManager) {
           //e.g. restriction: Patient/123   query= ?catetory=...  --> false
           //e.g. restriction: Patient/123   query= ?patient=Patient/245  --> false
           //e.g. restriction: Patient/123   query= ?patient=Patient/123,Patient/245  --> false
-          request
-            .getParsedQueryParams()
+          getParsedQueryParams(request)
             .exists(sp =>
               sp.paramCategory == FHIR_PARAMETER_CATEGORIES.NORMAL &&
                 sp.paramType == FHIR_PARAMETER_TYPES.REFERENCE &&
@@ -311,8 +316,7 @@ class AuthzManager(fhirConfigurationManager: IFhirConfigurationManager) {
                     }
             )
       case FHIR_PARAMETER_CATEGORIES.NORMAL =>
-        request
-          .getParsedQueryParams()
+        getParsedQueryParams(request)
           .exists(sp =>
             //Either parameters are equal (same filtering)
             sp.equals(parameter) ||
@@ -322,6 +326,17 @@ class AuthzManager(fhirConfigurationManager: IFhirConfigurationManager) {
                   sp.valuePrefixList.nonEmpty && sp.valuePrefixList.toSet.subsetOf(parameter.valuePrefixList.toSet))
           )
     }
+  }
+
+  /**
+   * Parse the query params and return
+   * @param fhirRequest FHIR request
+   * @return
+   */
+  private def getParsedQueryParams(fhirRequest:FHIRRequest):List[Parameter] = {
+    fhirConfigurationManager
+      .fhirSearchParameterValueParser
+      .parseSearchParameters(fhirRequest.resourceType.get, fhirRequest.queryParams, Some(FHIR_HTTP_OPTIONS.FHIR_SEARCH_LENIENT)) //Lenient parsing as validation/parsing will be done later again
   }
 
   /**

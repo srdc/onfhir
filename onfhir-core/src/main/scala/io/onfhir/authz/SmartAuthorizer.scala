@@ -9,10 +9,9 @@ import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.authz.SmartAuthorizer._
 import io.onfhir.config.IFhirConfigurationManager
-import io.onfhir.exception.{InitializationException, InvalidParameterException}
+import io.onfhir.exception.InitializationException
 import org.slf4j.LoggerFactory
 
-import scala.collection.immutable.Seq
 import scala.jdk.CollectionConverters.IterableHasAsScala
 import scala.util.{Failure, Success, Try}
 
@@ -313,6 +312,11 @@ class SmartAuthorizer(smartAuthzConfig:Option[Config], fhirConfigurationManager:
 
   /**
     * Resolve the target main (patient | user | system) and supportive (conf | sens) Smart scopes related with the requested resourceType
+    *
+    * Scopes are resolved against the given resource type in order of patient, user and system
+    * e.g. if patient has scope patient/Observation.* then we get that for effective scope although there may be other user or system scopes related with Observation
+    *
+    *
     * @param scopes           All scopes from the authorization context
     * @param resourceType     FHIR resource type interaction is on
     * @param fhirInteraction  FHIR interaction (create | upated | ...) See [[FHIR_INTERACTIONS]]

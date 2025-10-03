@@ -99,6 +99,10 @@ class AuthzConfig(authzConfig:Config) {
       .asScala
       .map(e => e.getKey -> e.getValue.unwrapped().toString)
       .toMap
+
+  // Whether we apply strict compartment authorization
+  lazy val strictCompartmentAuthorizationEnforcement:Boolean = Try(authzConfig.getBoolean("enforcement.strict-compartment-authorization")).toOption.getOrElse(true)
+
   /**
     * Resulting Runtime configurations
     */
