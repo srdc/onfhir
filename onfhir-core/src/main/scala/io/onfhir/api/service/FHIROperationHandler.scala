@@ -448,9 +448,10 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
                       case None => validateAndGetParamFromBody(operationConf, paramDef, fhirRequest.resource)
                       //If parameter is given in the URL
                       case Some(values) => validateAndGetParamFromURL(operationConf, paramDef, values)
-                    }) map { valuesOrIssues:Either[Seq[FHIROperationParam], Seq[OutcomeIssue]] =>
-                    paramDef.name -> valuesOrIssues
-                  }
+                    })
+                    .map { valuesOrIssues:Either[Seq[FHIROperationParam], Seq[OutcomeIssue]] =>
+                      paramDef.name -> valuesOrIssues
+                    }
                 })
               )
 

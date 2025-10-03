@@ -175,10 +175,13 @@ class AuthzManager(fhirConfigurationManager: IFhirConfigurationManager) {
     fhirRequest.interaction match {
         //If we have the resource content for the interaction, we check it if it is OK with resource restrictions
         case FHIR_INTERACTIONS.CREATE | FHIR_INTERACTIONS.UPDATE =>
-          authzConstraints
-            .filters
-            .exists(query =>
-              resourceChecker.checkIfResourceSatisfies(fhirRequest.resourceType.get, query, fhirRequest.resource.get)
+          (
+            authzConstraints.filters.isEmpty ||
+            authzConstraints
+              .filters
+              .exists(query =>
+                resourceChecker.checkIfResourceSatisfies(fhirRequest.resourceType.get, query, fhirRequest.resource.get)
+              )
             ) && //And all constraints should be satisfied
               authzConstraints
                 .contentConstraints
@@ -186,6 +189,12 @@ class AuthzManager(fhirConfigurationManager: IFhirConfigurationManager) {
 
         //TODO Check patch items if the given values satisfies resource restrictions
         case  FHIR_INTERACTIONS.PATCH => true
+        //For operations, there may be extra content constraints
+        case op if op.startsWith("$") =>
+          authzConstraints
+            .contentConstraints
+            .forall(fhirPathConstraint => fhirPathEvaluator.satisfies(fhirPathConstraint, fhirRequest.resource.get))
+
         //For all other resources including the operations we don't care (For operations, detailed authorization should be done on content within the implementations)
         case _ => true
     }
