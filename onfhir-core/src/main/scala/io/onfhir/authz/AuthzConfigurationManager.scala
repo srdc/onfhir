@@ -157,7 +157,7 @@ object AuthzConfigurationManager {
       logger.info("Configured for the authorization server...")
       }catch{
         case e:Exception =>
-          logger.error("Error while configuring for authorization server!")
+          logger.error("Error while configuring for authorization server!", e)
           throw new InitializationException(e.getMessage)
       }
   }
