@@ -914,19 +914,6 @@ object FHIRUtil {
   }
 
   /**
-   * Load class if possible
-   *
-   * @param classPath Class path
-   * @return
-   */
-  def loadFhirOperationClass(classPath: String): Option[Class[_]] = {
-    Try(this.getClass.getClassLoader.loadClass(classPath)) match {
-      case Success(opClass) => Some(opClass)
-      case Failure(e) => Try(ClassLoader.getSystemClassLoader.loadClass(classPath)).toOption
-    }
-  }
-
-  /**
    * Calculate the delta for precision issues in FHIR search for numbers
    *
    * @param value

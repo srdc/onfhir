@@ -6,6 +6,8 @@ import io.onfhir.config.IFhirConfigurationManager
 import io.onfhir.exception.InternalServerException
 import org.slf4j.LoggerFactory
 
+import scala.util.{Failure, Success, Try}
+
 /**
  * Default operation handler factory that loads operation implementations from their class paths
  * @param fhirConfigurationManager  FHIR configuration manager
@@ -45,7 +47,7 @@ class FhirOperationHandlerFactory(fhirOperations:Map[String, String]) extends IF
    */
   private def getOperationServiceImpl(classPath:String)(implicit fhirConfigurationManager: IFhirConfigurationManager): FHIROperationHandlerService = {
     val serviceImpl =
-      FHIRUtil.loadFhirOperationClass(classPath)
+      loadFhirOperationClass(classPath)
         .map(opClass => opClass.getConstructor(classOf[IFhirConfigurationManager]).newInstance(fhirConfigurationManager).asInstanceOf[FHIROperationHandlerService])
 
     if (serviceImpl.isDefined)
@@ -53,6 +55,19 @@ class FhirOperationHandlerFactory(fhirOperations:Map[String, String]) extends IF
     else {
       logger.error(s"Operation service not available from class path ${classPath} or it is not implementing the FHIROperationService interface !!!")
       throw new InternalServerException("Operation service not available!!!")
+    }
+  }
+
+  /**
+   * Load class if possible
+   *
+   * @param classPath Class path
+   * @return
+   */
+  private def loadFhirOperationClass(classPath: String): Option[Class[_]] = {
+    Try(this.getClass.getClassLoader.loadClass(classPath)) match {
+      case Success(opClass) => Some(opClass)
+      case Failure(e) => Try(ClassLoader.getSystemClassLoader.loadClass(classPath)).toOption
     }
   }
 

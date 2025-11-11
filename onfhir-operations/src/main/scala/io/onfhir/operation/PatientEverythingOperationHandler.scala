@@ -22,11 +22,11 @@ class PatientEverythingOperationHandler (fhirConfigurationManager:IFhirConfigura
   /**
    * Allowed/configured resource types to return in everything operation
    */
-  private val allowedResourceTypes =
+  private val allowedResourceTypes: Set[String] =
     fhirConfigurationManager.fhirConfig
-      .compartmentRelations("Patient").keySet
-      .diff(PatientEverythingOperationHandler.EXCLUDED_RESOURCES)
-      .intersect(fhirConfigurationManager.fhirConfig.resourceConfigurations.keySet) //Only supported resource types
+      .compartmentRelations.get("Patient")
+      .map(_.keySet.diff(PatientEverythingOperationHandler.EXCLUDED_RESOURCES).intersect(fhirConfigurationManager.fhirConfig.resourceConfigurations.keySet)) //Only supported resource types
+      .getOrElse(Set.empty)
 
   /**
    * Handles the everything operation

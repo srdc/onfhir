@@ -1,5 +1,6 @@
 package io.onfhir.config
 
+import akka.http.scaladsl.model.MediaType
 import io.onfhir.api.FHIR_FOUNDATION_RESOURCES._
 import io.onfhir.api._
 import io.onfhir.api.util.FHIRUtil
@@ -171,6 +172,22 @@ abstract class BaseFhirServerConfigurator extends BaseFhirConfigurator with IFhi
     fhirConfig.FHIR_XML_MEDIA_TYPES = if(conformance.formats.intersect(FHIR_FORMATS.XML).nonEmpty) FHIR_XML_MEDIA_TYPES(majorFhirVersion) else Nil
 
     fhirConfig.FHIR_FORMAT_MIME_TYPE_MAP = FHIR_FORMAT_MIME_TYPE_MAP
+    //Set allowed media types for FHIR Binary resources
+    fhirConfig.FHIR_ALLOWED_BINARY_TYPES =
+      if(fhirConfig.resourceConfigurations.contains("Binary"))
+        OnfhirConfig
+          .fhirBinaryAllowedMimeTypes
+          .map(mimeType =>
+            MediaType.parse(mimeType).map {
+              case binary if binary.binary => binary.asInstanceOf[MediaType.Binary]
+              case _ => throw new InitializationException(s"The mime-type $mimeType given for allowed mime types for FHIR Binary resources is not a valid binary type!")
+            }
+            .getOrElse(
+              throw new InitializationException(s"The mime-type $mimeType given for allowed mime types for FHIR Binary resources is not valid!")
+            )
+          )
+      else
+        Nil
 
     //Check patch formats
     val unsupportedPatchFormats = conformance.patchFormats.diff(FHIR_FORMATS.JSON_PATCH ++ FHIR_FORMATS.JSON ++ FHIR_FORMATS.XML)

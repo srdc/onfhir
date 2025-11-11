@@ -5,12 +5,14 @@ import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{ETag, EntityTag, Location, `Last-Modified`}
 import akka.http.scaladsl.unmarshalling.Unmarshaller
 import io.onfhir.api.Resource
+import io.onfhir.api.util.FHIRUtil
 import io.onfhir.config.FhirConfigurationManager
 import io.onfhir.config.FhirConfigurationManager.fhirConfig
 import io.onfhir.util.JsonFormatter._
 import org.apache.commons.text.StringEscapeUtils
 import org.json4s.JsonAST.JObject
 
+import java.util.Base64
 import scala.collection.immutable.StringOps
 
 /**
@@ -60,14 +62,23 @@ object FHIRMarshallers {
     */
   implicit val FHIRResponseMarshaller:ToResponseMarshaller[FHIRResponse] =
     Marshaller.oneOf(
-      fhirConfig.FHIR_SUPPORTED_RESULT_CONTENT_TYPES.map(ctype => ctype.mediaType match {
-        case jsontype if fhirConfig.FHIR_JSON_MEDIA_TYPES.contains(jsontype) =>
-          Marshaller.withFixedContentType[FHIRResponse, HttpResponse](ctype)(jsonResponseMarshaller(ctype))
-        case xmltype if  fhirConfig.FHIR_XML_MEDIA_TYPES.contains(xmltype) =>
-          Marshaller.withFixedContentType[FHIRResponse, HttpResponse](ctype)(xmlResponseMarshaller(ctype))
-        case htmltype  =>
-          Marshaller.withFixedContentType[FHIRResponse, HttpResponse](ctype)(htmlResponseMarshaller(ContentTypes.`text/html(UTF-8)`))
-      }):_*)
+      fhirConfig
+        .FHIR_SUPPORTED_RESULT_CONTENT_TYPES
+        .map(ctype => ctype.mediaType match {
+          case jsontype if fhirConfig.FHIR_JSON_MEDIA_TYPES.contains(jsontype) =>
+            Marshaller.withFixedContentType[FHIRResponse, HttpResponse](ctype)(jsonResponseMarshaller(ctype))
+          case xmltype if  fhirConfig.FHIR_XML_MEDIA_TYPES.contains(xmltype) =>
+            Marshaller.withFixedContentType[FHIRResponse, HttpResponse](ctype)(xmlResponseMarshaller(ctype))
+          case htmltype  =>
+            Marshaller.withFixedContentType[FHIRResponse, HttpResponse](ctype)(htmlResponseMarshaller(ContentTypes.`text/html(UTF-8)`))
+        }) ++
+        fhirConfig
+          .FHIR_ALLOWED_BINARY_TYPES
+          .map(mt => ContentType.apply(mt))
+          .map(ctype =>
+            Marshaller.withFixedContentType[FHIRResponse, HttpResponse](ctype)(fhirBinaryResponseMarshaller(ctype))
+          )
+        :_*)
 
   /**
     * FHIRResponse to HttpResponse with JSON body marshaller
@@ -108,6 +119,16 @@ object FHIRMarshallers {
     getResponseBody(fhirResponse) match {
       case Some(body) => httpResponse.withEntity(HttpEntity(contentType, prepareHtml(body))) //add the body
       case None => httpResponse.withEntity(HttpEntity.empty(contentType))
+    }
+  }
+
+  private def fhirBinaryResponseMarshaller(contentType: ContentType.Binary)(fhirResponse:FHIRResponse):HttpResponse = {
+    val httpResponse = buildHttpResponseWithoutEntity(fhirResponse) //Build basics of the response
+    getResponseBody(fhirResponse) match {
+      case Some(body) if FHIRUtil.extractResourceType(body) == "Binary" =>
+        val base64Binarydata = Base64.getDecoder.decode(FHIRUtil.extractValue[String](body, "data"))
+        httpResponse.withEntity(HttpEntity.apply(contentType, base64Binarydata)) //add the body
+      case _ => httpResponse.withEntity(HttpEntity.empty(contentType))
     }
   }
 

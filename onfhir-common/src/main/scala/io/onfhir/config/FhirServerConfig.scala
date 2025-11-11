@@ -58,6 +58,9 @@ class FhirServerConfig(version:String) extends BaseFhirConfig(version) {
   var FHIR_FORMAT_MIME_TYPE_MAP:Map[String, MediaType] = _
   //Default media type used when no match
   var FHIR_DEFAULT_MEDIA_TYPE:MediaType = _
+  //Allowed media types for FHIR Binary resources if supported
+  var FHIR_ALLOWED_BINARY_TYPES:Seq[MediaType.Binary] = _
+
   //Code system to indicate a search result is summarized
   var FHIR_SUMMARIZATION_INDICATOR_CODE_SYSTEM = "http://terminology.hl7.org/CodeSystem/v3-ObservationValue" //"http://hl7.org/fhir/v3/ObservationValue"
 
@@ -77,7 +80,6 @@ class FhirServerConfig(version:String) extends BaseFhirConfig(version) {
     case MediaTypes.`text/html` => Some(ContentTypes.`text/html(UTF-8)`)
     case oth => Some(ContentType.apply(oth, () => HttpCharsets.`UTF-8`))
   }
-
 
   /**
    * Check if the profile is supported

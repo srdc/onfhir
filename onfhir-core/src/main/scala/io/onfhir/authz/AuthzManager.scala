@@ -217,7 +217,7 @@ class AuthzManager(fhirConfigurationManager: IFhirConfigurationManager) {
     // or instance level operation
     if (fhirRequest.resourceId.isDefined) {
       fhirRequest
-        .getResolvedTargetResource  //If the target resource is resolved, check the constraints
+        .getResolvedSecurityContext  //If the target resource is resolved, check the constraints
         .forall(targetResource =>
           authzConstraints
             .filters

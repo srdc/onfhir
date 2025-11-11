@@ -32,7 +32,7 @@ object FHIRRequestMarshaller {
    * @return
    */
   private def getFhirRequestMarshaller(fhirRequest: FHIRRequest, fhirServerBaseUrl: Uri): ToRequestMarshaller[FHIRRequest] = {
-    val contentType = fhirRequest.contentType.getOrElse(FHIR_CONTENT_TYPES.FHIR_JSON_CONTENT_TYPE)
+    val contentType = fhirRequest.contentType.map(_.asInstanceOf[ContentType.WithCharset]).getOrElse(FHIR_CONTENT_TYPES.FHIR_JSON_CONTENT_TYPE)
     Marshaller.withFixedContentType[FHIRRequest, HttpRequest](contentType)(requestMarshaller(contentType, fhirServerBaseUrl))
   }
 

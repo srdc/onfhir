@@ -6,6 +6,7 @@ import akka.http.scaladsl.server.directives.FutureDirectives.onComplete
 import io.onfhir.Onfhir
 import io.onfhir.api.{FHIR_INTERACTIONS, Resource}
 import io.onfhir.api.model.FHIRRequest
+import io.onfhir.api.util.FHIRUtil
 import io.onfhir.exception.TransientRejection
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -45,8 +46,8 @@ class TargetResourceResolver(fhirConfigurationManager: IFhirConfigurationManager
     else {
       onComplete(resolveTargetResourceOrVersion(fhirRequest)).flatMap {
         //If it is resolved, set it to request
-        case Success(Some(resource)) =>
-          fhirRequest.setResolvedTargetResource(resource)
+        case Success(Some(resource -> sc)) =>
+          fhirRequest.setResolvedTargetResource(resource, sc)
           BasicDirectives.pass
         //If the mentioned resource is not resolved, ignore it
         case Success(None) => BasicDirectives.pass
@@ -71,7 +72,7 @@ class TargetResourceResolver(fhirConfigurationManager: IFhirConfigurationManager
       Future.apply(())
     else {
       resolveTargetResourceOrVersion(fhirRequest)
-        .map(rOpt => rOpt.foreach(r => fhirRequest.setResolvedTargetResource(r)))
+        .map(rOpt => rOpt.foreach(r => fhirRequest.setResolvedTargetResource(r._1, r._2)))
     }
   }
 
@@ -90,7 +91,7 @@ class TargetResourceResolver(fhirConfigurationManager: IFhirConfigurationManager
             .recover(_ => None) //do not throw any exception
             .map(resolved => {
               resolved
-                .foreach(r => cr.setResolvedTargetResource(r))
+                .foreach(r => cr.setResolvedTargetResource(r._1, r._2))
               cr
             })
         else
@@ -104,11 +105,28 @@ class TargetResourceResolver(fhirConfigurationManager: IFhirConfigurationManager
    * @param fhirRequest FHIR request
    * @return
    */
-  private def resolveTargetResourceOrVersion(fhirRequest:FHIRRequest):Future[Option[Resource]] = {
-      fhirRequest.versionId match {
-        case None => fhirConfigurationManager.resourceManager.getResource(fhirRequest.resourceType.get, fhirRequest.resourceId.get)
-        case Some(v) =>
-          fhirConfigurationManager.resourceManager.getResource(fhirRequest.resourceType.get, fhirRequest.resourceId.get, Some(v))
+  private def resolveTargetResourceOrVersion(fhirRequest:FHIRRequest):Future[Option[(Resource, Option[Resource])]] = {
+    (fhirRequest.versionId match {
+      case None => fhirConfigurationManager.resourceManager.getResource(fhirRequest.resourceType.get, fhirRequest.resourceId.get)
+      case Some(v) => fhirConfigurationManager.resourceManager.getResource(fhirRequest.resourceType.get, fhirRequest.resourceId.get, Some(v))
+    })
+      .flatMap {
+        case Some(resolvedResource) =>
+          fhirRequest.resourceType.get match {
+            //For Binary resources we get security context from content
+            case "Binary" =>
+              FHIRUtil
+                .extractValueOption[String](resolvedResource, "securityContext.reference")
+                .map(rf => FHIRUtil.parseReferenceValue(rf))
+                .map {
+                  case (_, sctype, scid, v) => fhirConfigurationManager.resourceManager.getResource(sctype, scid, v)
+                }
+                .getOrElse(Future.apply(None))
+                .map(securityContext => Some(resolvedResource -> securityContext))
+            case _ =>
+              Future.apply(Some(resolvedResource -> None))
+          }
+        case _ =>   Future.apply(None)
       }
   }
 }

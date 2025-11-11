@@ -106,5 +106,9 @@
             <groupId>io.onfhir</groupId>
             <artifactId>onfhir-validation_${scala.binary.version}</artifactId>
         </dependency>
+        <dependency>
+            <groupId>io.onfhir</groupId>
+            <artifactId>onfhir-operations_${scala.binary.version}</artifactId>
+        </dependency>
     </dependencies>
 </project>

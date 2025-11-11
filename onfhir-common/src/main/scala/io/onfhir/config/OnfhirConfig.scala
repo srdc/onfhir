@@ -5,7 +5,6 @@ import com.typesafe.config.{Config, ConfigFactory}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.api.{DEFAULT_FHIR_VERSION, FHIR_HTTP_OPTIONS, FHIR_VALIDATION_ALTERNATIVES}
 
-import java.time.temporal.ChronoUnit
 import java.util.concurrent.TimeUnit
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.DurationConverters._
@@ -80,6 +79,9 @@ object OnfhirConfig {
 
   /** Default value for [CapabilityStatement|Conformance].rest.resource.conditionalDelete when not present */
   lazy val fhirDefaultConditionalDelete:String = Try(config.getString("fhir.default.conditional-delete")).getOrElse("not-supported")
+
+  /** Allowed mime-types for FHIR Binary resources */
+  lazy val fhirBinaryAllowedMimeTypes:Seq[String] = Try(config.getStringList("fhir.binary.allowed-mime-types").asScala.toSeq).toOption.getOrElse(Nil)
 
   /** Whether to start an embedded MongoDB instance */
   lazy val mongoEmbedded: Boolean = Try(config.getBoolean("mongodb.embedded")).getOrElse(false)

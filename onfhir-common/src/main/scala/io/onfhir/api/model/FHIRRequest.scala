@@ -50,7 +50,7 @@ case class FHIRRequest(
                         var xForwardedHost:Option[`X-Forwarded-Host`] = None,
                         var xIntermediary:Option[String] = None,
                         //Other contextual params
-                        var contentType: Option[ContentType.WithCharset] = None,
+                        var contentType: Option[ContentType] = None,
                         var isIdGenerated:Boolean = true, //If we generate the id of request or is it come from the Bundle request
                         var requestTime:Instant = Instant.now(), //Time when request is constructed
                         var response:Option[FHIRResponse] = None, // FHIR response to the request
@@ -64,18 +64,26 @@ case class FHIRRequest(
   //For all instance level interactions, the resolved FHIR resource in the execution logic
   //e.g. for FHIR update, the previous resource content
   private var resolvedTargetResource:Option[Resource] = None
-
+  //For resource types like Binary, this provides the resource that is resolved from securityContext to be used in authorization decisions e.g. Binary.securityContext
+  private var resolvedSecurityContext:Option[Resource] = None
   /**
    * Return the target resolved resource
    * @return
    */
   def getResolvedTargetResource:Option[Resource] = resolvedTargetResource
+
+  /**
+   * Return the resource to be used as security context for authorization
+   * @return
+   */
+  def getResolvedSecurityContext:Option[Resource] = resolvedSecurityContext.orElse(resolvedTargetResource)
   /**
    * Set target resolved resource //e.g. for FHIR update, the previous resource content
    * @param resource Target resolved resource
    */
-  def setResolvedTargetResource(resource:Resource):Unit = {
+  def setResolvedTargetResource(resource:Resource, securityContext:Option[Resource]):Unit = {
     resolvedTargetResource = Some(resource)
+    resolvedSecurityContext = securityContext
   }
 
   /**

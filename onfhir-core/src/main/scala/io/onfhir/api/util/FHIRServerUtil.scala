@@ -1,7 +1,11 @@
 package io.onfhir.api.util
 
+
 import akka.http.scaladsl.model.headers.{EntityTag, `Content-Type`}
-import akka.http.scaladsl.model.{MediaRange, MediaTypes}
+import akka.http.scaladsl.model.{HttpMethod, HttpMethods, MediaRange, MediaTypes, Uri}
+import akka.http.scaladsl.server.PathMatcher.Matched
+import akka.http.scaladsl.server.{PathMatcher, PathMatcher0, PathMatcher1, PathMatchers}
+import akka.http.scaladsl.server.PathMatchers.Segment
 import io.onfhir.api.model.{FHIRSearchResult, Parameter}
 import io.onfhir.api.parsers.FHIRResultParameterResolver
 import io.onfhir.api.util.FHIRUtil.resourceLocation
@@ -377,7 +381,7 @@ class FHIRServerUtil(fhirConfig:FhirServerConfig) {
    * @param mediaRanges Media ranges stated by client in Accept Header
    * @return
    */
-  def resolveResponseMediaRange(_format: Option[String], contentType: Option[`Content-Type`], mediaRanges: Seq[MediaRange]): Option[MediaRange] = {
+  def resolveResponseMediaRange(requestUri:Uri, _format: Option[String], contentType: Option[`Content-Type`], mediaRanges: Seq[MediaRange]): Option[MediaRange] = {
     // The URI processing replace + with empty space for formats like application/xml+fhir, so we replace it back
     val pFormat = _format.map(_.replace(" ", "+"))
     // When the client accept anything, remove it to override by format
@@ -405,10 +409,29 @@ class FHIRServerUtil(fhirConfig:FhirServerConfig) {
               case mr if mr.mainType().equals("*") => MediaRange.apply(fhirConfig.FHIR_DEFAULT_MEDIA_TYPE)
               case other => other
             }
+            .orElse(
+              //If this is a binary
+              if(isBinaryReadOrVRead(requestUri))
+                mediaRanges.find(mediaRange => fhirConfig.FHIR_ALLOWED_BINARY_TYPES.exists(supportedMediaType => mediaRange.matches(supportedMediaType)))
+              else
+                None
+            )
           /*fhirConfigurator.FHIR_SUPPORTED_RESULT_MEDIA_TYPES
             .find(mediaType => filteredRanges.map(mediaRange => mediaRange.matches(mediaType)).fold(false)(_ | _))*/
         }
     }
+  }
+
+  private def isBinaryReadOrVRead(requestUri:Uri):Boolean = {
+    val isMatching =
+      requestUri
+      .path.toString().replace("/"+OnfhirConfig.baseUri + "/", "")
+      .split('/') match {
+        case  Array("Binary", _) => true
+        case Array("Binary", _, "_history", _) => true
+        case _ => false
+      }
+    isMatching
   }
 
 }
