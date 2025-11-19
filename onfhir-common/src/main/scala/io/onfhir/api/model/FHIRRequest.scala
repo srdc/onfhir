@@ -6,6 +6,7 @@ import akka.http.scaladsl.model.headers.{`If-Match`, `If-Modified-Since`, `If-No
 import io.onfhir.api.Resource
 import io.onfhir.api._
 import io.onfhir.api.parsers.BundleRequestParser
+import io.onfhir.api.util.FHIRUtil
 import io.onfhir.util.JsonFormatter
 import io.onfhir.util.JsonFormatter.formats
 

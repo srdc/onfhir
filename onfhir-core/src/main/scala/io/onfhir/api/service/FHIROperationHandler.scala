@@ -484,7 +484,7 @@ class FHIROperationHandler(transactionSession: Option[TransactionSession] = None
               new FHIROperationRequest(
                 operationParams = parameterValues.flatMap(p => p._2.map(pv => p._1 -> pv)),
                 queryParams = parsedQueryParams,
-                targetResource = fhirRequest.getResolvedTargetResource,
+                targetResource = fhirRequest.getResolvedTargetResource.map(FHIRUtil.clearExtraFields),
                 authzContext = authzContext
               )
             //Execute the operation
