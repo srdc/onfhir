@@ -592,10 +592,15 @@ object FHIRUtil {
     value match {
       case obj: JObject =>
         FHIRUtil.extractValueOption[String](obj, FHIR_COMMON_FIELDS.REFERENCE) match {
+          //Internal reference (contained resources) e.g. #p1
           case Some(fhirReferenceUrl) if fhirReferenceUrl.startsWith("#") => FhirInternalReference(fhirReferenceUrl.drop(1))
-          case Some(fhirReferenceUrl) if !fhirReferenceUrl.startsWith("#") =>
+          //Reference with UUID within transaction bundles
+          case Some(fhirReferenceUrl) if fhirReferenceUrl.startsWith("urn:uuid:") => FhirUUIDReference(fhirReferenceUrl)
+          //Normal FHIR literal reference e.g. Patient/13515315
+          case Some(fhirReferenceUrl) =>
             val r = parseReferenceValue(fhirReferenceUrl)
             FhirLiteralReference(r._1, r._2, r._3, r._4)
+          //Possibly logical reference
           case None =>
             val referencedResourceType = FHIRUtil.extractValueOption[String](obj, FHIR_COMMON_FIELDS.TYPE)
             val refIdentifier = FHIRUtil.extractValueOption[JObject](obj, FHIR_COMMON_FIELDS.IDENTIFIER).get

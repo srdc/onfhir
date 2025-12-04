@@ -3,13 +3,14 @@ package io.onfhir.authz
 
 import akka.http.scaladsl.model.Uri
 import com.typesafe.config.Config
-import io.onfhir.api.{FHIR_INTERACTIONS, FHIR_PARAMETER_CATEGORIES, FHIR_PARAMETER_TYPES}
+import io.onfhir.api.{FHIR_INTERACTIONS, FHIR_PARAMETER_CATEGORIES, FHIR_PARAMETER_TYPES, Resource}
 import io.onfhir.api.model.{FHIRRequest, Parameter}
 import io.onfhir.api.parsers.FHIRSearchParameterValueParser
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.authz.SmartAuthorizer._
 import io.onfhir.config.IFhirConfigurationManager
 import io.onfhir.exception.InitializationException
+import org.json4s.{JObject, JString, JValue}
 import org.slf4j.LoggerFactory
 
 import scala.jdk.CollectionConverters.IterableHasAsScala
@@ -90,58 +91,89 @@ class SmartAuthorizer(smartAuthzConfig:Option[Config], fhirConfigurationManager:
       //If this is a system level FHIR interaction
       case None =>
         AuthzResult.undecided("Smart Authorization only authorizes FHIR type and instance interactions!")
+      //Binary resources are handled specially
+      case Some("Binary") if fhirRequest.getResolvedSecurityContext.isDefined =>
+        val rtype = FHIRUtil.extractResourceType(fhirRequest.getResolvedSecurityContext.get)
+        val fhirPathContext = AuthzManager.getFhirPathContext(fhirRequest, authzContext) - "request"
+        //Authorize for that resource type e.g. DocumentReference
+        authorizeForResourceType(rtype, fhirRequest.interaction, fhirRequest.resource, fhirPathContext, authzContext, scopes)
       //Type level interaction
       case Some(rtype) =>
-        // Get only the related scopes with the resource type
-        val relatedScopes: Seq[WGHeartScope] =
-          scopes
-            .filter(s => s.checkForResourceType(rtype))
-        //Resolve effective scopes for the given FHIR interaction and resource type (combining scopes if possible)
-        resolveEffectiveScopes(relatedScopes, rtype, fhirRequest.interaction) match {
-          //If there is no effective scopes
-          case (Nil, Nil) =>
-            AuthzResult.failureInsufficientScope(s"Not authorized for the FHIR interaction '${fhirRequest.interaction}' on resource type '${rtype}'!")
-          //If only main scopes
-          case (mainEffectiveScopes, Nil) =>
-            getConstraintsForMainScopes(rtype, mainEffectiveScopes, fhirRequest, authzContext)
-              .map(AuthzResult.filtering) //If there is any constraint, partial authorization
-              .getOrElse(AuthzResult.success()) //Otherwise success
-          //If only supportive scopes
-          case (Nil, supportiveScopes) =>
-            supportiveScopes
-              .flatMap(s => resolveRestrictionParamForConfSensTypeScope(s)) match {
-                case Nil => AuthzResult.success()
-                case oth => AuthzResult.filtering(AuthzConstraints(Seq(oth.toList)))
-              }
-          //If both exists
-          case (mainEffectiveScopes, supportiveScopes) =>
-            val extraParams = supportiveScopes.flatMap(s => resolveRestrictionParamForConfSensTypeScope(s))
-            getConstraintsForMainScopes(rtype, mainEffectiveScopes, fhirRequest, authzContext)
-              .map(ac =>
-                AuthzResult.filtering(ac.copy(filters = ac.filters.map(query => query ++ extraParams)))
-              )
-              .getOrElse(
-                extraParams match {
-                  case Nil => AuthzResult.success()
-                  case oth => AuthzResult.filtering(AuthzConstraints(Seq(oth.toList)))
-                }
-              )
-        }
+        val fhirPathContext = AuthzManager.getFhirPathContext(fhirRequest, authzContext)
+        authorizeForResourceType(rtype, fhirRequest.interaction, fhirRequest.resource, fhirPathContext, authzContext, scopes)
     }
   }
 
   /**
+   *
+   * @param rtype
+   * @param interaction
+   * @param resourceContent
+   * @param fhirPathContext
+   * @param authzContext
+   * @param scopes
+   */
+  protected def authorizeForResourceType(rtype:String,
+                                         interaction:String,
+                                         resourceContent:Option[Resource],
+                                         fhirPathContext:Map[String, JValue],
+                                         authzContext: AuthzContext,
+                                         scopes:Seq[WGHeartScope]):AuthzResult = {
+    // Get only the related scopes with the resource type
+    val relatedScopes: Seq[WGHeartScope] =
+      scopes
+        .filter(s => s.checkForResourceType(rtype))
+    //Resolve effective scopes for the given FHIR interaction and resource type (combining scopes if possible)
+    resolveEffectiveScopes(relatedScopes, rtype, interaction) match {
+      //If there is no effective scopes
+      case (Nil, Nil) =>
+        AuthzResult.failureInsufficientScope(s"Not authorized for the FHIR interaction '${interaction}' on resource type '${rtype}'!")
+      //If only main scopes
+      case (mainEffectiveScopes, Nil) =>
+        getConstraintsForMainScopes(rtype, interaction, resourceContent, fhirPathContext, mainEffectiveScopes, authzContext)
+          .map(AuthzResult.filtering) //If there is any constraint, partial authorization
+          .getOrElse(AuthzResult.success()) //Otherwise success
+      //If only supportive scopes
+      case (Nil, supportiveScopes) =>
+        supportiveScopes
+          .flatMap(s => resolveRestrictionParamForConfSensTypeScope(s)) match {
+          case Nil => AuthzResult.success()
+          case oth => AuthzResult.filtering(AuthzConstraints(Seq(oth.toList)))
+        }
+      //If both exists
+      case (mainEffectiveScopes, supportiveScopes) =>
+        val extraParams = supportiveScopes.flatMap(s => resolveRestrictionParamForConfSensTypeScope(s))
+        getConstraintsForMainScopes(rtype, interaction, resourceContent, fhirPathContext, mainEffectiveScopes, authzContext)
+          .map(ac =>
+            AuthzResult.filtering(ac.copy(filters = ac.filters.map(query => query ++ extraParams)))
+          )
+          .getOrElse(
+            extraParams match {
+              case Nil => AuthzResult.success()
+              case oth => AuthzResult.filtering(AuthzConstraints(Seq(oth.toList)))
+            })
+
+    }
+  }
+
+
+  /**
    * Get further content constraints defined
-   * @param authzContext  Authorization context
-   * @param fhirRequest   FHIR request
+   * @param resourceType        Resource type that interaction is about e.g. Observation
+   * @param interaction         FHIR interaction e.g. read, create, update, etc
+   * @param resourceContent     The given resource content, or resolved
+   * @param context             Context parameters for request
    * @return
    */
-  private def getFurtherContentConstraints(authzContext: AuthzContext, fhirRequest:FHIRRequest):Seq[String] = {
-    if(fhirRequest.interaction == FHIR_INTERACTIONS.SEARCH)
+  private def getFurtherContentConstraints(resourceType:String,
+                                           interaction:String,
+                                           resourceContent:Option[Resource],
+                                           context:Map[String, JValue]
+                                          ):Seq[String] = {
+    if(interaction == FHIR_INTERACTIONS.SEARCH)
       Nil
     else {
-      val context = AuthzManager.getFhirPathContext(fhirRequest, authzContext)
-      val rules = getRelatedRules(fhirRequest.resourceType.get, fhirRequest.interaction, fhirRequest.resource, context)
+      val rules = getRelatedRules(resourceType, interaction, resourceContent, context)
       rules.flatMap(_.contentConstraint.getOrElse(Nil))
     }
   }
@@ -152,7 +184,12 @@ class SmartAuthorizer(smartAuthzConfig:Option[Config], fhirConfigurationManager:
    * @param authzContext    Authorization context resolved
    * @return
    */
-  private def getConstraintsForMainScopes(rtype:String, scopes:Seq[WGHeartScope], fhirRequest:FHIRRequest, authzContext: AuthzContext):Option[AuthzConstraints] = {
+  private def getConstraintsForMainScopes(rtype:String,
+                                          interaction:String,
+                                          resourceContent:Option[Resource],
+                                          fhirPathContext:Map[String, JValue],
+                                          scopes:Seq[WGHeartScope],
+                                          authzContext: AuthzContext):Option[AuthzConstraints] = {
     //As all the scopes are same type
     val filteringConstraints =
       scopes.head.ptype match {
@@ -163,7 +200,7 @@ class SmartAuthorizer(smartAuthzConfig:Option[Config], fhirConfigurationManager:
 
     //Get content constraints
     //e.g. for create or update --> check if Observation.practitioner is same with user
-    val contentConstraints = getFurtherContentConstraints(authzContext, fhirRequest)
+    val contentConstraints = getFurtherContentConstraints(rtype, interaction, resourceContent, fhirPathContext)
 
     if (filteringConstraints.isEmpty && contentConstraints.isEmpty)
       None

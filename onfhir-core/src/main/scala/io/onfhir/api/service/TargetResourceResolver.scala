@@ -5,13 +5,13 @@ import akka.http.scaladsl.server.directives.{BasicDirectives, RouteDirectives}
 import akka.http.scaladsl.server.directives.FutureDirectives.onComplete
 import io.onfhir.Onfhir
 import io.onfhir.api.{FHIR_INTERACTIONS, Resource}
-import io.onfhir.api.model.FHIRRequest
+import io.onfhir.api.model.{FHIRRequest, FhirLiteralReference, FhirUUIDReference}
 import io.onfhir.api.util.FHIRUtil
 import io.onfhir.exception.TransientRejection
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
-import scala.util.Success
+import scala.util.{Success, Try}
 import io.onfhir.config.IFhirConfigurationManager
 
 /**
@@ -60,8 +60,8 @@ class TargetResourceResolver(fhirConfigurationManager: IFhirConfigurationManager
   }
 
   /**
-   *
-   * @param fhirRequest
+   * Resolve target resource for FHIR request and update the request
+   * @param fhirRequest FHIR request details
    * @return
    */
   def resolveTargetResourceUpdateRequest(fhirRequest: FHIRRequest): Future[Unit] = {
@@ -76,18 +76,29 @@ class TargetResourceResolver(fhirConfigurationManager: IFhirConfigurationManager
     }
   }
 
+  /**
+   *
+   * @param fhirRequest
+   * @return
+   */
   private def isResolvable(fhirRequest:FHIRRequest):Boolean =
     fhirRequest.resourceType.isDefined &&
       fhirRequest.resourceId.isDefined &&
         fhirConfigurationManager.fhirConfig.resourceConfigurations.contains(fhirRequest.resourceType.get) //If resource type is supported
 
 
+  /**
+   *
+   * @param fhirRequest
+   * @return
+   */
   private def resolveTargetResourcesForBatchOrTransaction(fhirRequest:FHIRRequest):Future[Seq[FHIRRequest]] = {
+    val parentRequest = if(fhirRequest.interaction == FHIR_INTERACTIONS.TRANSACTION) Some(fhirRequest) else None
     Future.sequence(fhirRequest
       .childRequests
       .map(cr =>
         if (isResolvable(cr))
-          resolveTargetResourceOrVersion(cr)
+          resolveTargetResourceOrVersion(cr, parentRequest)
             .recover(_ => None) //do not throw any exception
             .map(resolved => {
               resolved
@@ -103,9 +114,9 @@ class TargetResourceResolver(fhirConfigurationManager: IFhirConfigurationManager
   /**
    * Resolve target FHIR resource mentioned in request
    * @param fhirRequest FHIR request
-   * @return
+   * @return  Target resource resolved (and for special resources like Binary, the security context resource related with it)
    */
-  private def resolveTargetResourceOrVersion(fhirRequest:FHIRRequest):Future[Option[(Resource, Option[Resource])]] = {
+  private def resolveTargetResourceOrVersion(fhirRequest:FHIRRequest, parentTransactionRequest:Option[FHIRRequest] = None):Future[Option[(Resource, Option[Resource])]] = {
     (fhirRequest.versionId match {
       case None => fhirConfigurationManager.resourceManager.getResource(fhirRequest.resourceType.get, fhirRequest.resourceId.get)
       case Some(v) => fhirConfigurationManager.resourceManager.getResource(fhirRequest.resourceType.get, fhirRequest.resourceId.get, Some(v))
@@ -115,11 +126,19 @@ class TargetResourceResolver(fhirConfigurationManager: IFhirConfigurationManager
           fhirRequest.resourceType.get match {
             //For Binary resources we get security context from content
             case "Binary" =>
-              FHIRUtil
-                .extractValueOption[String](resolvedResource, "securityContext.reference")
-                .map(rf => FHIRUtil.parseReferenceValue(rf))
+              Try(FHIRUtil.parseReference(resolvedResource \ "securityContext"))
+                .toOption
                 .map {
-                  case (_, sctype, scid, v) => fhirConfigurationManager.resourceManager.getResource(sctype, scid, v)
+                  //Resolve it from the resource manager
+                  case FhirLiteralReference(_, sctype, scid, v) => fhirConfigurationManager.resourceManager.getResource(sctype, scid, v)
+                  //Resolve it from the bundle
+                  case FhirUUIDReference(urnUuid) =>
+                    Future.apply(
+                      parentTransactionRequest
+                        .flatMap(ptr => ptr.childRequests.find(_.id == urnUuid))
+                        .flatMap(r => r.resource)
+                    )
+                  case _ => Future.apply(None)
                 }
                 .getOrElse(Future.apply(None))
                 .map(securityContext => Some(resolvedResource -> securityContext))

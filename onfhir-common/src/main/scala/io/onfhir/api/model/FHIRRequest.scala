@@ -68,13 +68,13 @@ case class FHIRRequest(
   //For resource types like Binary, this provides the resource that is resolved from securityContext to be used in authorization decisions e.g. Binary.securityContext
   private var resolvedSecurityContext:Option[Resource] = None
   /**
-   * Return the target resolved resource
+   * Return the target resolved resource for instance level interactions
    * @return
    */
   def getResolvedTargetResource:Option[Resource] = resolvedTargetResource
 
   /**
-   * Return the resource to be used as security context for authorization
+   * Return the resource to be used as security context for authorization for instance level interactions
    * @return
    */
   def getResolvedSecurityContext:Option[Resource] = resolvedSecurityContext.orElse(resolvedTargetResource)
