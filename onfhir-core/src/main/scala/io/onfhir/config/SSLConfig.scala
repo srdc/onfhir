@@ -34,7 +34,7 @@ trait SSLConfig {
     val sslContext = SSLContext.getInstance("TLS")
     sslContext.init(keyManagerFactory.getKeyManagers, trustManagerFactory.getTrustManagers, new SecureRandom)
 
-    val https: HttpsConnectionContext = ConnectionContext.httpsClient(sslContext)
+    val https: HttpsConnectionContext = ConnectionContext.httpsServer(sslContext)
     https
   }
 
