@@ -95,7 +95,7 @@
 
         <!-- This is a special placeholder to manage the version from a single property throughout the parent and child modules. No other property name can be used. -->
         <!-- https://maven.apache.org/maven-ci-friendly.html -->
-        <revision>3.4-SNAPSHOT</revision>
+        <revision>3.4.1-SNAPSHOT</revision>
 
         <!-- plugin versions -->
         <scala.maven.plugin.version>4.8.1</scala.maven.plugin.version>
