@@ -117,7 +117,7 @@
         <json4s.version>3.7.0-M11</json4s.version>
         <scala.xml.version>2.2.0</scala.xml.version>
         <logback.version>1.4.14</logback.version>
-        <kafka.version>3.6.1</kafka.version>
+        <kafka.version>3.9.1</kafka.version>
         <config.version>1.4.3</config.version>
         <specs2.version>4.20.4</specs2.version>
         <nimbus-jose.version>9.37.3</nimbus-jose.version>
