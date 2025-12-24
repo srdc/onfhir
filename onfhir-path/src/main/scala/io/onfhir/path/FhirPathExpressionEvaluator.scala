@@ -192,6 +192,13 @@ class FhirPathExpressionEvaluator(context:FhirPathEnvironment, current:Seq[FhirP
             case (i1:FhirPathNumber, i2:FhirPathNumber) => i1 + i2
             case (s1:FhirPathString, s2:FhirPathString) => s1 + s2
             case (dt:FhirPathDateTime, quantity: FhirPathQuantity) => dt + quantity
+            case (dt:FhirPathDateTime, complex: FhirPathComplex) =>
+              // try converting it to quantity
+              val quantity: Option[FhirPathQuantity] = complex.toQuantity()
+              if(quantity.isDefined)
+                dt + quantity.get
+              else
+                throw new FhirPathException(s"Invalid additive operation between $dt and $complex !!!")
             case (t:FhirPathTime, quantity: FhirPathQuantity) => t + quantity
             case (a1, a2) => throw new FhirPathException(s"Invalid additive operation between $a1 and $a2 !!!")
           }
