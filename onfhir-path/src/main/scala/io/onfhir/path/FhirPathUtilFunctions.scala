@@ -586,7 +586,7 @@ class FhirPathUtilFunctions(context: FhirPathEnvironment, current: Seq[FhirPathR
       )),
       returnValue = FhirPathFunctionReturn(
         detail = None,
-        examples = Seq("""<JSON>[{"numericValue": 50.5, "comparator": ">"}]""")
+        examples = Seq("""<JSON>[50.5, ">"]""")
       ),
       examples = Seq("utl:parseFhirQuantityExpression('>50.5')")
     ),
